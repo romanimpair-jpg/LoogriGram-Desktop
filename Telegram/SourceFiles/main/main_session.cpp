@@ -352,8 +352,14 @@ bool Session::premiumPossible() const {
 	return premium() || premiumCanBuy();
 }
 
+// LoogriGram: no premium emoji status and no gold premium star, for anyone.
+// Both painters gate on this - Ui::PeerBadge::drawGetWidth derives its
+// emojiStatus and premiumStar flags from it, and Info::Profile::Badge
+// downgrades BadgeType::Premium to None - so one gate covers the dialog list,
+// the chat top bar, profiles and every peer list. Nulling emojiStatusId()
+// instead would not work: it only promotes premium users to the static star.
 bool Session::premiumBadgesShown() const {
-	return supportMode() || premiumPossible();
+	return false;
 }
 
 rpl::producer<bool> Session::premiumPossibleValue() const {
@@ -368,11 +374,19 @@ rpl::producer<bool> Session::premiumPossibleValue() const {
 	return rpl::combine(
 		std::move(premium),
 		_premiumPossible.value(),
-		_1 || _2);
+		_1);
 }
 
+// LoogriGram: nothing can be bought in-app. premiumPossible() therefore
+// reduces to premium(), which drops the whole Premium/Stars/Currency/Business
+// block from settings via BuildPremiumSection()'s early return, and sends
+// every limit box down its existing !premiumPossible branch - an explanatory
+// box with a single OK button instead of a purchase pitch. That branch is
+// upstream's own, used where purchases are unavailable, so nothing is
+// left half-wired. The reactive premiumPossibleValue() above keeps its
+// combine so it still emits initially, but now ignores purchasability.
 bool Session::premiumCanBuy() const {
-	return _premiumPossible.current();
+	return false;
 }
 
 bool Session::isTestMode() const {
