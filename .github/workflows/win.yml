@@ -17,6 +17,14 @@ on:
           - validate
           - cache
           - build
+      config:
+        description: 'Debug fits the runner. Release needs both variants of every library and may exhaust the disk.'
+        required: true
+        default: Debug
+        type: choice
+        options:
+          - Debug
+          - Release
 
 jobs:
 
@@ -164,8 +172,8 @@ jobs:
             !${{ env.LibrariesPath }}\[qQ]t[_-]*
             ${{ env.LibrariesPath }}\cache_keys\*
             !${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
-          key: ${{ runner.OS }}-${{ matrix.arch }}-libs-rel-v1-${{ env.CACHE_KEY }}
-          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-libs-rel-v1-
+          key: ${{ runner.OS }}-${{ matrix.arch }}-libs-${{ inputs.config }}-v1-${{ env.CACHE_KEY }}
+          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-libs-${{ inputs.config }}-v1-
 
       - name: Qt cache.
         id: cache-qt
@@ -174,13 +182,46 @@ jobs:
           path: |
             ${{ env.LibrariesPath }}\[qQ]t[_-]*
             ${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
-          key: ${{ runner.OS }}-${{ matrix.arch }}-${{ matrix.qt || 'qt' }}-rel-v1-${{ env.CACHE_KEY }}
-          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-${{ matrix.qt || 'qt' }}-rel-v1-
+          key: ${{ runner.OS }}-${{ matrix.arch }}-${{ matrix.qt || 'qt' }}-${{ inputs.config }}-v1-${{ env.CACHE_KEY }}
+          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-${{ matrix.qt || 'qt' }}-${{ inputs.config }}-v1-
+
+      - name: Reclaim disk space.
+        if: inputs.mode != 'validate' && inputs.config == 'Release'
+        shell: pwsh
+        run: |
+          # A Release build compiles both variants of every library. Qt alone
+          # then exceeds what a hosted runner has free, so drop preinstalled
+          # toolchains this build never touches before starting.
+          $before = (Get-PSDrive C).Free / 1GB
+          Write-Output ("Free before: {0:N1} GB" -f $before)
+          $targets = @(
+            'C:\Android',
+            'C:\Program Files (x86)\Android',
+            'C:\Program Files\Microsoft SDKs\Android',
+            'C:\hostedtoolcache\windows\Ruby',
+            'C:\hostedtoolcache\windows\go',
+            'C:\hostedtoolcache\windows\node',
+            'C:\hostedtoolcache\windows\PyPy',
+            'C:\Program Files\MongoDB',
+            'C:\Program Files\PostgreSQL',
+            'C:\Program Files\MySQL',
+            'C:\Program Files\Unity',
+            'C:\Program Files (x86)\Google',
+            'C:\ProgramData\chocolatey\lib\mingw'
+          )
+          foreach ($t in $targets) {
+            if (Test-Path $t) {
+              Write-Output "removing $t"
+              try { Remove-Item -Recurse -Force $t -ErrorAction Stop } catch { Write-Output "  skipped: $_" }
+            }
+          }
+          $after = (Get-PSDrive C).Free / 1GB
+          Write-Output ("Free after: {0:N1} GB  (reclaimed {1:N1} GB)" -f $after, ($after - $before))
 
       - name: Libraries.
         if: inputs.mode != 'validate'
         run: |
-          %TBUILD%\%REPO_NAME%\Telegram\build\prepare\win.bat silent ${{ matrix.qt }}
+          %TBUILD%\%REPO_NAME%\Telegram\build\prepare\win.bat ${{ inputs.config == 'Debug' && 'skip-release' || '' }} silent ${{ matrix.qt }}
 
       - name: Read configuration matrix.
         shell: bash
@@ -244,24 +285,24 @@ jobs:
           %TDESKTOP_BUILD_ARCH% ^
           ${{ matrix.qt }} ^
           %TDESKTOP_BUILD_API% ^
-          -D CMAKE_CONFIGURATION_TYPES=Release ^
+          -D CMAKE_CONFIGURATION_TYPES=${{ inputs.config }} ^
           -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT= ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON ^
           %TDESKTOP_BUILD_DEFINE%
 
-          cmake --build ..\out --config Release --parallel
+          cmake --build ..\out --config ${{ inputs.config }} --parallel
 
       - name: Move artifact.
         if: inputs.mode == 'build'
         run: |
-          set OUT=%TBUILD%\%REPO_NAME%\out\Release
+          set OUT=%TBUILD%\%REPO_NAME%\out\${{ inputs.config }}
           mkdir artifact
           move %OUT%\Telegram.exe artifact/
       - uses: actions/upload-artifact@v7
         name: Upload artifact.
         if: inputs.mode == 'build'
         with:
-          name: ${{ env.ARTIFACT_NAME }}
+          name: ${{ env.ARTIFACT_NAME }} ${{ inputs.config }}
           path: artifact\
           retention-days: 30
