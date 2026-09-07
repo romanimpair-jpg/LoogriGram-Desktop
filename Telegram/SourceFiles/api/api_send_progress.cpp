@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "api/api_send_progress.h"
 
+#include "core/application.h"
+#include "core/core_settings.h"
 #include "main/main_session.h"
 #include "history/history.h"
 #include "data/data_peer.h"
@@ -152,6 +154,15 @@ void SendProgressManager::send(const Key &key, int progress) {
 }
 
 bool SendProgressManager::skipRequest(const Key &key) const {
+	// LoogriGram: never broadcast composing activity - typing, recording a
+	// voice message or round video, or upload progress. Speaking is exempt:
+	// it drives the group call talking indicator, where presence is already
+	// established by being in the call, and suppressing it would only break
+	// the call UI for everyone else.
+	if (key.type != SendProgressType::Speaking
+		&& Core::App().settings().ghostMode()) {
+		return true;
+	}
 	const auto user = key.history->peer->asUser();
 	if (!user) {
 		return false;

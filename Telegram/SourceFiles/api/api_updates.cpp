@@ -60,6 +60,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_streamed_drafts.h"
 #include "history/history_unread_things.h"
 #include "core/application.h"
+#include "core/core_settings.h"
 #include "storage/storage_account.h"
 #include "storage/storage_facade.h"
 #include "storage/storage_user_photos.h"
@@ -1019,13 +1020,25 @@ void Updates::updateOnline(crl::time lastNonIdleTime, bool gotOtherOffline) {
 
 		_lastWasOnline = isOnline;
 		_lastSetOnline = ms;
+
+		// LoogriGram: always report offline, but only change what is reported.
+		// isOnline still drives the local status, the idle timer and the
+		// offline transition that flushes cloud drafts, so forcing it false
+		// would flush drafts once and then never again. Keeping the request
+		// itself in place also preserves the quitting branch below, whose
+		// callbacks release the shutdown block - dropping the send outright
+		// hangs the app on exit. Note this alone does not make you invisible:
+		// the server still infers presence from session activity, so the
+		// account level Last Seen privacy setting does the real work.
+		const auto reportOffline = Core::App().settings().ghostMode()
+			|| !isOnline;
 		if (!Core::Quitting()) {
 			_onlineRequest = api().request(MTPaccount_UpdateStatus(
-				MTP_bool(!isOnline)
+				MTP_bool(reportOffline)
 			)).send();
 		} else {
 			_onlineRequest = api().request(MTPaccount_UpdateStatus(
-				MTP_bool(!isOnline)
+				MTP_bool(reportOffline)
 			)).done([=] {
 				Core::App().quitPreventFinished();
 			}).fail([=] {
