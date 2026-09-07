@@ -301,26 +301,21 @@ HistoryItem *SponsoredMessages::injectItem(
 	return entryIt->item.get();
 }
 
+// LoogriGram: sponsored messages are never requested and never displayed.
+// These three gates are the only entry points into the pipeline: request()
+// and inject() early-return on them, so _data stays empty and append(),
+// state(), injectItem() and fillTopBar() all take their empty-map branches.
+// The view and click beacons only fire for items that exist, so reporting
+// back to the ad server stops as a consequence rather than as a separate cut.
 bool SponsoredMessages::canHaveFor(not_null<History*> history) const {
-	if (history->peer->isChannel()) {
-		return true;
-	} else if (const auto user = history->peer->asUser()) {
-		return user->isBot();
-	}
 	return false;
 }
 
 bool SponsoredMessages::canHaveFor(not_null<HistoryItem*> item) const {
-	return item->history()->peer->isBroadcast()
-		&& item->isRegular();
+	return false;
 }
 
 bool SponsoredMessages::isTopBarFor(not_null<History*> history) const {
-	if (peerIsUser(history->peer->id)) {
-		if (const auto user = history->peer->asUser()) {
-			return user->isBot();
-		}
-	}
 	return false;
 }
 
