@@ -25,10 +25,14 @@ ReadMetrics::ReadMetrics(not_null<ApiWrap*> api)
 void ReadMetrics::add(
 		not_null<PeerData*> peer,
 		FinalizedReadMetric metric) {
-	_pending[peer].push_back(metric);
-	if (!_timer.isActive()) {
-		_timer.callOnce(kSendTimeout);
-	}
+	// LoogriGram: reading telemetry is never collected. Each metric carries
+	// per message dwell time, active dwell time, the fraction of the message
+	// on screen and how far through it was scrolled - engagement analytics,
+	// not anything the client needs to work. Dropping it here rather than in
+	// send() leaves no queue to grow and no unreachable code; send() simply
+	// iterates a map that is always empty. Deliberately not tied to ghost
+	// mode: that setting governs what other users see, while this is off
+	// unconditionally.
 }
 
 void ReadMetrics::send() {

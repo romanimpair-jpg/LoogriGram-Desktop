@@ -33,22 +33,12 @@ ViewsManager::ViewsManager(not_null<ApiWrap*> api)
 }
 
 void ViewsManager::scheduleIncrement(not_null<HistoryItem*> item) {
-	auto peer = item->history()->peer;
-	auto i = _incremented.find(peer);
-	if (i != _incremented.cend()) {
-		if (i->second.contains(item->id)) {
-			return;
-		}
-	} else {
-		i = _incremented.emplace(peer).first;
-	}
-	i->second.emplace(item->id);
-	auto j = _toIncrement.find(peer);
-	if (j == _toIncrement.cend()) {
-		j = _toIncrement.emplace(peer).first;
-		_incrementTimer.callOnce(kSendViewsTimeout);
-	}
-	j->second.emplace(item->id);
+	// LoogriGram: channel post view counts are never incremented from here.
+	// The count itself is aggregate and anonymous, but reporting it means
+	// telling the server which posts were on our screen, which is the same
+	// signal by another name. Nothing is queued, so viewsIncrement() has
+	// nothing to send. View counts received from the server still display
+	// normally; we simply do not contribute to them.
 }
 
 void ViewsManager::removeIncremented(not_null<PeerData*> peer) {
