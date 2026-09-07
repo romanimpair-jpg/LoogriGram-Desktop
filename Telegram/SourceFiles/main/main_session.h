@@ -132,6 +132,13 @@ public:
 	[[nodiscard]] bool premiumBadgesShown() const;
 	[[nodiscard]] bool premiumCanBuy() const;
 
+	// LoogriGram: sets Last Seen to Nobody. Suppressing presence client side
+	// is not enough on its own, because the server also infers it from
+	// session activity, so this is the half that actually conceals it.
+	// Deliberately one way: nothing ever sets it back, since guessing at a
+	// previous value risks making someone visible who expected not to be.
+	void applyGhostModePrivacy();
+
 	[[nodiscard]] bool isTestMode() const;
 	[[nodiscard]] uint64 uniqueId() const; // userId() with TestDC shift.
 	[[nodiscard]] UserId userId() const;

@@ -58,6 +58,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "support/support_helper.h"
 #include "lang/lang_keys.h"
 #include "core/application.h"
+#include "core/core_settings.h"
 #include "ui/text/text_utilities.h"
 #include "ui/layers/generic_box.h"
 #include "styles/style_layers.h"
@@ -180,6 +181,19 @@ Session::Session(
 	_api->requestFullPeer(_user);
 
 	_api->instance().setUserPhone(_user->phone());
+
+	// LoogriGram: apply the server side half of ghost mode once per account,
+	// not on every launch, so that changing Last Seen by hand later is not
+	// silently undone on the next start. Deferred to the main queue because
+	// this runs from the constructor, before the session is fully wired up.
+	if (Core::App().settings().ghostMode()) {
+		const auto applied = std::string("loogrigram.lastseen_applied.")
+			+ std::to_string(_user->id.value);
+		if (!Core::App().settings().readPref<bool>(applied, false)) {
+			Core::App().settings().writePref<bool>(applied, true);
+			crl::on_main(this, [=] { applyGhostModePrivacy(); });
+		}
+	}
 
 	// Load current userpic and keep it loaded.
 	_user->loadUserpic();
@@ -387,6 +401,17 @@ rpl::producer<bool> Session::premiumPossibleValue() const {
 // combine so it still emits initially, but now ignores purchasability.
 bool Session::premiumCanBuy() const {
 	return false;
+}
+
+void Session::applyGhostModePrivacy() {
+	// Exception lists are left alone rather than cleared. Wiping an "always
+	// allow" entry someone set on purpose would be destructive, and since
+	// nothing here ever restores a previous value it would not be undoable.
+	auto rule = Api::UserPrivacy::Rule();
+	rule.option = Api::UserPrivacy::Option::Nobody;
+	rule.ignoreAlways = true;
+	rule.ignoreNever = true;
+	_api->userPrivacy().save(Api::UserPrivacy::Key::LastSeen, rule);
 }
 
 bool Session::isTestMode() const {

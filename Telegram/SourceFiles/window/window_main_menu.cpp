@@ -759,6 +759,9 @@ void MainMenu::setupMenu() {
 	) | rpl::on_next([=](bool ghost) {
 		Core::App().settings().setGhostMode(ghost);
 		Core::App().saveSettingsDelayed();
+		if (ghost) {
+			controller->session().applyGhostModePrivacy();
+		}
 	}, ghostToggle->lifetime());
 
 	_nightThemeToggle = addAction(
