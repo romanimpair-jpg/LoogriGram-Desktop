@@ -59,6 +59,15 @@ public:
 	void clearAll();
 
 	void readInbox(not_null<History*> history);
+
+	// LoogriGram: read receipts are suppressed while ghost mode is on, except
+	// when sending into a chat. Replying already tells the other side we read
+	// their message, so withholding the receipt there leaks nothing extra and
+	// only produces a visible tell - a reply to a message still marked
+	// delivered rather than read. This marks the next read of that history as
+	// one to actually put on the wire.
+	void readInboxOnSend(not_null<History*> history);
+
 	void readInboxTill(not_null<HistoryItem*> item);
 	void readInboxTill(not_null<History*> history, MsgId tillId);
 	void readInboxOnNewMessage(not_null<HistoryItem*> item);
@@ -222,6 +231,7 @@ private:
 	base::flat_map<int, not_null<History*>> _historyByRequest;
 	int _requestAutoincrement = 0;
 	base::Timer _readRequestsTimer;
+	base::flat_set<not_null<History*>> _forcedReads;
 
 	base::flat_set<not_null<Data::Folder*>> _dialogFolderRequests;
 	base::flat_map<

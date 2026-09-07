@@ -3781,7 +3781,10 @@ void ApiWrap::sendAction(const SendAction &action) {
 		} else if (sublist) {
 			sublist->readTillEnd();
 		} else {
-			_session->data().histories().readInbox(action.history);
+			// LoogriGram: upstream already marks the chat read when you send
+			// into it, which is exactly the reply-flush ghost mode wants, so
+			// route it through the variant that survives read suppression.
+			_session->data().histories().readInboxOnSend(action.history);
 		}
 		action.history->getReadyFor(ShowAtTheEndMsgId);
 	}
