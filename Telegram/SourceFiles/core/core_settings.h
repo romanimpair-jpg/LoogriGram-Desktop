@@ -1044,6 +1044,18 @@ public:
 		_mediaGridZoomStep = value;
 	}
 
+	// LoogriGram: suppresses read receipts, typing and activity broadcasts,
+	// story views and online presence. Kept in the KV prefs rather than the
+	// binary stream, as AGENTS.md advises for simple flags, so it cannot
+	// disturb the append-only serialization order. Defaults to on, so a
+	// fresh profile is never briefly visible before the setting is read.
+	[[nodiscard]] bool ghostMode() {
+		return readPref<bool>(kGhostModePref, true);
+	}
+	void setGhostMode(bool value) {
+		writePref<bool>(kGhostModePref, value);
+	}
+
 	template <typename Type, typename Other>
 	void writePref(std::string_view key, Other &&value) {
 		writePrefImpl<Type>(key, std::forward<Other>(value));
@@ -1072,6 +1084,9 @@ private:
 	void writePrefGeneric(std::string_view key, const QByteArray &value);
 	[[nodiscard]] std::optional<QByteArray> readPrefGeneric(
 		std::string_view key);
+
+	static constexpr auto kGhostModePref = std::string_view(
+		"loogrigram.ghost_mode");
 
 	static constexpr auto kDefaultThirdColumnWidth = 0;
 	static constexpr auto kDefaultDialogsWidthRatio = 5. / 14;
