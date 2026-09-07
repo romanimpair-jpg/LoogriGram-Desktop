@@ -24,6 +24,11 @@ jobs:
     name: Windows
     runs-on: windows-latest
 
+    # Below GitHub's hard 6h cap so a cancelled job still runs its cache-save
+    # step. prepare.py skips libraries that already have a cache_keys entry,
+    # so an interrupted dependency build resumes on the next run.
+    timeout-minutes: 340
+
     strategy:
       matrix:
         arch: [x64]
