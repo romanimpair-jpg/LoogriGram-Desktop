@@ -14,6 +14,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_menu_about" = "About";
 "lng_menu_update" = "Update";
 "lng_menu_night_mode" = "Night Mode";
+"lng_menu_ghost_mode" = "Ghost Mode";
 "lng_menu_add_account" = "Add Account";
 "lng_menu_activate" = "Use this account";
 "lng_menu_set_status" = "Set Emoji Status";

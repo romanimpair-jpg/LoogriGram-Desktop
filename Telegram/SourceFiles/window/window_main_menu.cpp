@@ -747,6 +747,20 @@ void MainMenu::setupMenu() {
 		controller->showSettings();
 	});
 
+	// LoogriGram: ghost mode sits beside night mode rather than in Privacy
+	// settings, because it is a thing you flip for a conversation and then
+	// flip back, not something configured once. Reading the current value
+	// once is enough: nothing else in the app changes it.
+	const auto ghostToggle = addAction(
+		tr::lng_menu_ghost_mode(),
+		{ &st::menuIconStealth }
+	)->toggleOn(rpl::single(Core::App().settings().ghostMode()));
+	ghostToggle->toggledChanges(
+	) | rpl::on_next([=](bool ghost) {
+		Core::App().settings().setGhostMode(ghost);
+		Core::App().saveSettingsDelayed();
+	}, ghostToggle->lifetime());
+
 	_nightThemeToggle = addAction(
 		tr::lng_menu_night_mode(),
 		{ &st::menuIconNightMode }
