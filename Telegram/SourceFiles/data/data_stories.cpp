@@ -10,6 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "apiwrap.h"
 #include "core/application.h"
+#include "core/core_settings.h"
 #include "data/components/top_peers.h"
 #include "data/data_changes.h"
 #include "data/data_channel.h"
@@ -1241,13 +1242,26 @@ void Stories::markAsRead(FullStoryId id, bool viewed) {
 		return;
 	}
 	const auto story = *maybeStory;
-	if (story->expired() && story->inProfile()) {
+
+	// LoogriGram: viewing a story is never reported - neither the view count
+	// increment nor the read position. bumpReadTill() below still runs, so
+	// the story ring stops showing as unread locally; skipping it instead
+	// would leave every story permanently unread on our own side. Nothing is
+	// added to the pending sets, which matters because their request
+	// callbacks are what release the shutdown block via
+	// checkQuitPreventFinished() - queueing work that never sends would hang
+	// the app on exit.
+	const auto ghost = Core::App().settings().ghostMode();
+
+	if (!ghost && story->expired() && story->inProfile()) {
 		_incrementViewsPending[id.peer].emplace(id.story);
 		if (!_incrementViewsTimer.isActive()) {
 			_incrementViewsTimer.callOnce(kIncrementViewsDelay);
 		}
 	}
 	if (!bumpReadTill(id.peer, id.story)) {
+		return;
+	} else if (ghost) {
 		return;
 	}
 	if (!_markReadPending.contains(id.peer)) {
