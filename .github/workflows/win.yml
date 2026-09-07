@@ -47,21 +47,38 @@ jobs:
           TG_API_HASH: ${{ secrets.TG_API_HASH }}
         run: |
           failed=0
+
           if [ -z "$TG_API_ID" ]; then
-            echo "::error::Secret TG_API_ID is not set."
+            echo "::error::TG_API_ID is not set."
             failed=1
+          elif [ "$TG_API_ID" != "${TG_API_ID//[!0-9]/}" ]; then
+            echo "::error::TG_API_ID contains non-digits (${#TG_API_ID} chars total). A stray space or newline when pasting is the usual cause."
+            failed=1
+          elif [ ${#TG_API_ID} -lt 5 ] || [ ${#TG_API_ID} -gt 10 ]; then
+            echo "::error::TG_API_ID is ${#TG_API_ID} digits; expected roughly 6-8."
+            failed=1
+          else
+            echo "TG_API_ID looks valid (${#TG_API_ID} digits)."
           fi
+
+          hash_lower="$(printf '%s' "$TG_API_HASH" | tr 'A-Z' 'a-z')"
           if [ -z "$TG_API_HASH" ]; then
-            echo "::error::Secret TG_API_HASH is not set."
+            echo "::error::TG_API_HASH is not set."
             failed=1
+          elif [ ${#TG_API_HASH} -ne 32 ]; then
+            echo "::error::TG_API_HASH is ${#TG_API_HASH} chars; expected exactly 32. A stray space or newline when pasting is the usual cause."
+            failed=1
+          elif [ "$hash_lower" != "${hash_lower//[!0-9a-f]/}" ]; then
+            echo "::error::TG_API_HASH contains non-hexadecimal characters."
+            failed=1
+          else
+            echo "TG_API_HASH looks valid (32 hex chars)."
           fi
+
           if [ $failed -ne 0 ]; then
-            echo "Set them with:"
-            echo "  gh secret set TG_API_ID --repo $GITHUB_REPOSITORY"
-            echo "  gh secret set TG_API_HASH --repo $GITHUB_REPOSITORY"
+            echo "Re-set with: gh secret set <NAME> --repo $GITHUB_REPOSITORY"
             exit 1
           fi
-          echo "Credentials present (id ${#TG_API_ID} chars, hash ${#TG_API_HASH} chars)."
           echo "Mode: ${{ inputs.mode }}"
 
       - name: Prepare directories.
