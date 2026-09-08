@@ -124,17 +124,14 @@ jobs:
           SDK="$(grep "SDK version" $DOCPATH | sed -r 's/.*\*\*(.*)\*\* SDK version.*/\1/')"
           echo "SDK=$SDK" >> $GITHUB_ENV
 
-          # Keep upstream's patch that strips /Zi from CMake's debug flags.
-          # A Release build still compiles the debug variant of every
-          # dependency, and their PDBs are what exhausts the runner's disk -
-          # without this, tde2e fails to link with LNK1180 at library 31/31.
-          # What is NOT kept is the empty CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
-          # that upstream pairs with it: together they make MSVC write a PDB
-          # with an empty filename and fail C1083 on kimageformats. Release
-          # needs no debug info of its own, so dropping just the flag is safe.
-          sed -i '/CMAKE_${lang}_FLAGS_DEBUG_INIT/s/${_Zi}//' "$PROGRAMFILES"/CMake/share/cmake*/Modules/Platform/Windows-MSVC.cmake
-          grep -c 'CMAKE_${lang}_FLAGS_DEBUG_INIT' "$PROGRAMFILES"/CMake/share/cmake*/Modules/Platform/Windows-MSVC.cmake \
-            || echo "::warning::/Zi strip pattern not found - CMake layout may have changed"
+          # Upstream strips /Zi out of CMake's debug flags and pairs that with
+          # an empty CMAKE_MSVC_DEBUG_INFORMATION_FORMAT. Applying only the
+          # strip leaves CMake still emitting /Fd and /FS with no /Zi to go
+          # with them, and MSVC then fails C1083 with an empty filename on
+          # kimageformats. Neither is used here: for a Release build CMake
+          # emits no debug-info arguments at all, which is self-consistent.
+          # The strip existed to keep library PDBs off the disk, and libraries
+          # now come from the cache instead of being rebuilt.
 
           echo "$(sha256sum $TBUILD/$REPO_NAME/$PREPARE_PATH | awk '{ print $1 }')" >> CACHE_KEY.txt
           echo "$SDK" >> CACHE_KEY.txt
@@ -344,7 +341,6 @@ jobs:
           ${{ matrix.qt }} ^
           %TDESKTOP_BUILD_API% ^
           -D CMAKE_CONFIGURATION_TYPES=${{ inputs.config }} ^
-          -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT=ProgramDatabase ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON ^
           %TDESKTOP_BUILD_DEFINE%
