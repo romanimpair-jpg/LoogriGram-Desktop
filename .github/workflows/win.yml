@@ -103,7 +103,13 @@ jobs:
 
       - name: Get repository name.
         shell: bash
-        run: echo "REPO_NAME=${GITHUB_REPOSITORY##*/}" >> $GITHUB_ENV
+        run: |
+          # Deliberately not the repository name. Build paths run to about 240
+          # characters under kimageformats, and "LoogriGram-Desktop" is ten
+          # characters longer than upstream's "tdesktop", which pushes the
+          # deepest object paths into Windows' 260 character limit - MSVC then
+          # reports C1083 with an empty filename.
+          echo "REPO_NAME=tg" >> $GITHUB_ENV
 
       - name: Clone.
         uses: actions/checkout@v7
@@ -338,6 +344,7 @@ jobs:
           ${{ matrix.qt }} ^
           %TDESKTOP_BUILD_API% ^
           -D CMAKE_CONFIGURATION_TYPES=${{ inputs.config }} ^
+          -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT=ProgramDatabase ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON ^
           %TDESKTOP_BUILD_DEFINE%
