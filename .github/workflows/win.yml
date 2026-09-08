@@ -118,7 +118,12 @@ jobs:
           SDK="$(grep "SDK version" $DOCPATH | sed -r 's/.*\*\*(.*)\*\* SDK version.*/\1/')"
           echo "SDK=$SDK" >> $GITHUB_ENV
 
-          sed -i '/CMAKE_${lang}_FLAGS_DEBUG_INIT/s/${_Zi}//' "$PROGRAMFILES"/CMake/share/cmake*/Modules/Platform/Windows-MSVC.cmake
+          # Upstream patches /Zi out of CMake's debug flags and passes an
+          # empty CMAKE_MSVC_DEBUG_INFORMATION_FORMAT to skip PDB generation.
+          # That combination makes MSVC try to write a PDB with an empty name
+          # and fail with C1083 on kimageformats. A Release build needs no
+          # debug info anyway - CMake only enables it for Debug and
+          # RelWithDebInfo - so neither the patch nor the flag is used here.
 
           echo "$(sha256sum $TBUILD/$REPO_NAME/$PREPARE_PATH | awk '{ print $1 }')" >> CACHE_KEY.txt
           echo "$SDK" >> CACHE_KEY.txt
@@ -154,9 +159,14 @@ jobs:
           nuget sources Disable -Name "Microsoft Visual Studio Offline Packages"
           nuget sources Add -Source https://api.nuget.org/v3/index.json & exit 0
 
+      # Restore and save are split deliberately. actions/cache only writes its
+      # cache in a post step, which is skipped when any step fails - so a
+      # compile error used to discard the whole dependency build. Saving
+      # explicitly, right after Libraries succeeds, makes the expensive part
+      # survive a failure in anything after it.
       - name: ThirdParty cache.
         id: cache-third-party
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.TBUILD }}\ThirdParty
           key: ${{ runner.OS }}-${{ runner.arch }}-third-party-${{ env.CACHE_KEY }}
@@ -164,7 +174,7 @@ jobs:
 
       - name: Libraries cache.
         id: cache-libs
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: |
             ${{ env.LibrariesPath }}\*
@@ -177,7 +187,7 @@ jobs:
 
       - name: Qt cache.
         id: cache-qt
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: |
             ${{ env.LibrariesPath }}\[qQ]t[_-]*
@@ -219,6 +229,7 @@ jobs:
           Write-Output ("Free after: {0:N1} GB  (reclaimed {1:N1} GB)" -f $after, ($after - $before))
 
       - name: Libraries.
+        id: libraries
         if: inputs.mode != 'validate'
         run: |
           %TBUILD%\%REPO_NAME%\Telegram\build\prepare\win.bat ${{ inputs.config == 'Debug' && 'skip-release' || '' }} silent ${{ matrix.qt }}
@@ -275,6 +286,34 @@ jobs:
         shell: bash
         run: find $LibrariesPath '(' '(' ! '(' -name '*.lib' -o -name '*.a' -o -name '*.exe' -o -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.cmake' -o -name '*.pc' -o -path '*/include/*' -o -path '*/objects-*' -o -path '*/cache_keys/*' -o -path '*/patches/*' -o -path '*/nv-codec-headers/*' ')' -type f ')' -o -empty ')' -delete
 
+      - name: Save ThirdParty cache.
+        if: steps.libraries.outcome == 'success' && steps.cache-third-party.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ env.TBUILD }}\ThirdParty
+          key: ${{ steps.cache-third-party.outputs.cache-primary-key }}
+
+      - name: Save libraries cache.
+        if: steps.libraries.outcome == 'success' && steps.cache-libs.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ env.LibrariesPath }}\*
+            !${{ env.LibrariesPath }}\cache_keys
+            !${{ env.LibrariesPath }}\[qQ]t[_-]*
+            ${{ env.LibrariesPath }}\cache_keys\*
+            !${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
+          key: ${{ steps.cache-libs.outputs.cache-primary-key }}
+
+      - name: Save Qt cache.
+        if: steps.libraries.outcome == 'success' && steps.cache-qt.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ env.LibrariesPath }}\[qQ]t[_-]*
+            ${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
+          key: ${{ steps.cache-qt.outputs.cache-primary-key }}
+
       - name: Telegram Desktop build.
         if: inputs.mode == 'build'
         run: |
@@ -286,7 +325,6 @@ jobs:
           ${{ matrix.qt }} ^
           %TDESKTOP_BUILD_API% ^
           -D CMAKE_CONFIGURATION_TYPES=${{ inputs.config }} ^
-          -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT= ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON ^
           %TDESKTOP_BUILD_DEFINE%
