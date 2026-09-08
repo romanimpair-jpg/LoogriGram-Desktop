@@ -231,9 +231,7 @@ jobs:
             'C:\Program Files\Docker',
             'C:\Program Files\R',
             'C:\Program Files (x86)\Google',
-            'C:\ProgramData\chocolatey\lib\mingw',
-            'C:\ProgramData\Package Cache',
-            'C:\Windows\Temp'
+            'C:\ProgramData\chocolatey\lib\mingw'
           )
           foreach ($t in $targets) {
             if (Test-Path $t) {
@@ -358,6 +356,7 @@ jobs:
           ${{ matrix.qt }} ^
           %TDESKTOP_BUILD_API% ^
           -D CMAKE_CONFIGURATION_TYPES=${{ inputs.config }} ^
+          -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT= ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON ^
           -D DESKTOP_APP_DISABLE_QT_PLUGINS=ON ^
