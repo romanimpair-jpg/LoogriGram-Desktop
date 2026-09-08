@@ -330,6 +330,23 @@ jobs:
             ${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
           key: ${{ steps.cache-qt.outputs.cache-primary-key }}
 
+      - name: Check dav1d is present.
+        if: inputs.mode == 'build'
+        shell: bash
+        run: |
+          # kimageformats is the only target that links libdav1d.a, and it is
+          # disabled here, but ffmpeg's libavcodec still references dav1d
+          # symbols - so it has to be linked explicitly instead. Verified up
+          # front rather than after forty minutes of compiling.
+          DAV1D="$LibrariesPath/dav1d/builddir-${{ inputs.config == 'Debug' && 'debug' || 'release' }}/src/libdav1d.a"
+          if [ -f "$DAV1D" ]; then
+            echo "found: $DAV1D"
+          else
+            echo "::error::libdav1d.a not found at $DAV1D"
+            find "$LibrariesPath/dav1d" -name 'libdav1d*' 2>/dev/null | head
+            exit 1
+          fi
+
       - name: Telegram Desktop build.
         if: inputs.mode == 'build'
         run: |
@@ -344,6 +361,7 @@ jobs:
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON ^
           -D DESKTOP_APP_DISABLE_QT_PLUGINS=ON ^
+          -D CMAKE_EXE_LINKER_FLAGS=%LibrariesPath%\dav1d\builddir-release\src\libdav1d.a ^
           %TDESKTOP_BUILD_DEFINE%
 
           rem -k 0 keeps ninja going after a failed object so one run reports
