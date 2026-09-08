@@ -346,7 +346,10 @@ jobs:
           -D DESKTOP_APP_DISABLE_QT_PLUGINS=ON ^
           %TDESKTOP_BUILD_DEFINE%
 
-          cmake --build ..\out --config ${{ inputs.config }} --parallel
+          rem -k 0 keeps ninja going after a failed object so one run reports
+          rem every remaining error instead of stopping at the first. A build
+          rem here costs about forty minutes, so collecting them matters.
+          cmake --build ..\out --config ${{ inputs.config }} --parallel -- -k 0
 
       - name: Move artifact.
         if: inputs.mode == 'build'

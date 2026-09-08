@@ -377,18 +377,22 @@ bool Session::premiumBadgesShown() const {
 }
 
 rpl::producer<bool> Session::premiumPossibleValue() const {
-	using namespace rpl::mappers;
-
 	auto premium = _user->flagsValue(
 	) | rpl::filter([=](UserData::Flags::Change change) {
 		return (change.diff & UserDataFlag::Premium);
 	}) | rpl::map([=] {
 		return _user->isPremium();
 	});
+	// The combine is kept, and its second value deliberately ignored, so this
+	// still emits once both sides have a value - the premium producer alone
+	// only fires on a change and would leave consumers without an initial
+	// value. Purchasability no longer contributes, matching premiumCanBuy().
 	return rpl::combine(
 		std::move(premium),
-		_premiumPossible.value(),
-		_1);
+		_premiumPossible.value()
+	) | rpl::map([](bool premium, bool) {
+		return premium;
+	});
 }
 
 // LoogriGram: nothing can be bought in-app. premiumPossible() therefore
