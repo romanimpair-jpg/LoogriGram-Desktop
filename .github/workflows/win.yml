@@ -343,6 +343,7 @@ jobs:
           -D CMAKE_CONFIGURATION_TYPES=${{ inputs.config }} ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON ^
+          -D DESKTOP_APP_DISABLE_QT_PLUGINS=ON ^
           %TDESKTOP_BUILD_DEFINE%
 
           cmake --build ..\out --config ${{ inputs.config }} --parallel
