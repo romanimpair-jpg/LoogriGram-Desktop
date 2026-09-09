@@ -103,24 +103,38 @@ jobs:
         run: |
           mkdir %userprofile%\TBuild\Libraries
           mklink /d %GITHUB_WORKSPACE%\TBuild %userprofile%\TBuild
-          echo TBUILD=%GITHUB_WORKSPACE%\TBuild>>%GITHUB_ENV%
-          echo LibrariesPath=%GITHUB_WORKSPACE%\TBuild\Libraries${{ matrix.arch == 'x64' && '\win64' || '' }}>>%GITHUB_ENV%
+
+          rem A second, deliberately short alias to the same directory.
+          rem actions/checkout insists its path sits under GITHUB_WORKSPACE,
+          rem and that prefix is 57 characters. The deepest object paths - the
+          rem kimageformats sources, reached through CMake's out-of-tree form -
+          rem are about 205 characters, so building through the workspace comes
+          rem to 262 and MSVC fails C1083 with an empty filename, two over
+          rem MAX_PATH. Nothing requires building through the checkout path,
+          rem so C:\b is used for that instead and the total drops to ~217.
+          mklink /d C:\b %userprofile%\TBuild
+
+          echo CHECKOUT_ROOT=%GITHUB_WORKSPACE%\TBuild>>%GITHUB_ENV%
+          echo TBUILD=C:\b>>%GITHUB_ENV%
+          echo LibrariesPath=C:\b\Libraries${{ matrix.arch == 'x64' && '\win64' || '' }}>>%GITHUB_ENV%
 
       - name: Get repository name.
         shell: bash
         run: |
-          # Deliberately not the repository name. Build paths run to about 240
-          # characters under kimageformats, and "LoogriGram-Desktop" is ten
-          # characters longer than upstream's "tdesktop", which pushes the
-          # deepest object paths into Windows' 260 character limit - MSVC then
-          # reports C1083 with an empty filename.
+          # Deliberately short rather than the repository name, for the same
+          # MAX_PATH reason as the C:\b alias above. On its own this was not
+          # enough: CMake picks a hashed object directory when the prefix is
+          # long and its longer out-of-tree form when it is short, so the
+          # total stayed pinned either side of 260 and the failure persisted.
           echo "REPO_NAME=tg" >> $GITHUB_ENV
 
       - name: Clone.
         uses: actions/checkout@v7
         with:
           submodules: recursive
-          path: ${{ env.TBUILD }}\${{ env.REPO_NAME }}
+          # Must be under GITHUB_WORKSPACE; every later step uses the short
+          # alias in TBUILD, which resolves to the same physical directory.
+          path: ${{ env.CHECKOUT_ROOT }}\${{ env.REPO_NAME }}
 
       - name: First set up.
         shell: bash
@@ -341,10 +355,11 @@ jobs:
         if: inputs.mode == 'build'
         shell: bash
         run: |
-          # kimageformats is the only target that links libdav1d.a, and it is
-          # disabled here, but ffmpeg's libavcodec still references dav1d
-          # symbols - so it has to be linked explicitly instead. Verified up
-          # front rather than after forty minutes of compiling.
+          # kimageformats is the only target that links libdav1d.a, while
+          # ffmpeg's libavcodec references dav1d symbols regardless. Passing
+          # it to the linker directly keeps that settled whether or not the
+          # Qt plugins are built, and passing a static archive twice is
+          # harmless. Verified up front rather than after a long compile.
           DAV1D="$LibrariesPath/dav1d/builddir-${{ inputs.config == 'Debug' && 'debug' || 'release' }}/src/libdav1d.a"
           if [ -f "$DAV1D" ]; then
             echo "found: $DAV1D"
@@ -370,8 +385,7 @@ jobs:
           -D CMAKE_CXX_COMPILER_LAUNCHER=sccache ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON ^
-          -D DESKTOP_APP_DISABLE_QT_PLUGINS=ON ^
-          -D CMAKE_EXE_LINKER_FLAGS=%LibrariesPath%\dav1d\builddir-release\src\libdav1d.a ^
+          -D CMAKE_EXE_LINKER_FLAGS=%LibrariesPath%\dav1d\builddir-${{ inputs.config == 'Debug' && 'debug' || 'release' }}\src\libdav1d.a ^
           %TDESKTOP_BUILD_DEFINE%
 
           rem -k 0 keeps ninja going after a failed object so one run reports
