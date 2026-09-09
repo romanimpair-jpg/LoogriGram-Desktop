@@ -383,8 +383,11 @@ MainMenu::MainMenu(
 
 	parentResized();
 
+	// LoogriGram: kept as attribution rather than replaced with our own name.
+	// The API Terms want the Telegram relationship visible, and GPLv3 wants
+	// the upstream project credited.
 	_telegram->setMarkedText(tr::link(
-		u"Telegram Desktop"_q,
+		u"Based on Telegram Desktop"_q,
 		u"https://desktop.telegram.org"_q));
 	_telegram->setLinksTrusted();
 	// The canary version is too long for the "Version {version}" form.
