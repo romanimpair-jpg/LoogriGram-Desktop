@@ -88,18 +88,25 @@ Type AutoPlayTypeFromDocument(not_null<DocumentData*> document) {
 } // namespace
 
 void SetDefaultsForSource(Full &data, Source source) {
+	// LoogriGram: photos and GIFs only, in private chats, groups and channels
+	// alike. A zero limit means the type is off. Files and both video autoplay
+	// kinds are the ones that quietly eat bandwidth and disk, so they start
+	// disabled and can be turned on per chat when actually wanted.
+	//
+	// VoiceMessage and Music keep upstream's values deliberately: the
+	// auto-download box does not expose either, so changing them here would
+	// alter behaviour that cannot be seen or undone through the interface.
 	data.setBytesLimit(source, Type::Photo, kDefaultMaxSize);
-	data.setBytesLimit(source, Type::VoiceMessage, kDefaultMaxSize);
-	data.setBytesLimit(
-		source,
-		Type::AutoPlayVideoMessage,
-		kDefaultAutoPlaySize);
 	data.setBytesLimit(source, Type::AutoPlayGIF, kDefaultAutoPlaySize);
+
+	data.setBytesLimit(source, Type::File, 0);
+	data.setBytesLimit(source, Type::AutoPlayVideo, 0);
+	data.setBytesLimit(source, Type::AutoPlayVideoMessage, 0);
+
 	const auto channelsFileLimit = (source == Source::Channel)
 		? 0
 		: kDefaultMaxSize;
-	data.setBytesLimit(source, Type::File, channelsFileLimit);
-	data.setBytesLimit(source, Type::AutoPlayVideo, kDefaultAutoPlaySize);
+	data.setBytesLimit(source, Type::VoiceMessage, kDefaultMaxSize);
 	data.setBytesLimit(source, Type::Music, channelsFileLimit);
 }
 
