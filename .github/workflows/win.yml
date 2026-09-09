@@ -47,11 +47,6 @@ jobs:
       UPLOAD_ARTIFACT: "true"
       ONLY_CACHE: "false"
       PREPARE_PATH: "Telegram/build/prepare/prepare.py"
-      # Caching the out/ tree would not help: ninja decides what to rebuild
-      # from timestamps, and every run checks out fresh sources that are
-      # newer than any cached object. sccache keys on file contents instead,
-      # so it survives that and turns a repeat build into minutes.
-      SCCACHE_GHA_ENABLED: "true"
 
     defaults:
       run:
@@ -114,9 +109,16 @@ jobs:
           rem so C:\b is used for that instead and the total drops to ~217.
           mklink /d C:\b %userprofile%\TBuild
 
+          rem Cache paths must stay inside the workspace: actions/cache keys
+          rem its archives to workspace-relative paths, so pointing them at
+          rem C:\b silently misses and rebuilds every library from scratch.
+          rem Only the build itself uses the short alias - MAX_PATH bites the
+          rem object output paths under the build directory, not the library
+          rem inputs, which are short and merely passed as arguments.
           echo CHECKOUT_ROOT=%GITHUB_WORKSPACE%\TBuild>>%GITHUB_ENV%
+          echo CACHE_ROOT=%GITHUB_WORKSPACE%\TBuild>>%GITHUB_ENV%
           echo TBUILD=C:\b>>%GITHUB_ENV%
-          echo LibrariesPath=C:\b\Libraries${{ matrix.arch == 'x64' && '\win64' || '' }}>>%GITHUB_ENV%
+          echo LibrariesPath=%GITHUB_WORKSPACE%\TBuild\Libraries${{ matrix.arch == 'x64' && '\win64' || '' }}>>%GITHUB_ENV%
 
       - name: Get repository name.
         shell: bash
@@ -195,7 +197,7 @@ jobs:
         id: cache-third-party
         uses: actions/cache/restore@v6
         with:
-          path: ${{ env.TBUILD }}\ThirdParty
+          path: ${{ env.CACHE_ROOT }}\ThirdParty
           key: ${{ runner.OS }}-${{ runner.arch }}-third-party-${{ env.CACHE_KEY }}
           restore-keys: ${{ runner.OS }}-${{ runner.arch }}-third-party-
 
@@ -323,7 +325,7 @@ jobs:
         if: steps.libraries.outcome == 'success' && steps.cache-third-party.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
-          path: ${{ env.TBUILD }}\ThirdParty
+          path: ${{ env.CACHE_ROOT }}\ThirdParty
           key: ${{ steps.cache-third-party.outputs.cache-primary-key }}
 
       - name: Save libraries cache.
@@ -346,10 +348,6 @@ jobs:
             ${{ env.LibrariesPath }}\[qQ]t[_-]*
             ${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
           key: ${{ steps.cache-qt.outputs.cache-primary-key }}
-
-      - name: Set up sccache.
-        if: inputs.mode == 'build'
-        uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Check dav1d is present.
         if: inputs.mode == 'build'
@@ -381,8 +379,6 @@ jobs:
           %TDESKTOP_BUILD_API% ^
           -D CMAKE_CONFIGURATION_TYPES=${{ inputs.config }} ^
           -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT= ^
-          -D CMAKE_C_COMPILER_LAUNCHER=sccache ^
-          -D CMAKE_CXX_COMPILER_LAUNCHER=sccache ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON ^
           -D CMAKE_EXE_LINKER_FLAGS=%LibrariesPath%\dav1d\builddir-${{ inputs.config == 'Debug' && 'debug' || 'release' }}\src\libdav1d.a ^
@@ -392,11 +388,6 @@ jobs:
           rem every remaining error instead of stopping at the first. A build
           rem here costs about forty minutes, so collecting them matters.
           cmake --build ..\out --config ${{ inputs.config }} --parallel -- -k 0
-
-      - name: sccache stats.
-        if: always() && inputs.mode == 'build'
-        shell: bash
-        run: sccache --show-stats || true
 
       - name: Move artifact.
         if: inputs.mode == 'build'
