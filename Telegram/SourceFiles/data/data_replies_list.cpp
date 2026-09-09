@@ -20,7 +20,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_forum_topic.h"
 #include "window/notifications_manager.h"
 #include "core/application.h"
-#include "core/core_settings.h"
 #include "lang/lang_keys.h"
 #include "apiwrap.h"
 
@@ -1005,15 +1004,6 @@ void RepliesList::sendReadTillRequest() {
 	}
 	const auto api = &_history->session().api();
 	api->request(base::take(_readRequestId)).cancel();
-
-	// LoogriGram: messages.readDiscussion is a read receipt for comment
-	// threads under channel posts, so it follows ghost mode with the rest.
-	// The timer above is still cancelled and any in flight request still
-	// cancelled, so the local read position is kept and only the wire report
-	// is dropped.
-	if (Core::App().settings().ghostMode()) {
-		return;
-	}
 
 	_readRequestId = api->request(MTPmessages_ReadDiscussion(
 		_history->peer->input(),

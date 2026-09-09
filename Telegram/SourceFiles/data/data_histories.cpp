@@ -32,7 +32,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_helpers.h"
 #include "history/view/history_view_element.h"
 #include "core/application.h"
-#include "core/core_settings.h"
 #include "apiwrap.h"
 
 namespace Data {
@@ -202,11 +201,6 @@ void Histories::readInbox(not_null<History*> history) {
 			).arg(last ? last->id.bare : 0));
 		readInboxTill(history, last ? last->id : 0);
 	});
-}
-
-void Histories::readInboxOnSend(not_null<History*> history) {
-	_forcedReads.emplace(history);
-	readInbox(history);
 }
 
 void Histories::readInboxTill(not_null<HistoryItem*> item) {
@@ -640,13 +634,6 @@ void Histories::sendPendingReadInbox(not_null<History*> history) {
 }
 
 void Histories::reportDelivery(not_null<HistoryItem*> item) {
-	// LoogriGram: a delivery report tells the sender their message reached
-	// this device, which is a signal about us rather than about the message,
-	// so it follows ghost mode. Dropped before queueing, so nothing collects
-	// waiting for a send that will not happen.
-	if (Core::App().settings().ghostMode()) {
-		return;
-	}
 	auto &set = _pendingDeliveryReport[item->history()->peer];
 	if (!set.emplace(item->id).second) {
 		return;
@@ -731,21 +718,6 @@ void Histories::sendReadRequest(not_null<History*> history, State &state) {
 	const auto tillId = state.sentReadTill = base::take(state.willReadTill);
 	state.willReadWhen = 0;
 	state.sentReadDone = false;
-
-	// LoogriGram: with ghost mode on, keep every local effect of reading -
-	// readInboxTill() has already updated the unread count and the dialog
-	// badge before we get here - but keep the receipt off the wire. Sending
-	// into a chat clears the flag through readInboxOnSend(), so a reply still
-	// reports honestly. The dialog entry refetch in finished() is skipped on
-	// the suppressed path: it would ask the server for an unread count that
-	// never saw our read, and bounce the badge straight back.
-	const auto forced = _forcedReads.contains(history);
-	if (forced) {
-		_forcedReads.remove(history);
-	}
-	const auto suppressed = !forced
-		&& Core::App().settings().ghostMode();
-
 	DEBUG_LOG(("Reading: sending request now with till %1."
 		).arg(tillId.bare));
 	sendRequest(history, RequestType::ReadInbox, [=](Fn<void()> finish) {
@@ -757,8 +729,7 @@ void Histories::sendReadRequest(not_null<History*> history, State &state) {
 
 			if (state->sentReadTill == tillId) {
 				state->sentReadDone = true;
-				if (!suppressed
-					&& history->unreadCountRefreshNeeded(tillId)) {
+				if (history->unreadCountRefreshNeeded(tillId)) {
 					requestDialogEntry(history);
 				} else {
 					state->sentReadTill = 0;
@@ -770,14 +741,6 @@ void Histories::sendReadRequest(not_null<History*> history, State &state) {
 			sendReadRequests();
 			finish();
 		};
-		if (suppressed) {
-			// Deferred rather than inline: sendRequest() only records this
-			// request after the generator returns, so finishing here would
-			// clean up an entry that has not been added yet and strand it,
-			// leaving the read queue permanently blocked on it.
-			crl::on_main(&session(), finished);
-			return mtpRequestId(0);
-		}
 		if (const auto channel = history->peer->asChannel()) {
 			return session().api().request(MTPchannels_ReadHistory(
 				channel->inputChannel(),
