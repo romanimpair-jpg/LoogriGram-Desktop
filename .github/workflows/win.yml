@@ -47,6 +47,11 @@ jobs:
       UPLOAD_ARTIFACT: "true"
       ONLY_CACHE: "false"
       PREPARE_PATH: "Telegram/build/prepare/prepare.py"
+      # Caching the out/ tree would not help: ninja decides what to rebuild
+      # from timestamps, and every run checks out fresh sources that are
+      # newer than any cached object. sccache keys on file contents instead,
+      # so it survives that and turns a repeat build into minutes.
+      SCCACHE_GHA_ENABLED: "true"
 
     defaults:
       run:
@@ -328,6 +333,10 @@ jobs:
             ${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
           key: ${{ steps.cache-qt.outputs.cache-primary-key }}
 
+      - name: Set up sccache.
+        if: inputs.mode == 'build'
+        uses: mozilla-actions/sccache-action@v0.0.11
+
       - name: Check dav1d is present.
         if: inputs.mode == 'build'
         shell: bash
@@ -357,6 +366,8 @@ jobs:
           %TDESKTOP_BUILD_API% ^
           -D CMAKE_CONFIGURATION_TYPES=${{ inputs.config }} ^
           -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT= ^
+          -D CMAKE_C_COMPILER_LAUNCHER=sccache ^
+          -D CMAKE_CXX_COMPILER_LAUNCHER=sccache ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON ^
           -D DESKTOP_APP_DISABLE_QT_PLUGINS=ON ^
@@ -367,6 +378,11 @@ jobs:
           rem every remaining error instead of stopping at the first. A build
           rem here costs about forty minutes, so collecting them matters.
           cmake --build ..\out --config ${{ inputs.config }} --parallel -- -k 0
+
+      - name: sccache stats.
+        if: always() && inputs.mode == 'build'
+        shell: bash
+        run: sccache --show-stats || true
 
       - name: Move artifact.
         if: inputs.mode == 'build'
