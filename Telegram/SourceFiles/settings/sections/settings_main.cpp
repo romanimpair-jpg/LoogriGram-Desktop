@@ -574,47 +574,17 @@ void BuildPremiumSection(SectionBuilder &builder) {
 }
 
 void BuildHelpSection(SectionBuilder &builder) {
-	builder.addDivider();
-	builder.addSkip();
-
-	const auto controller = builder.controller();
-	builder.addButton({
-		.id = u"main/faq"_q,
-		.title = tr::lng_settings_faq(),
-		.icon = { &st::menuIconFaq },
-		.onClick = [=] { OpenFaq(controller); },
-		.keywords = { u"help"_q, u"support"_q, u"questions"_q },
-	});
-
-	builder.addButton({
-		.id = u"main/features"_q,
-		.title = tr::lng_settings_features(),
-		.icon = { &st::menuIconEmojiObjects },
-		.onClick = [] {
-			UrlClickHandler::Open(tr::lng_telegram_features_url(tr::now));
-		},
-		.keywords = { u"tips"_q, u"tutorial"_q },
-	});
-
-	builder.addButton({
-		.id = u"main/ask-question"_q,
-		.title = tr::lng_settings_ask_question(),
-		.icon = { &st::menuIconDiscussion },
-		.onClick = [=] { OpenAskQuestionConfirm(controller); },
-		.keywords = { u"contact"_q, u"feedback"_q },
-	});
-
-	builder.addSkip();
+	// LoogriGram: no Telegram FAQ, Features or Ask a Question rows. They open
+	// Telegram's own support surfaces, which cannot help with this build and
+	// would put its users in front of Telegram's support volunteers. Emptied
+	// rather than early-returned so no unreachable code is left behind.
 }
 
 void BuildValidationSuggestions(SectionBuilder &builder) {
-	builder.add([](const WidgetContext &ctx) {
-		const auto controller = ctx.controller.get();
-		const auto showOther = ctx.showOther;
-		auto wrap = object_ptr<Ui::VerticalLayout>(ctx.container);
-		SetupValidatePhoneNumberSuggestion(controller, wrap.data(), showOther);
-		return SectionBuilder::WidgetToAdd{ .widget = std::move(wrap) };
-	});
+	// LoogriGram: the "is this still your number?" nag is dropped. The
+	// password reminder below is kept deliberately - losing a two-step
+	// password actually locks you out of the account, so that one earns its
+	// place where the phone nag does not.
 
 	builder.add([](const WidgetContext &ctx) {
 		const auto controller = ctx.controller.get();

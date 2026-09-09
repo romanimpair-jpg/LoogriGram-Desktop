@@ -396,6 +396,13 @@ void Manager::stealWheelEvents(not_null<QWidget*> target) {
 }
 
 void Manager::updateButton(ButtonParameters parameters) {
+	// LoogriGram: no quick-reaction strip on hover. Clearing the context
+	// rather than returning early reuses the existing hide path below, so any
+	// button already on screen is dismissed properly instead of being
+	// stranded. Reactions from the right-click menu are built elsewhere and
+	// are unaffected.
+	parameters.context = {};
+
 	if (parameters.cursorLeft && _menu) {
 		return;
 	}
