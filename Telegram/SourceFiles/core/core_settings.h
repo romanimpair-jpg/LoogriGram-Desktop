@@ -1044,11 +1044,15 @@ public:
 		_mediaGridZoomStep = value;
 	}
 
-	// LoogriGram: suppresses read receipts, typing and activity broadcasts,
-	// story views and online presence. Kept in the KV prefs rather than the
-	// binary stream, as AGENTS.md advises for simple flags, so it cannot
-	// disturb the append-only serialization order. Defaults to on, so a
-	// fresh profile is never briefly visible before the setting is read.
+	// LoogriGram: suppresses typing and activity broadcasts, online presence,
+	// story views and delivery receipts. Read receipts are deliberately NOT
+	// included: messages.readHistory both notifies the sender and sets the
+	// read position other devices sync from, with no way to separate them, so
+	// withholding it made everything read here reappear as unread on the
+	// phone. The read date is hidden server side instead. Kept in the KV
+	// prefs rather than the binary stream, as AGENTS.md advises for simple
+	// flags, so it cannot disturb the append-only serialization order.
+	// Defaults to on, so a fresh profile is never briefly visible.
 	[[nodiscard]] bool ghostMode() {
 		return readPref<bool>(kGhostModePref, true);
 	}

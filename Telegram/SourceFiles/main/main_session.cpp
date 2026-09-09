@@ -10,6 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "api/api_peer_colors.h"
 #include "api/api_updates.h"
+#include "api/api_global_privacy.h"
 #include "api/api_user_privacy.h"
 #include "main/main_account.h"
 #include "main/main_domain.h"
@@ -416,6 +417,16 @@ void Session::applyGhostModePrivacy() {
 	rule.ignoreAlways = true;
 	rule.ignoreNever = true;
 	_api->userPrivacy().save(Api::UserPrivacy::Key::LastSeen, rule);
+
+	// Read receipts themselves cannot be withheld: messages.readHistory both
+	// tells the sender and sets the read position our other devices sync
+	// from, and the API has no way to do one without the other - suppressing
+	// it made everything read here show up unread on the phone again. Hiding
+	// the read date is the part that can be had, and it costs nothing: the
+	// tick still appears, but not when it happened. Free, not a Premium
+	// feature; the trade Telegram imposes is that we stop seeing other
+	// people's read times in return.
+	_api->globalPrivacy().updateHideReadTime(true);
 }
 
 bool Session::isTestMode() const {
