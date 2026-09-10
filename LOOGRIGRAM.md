@@ -188,6 +188,11 @@ are still suppressed, so story rings may reappear as unread on other devices.
 - **Removed UI**: hover quick-reaction strip (right-click reactions kept), the
   Telegram FAQ / Features / Ask a Question rows, the "is this still your number?"
   nag (the 2FA password reminder is kept on purpose — losing that locks you out).
+- **No suggestion popups above the message field**: `suggestEmoji()`,
+  `suggestStickersByEmoji()` and `suggestAnimatedEmoji()` return false at the
+  getter. Forced there rather than by unticking the settings, because unticking
+  did not reliably suppress them. Setters and stored fields are kept so the
+  settings rows and serialization still work.
 - **Auto-download defaults**: photos + GIFs only, across all three categories.
   Voice and Music keep upstream values because the box does not expose them.
 
