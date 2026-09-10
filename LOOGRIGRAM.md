@@ -59,9 +59,29 @@ dependencies) · `build` (everything, produces the artifact).
 Credentials are Actions secrets `TG_API_ID` / `TG_API_HASH` — one api_id serves
 both platforms, since my.telegram.org allows only one per phone number.
 
-Timings once the cache is warm: dependency restore ~9s, Telegram compile ~50 min.
-A configuration mistake fails in ~10 min. There is **no compiler cache**, so any
-source change costs the full compile.
+Timings: dependency restore is ~2-9s off cache. The Telegram compile itself was
+**2 hours** measured, for all 2157 objects. A configuration mistake fails in
+~10 min.
+
+To cut that 2 hours there is now an **incremental build tree cache**. ninja
+decides what to rebuild from mtimes, and a fresh checkout stamps everything with
+the checkout time, so a restored `out/` always looked stale. Two pieces fix that:
+
+- **`Normalize source timestamps`** dates each tracked file by the commit that
+  last touched it (hence `fetch-depth: 0`), so unchanged files stay older than
+  their cached objects. Submodule files get one fixed old timestamp instead —
+  `lib_ui` and `lib_base` are submodules and their fresh-checkout headers would
+  otherwise rebuild most of the tree. **If a submodule pointer is ever bumped,
+  raise `OUT_CACHE_SALT`**, or stale objects will be reused.
+- **`out/` is cached per commit**, restored by prefix so a run picks up the
+  newest tree, and saved even on failure so a broken compile still leaves its
+  objects behind. Old entries are pruned to the newest two, because the tree is
+  gigabytes against a 10GB pool shared with the dependency caches — leaving it
+  unpruned would evict them, which is exactly how sccache cost a rebuild.
+
+This is unproven as of writing: it has not yet completed a run. If it does not
+help, the fallback options are a self-hosted runner (persistent workspace, true
+incremental, but needs the local MSVC toolchain) or a paid larger runner.
 
 Fetch the result:
 

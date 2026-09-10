@@ -32,6 +32,13 @@ jobs:
     name: Windows
     runs-on: windows-latest
 
+    # actions: write is only for pruning old build tree caches; without it the
+    # prune step cannot delete and the pool fills until the dependency caches
+    # get evicted.
+    permissions:
+      contents: read
+      actions: write
+
     # Below GitHub's hard 6h cap so a cancelled job still runs its cache-save
     # step. prepare.py skips libraries that already have a cache_keys entry,
     # so an interrupted dependency build resumes on the next run.
@@ -47,6 +54,11 @@ jobs:
       UPLOAD_ARTIFACT: "true"
       ONLY_CACHE: "false"
       PREPARE_PATH: "Telegram/build/prepare/prepare.py"
+      # Bump this whenever a submodule pointer changes. Submodule files are
+      # pinned to a fixed old mtime so their fresh checkout does not rebuild
+      # the tree, which also means a genuine submodule update would otherwise
+      # be missed and stale objects reused.
+      OUT_CACHE_SALT: "1"
 
     defaults:
       run:
@@ -134,9 +146,84 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: recursive
+          # Full history is needed to date each file by the commit that last
+          # touched it, which is what makes the out/ cache usable - see
+          # "Normalize source timestamps". Our own history is a dozen commits,
+          # so this costs almost nothing.
+          fetch-depth: 0
           # Must be under GITHUB_WORKSPACE; every later step uses the short
           # alias in TBUILD, which resolves to the same physical directory.
           path: ${{ env.CHECKOUT_ROOT }}\${{ env.REPO_NAME }}
+
+      - name: Normalize source timestamps.
+        if: inputs.mode == 'build'
+        shell: bash
+        run: |
+          # ninja decides what to rebuild from mtimes, but a fresh checkout
+          # stamps every file with the checkout time, so a restored out/ tree
+          # always looks stale and all 2157 objects recompile. Restoring each
+          # tracked file's mtime from the commit that last touched it makes
+          # that comparison meaningful again: unchanged files stay older than
+          # their cached objects, changed ones are newer.
+          #
+          # Submodules get one fixed old timestamp instead. lib_ui and lib_base
+          # are submodules, so checkout-fresh headers there would rebuild most
+          # of the tree; we never modify them, and their contents are pinned by
+          # gitlink. If a submodule pointer is ever bumped, raise
+          # OUT_CACHE_SALT below or the stale objects will be reused.
+          python - "$CHECKOUT_ROOT/$REPO_NAME" <<'PY'
+          import os, subprocess, sys
+          root = sys.argv[1].replace('\\', '/')
+
+          def run(args, cwd):
+              return subprocess.run(
+                  args, cwd=cwd, capture_output=True, text=True).stdout
+
+          # Submodule working trees: one fixed, deliberately old timestamp.
+          fixed = 946684800  # 2000-01-01
+          subs = []
+          for line in run(['git', 'submodule', 'status', '--recursive'], root).splitlines():
+              parts = line.strip().split()
+              if len(parts) >= 2:
+                  subs.append(parts[1])
+          stamped_subs = 0
+          for rel in subs:
+              base = os.path.join(root, rel)
+              for dirpath, dirnames, filenames in os.walk(base):
+                  if '.git' in dirnames:
+                      dirnames.remove('.git')
+                  for name in filenames:
+                      try:
+                          os.utime(os.path.join(dirpath, name), (fixed, fixed))
+                          stamped_subs += 1
+                      except OSError:
+                          pass
+
+          # Main repo: date each tracked file by its last commit.
+          log = run(['git', 'log', '--pretty=format:%at', '--name-only',
+                     '--no-renames'], root)
+          seen, ts = {}, None
+          for line in log.splitlines():
+              line = line.strip()
+              if not line:
+                  continue
+              if line.isdigit():
+                  ts = int(line)
+              elif ts is not None and line not in seen:
+                  seen[line] = ts
+          stamped_main = 0
+          for rel, when in seen.items():
+              path = os.path.join(root, rel)
+              if os.path.isfile(path):
+                  try:
+                      os.utime(path, (when, when))
+                      stamped_main += 1
+                  except OSError:
+                      pass
+
+          print(f'submodule files pinned: {stamped_subs}')
+          print(f'tracked files dated from git: {stamped_main}')
+          PY
 
       - name: First set up.
         shell: bash
@@ -367,7 +454,21 @@ jobs:
             exit 1
           fi
 
+      # One entry per commit, restored by prefix so a run picks up the newest
+      # available tree. Path is the workspace form, not the C:\b alias, for the
+      # same reason as the other caches. Combined with the normalized source
+      # timestamps above, ninja then rebuilds only what actually changed.
+      - name: Build tree cache.
+        id: cache-out
+        if: inputs.mode == 'build'
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.CACHE_ROOT }}\${{ env.REPO_NAME }}\out
+          key: ${{ runner.OS }}-${{ matrix.arch }}-out-${{ inputs.config }}-v${{ env.OUT_CACHE_SALT }}-${{ env.CACHE_KEY }}-${{ github.sha }}
+          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-out-${{ inputs.config }}-v${{ env.OUT_CACHE_SALT }}-${{ env.CACHE_KEY }}-
+
       - name: Telegram Desktop build.
+        id: telegram
         if: inputs.mode == 'build'
         run: |
           rem /d is required: TBUILD is the C:\b alias while the step starts on
@@ -393,6 +494,34 @@ jobs:
           rem every remaining error instead of stopping at the first. A build
           rem here costs about forty minutes, so collecting them matters.
           cmake --build ..\out --config ${{ inputs.config }} --parallel -- -k 0
+
+      # Saved even when the compile fails, so a broken build still leaves the
+      # objects that did compile for the next run to reuse.
+      - name: Save build tree cache.
+        if: always() && inputs.mode == 'build' && steps.cache-out.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ env.CACHE_ROOT }}\${{ env.REPO_NAME }}\out
+          key: ${{ steps.cache-out.outputs.cache-primary-key }}
+
+      # The build tree is gigabytes against a 10GB pool shared with the
+      # dependency caches. Left unpruned it would evict them, which is exactly
+      # how sccache cost us a two hour rebuild.
+      - name: Prune old build tree caches.
+        if: always() && inputs.mode == 'build'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prefix="${{ runner.OS }}-${{ matrix.arch }}-out-${{ inputs.config }}-"
+          gh cache list --repo "$GITHUB_REPOSITORY" --key "$prefix" \
+            --limit 100 --json id,key,createdAt \
+            --jq 'sort_by(.createdAt) | reverse | .[2:] | .[].id' 2>/dev/null \
+            | while read -r id; do
+                [ -n "$id" ] && gh cache delete "$id" --repo "$GITHUB_REPOSITORY" || true
+              done
+          echo "remaining build tree caches:"
+          gh cache list --repo "$GITHUB_REPOSITORY" --key "$prefix" --limit 10 || true
 
       - name: Move artifact.
         if: inputs.mode == 'build'
