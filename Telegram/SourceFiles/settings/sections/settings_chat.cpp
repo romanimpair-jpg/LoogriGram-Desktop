@@ -978,38 +978,8 @@ void BuildStickersEmojiSection(SectionBuilder &builder) {
 		};
 	});
 
-	builder.add(nullptr, [] {
-		return SearchEntry{
-			.id = u"chat/suggest-emoji"_q,
-			.title = tr::lng_settings_suggest_emoji(tr::now),
-			.keywords = { u"suggest"_q, u"emoji"_q, u"autocomplete"_q },
-			.checkIcon = Core::App().settings().suggestEmoji()
-				? SearchEntryCheckIcon::Checked
-				: SearchEntryCheckIcon::Unchecked,
-		};
-	});
-
-	builder.add(nullptr, [] {
-		return SearchEntry{
-			.id = u"chat/suggest-animated-emoji"_q,
-			.title = tr::lng_settings_suggest_animated_emoji(tr::now),
-			.keywords = { u"animated"_q, u"emoji"_q, u"premium"_q },
-			.checkIcon = Core::App().settings().suggestAnimatedEmoji()
-				? SearchEntryCheckIcon::Checked
-				: SearchEntryCheckIcon::Unchecked,
-		};
-	});
-
-	builder.add(nullptr, [] {
-		return SearchEntry{
-			.id = u"chat/suggest-by-emoji"_q,
-			.title = tr::lng_settings_suggest_by_emoji(tr::now),
-			.keywords = { u"suggest"_q, u"stickers"_q, u"emoji"_q },
-			.checkIcon = Core::App().settings().suggestStickersByEmoji()
-				? SearchEntryCheckIcon::Checked
-				: SearchEntryCheckIcon::Unchecked,
-		};
-	});
+	// LoogriGram: no search entries for the suggestion rows, which no longer
+	// exist - see the removal in the chat section body.
 
 	builder.add(nullptr, [] {
 		return SearchEntry{
@@ -1477,56 +1447,11 @@ void SetupStickersEmoji(
 		} });
 	}
 
-	const auto suggestEmoji = inner->lifetime().make_state<
-		rpl::variable<bool>
-	>(Core::App().settings().suggestEmoji());
-	const auto suggestEmojiCheckbox = addWithReturn(
-		tr::lng_settings_suggest_emoji(tr::now),
-		Core::App().settings().suggestEmoji(),
-		[=](bool checked) {
-			*suggestEmoji = checked;
-			Core::App().settings().setSuggestEmoji(checked);
-			Core::App().saveSettingsDelayed();
-		});
-	if (highlights) {
-		highlights->push_back({ u"chat/suggest-emoji"_q, {
-			suggestEmojiCheckbox,
-			{ .radius = st::boxRadius },
-		} });
-	}
-
+	// LoogriGram: the three suggestion rows are gone. Their getters return
+	// false unconditionally, so the rows could only ever read as off and
+	// toggling them would do nothing. The matching search entries are removed
+	// too, or settings search would still offer rows that no longer exist.
 	using namespace rpl::mappers;
-	const auto suggestAnimated = addSliding(
-		tr::lng_settings_suggest_animated_emoji(tr::now),
-		Core::App().settings().suggestAnimatedEmoji(),
-		[=](bool checked) {
-			Core::App().settings().setSuggestAnimatedEmoji(checked);
-			Core::App().saveSettingsDelayed();
-		},
-		rpl::combine(
-			Data::AmPremiumValue(session),
-			suggestEmoji->value(),
-			_1 && _2));
-	if (highlights) {
-		highlights->push_back({ u"chat/suggest-animated-emoji"_q, {
-			suggestAnimated,
-			{ .radius = st::boxRadius }
-		} });
-	}
-
-	const auto suggestByEmoji = addWithReturn(
-		tr::lng_settings_suggest_by_emoji(tr::now),
-		Core::App().settings().suggestStickersByEmoji(),
-		[=](bool checked) {
-			Core::App().settings().setSuggestStickersByEmoji(checked);
-			Core::App().saveSettingsDelayed();
-		});
-	if (highlights) {
-		highlights->push_back({ u"chat/suggest-by-emoji"_q, {
-			suggestByEmoji,
-			{ .radius = st::boxRadius },
-		} });
-	}
 
 	const auto loopStickers = addWithReturn(
 		tr::lng_settings_loop_stickers(tr::now),
