@@ -215,6 +215,10 @@ are still suppressed, so story rings may reappear as unread on other devices.
   settings rows and serialization still work.
 - **Auto-download defaults**: photos + GIFs only, across all three categories.
   Voice and Music keep upstream values because the box does not expose them.
+- **Notification defaults**: muted chats excluded from the unread badge (but kept
+  in folder counters), pinned-message notifications off. The other rows on that
+  page — per-chat notify toggles, reactions, contact joined, accept calls — are
+  per-account or per-session server-side settings and cannot be defaulted here.
 
 ---
 

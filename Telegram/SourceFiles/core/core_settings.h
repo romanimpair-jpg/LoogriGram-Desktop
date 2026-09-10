@@ -1125,10 +1125,17 @@ private:
 	int _notificationsCount = 3;
 	ScreenCorner _notificationsCorner = ScreenCorner::BottomRight;
 	int32 _notificationsDisplayChecksum = 0;
-	bool _includeMutedCounter = true;
+	// LoogriGram: muted chats do not belong in the unread badge - muting a
+	// chat is a statement that it should stop demanding attention, and
+	// counting it defeats that. Folder counters keep them, since a folder
+	// total is a scoped overview rather than a call to action. Pinned-message
+	// notifications are off: someone pinning a message is rarely worth an
+	// interruption. The other rows on that settings page are per-account or
+	// per-session server-side settings and cannot be defaulted here.
+	bool _includeMutedCounter = false;
 	bool _includeMutedCounterFolders = true;
 	bool _countUnreadMessages = true;
-	rpl::variable<bool> _notifyAboutPinned = true;
+	rpl::variable<bool> _notifyAboutPinned = false;
 	int _autoLock = 3600;
 	rpl::variable<QString> _playbackDeviceId;
 	rpl::variable<QString> _captureDeviceId;
