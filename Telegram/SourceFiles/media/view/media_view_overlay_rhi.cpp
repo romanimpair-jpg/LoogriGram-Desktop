@@ -480,6 +480,17 @@ void OverlayWidget::RendererRhi::render(
 		QRhiRenderTarget *rt,
 		QRhiCommandBuffer *cb) {
 	if (_owner->_hideWorkaround) {
+		// LoogriGram: clear the target instead of returning without a pass.
+		// The hide workaround exists because the viewer otherwise blinks with
+		// the last shown content on reopen, and the other two renderers do
+		// clear for it: RendererGL and RendererSW both go through
+		// Renderer::clearColor(), which Ui::GL::Surface applies. Nothing reads
+		// rhiClearColor() though - Ui::Rhi::SurfaceRhi only forwards render()
+		// - so skipping the pass here left the previous frame sitting in the
+		// widget texture, and every fresh open of an image or a video showed
+		// the previously viewed one for a few frames.
+		cb->beginPass(rt, QColor(0, 0, 0, 0), { 1.0f, 0 });
+		cb->endPass();
 		return;
 	}
 	_rhi = rhi;
