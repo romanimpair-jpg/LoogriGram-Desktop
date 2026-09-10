@@ -1,0 +1,278 @@
+# LoogriGram — fork notes and handoff
+
+Personal fork of Telegram Desktop. Three original goals: no ads, no non-essential
+telemetry, no auto-updates — plus an always-on-by-default "ghost mode". Started
+2026-09-07.
+
+Upstream's `AGENTS.md` is still canonical for code style. This file covers only
+what is specific to the fork.
+
+---
+
+## Status
+
+| Part | State |
+|---|---|
+| Desktop features | Implemented, all compiling |
+| Desktop CI | Working; libraries cached, restore ~9s |
+| **Android** | **Not started.** See "Android" below |
+
+Installed app lives at `C:\LoogriProjects\LoogriGram\app\LoogriGram.exe`.
+**To update: replace only the .exe.** tdesktop keeps its profile *beside the
+executable*, so `app\tdata\` holds the session, settings and ghost-mode state and
+must stay put. Running a copy of the exe from anywhere else silently creates a
+second empty profile and looks like a logout.
+
+---
+
+## Repo layout
+
+- **`dev`** — pristine upstream baseline. Root commit is byte-identical to
+  tdesktop `80158983dba09d3bf5d96701f21473d6c34bf5f5` (tree `a01747a`), imported
+  as a single commit because a shallow clone cannot be pushed to a fresh remote.
+- **`patches`** — all fork work. **Build from this branch** (see cache scoping).
+- Every deviation from upstream carries a `LoogriGram:` comment, so
+  `grep -rn "LoogriGram:" Telegram/SourceFiles` lists the entire behavioural diff.
+- Upstream remote is configured as `upstream`; `origin` is
+  `github.com/romanimpair-jpg/LoogriGram-Desktop` (public).
+- Upstream's own workflows (Linux, macOS, Snap, Docker, issue bots) are
+  **disabled** on purpose — they fired on every push and did nothing useful.
+
+Note: upstream's `AGENTS.md` forbids `Co-Authored-By:` trailers, which conflicts
+with some assistant configurations. Ask before adding them.
+
+---
+
+## Building
+
+Manual dispatch only — a push never triggers a build:
+
+```
+gh workflow run "Windows." --repo romanimpair-jpg/LoogriGram-Desktop \
+  --ref patches -f mode=build -f config=Release
+```
+
+`mode`: `validate` (config + secrets only, ~3 min) · `cache` (also builds
+dependencies) · `build` (everything, produces the artifact).
+`config`: `Release` is what we ship. `Debug` exists but is unused.
+
+Credentials are Actions secrets `TG_API_ID` / `TG_API_HASH` — one api_id serves
+both platforms, since my.telegram.org allows only one per phone number.
+
+Timings once the cache is warm: dependency restore ~9s, Telegram compile ~50 min.
+A configuration mistake fails in ~10 min. There is **no compiler cache**, so any
+source change costs the full compile.
+
+Fetch the result:
+
+```
+gh run download <run-id> --repo romanimpair-jpg/LoogriGram-Desktop
+```
+
+---
+
+## CI lessons that cost real time
+
+Each of these burned at least one multi-hour build. Do not relearn them.
+
+1. **GitHub caches are branch-scoped.** A run restores caches from its own branch
+   or the default branch (`dev`) only. Our dependency caches were created on
+   `patches`, so any side branch pays the full ~2h library build. Build on
+   `patches`, or seed the caches on `dev` once.
+2. **`cd` does not switch drives in cmd.** `TBUILD` is `C:\b` while steps start on
+   the `D:` workspace. Plain `cd` changes the directory *on* C: without switching
+   to it, so `configure.bat` is silently not found. Use `cd /d`.
+3. **MAX_PATH.** The deepest object paths (kimageformats via CMake's out-of-tree
+   `__/__/...` form) are ~205 chars; GitHub's workspace prefix is 57, giving 262 —
+   two over the limit, surfacing as `C1083` with an *empty* filename. Fixed by
+   building through the short `C:\b` alias (~217). Shortening the repo directory
+   alone achieves nothing: CMake swaps a hashed object dir for the longer
+   out-of-tree form depending on prefix length, keeping the total pinned near 260.
+4. **`actions/cache` paths must stay inside the workspace.** It keys archives to
+   workspace-relative paths, so pointing cache paths at `C:\b` misses silently.
+   Only the *build* uses the alias; `CACHE_ROOT` and `LibrariesPath` stay on the
+   workspace path.
+5. **Debug info is all-or-nothing.** Upstream strips `/Zi` from CMake's debug
+   flags *and* passes an empty `CMAKE_MSVC_DEBUG_INFORMATION_FORMAT`. Doing only
+   the strip leaves `/Fd` and `/FS` with no `/Zi`, which fails `C1083` on
+   kimageformats. Doing neither leaves `-Z7` in 2157 objects, which the linker
+   merges into one oversized PDB and fails `LNK1201`. For Release, blank the
+   format: no debug arguments at all, self-consistent, and faster.
+6. **kimageformats is the only target that links `libdav1d.a`**, while ffmpeg's
+   libavcodec references dav1d regardless. Disabling the Qt plugins therefore
+   produces 14 unresolved `dav1d_*` symbols. `libdav1d.a` is now passed to the
+   linker explicitly and verified to exist before compiling, so it is settled
+   either way.
+7. **sccache does not work here.** CMake ignores `CMAKE_<LANG>_COMPILER_LAUNCHER`
+   for MSVC — it logged *zero* compile requests across a full build. Removed.
+   Caching `out/` instead will not help either: ninja decides by timestamp and
+   every run checks out fresh sources.
+8. **Save caches explicitly, not in post steps.** `actions/cache`'s post step is
+   skipped when any step fails, so a compile error used to discard 80 minutes of
+   dependency work. The workflow now uses `cache/restore` plus an explicit
+   `cache/save` after `Libraries` succeeds — placed *after* the disk-strip step so
+   the cached tree matches upstream's stripped shape.
+9. **`skip-release` hides two problems.** Dropping it activates breakpad's
+   `dump_syms`, which needs ATL headers the CI toolset lacks (`dump_syms` is
+   deleted from `prepare.py` — it only symbolises crash dumps, which are off), and
+   it roughly doubles dependency disk use, which exhausted the runner until the
+   reclaim step was added.
+10. **`ninja -k 0`** is set so one 50-minute run reports every error rather than
+    stopping at the first.
+
+---
+
+## Ghost mode
+
+One master toggle, **default on**, in the main menu beside Night Mode
+(`window_main_menu.cpp`, `menuIconStealth`). Stored via the KV prefs facility
+(`Core::Settings::ghostMode`), not the binary stream — upstream's `AGENTS.md`
+recommends this for simple flags and it avoids the append-only ordering trap.
+
+Suppressed: typing/activity broadcasts (group-call *speaking* is exempt), online
+presence, story views, delivery receipts. Plus, unconditionally and not tied to
+the toggle: reading telemetry (`api_read_metrics` — per-message dwell time and
+scroll depth) and post view-count contributions.
+
+Server-side half, applied once per account on first login and on every explicit
+enable, never reversed: **Last Seen → Nobody** and **hide read date**
+(`hide_read_marks`, free, not Premium). Exception lists are deliberately left
+intact rather than cleared.
+
+### Read receipts are deliberately NOT suppressed
+
+This was tried and reverted. `messages.readHistory` both notifies the sender and
+sets the read position other devices sync from, and the API has no way to do one
+without the other. Suppressing it made everything read on desktop reappear as
+unread on the phone. Hiding the read *date* is the part that can be had at no
+sync cost. **Do not re-attempt this** — it is architectural, not a bug.
+
+Story views have the same coupling at lower stakes (stories expire in 24h); they
+are still suppressed, so story rings may reappear as unread on other devices.
+
+### Traps in the ghost-mode code
+
+- `Updates::updateOnline` also drives `checkAutoLock`, `saveCurrentDraftToCloud`
+  and, when quitting, `quitPreventFinished()`. Early-returning breaks passcode
+  auto-lock and cloud drafts and **hangs shutdown**. Only the reported value is
+  changed.
+- Story pending sets feed `checkQuitPreventFinished()`. Queueing work that never
+  sends hangs exit; the guard is at queue time.
+- `Stories::markAsRead`'s `bumpReadTill` is local state — guarding before it would
+  leave every story permanently unread locally.
+- Do **not** intercept at the MTProto layer. Request ids are returned to callers
+  before the send, so dropping there strands callbacks and deadlocks
+  `Histories::sendReadRequest`'s queue.
+
+---
+
+## Other desktop changes
+
+- **Ads**: `SponsoredMessages::canHaveFor` (both overloads) and `isTopBarFor`
+  return false. `request()`/`inject()` early-return, so nothing is fetched and the
+  view/click beacons never fire.
+- **Premium**: two one-line gates in `main/main_session.cpp` do almost all of it.
+  `premiumBadgesShown() → false` removes emoji statuses *and* the gold star
+  everywhere; `premiumCanBuy() → false` drops the Premium/Stars/TON/Business/Gifts
+  block from settings and sends every limit box down upstream's existing
+  `!premiumPossible` branch — an explanation with an OK button. Nulling
+  `emojiStatusId()` instead does **not** work: it promotes premium users to the
+  static star and still reserves badge width.
+- **No auto-update**: `DESKTOP_APP_DISABLE_AUTOUPDATE=ON` (also drops the
+  `Updater.exe` target, so the artifact step must not try to move it).
+- **Branding**: `AppName`/`AppFile` = `LoogriGram` in `core/version.h` — `AppName`
+  is what `psAppDataPath()` appends to `%APPDATA%`. Fresh `AppId` GUID so Windows
+  registry entries cannot collide. `CompanyName` is `LoogriMedia`, not Telegram
+  FZ-LLC. The main menu keeps a "Based on Telegram Desktop" attribution link,
+  which the API Terms want visible anyway.
+- **Removed UI**: hover quick-reaction strip (right-click reactions kept), the
+  Telegram FAQ / Features / Ask a Question rows, the "is this still your number?"
+  nag (the 2FA password reminder is kept on purpose — losing that locks you out).
+- **Auto-download defaults**: photos + GIFs only, across all three categories.
+  Voice and Music keep upstream values because the box does not expose them.
+
+---
+
+## Constraints and known limits
+
+- **API ToS §3.3** requires third-party clients to support sponsored messages. Ad
+  removal knowingly violates it. Exposure is the registered `api_id`, which
+  Telegram can revoke; mitigation is re-registration. Accepted, personal use.
+- §2.3/§2.4 bar "Telegram" in the app title and use of its logo — "LoogriGram"
+  complies, hence also the publisher-metadata change.
+- Sending a message is inherently visible; none of this hides anything from
+  Telegram's own servers.
+- Last-seen concealment is reciprocal: only vague "recently" for everyone else.
+  Hiding the read date likewise costs seeing other people's.
+- No AVIF/HEIF/JPEG XL/QOI decoding *if* the Qt plugins ever get disabled again.
+- Per-account settings (auto-download, sticker order) live in
+  `Main::SessionSettings`, encrypted with the account key — they do **not**
+  transfer between installs. App-level settings (`tdata/settingss`) do: the salt is
+  in the file and the passcode is empty, so that one file is portable between any
+  tdesktop builds.
+
+---
+
+## Android — not started
+
+The original approved plan, including the full Android section, is at
+`C:\Users\Loogris\.claude\plans\glittery-watching-nest.md`. Read it first.
+
+Decisions already made: fork **official `DrKLO/Telegram`** (verified official via
+telegram.org/apps), not a third-party fork; build on GitHub Actions; fully
+Google-free because the phone runs GrapheneOS without sandboxed Play Services;
+strip location *sending* entirely while keeping received locations viewable via a
+`geo:` intent.
+
+Mapped call sites, all in `TMessagesProj/src/main/java/org/telegram/`:
+
+- **Ads**: `messenger/MessagesController.getSponsoredMessages()` → `return null`.
+  `ui/ChatActivity.addSponsoredMessages` then hits its own `res == null` guard, so
+  the `viewSponsoredMessage` impression beacon never fires either. ~2 lines.
+- **Typing**: the 5-arg `MessagesController.sendTyping()` → `return false`. `false`
+  is already a routine return; covers secret chats, which share the method.
+- **Presence**: force `MessagesController.ignoreSetOnline = true` (already
+  `public volatile`) and neutralise its reset. Control then falls to the
+  `offline = true` branch, which latches `offlineSent`.
+- **Read receipts**: `MessagesController.completeReadTask`. **Given the desktop
+  finding above, do not suppress these.** If ever revisited, keep
+  `readEncryptedHistory` regardless — suppressing it breaks secret-chat TTL.
+- **Emoji status**: two parallel accessors with *different* null sentinels —
+  `DialogObject.getEmojiStatusDocumentId` (returns `0`) and
+  `UserObject.getEmojiStatusDocumentId` (returns `null`). Patch both, then kill the
+  `isPremiumUser` star fallback in `DialogCell`, `ProfileSearchCell`, `UserCell`
+  and `ChatAvatarContainer` — otherwise premium users keep a static star and a
+  reserved-width layout gap.
+- **Premium upsell**: intercept the single `LimitReachedBottomSheet` constructor
+  (58 call sites untouched) and show a plain dialog. **Do not just delete it** —
+  `AlertsCreator` uses that sheet as the only surfacing of a server
+  `CHANNELS_TOO_MUCH` error, so removing it swallows real failures.
+- **Stars/TON**: hide entry points only (`SettingsActivity` MyTON row, two
+  `ProfileActivity` presenters). Deleting `ui/Stars/` breaks `MessageObject`, which
+  calls `StarsIntroActivity.replaceStars()` during message text rendering, and
+  `SendMessagesHelper`, which imports `TONIntroActivity`.
+- **Degoogling**: delete `GcmPushListenerService`, keep
+  `PushListenerController.processRemoteMessage` (the transport-independent payload
+  decryptor), skip `initPushServices()`, and promote `NotificationsService` to a
+  foreground service with an `AlarmManager` watchdog. Android 8+ then *requires* a
+  permanently visible notification. Remove the `google-services` plugin from both
+  modules plus the root classpath, and every gms/firebase/mlkit/vision/wallet/
+  safetynet/recaptcha/billing dependency. For billing, force
+  `BuildVars.useInvoiceBilling() → true` — the path `isStandaloneBuild()` already
+  exercises, which resolves most of the 11 affected files.
+- **`BuildVars`**: own `APP_ID`/`APP_HASH`, `CHECK_UPDATES = false` (this is the
+  no-auto-update requirement), `SUPPORTS_PASSKEYS = false`.
+
+Android CI requirements: `ubuntu-latest`, JDK 17, Gradle wrapper 8.11.1,
+`submodules: recursive` **and** shallow (10 submodules, one from
+`chromium.googlesource.com`; a missing one is a *configuration*-time failure), NDK
+`27.2.12479018` and CMake `3.22.1` hard-pinned, SDK 36. Cut `abiFilters` to
+`arm64-v8a` — the 4-ABI native build is 30-60+ min and the largest single cost.
+Task: `:TMessagesProj_App:assembleAfatRelease`. Generate an own signing keystore;
+the committed one is a dummy with public passwords. **Back the keystore up** —
+Android refuses updates signed with a different key.
+
+Gotcha: the `google-services` plugin validates its JSON's `package_name` against
+`applicationId`, so renaming the package *forces* the degoogling edit. Do them in
+one commit. Keep `IS_PRIVATE=false` (the `checkVisibility` task throws otherwise)
+and keep `buildSrc/`.
