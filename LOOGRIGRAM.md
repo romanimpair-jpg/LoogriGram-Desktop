@@ -13,9 +13,14 @@ what is specific to the fork.
 
 | Part | State |
 |---|---|
-| Desktop features | Implemented, all compiling |
-| Desktop CI | Working; libraries cached, restore ~9s |
+| Desktop features | Implemented, built, installed and in daily use |
+| Desktop CI | Green. Dependencies cached (~9s), incremental compile ~46m |
 | **Android** | **Not started.** See "Android" below |
+
+Verified working in the installed build: no sponsored messages, no premium
+badges or purchase surfaces, ghost mode toggle in the main menu, Last Seen and
+read date hidden server-side, no hover reactions, no suggestion popups, no
+Telegram help rows.
 
 Installed app lives at `C:\LoogriProjects\LoogriGram\app\LoogriGram.exe`.
 **To update: replace only the .exe.** tdesktop keeps its profile *beside the
@@ -79,9 +84,34 @@ the checkout time, so a restored `out/` always looked stale. Two pieces fix that
   gigabytes against a 10GB pool shared with the dependency caches — leaving it
   unpruned would evict them, which is exactly how sccache cost a rebuild.
 
-This is unproven as of writing: it has not yet completed a run. If it does not
-help, the fallback options are a self-hosted runner (persistent workspace, true
-incremental, but needs the local MSVC toolchain) or a paid larger runner.
+**Measured, and it works.** Compile step only:
+
+| Tree cache | Compile |
+|---|---|
+| none | 2h 03m |
+| cold, populating it | 2h 06m |
+| **warm** | **46m** |
+
+That 46 minutes was a change to `core_settings.h` — a widely included header and
+therefore the *worst* case, since everything including it must rebuild anyway. A
+`.cpp`-only change should do considerably better. The first run after any change
+to `prepare.py`, the SDK version or `OUT_CACHE_SALT` pays full price again,
+because those are all in the cache key.
+
+Two things to keep in mind rather than rediscover:
+
+- **Bump `OUT_CACHE_SALT` if a submodule pointer changes.** Submodule files are
+  pinned to a fixed old mtime, so a genuine submodule update would otherwise be
+  invisible to ninja and stale objects would be reused — a silently wrong binary,
+  which is worse than a slow build.
+- **Do not let the tree cache go unpruned.** It is ~1.5GB per entry against a
+  10GB pool shared with the dependency caches. This is not housekeeping: an
+  unbounded cache evicts the dependency caches, and that already cost one
+  two-hour rebuild when sccache filled the pool.
+
+If more speed is ever needed, the remaining options are a self-hosted runner
+(persistent workspace, true incremental, but needs the local MSVC toolchain) or a
+paid larger runner.
 
 Fetch the result:
 
