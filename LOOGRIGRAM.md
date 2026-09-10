@@ -252,6 +252,74 @@ are still suppressed, so story rings may reappear as unread on other devices.
 
 ---
 
+## Open: media takes a beat to start loading
+
+Unresolved, and worth pursuing. Opening a channel pauses noticeably before the
+**photos** start loading, and clicking a video pauses before it starts
+downloading. It is not felt in the official client with the same auto-download
+settings. Whether the photo and the video case are one problem or two is not
+established.
+
+Capture a debug log with `debugmode` typed on the Settings page (the codes are
+fed by `Main::keyPressEvent`, so the search box swallows them — or just launch
+with `-debug`). Files land in `app\DebugLogs\`; `mtp_*.txt` timestamps every
+request and `log_*.txt` carries the session and connection events.
+
+Measured:
+
+| Trigger | → first `upload_getFile` |
+|---|---|
+| Channel open, cold media DC | 781 ms |
+| Video open, cold media DC | 1092 ms (1183 ms to first byte) |
+| Channel open, warm session | **8 ms** |
+| Channel open, warm session | **4 ms** |
+
+Two separate costs. Only the second is a lead:
+
+1. **Connection setup on a cold media DC, ~250-800 ms.** The download is
+   enqueued within 3 ms of the channel opening; the rest is connect, transport
+   probe and auth bind. `DownloadManagerMtproto` drops every session on a media
+   DC 15 s after the last outstanding byte (`kKillSessionTimeout`), so this is
+   paid constantly — the log shows three full teardown-and-rebuild cycles in
+   under two minutes. **This is upstream code and unchanged.** Raising the
+   timeout was tried and reverted: if upstream does not have the problem, the
+   cause is ours, and tuning an upstream constant only hides it.
+2. **834 ms between the viewer appearing and the download being enqueued**, on
+   a video open. Client side, and unexplained.
+
+### Leading hypothesis: the views / read-marking path
+
+Channels collect view counts per post, and the same visible-area sweep that
+reports them also drives read-marking — and both photos and videos hang off
+messages becoming visible. We changed that area, so look here first:
+
+- `ViewsManager::scheduleIncrement` is gutted. Upstream's version also
+  maintained `_incremented`, the per-peer set that stops an item being
+  scheduled twice; ours populates nothing, so `removeIncremented` now clears an
+  always-empty map. Check what else reads that bookkeeping.
+- The callers are the visible-area sweeps in `HistoryInner` (~line 1531) and
+  `HistoryView::ListWidget` (~line 3183), both guarded by `markingAsViewed &&
+  item->hasViews()`. The same loops populate `readContents` and drive
+  `readInboxTill`.
+- The log shows dozens of repeated `Reading: readInboxTill ... in guard, unread
+  0` lines inside the delay window. Read-marking is the one area the fork tried
+  to change and reverted (commit `9f12a25`); the diff against `dev` shows no
+  residue, but the sheer volume of these calls is worth understanding.
+- Also inside the window: `Audio Info: recreating audio device` on every video
+  open, with `Closing audio playback device` a second or two after each. Opening
+  an OpenAL device on Windows can block the main thread for hundreds of ms.
+
+### The lens that found this
+
+Worth reusing: **look for anything we plugged with a forced failure that a
+caller is still waiting on.** Auditing every fork change that way turned up one
+real instance — `SponsoredMessages::request` drops its `done` callback, see
+below — which was not the cause here, but is exactly the shape to hunt for.
+Everything else checked out: the other suppressions all drop work at the queue
+stage, where nobody is waiting on a reply.
+
+---
+
 ## Finish the removals properly
 
 Nearly everything here was removed by forcing a getter or early-returning from a
@@ -267,7 +335,23 @@ Still sitting at the "forced getter" stage:
 
 - **Ads.** `SponsoredMessages::canHaveFor` (both overloads) and `isTopBarFor`
   return false, and `request()`/`inject()` early-return, leaving `append`,
-  `state`, `fillTopBar` and the beacon paths in the tree, inert.
+  `state`, `fillTopBar` and the beacon paths in the tree, inert. **This one has
+  an actual defect, not just dead code:** `request()` returns without ever
+  calling its `done` callback, which four call sites pass. Upstream's own
+  sibling `requestForVideo()` calls `done({})` on the same check — upstream
+  could return silently because `canHaveFor` was false only for peers where
+  nobody was listening, and forcing it false everywhere broke that. Nothing
+  hangs today (three of the four sites also call `checkState()` synchronously,
+  and the flag it sets gates only another sponsored request), but it violates
+  the fork's own "answer requests, don't drop them" rule. `state()` can now
+  never return anything but `None`, so `_sponsoredMessagesStateKnown` is
+  permanently false and `HistoryWidget::loadMessagesDown`'s branch on it is
+  unreachable.
+  Scope, when this is done: 973 occurrences across 76 files. Sponsored **peer
+  search** (`api_peer_search.cpp`, `dialogs_inner_widget.cpp`) was never gated
+  at all, so sponsored channels in search results are presumably still being
+  requested and shown — that is a separate subsystem from the message pipeline
+  and a gap in the ad removal, not just leftover code.
 - **Premium.** `premiumBadgesShown()` and `premiumCanBuy()` are two lines that
   neutralise the badge painters, the settings block and every limit box. What
   they neutralise is all still compiled.
