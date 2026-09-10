@@ -252,6 +252,40 @@ are still suppressed, so story rings may reappear as unread on other devices.
 
 ---
 
+## Finish the removals properly
+
+Nearly everything here was removed by forcing a getter or early-returning from a
+sender, which is cheap, safe, and keeps local state coherent because upstream
+already ships the "unavailable" branch. It is **not** the intended end state:
+the target is a leaner tree with no dead code behind guards. All of this is our
+code and upstream's structure is not a boundary, so rewriting callers — even
+substantially — is in scope.
+
+The Android fork has the same backlog; see `loogrigram-android/LOOGRIGRAM.md`.
+
+Still sitting at the "forced getter" stage:
+
+- **Ads.** `SponsoredMessages::canHaveFor` (both overloads) and `isTopBarFor`
+  return false, and `request()`/`inject()` early-return, leaving `append`,
+  `state`, `fillTopBar` and the beacon paths in the tree, inert.
+- **Premium.** `premiumBadgesShown()` and `premiumCanBuy()` are two lines that
+  neutralise the badge painters, the settings block and every limit box. What
+  they neutralise is all still compiled.
+- **Suggestion popups.** `suggestEmoji()`, `suggestStickersByEmoji()` and
+  `suggestAnimatedEmoji()` return false at the getter, with the setters and
+  stored fields deliberately kept so the settings rows and serialization still
+  work. If the rows go too, the fields can go with them.
+- **Ghost-mode suppression sites**, all early returns rather than removals:
+  `SendProgressManager::skipRequest`, the `MTPaccount_UpdateStatus` block in
+  `Updates::updateOnline`, `ViewsManager::viewsIncrement`,
+  `Histories::reportPendingDeliveries`, `RepliesList::sendReadTillRequest` and
+  `ReadMetrics::send`.
+
+Two of these cannot simply be deleted and need the caller rewritten instead,
+which is the work rather than a reason to stop: `updateOnline` also drives
+`checkAutoLock`, `saveCurrentDraftToCloud` and `quitPreventFinished()`, and the
+suggestion getters are read by the settings UI.
+
 ## Constraints and known limits
 
 - **API ToS §3.3** requires third-party clients to support sponsored messages. Ad
