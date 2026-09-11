@@ -3938,6 +3938,319 @@ void InnerWidget::contextMenuEvent(QContextMenuEvent *e) {
 	}
 }
 
+void InnerWidget::parentGeometryChanged() {
+	const auto globalPosition = QCursor::pos();
+	if (rect().contains(mapFromGlobal(globalPosition))) {
+		setMouseTracking(true);
+		if (_mouseSelection) {
+			selectByMouse(globalPosition);
+		}
+	}
+}
+
+bool InnerWidget::processTouchEvent(not_null<QTouchEvent*> e) {
+	const auto point = e->touchPoints().empty()
+		? std::optional<QPoint>()
+		: e->touchPoints().front().screenPos().toPoint();
+	switch (e->type()) {
+	case QEvent::TouchBegin: {
+		if (!point) {
+			return false;
+		}
+		selectByMouse(*point);
+		if (isUserpicPressOnWide() && scheduleChatPreview(*point)) {
+			_chatPreviewTouchGlobal = point;
+		} else if (!_dragging) {
+			_touchDragStartGlobal = point;
+			_touchDragPinnedTimer.callOnce(QApplication::startDragTime());
+		}
+	} break;
+
+	case QEvent::TouchUpdate: {
+		if (!point) {
+			return false;
+		}
+		if (_chatPreviewTouchGlobal) {
+			const auto delta = (*_chatPreviewTouchGlobal - *point);
+			if (delta.manhattanLength() >= QApplication::startDragDistance()) {
+				cancelChatPreview();
+			}
+		}
+		if (_touchDragStartGlobal && _dragging) {
+			updateReorderPinned(mapFromGlobal(*point));
+			return _dragging != nullptr;
+		} else if (_touchDragStartGlobal) {
+			const auto delta = (*_touchDragStartGlobal - *point);
+			if (delta.manhattanLength() >= QApplication::startDragDistance()) {
+				if (_touchDragPinnedTimer.isActive()) {
+					_touchDragPinnedTimer.cancel();
+					_touchDragStartGlobal = {};
+					_touchDragNowGlobal = {};
+				} else {
+					dragPinnedFromTouch();
+				}
+			} else {
+				_touchDragNowGlobal = point;
+			}
+		}
+	} break;
+
+	case QEvent::TouchEnd:
+	case QEvent::TouchCancel: {
+		if (_chatPreviewTouchGlobal) {
+			cancelChatPreview();
+		}
+		if (_touchDragStartGlobal) {
+			_touchDragStartGlobal = {};
+			return finishReorderOnRelease();
+		}
+	} break;
+	}
+	return false;
+}
+
+void InnerWidget::dragPinnedFromTouch() {
+	Expects(_touchDragStartGlobal.has_value());
+
+	const auto global = *_touchDragStartGlobal;
+	_touchDragPinnedTimer.cancel();
+	selectByMouse(global);
+	if (!_selected || _dragging || _state != WidgetState::Default) {
+		return;
+	}
+	_dragStart = mapFromGlobal(global);
+	unfreezeShownList(true);
+	_dragging = _selected;
+	const auto now = mapFromGlobal(_touchDragNowGlobal.value_or(global));
+	startReorderPinned(now);
+	updateReorderPinned(now);
+}
+
+bool InnerWidget::hasChatTypeFilter() const {
+	return !_searchResults.empty()
+		&& (_searchState.tab == ChatSearchTab::MyMessages);
+}
+
+void InnerWidget::searchRequested(bool loading) {
+	_searchWaiting = false;
+	_searchLoading = loading;
+	if (loading) {
+		clearSearchResults(true);
+		clearPreviewResults();
+	}
+	refresh(true);
+}
+
+void InnerWidget::applySearchState(SearchState state) {
+	if (_searchState == state) {
+		return;
+	}
+	auto withSameQuery = state;
+	withSameQuery.query = _searchState.query;
+	const auto otherChanged = (_searchState != withSameQuery);
+
+	const auto ignoreInChat = (state.tab == ChatSearchTab::MyMessages)
+		|| (state.tab == ChatSearchTab::PublicPosts)
+		|| (state.tab == ChatSearchTab::Archive)
+		|| (state.tab == ChatSearchTab::ThisCommunity);
+	const auto sublist = ignoreInChat ? nullptr : state.inChat.sublist();
+	const auto peer = ignoreInChat ? nullptr : state.inChat.peer();
+	if (const auto migrateFrom = peer ? peer->migrateFrom() : nullptr) {
+		_searchInMigrated = peer->owner().history(migrateFrom);
+	} else {
+		_searchInMigrated = nullptr;
+	}
+	if (peer && peer->isSelf()) {
+		const auto reactions = &peer->owner().reactions();
+		_searchTags = std::make_unique<SearchTags>(
+			&peer->owner(),
+			reactions->myTagsValue(sublist),
+			state.tags);
+
+		_searchTags->repaintRequests() | rpl::on_next([=] {
+			const auto height = _searchTags->height();
+			update(0, 0, width(), height);
+		}, _searchTags->lifetime());
+
+		_searchTags->menuRequests(
+		) | rpl::on_next([=](Data::ReactionId id) {
+			HistoryView::ShowTagInListMenu(
+				&_menu,
+				_lastMousePosition.value_or(QCursor::pos()),
+				this,
+				id,
+				_controller);
+		}, _searchTags->lifetime());
+
+		_searchTags->heightValue() | rpl::skip(
+			1
+		) | rpl::on_next([=] {
+			refresh();
+			moveSearchIn();
+			if (_loadingAnimation) {
+				_loadingAnimation->move(0, searchedOffset());
+			}
+		}, _searchTags->lifetime());
+	} else {
+		_searchTags = nullptr;
+		state.tags.clear();
+	}
+	_searchFromShown = ignoreInChat
+		? nullptr
+		: sublist
+		? sublist->sublistPeer().get()
+		: state.fromPeer;
+	if (state.inChat) {
+		onHashtagFilterUpdate(QStringView());
+	}
+	if (state.filter != _searchState.filter
+		|| state.fromArchive != _searchState.fromArchive) {
+		_chatTypeFilterWidth = 0;
+		update();
+	}
+	_searchState = std::move(state);
+	_searchHashOrCashtag = IsHashOrCashtagSearchQuery(_searchState.query);
+	_searchWithPostsPreview = computeSearchWithPostsPreview();
+
+	updateSearchIn();
+	moveSearchIn();
+
+	auto newFilter = _searchState.query;
+	const auto mentionsSearch = (newFilter == u"@"_q);
+	const auto words = mentionsSearch
+		? QStringList(newFilter)
+		: TextUtilities::PrepareSearchWords(newFilter);
+	newFilter = words.isEmpty() ? QString() : words.join(' ');
+	if (newFilter != _filter || otherChanged) {
+		_filter = newFilter;
+		if (_filter.isEmpty()
+			&& !_searchState.fromPeer
+			&& _searchState.tags.empty()
+			&& _searchState.tab != ChatSearchTab::PublicPosts) {
+			clearFilter();
+		} else {
+			setState(WidgetState::Filtered);
+			_filterResultsGlobal.clear();
+			refreshFilterResults();
+		}
+		clearMouseSelection(true);
+	}
+	if (_state != WidgetState::Default) {
+		_searchWaiting = true;
+		_searchRequests.fire(otherChanged
+			? SearchRequestDelay::Instant
+			: SearchRequestDelay::Delayed);
+		if (_searchWaiting) {
+			refresh(true);
+		}
+	}
+}
+
+void InnerWidget::onHashtagFilterUpdate(QStringView newFilter) {
+	if (newFilter.isEmpty()
+		|| newFilter.at(0) != '#'
+		|| _searchState.inChat) {
+		_hashtagFilter = QString();
+		if (!_hashtagResults.empty()) {
+			_hashtagResults.clear();
+			refresh(true);
+			clearMouseSelection(true);
+		}
+		return;
+	}
+	_hashtagFilter = newFilter.toString();
+	if (cRecentSearchHashtags().isEmpty() && cRecentWriteHashtags().isEmpty()) {
+		session().local().readRecentHashtagsAndBots();
+	}
+	auto &recent = cRecentSearchHashtags();
+	_hashtagResults.clear();
+	if (!recent.isEmpty()) {
+		_hashtagResults.reserve(qMin(recent.size(), kHashtagResultsLimit));
+		for (const auto &tag : recent) {
+			if (tag.first.startsWith(base::StringViewMid(_hashtagFilter, 1), Qt::CaseInsensitive)
+				&& tag.first.size() + 1 != newFilter.size()) {
+				_hashtagResults.push_back(std::make_unique<HashtagResult>(tag.first));
+				if (_hashtagResults.size() == kHashtagResultsLimit) break;
+			}
+		}
+	}
+	refresh(true);
+	clearMouseSelection(true);
+}
+
+void InnerWidget::refreshFilterResults() {
+	const auto mentionsSearch = (_filter == u"@"_q);
+	const auto words = mentionsSearch
+		? QStringList(_filter)
+		: TextUtilities::PrepareSearchWords(_filter);
+	_filterResults.clear();
+	const auto append = [&](not_null<IndexedList*> list) {
+		const auto results = list->filtered(words);
+		auto top = filteredHeight();
+		auto i = _filterResults.insert(
+			end(_filterResults),
+			begin(results),
+			end(results));
+		for (const auto e = end(_filterResults); i != e; ++i) {
+			i->top = top;
+			i->row->recountHeight(_narrowRatio, _filterId);
+			top += i->row->height();
+		}
+	};
+	if (_searchState.filterChatsList() && !words.isEmpty()) {
+		if (_savedSublists) {
+			append(_savedSublists->chatsList()->indexed());
+		} else if (_openedForum) {
+			append(_openedForum->topicsList()->indexed());
+		} else {
+			const auto owner = &session().data();
+			append(owner->chatsList()->indexed());
+			const auto id = Data::Folder::kId;
+			if (const auto add = owner->folderLoaded(id)) {
+				append(add->chatsList()->indexed());
+			}
+			append(owner->contactsNoChatsList());
+		}
+	}
+	for (const auto &[key, row] : _filterResultsGlobal) {
+		if (!ranges::contains(_filterResults, key, &FilterResult::key)) {
+			const auto height = filteredHeight();
+			_filterResults.emplace_back(row.get());
+			_filterResults.back().top = height;
+			_filterResults.back().row->recountHeight(_narrowRatio, _filterId);
+		}
+	}
+}
+
+void InnerWidget::appendToFiltered(Key key) {
+	for (const auto &row : _filterResults) {
+		if (row.key() == key) {
+			return;
+		}
+	}
+	auto row = std::make_unique<Row>(key, 0, 0);
+	row->recountHeight(_narrowRatio, _filterId);
+	const auto &[i, ok] = _filterResultsGlobal.emplace(key, std::move(row));
+	const auto height = filteredHeight();
+	_filterResults.emplace_back(i->second.get());
+	_filterResults.back().top = height;
+	trackResultsHistory(key.owningHistory());
+}
+
+InnerWidget::~InnerWidget() {
+	unfreezeShownList(false);
+	session().data().stories().decrementPreloadingMainSources();
+	clearSearchResults();
+}
+
+void InnerWidget::clearSearchResults(bool alsoPeerSearchResults) {
+	if (alsoPeerSearchResults) {
+		clearPeerSearchResults();
+	}
+	_searchResults.clear();
+	_searchedCount = _searchedMigratedCount = 0;
+}
+
 void InnerWidget::clearPeerSearchResults() {
 	_peerSearchResults.clear();
 }
