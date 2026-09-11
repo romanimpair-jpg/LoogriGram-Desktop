@@ -68,7 +68,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/notifications_manager.h"
 #include "info/info_memento.h"
 #include "info/statistics/info_statistics_widget.h"
-#include "boxes/about_sponsored_box.h"
 #include "boxes/delete_messages_box.h"
 #include "boxes/moderate_messages_box.h"
 #include "boxes/report_messages_box.h"
@@ -96,7 +95,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "menu/menu_item_rate_transcribe.h"
 #include "menu/menu_item_rate_transcribe_session.h"
 #include "menu/menu_timecode_action.h"
-#include "menu/menu_sponsored.h"
 #include "core/application.h"
 #include "apiwrap.h"
 #include "api/api_attached_stickers.h"
@@ -109,7 +107,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/accessible/ui_accessible_item.h"
 #include "lang/lang_keys.h"
 #include "data/components/factchecks.h"
-#include "data/components/sponsored_messages.h"
 #include "data/data_saved_music.h"
 #include "data/data_saved_sublist.h"
 #include "data/data_session.h"
@@ -187,9 +184,6 @@ public:
 	}
 	HistoryView::SelectionModeResult elementInSelectionMode(
 			const Element *view) override {
-		if (view && view->data()->isSponsored()) {
-			return HistoryView::SelectionModeResult();
-		}
 		return _widget
 			? _widget->inSelectionMode(view)
 			: HistoryView::SelectionModeResult();
@@ -1495,7 +1489,6 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 		if (metricsStale && height > 0) {
 			_readMetricsTracker->push(item, top, height);
 		}
-		const auto isSponsored = item->isSponsored();
 		const auto isUnread = !item->out()
 			&& item->unread(_history)
 			&& (item->history() == _history);
@@ -1503,17 +1496,13 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 		const auto yShown = [&](int y) {
 			return (_visibleAreaBottom >= y && _visibleAreaTop <= y);
 		};
-		const auto markShown = isSponsored
-			? view->markSponsoredViewed(_visibleAreaBottom - top)
-			: withReaction
+		const auto markShown = withReaction
 			? yShown(top + context.reactionInfo->position.y())
 			: isUnread
 			? yShown(top + height)
 			: yShown(top + height / 2);
 		if (markShown) {
-			if (isSponsored) {
-				session().sponsoredMessages().view(item->fullId());
-			} else if (isUnread) {
+			if (isUnread) {
 				readTill = item;
 			}
 			if (markingAsViewed && item->hasUnwatchedEffect()) {
@@ -3505,17 +3494,6 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 			? link->copyToClipboardContextItemText()
 			: QString();
 
-		const auto sponsored = (item && item->isSponsored())
-			? item
-			: (Element::Moused() && Element::Moused()->data()->isSponsored())
-			? Element::Moused()->data().get()
-			: nullptr;
-		if (sponsored) {
-			Menu::FillSponsored(
-				Ui::Menu::CreateAddActionCallback(_menu),
-				controller->uiShow(),
-				sponsored->fullId());
-		}
 		if (isUponSelected > 0) {
 			addReplyAction(item);
 				const auto selectedText = getSelectedText();
@@ -3682,31 +3660,6 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 			_menu->addAction(item->history()->peer->isMegagroup() ? tr::lng_context_copy_message_link(tr::now) : tr::lng_context_copy_post_link(tr::now), [=] {
 				HistoryView::CopyPostLink(controller, itemId, HistoryView::Context::History);
 			}, &st::menuIconLink);
-		}
-		if (sponsored) {
-			const auto hasAbout = ranges::any_of(
-				_menu->actions(),
-				[about = tr::lng_sponsored_menu_revenued_about(tr::now)](
-						const QAction *action) {
-					return action->text() == about;
-				});
-			if (!hasAbout) {
-				if (!_menu->empty()) {
-					_menu->addSeparator(&st::expandedMenuSeparator);
-				}
-				auto item = base::make_unique_q<Ui::Menu::MultilineAction>(
-					_menu->menu(),
-					st::menuWithIcons,
-					st::historyHasCustomEmoji,
-					st::historySponsoredAboutMenuLabelPosition,
-					TextWithEntities{ tr::lng_sponsored_title(tr::now) },
-					&st::menuIconInfo);
-				item->clicks(
-				) | rpl::on_next([=] {
-					controller->show(Box(Ui::AboutSponsoredBox));
-				}, item->lifetime());
-				_menu->addAction(std::move(item));
-			}
 		}
 		if (isUponSelected > 1) {
 			if (selectedState.count > 0 && selectedState.count == selectedState.canForwardCount) {

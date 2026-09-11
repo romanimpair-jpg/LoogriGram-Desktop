@@ -95,7 +95,6 @@ struct ChosenRow {
 	Data::MessagePosition message;
 	MsgId topicJumpRootId;
 	PeerId sublistJumpPeerId;
-	QByteArray sponsoredRandomId;
 	bool userpicClick : 1 = false;
 	bool filteredRow : 1 = false;
 	bool newWindow : 1 = false;
@@ -285,7 +284,6 @@ protected:
 private:
 	struct CollapsedRow;
 	struct HashtagResult;
-	struct SponsoredSearchResult;
 	struct PeerSearchResult;
 	struct TagCache;
 
@@ -352,7 +350,6 @@ private:
 	void repaintDialogRow(RowDescriptor row);
 	void refreshDialogRow(RowDescriptor row);
 	bool updateEntryHeight(not_null<Entry*> entry);
-	void showSponsoredMenu(int peerSearchIndex, QPoint globalPos);
 
 	void clearMouseSelection(bool clearSelection = false);
 	void deselectAllRows();
@@ -672,7 +669,6 @@ private:
 	bool _pressedTopicJump = false;
 
 	RightButton *_pressedRightButtonData = nullptr;
-	bool _pressedRightButtonSponsored = false;
 	bool _selectedRightButton = false;
 	bool _pressedRightButton = false;
 
@@ -714,7 +710,6 @@ private:
 	rpl::lifetime _trackedLifetime;
 
 	QString _peerSearchQuery;
-	base::flat_set<not_null<PeerData*>> _sponsoredRemoved;
 	std::vector<std::unique_ptr<PeerSearchResult>> _peerSearchResults;
 	int _peerSearchSelected = -1;
 	int _peerSearchPressed = -1;

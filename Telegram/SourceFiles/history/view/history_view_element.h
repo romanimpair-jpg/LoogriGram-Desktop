@@ -719,7 +719,6 @@ public:
 		return fromLink();
 	}
 
-	[[nodiscard]] bool markSponsoredViewed(int shownFromTop) const;
 
 	virtual void animateReaction(Ui::ReactionFlyAnimationArgs &&args) = 0;
 	void animateUnreadReactions();

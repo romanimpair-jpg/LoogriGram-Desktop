@@ -24,7 +24,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/business/data_shortcut_messages.h"
 #include "data/components/credits.h"
 #include "data/components/scheduled_messages.h"
-#include "data/components/sponsored_messages.h"
 #include "data/components/top_peers.h"
 #include "data/notify/data_notify_settings.h"
 #include "data/stickers/data_stickers.h"
@@ -930,15 +929,6 @@ not_null<HistoryItem*> History::addNewLocalMessage(
 	Expects(item->isLocal());
 
 	return addNewItem(item, true);
-}
-
-not_null<HistoryItem*> History::addSponsoredMessage(
-		MsgId id,
-		Data::SponsoredFrom from,
-		const TextWithEntities &textWithEntities) {
-	return addNewItem(
-		makeMessage(id, from, textWithEntities, nullptr),
-		true);
 }
 
 void History::clearUnreadMentionsFor(MsgId topicRootId) {
@@ -3119,9 +3109,6 @@ void History::setChatListMessage(HistoryItem *item) {
 	const auto wasKnown = _chatListMessage.has_value();
 	const auto was = _chatListMessage.value_or(nullptr);
 	if (item) {
-		if (item->isSponsored()) {
-			return;
-		}
 		if (_chatListMessage
 			&& *_chatListMessage
 			&& !(*_chatListMessage)->isRegular()

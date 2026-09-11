@@ -2951,8 +2951,7 @@ void AddSelectRestrictionAction(
 		not_null<HistoryItem*> item,
 		bool addIcon) {
 	const auto peer = item->history()->peer;
-	if ((peer->allowsForwarding() && !item->forbidsForward())
-		|| item->isSponsored()) {
+	if (peer->allowsForwarding() && !item->forbidsForward()) {
 		return;
 	}
 	if (addIcon && !menu->empty()) {

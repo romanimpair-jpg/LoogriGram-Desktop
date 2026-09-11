@@ -296,8 +296,6 @@ PRIVATE
     boxes/peers/verify_peers_box.h
     boxes/about_box.cpp
     boxes/about_box.h
-    boxes/about_sponsored_box.cpp
-    boxes/about_sponsored_box.h
     boxes/abstract_box.cpp
     boxes/abstract_box.h
     boxes/add_contact_box.cpp
@@ -639,8 +637,6 @@ PRIVATE
     data/components/recent_shared_media_gifts.h
     data/components/scheduled_messages.cpp
     data/components/scheduled_messages.h
-    data/components/sponsored_messages.cpp
-    data/components/sponsored_messages.h
     data/components/top_peers.cpp
     data/components/top_peers.h
     data/components/welcome_messages.cpp
@@ -1124,8 +1120,6 @@ PRIVATE
     history/view/history_view_send_action.h
     history/view/history_view_service_message.cpp
     history/view/history_view_service_message.h
-    history/view/history_view_sponsored_click_handler.cpp
-    history/view/history_view_sponsored_click_handler.h
     history/view/history_view_sticker_toast.cpp
     history/view/history_view_sticker_toast.h
     history/view/history_view_subsection_tabs.cpp
@@ -1604,8 +1598,6 @@ PRIVATE
     menu/menu_mute.h
     menu/menu_send.cpp
     menu/menu_send.h
-    menu/menu_sponsored.cpp
-    menu/menu_sponsored.h
     menu/menu_ttl_validator.cpp
     menu/menu_ttl_validator.h
     mtproto/config_loader.cpp
@@ -2022,8 +2014,6 @@ PRIVATE
     ui/chat/choose_send_as.h
     ui/chat/choose_theme_controller.cpp
     ui/chat/choose_theme_controller.h
-    ui/chat/sponsored_message_bar.cpp
-    ui/chat/sponsored_message_bar.h
     ui/controls/compose_ai_button_factory.cpp
     ui/controls/compose_ai_button_factory.h
     ui/controls/custom_emoji_toast_icon.cpp

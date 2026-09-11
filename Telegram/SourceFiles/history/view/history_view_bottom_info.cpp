@@ -464,9 +464,7 @@ QSize BottomInfo::countCurrentSize(int newWidth) {
 	if (newWidth >= maxWidth() || (_data.flags & Data::Flag::Shortcut)) {
 		return optimalSize();
 	}
-	const auto dateHeight = (_data.flags & Data::Flag::Sponsored)
-		? 0
-		: st::msgDateFont->height;
+	const auto dateHeight = st::msgDateFont->height;
 	const auto noReactionsWidth = maxWidth() - _effectMaxWidth;
 	accumulate_min(newWidth, std::max(noReactionsWidth, _effectMaxWidth));
 	return QSize(
@@ -514,9 +512,7 @@ void BottomInfo::layoutDateText() {
 	const auto name = _authorElided
 		? st::msgDateFont->elided(author, maxWidth - afterAuthorWidth)
 		: author;
-	const auto full = (_data.flags & Data::Flag::Sponsored)
-		? QString()
-		: (_data.flags & Data::Flag::Imported)
+	const auto full = (_data.flags & Data::Flag::Imported)
 		? (date + ' ' + tr::lng_imported(tr::now))
 		: name.isEmpty()
 		? date
@@ -614,9 +610,7 @@ QSize BottomInfo::countOptimalSize() {
 	}
 	_effectMaxWidth = countEffectMaxWidth();
 	width += _effectMaxWidth;
-	const auto dateHeight = (_data.flags & Data::Flag::Sponsored)
-		? 0
-		: st::msgDateFont->height;
+	const auto dateHeight = st::msgDateFont->height;
 	return QSize(width, dateHeight);
 }
 
@@ -669,9 +663,6 @@ BottomInfo::Data BottomInfoDataFromMessage(not_null<Message*> message) {
 	}
 	if (message->context() == Context::Replies) {
 		result.flags |= Flag::RepliesContext;
-	}
-	if (item->isSponsored()) {
-		result.flags |= Flag::Sponsored;
 	}
 	if (item->isPinned() && message->context() != Context::Pinned) {
 		result.flags |= Flag::Pinned;

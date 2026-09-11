@@ -41,7 +41,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/components/recent_peers.h"
 #include "data/components/recent_shared_media_gifts.h"
 #include "data/components/scheduled_messages.h"
-#include "data/components/sponsored_messages.h"
 #include "data/components/top_peers.h"
 #include "data/components/welcome_messages.h"
 #include "settings/settings_faq_suggestions.h"
@@ -125,7 +124,6 @@ Session::Session(
 , _scheduledMessages(std::make_unique<Data::ScheduledMessages>(this))
 , _welcomeMessages(std::make_unique<Data::WelcomeMessages>(this))
 , _ephemeralMessages(std::make_unique<Data::EphemeralMessages>(this))
-, _sponsoredMessages(std::make_unique<Data::SponsoredMessages>(this))
 , _topPeers(std::make_unique<Data::TopPeers>(this, Data::TopPeerType::Chat))
 , _topBotApps(
 	std::make_unique<Data::TopPeers>(this, Data::TopPeerType::BotApp))

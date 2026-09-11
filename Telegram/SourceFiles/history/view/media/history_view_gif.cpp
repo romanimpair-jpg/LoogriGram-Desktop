@@ -579,9 +579,6 @@ bool Gif::underCursor(bool fullFeatured) const {
 }
 
 bool Gif::autoplayEnabled() const {
-	if (_realParent->isSponsored()) {
-		return true;
-	}
 	return Data::AutoDownload::ShouldAutoPlay(
 		_data->session().settings().autoDownload(),
 		_realParent->history()->peer,
@@ -919,9 +916,7 @@ void Gif::draw(Painter &p, const PaintContext &context) const {
 	}
 
 	if (!unwrapped && !skipDrawingSurrounding) {
-		const auto sponsoredSkip = !_data->isVideoFile()
-			&& _realParent->isSponsored();
-		if ((!isRound || !inWebPage) && !sponsoredSkip) {
+		if (!isRound || !inWebPage) {
 			if (ttlCovered) {
 				PaintTtlLabel(p, QPoint(), width(), _realParent, context);
 			} else {

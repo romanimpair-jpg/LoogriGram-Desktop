@@ -48,7 +48,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/rect.h"
 //#include "ui/round_rect.h"
 #include "data/components/factchecks.h"
-#include "data/components/sponsored_messages.h"
 #include "data/data_session.h"
 #include "data/data_user.h"
 #include "data/data_chat.h"
@@ -545,17 +544,6 @@ Message::Message(
 	auto animation = replacing ? replacing->takeEffectAnimation() : nullptr;
 	if (animation) {
 		_bottomInfo.continueEffectAnimation(std::move(animation));
-	}
-	if (data->isSponsored()) {
-		const auto &session = data->history()->session();
-		const auto details = session.sponsoredMessages().lookupDetails(
-			data->fullId());
-		if (details.canReport) {
-			_rightAction = std::make_unique<RightAction>();
-			_rightAction->second = std::make_unique<SecondRightAction>();
-
-			_rightAction->second->link = ReportSponsoredClickHandler(data);
-		}
 	}
 	initPaidInformation();
 
@@ -2154,9 +2142,10 @@ void Message::draw(Painter &p, const PaintContext &context) const {
 					- (_summarize ? 0 : rightActionWidth)
 					- st::historyFastShareLeft)
 				: (g.left() + g.width() + st::historyFastShareLeft);
-			const auto fastShareTop = g.top() + (data()->isSponsored()
-				? fastShareSkip
-				: g.height() - fastShareSkip - (size ? size->height() : 0));
+			const auto fastShareTop = g.top()
+				+ g.height()
+				- fastShareSkip
+				- (size ? size->height() : 0);
 			if (size) {
 				const auto o = p.opacity();
 				if (selectionModeResult.progress > 0) {
@@ -3322,9 +3311,7 @@ PointState Message::pointState(QPoint point) const {
 }
 
 bool Message::displayFromPhoto() const {
-	return hasFromPhoto()
-		&& !isAttachedToNext()
-		&& !data()->isSponsored();
+	return hasFromPhoto() && !isAttachedToNext();
 }
 
 void Message::clickHandlerPressedChanged(
@@ -4137,9 +4124,10 @@ TextState Message::textState(
 			const auto fastShareLeft = hasRightLayout()
 				? (g.left() - size->width() - st::historyFastShareLeft)
 				: (g.left() + g.width() + st::historyFastShareLeft);
-			const auto fastShareTop = data()->isSponsored()
-				? g.top() + fastShareSkip
-				: g.top() + g.height() - fastShareSkip - size->height();
+			const auto fastShareTop = g.top()
+				+ g.height()
+				- fastShareSkip
+				- size->height();
 			if (QRect(
 				fastShareLeft,
 				fastShareTop,
@@ -5799,7 +5787,7 @@ bool Message::hasFromName() const {
 }
 
 bool Message::displayFromName() const {
-	if (!hasFromName() || isAttachedToPrevious() || data()->isSponsored()) {
+	if (!hasFromName() || isAttachedToPrevious()) {
 		return false;
 	}
 	return !Has<PsaTooltipState>();
@@ -5989,11 +5977,7 @@ std::optional<QSize> Message::rightActionSize() const {
 				st::historyFastShareSize + st::historyFastShareBottom + st::semiboldFont->height)
 			: QSize(st::historyFastShareSize, st::historyFastShareSize);
 	}
-	return data()->isSponsored()
-		? ((_rightAction && _rightAction->second)
-			? QSize(st::historyFastCloseSize, st::historyFastCloseSize * 2)
-			: QSize(st::historyFastCloseSize, st::historyFastCloseSize))
-		: (displayFastShare() || displayGoToOriginal())
+	return (displayFastShare() || displayGoToOriginal())
 		? QSize(st::historyFastShareSize, st::historyFastShareSize)
 		: std::optional<QSize>();
 }
@@ -6118,9 +6102,7 @@ void Message::drawRightAction(
 			p,
 			QRect(left, size->width() + top, size->width(), size->width()));
 	} else {
-		const auto &icon = data()->isSponsored()
-			? st->historyFastCloseIcon()
-			: (displayFastShare()
+		const auto &icon = (displayFastShare()
 				&& !isPinnedContext()
 				&& this->context() != Context::SavedSublist)
 			? st->historyFastShareIcon()
@@ -6157,9 +6139,7 @@ void Message::ensureRightAction() const {
 }
 
 ClickHandlerPtr Message::prepareRightActionLink() const {
-	if (data()->isSponsored()) {
-		return HideSponsoredClickHandler();
-	} else if (isPinnedContext()) {
+	if (isPinnedContext()) {
 		return JumpToMessageClickHandler(data());
 	} else if ((context() != Context::SavedSublist)
 		&& displayRightActionComments()) {

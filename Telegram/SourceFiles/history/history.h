@@ -33,8 +33,6 @@ class Forum;
 class Session;
 class Folder;
 class ChatFilter;
-struct SponsoredFrom;
-class SponsoredMessages;
 class HistoryMessages;
 class SavedMessages;
 } // namespace Data
@@ -182,11 +180,6 @@ public:
 		HistoryItemCommonFields &&fields,
 		not_null<GameData*> game);
 	not_null<HistoryItem*> addNewLocalMessage(not_null<HistoryItem*> item);
-
-	not_null<HistoryItem*> addSponsoredMessage(
-		MsgId id,
-		Data::SponsoredFrom from,
-		const TextWithEntities &textWithEntities); // sponsored
 
 	// Used only internally and for channel admin log.
 	not_null<HistoryItem*> createItem(
@@ -562,7 +555,6 @@ private:
 		not_null<HistoryItem*> item,
 		bool unread);
 
-	friend class Data::SponsoredMessages;
 	not_null<HistoryItem*> addNewInTheMiddle(
 		not_null<HistoryItem*> item,
 		int blockIndex,

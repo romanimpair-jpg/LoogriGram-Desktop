@@ -60,7 +60,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/rect.h"
 #include "ui/round_rect.h"
 #include "data/components/ephemeral_messages.h"
-#include "data/components/sponsored_messages.h"
 #include "data/data_saved_sublist.h"
 #include "data/data_todo_list.h"
 #include "data/data_forum.h"
@@ -1647,14 +1646,12 @@ void Element::refreshMedia(Element *replacing) {
 	} else if (item->showSimilarChannels()) {
 		_media = std::make_unique<SimilarChannels>(this);
 	} else if (isOnlyCustomEmoji()
-		&& Core::App().settings().largeEmoji()
-		&& !item->isSponsored()) {
+		&& Core::App().settings().largeEmoji()) {
 		_media = std::make_unique<UnwrappedMedia>(
 			this,
 			std::make_unique<CustomEmoji>(this, onlyCustomEmoji()));
 	} else if (isIsolatedEmoji()
-		&& Core::App().settings().largeEmoji()
-		&& !item->isSponsored()) {
+		&& Core::App().settings().largeEmoji()) {
 		const auto emoji = isolatedEmoji();
 		const auto emojiStickers = &history()->session().emojiStickersPack();
 		const auto skipPremiumEffect = false;
@@ -2247,13 +2244,6 @@ void Element::nextInBlocksRemoved() {
 	setAttachToNext(false);
 }
 
-bool Element::markSponsoredViewed(int shownFromTop) const {
-	const auto sponsoredTextTop = height()
-		- st::msgPadding.bottom()
-		- st::historyViewButtonHeight;
-	return shownFromTop >= sponsoredTextTop;
-}
-
 void Element::refreshDataId() {
 	if (const auto media = this->media()) {
 		media->refreshParentId(data());
@@ -2266,7 +2256,6 @@ bool Element::computeIsAttachToPrevious(not_null<Element*> previous) {
 		const auto item = view->data();
 		return !item->isService()
 			&& !item->isEmpty()
-			&& !item->isSponsored()
 			&& !item->isPostHidingAuthor()
 			&& !item->isGuestChatBotMessage()
 			&& (!item->history()->peer->isMegagroup()
@@ -2464,10 +2453,7 @@ void Element::recountThreadBarInBlocks() {
 		? sublist->parentChat()
 		: nullptr;
 	const auto barThread = [&]() -> Data::Thread* {
-		if (!parentChat
-			|| isHidden()
-			|| item->isEmpty()
-			|| item->isSponsored()) {
+		if (!parentChat || isHidden() || item->isEmpty()) {
 			return nullptr;
 		}
 		if (const auto previous = previousDisplayedInBlocks()) {
@@ -2519,10 +2505,7 @@ void Element::refreshForumThreadBar(Element *previous, bool enabled) {
 		? sublist->parentChat()
 		: nullptr;
 	const auto barThread = [&]() -> Data::Thread* {
-		if (!parentChat
-			|| isHidden()
-			|| item->isEmpty()
-			|| item->isSponsored()) {
+		if (!parentChat || isHidden() || item->isEmpty()) {
 			return nullptr;
 		}
 		if (previous) {
@@ -2560,10 +2543,6 @@ void Element::recountDisplayDateInBlocks() {
 		if (isHidden() || item->isEmpty()) {
 			return false;
 		}
-		if (item->isSponsored()) {
-			return false;
-		}
-
 		if (const auto previous = previousDisplayedInBlocks()) {
 			const auto prev = previous->data();
 			return prev->hideDisplayDate()

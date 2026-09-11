@@ -126,19 +126,6 @@ private:
 	struct StickerSetData {
 		std::vector<std::unique_ptr<Sticker>> views;
 	};
-	struct SponsoredData {
-		ClickHandlerPtr link;
-		ClickHandlerPtr mediaLink;
-		QString buttonText;
-
-		uint64 backgroundEmojiId = 0;
-		uint8 colorIndex : 6 = 0;
-		uint8 isLinkInternal : 1 = 0;
-		uint8 canReport : 1 = 0;
-		uint8 hasMedia : 1 = 0;
-
-		HintData hint;
-	};
 	struct FactcheckData {
 		HintData hint;
 		Ui::Text::String footer;
@@ -148,7 +135,6 @@ private:
 	};
 	using AdditionalData = std::variant<
 		StickerSetData,
-		SponsoredData,
 		FactcheckData>;
 
 	void playAnimation(bool autoplay) override;
@@ -178,7 +164,6 @@ private:
 	[[nodiscard]] bool asArticle() const;
 
 	[[nodiscard]] StickerSetData *stickerSetData() const;
-	[[nodiscard]] SponsoredData *sponsoredData() const;
 	[[nodiscard]] FactcheckData *factcheckData() const;
 	[[nodiscard]] HintData *hintData() const;
 

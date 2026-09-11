@@ -62,8 +62,7 @@ enum class SubItem : int {
 
 [[nodiscard]] QString HashtagAccessibilityName(QStringView tag);
 [[nodiscard]] QString PeerSearchResultAccessibilityName(
-	not_null<PeerData*> peer,
-	bool sponsored);
+	not_null<PeerData*> peer);
 [[nodiscard]] QString SearchedMessageAccessibilityName(
 	not_null<const FakeRow*> row);
 

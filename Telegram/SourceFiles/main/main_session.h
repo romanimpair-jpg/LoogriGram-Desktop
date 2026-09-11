@@ -39,7 +39,6 @@ class RecentSharedMediaGifts;
 class ScheduledMessages;
 class WelcomeMessages;
 class EphemeralMessages;
-class SponsoredMessages;
 class TopPeers;
 class Factchecks;
 class LocationPickers;
@@ -159,9 +158,6 @@ public:
 	}
 	[[nodiscard]] Data::GiftAuctions &giftAuctions() const {
 		return *_giftAuctions;
-	}
-	[[nodiscard]] Data::SponsoredMessages &sponsoredMessages() const {
-		return *_sponsoredMessages;
 	}
 	[[nodiscard]] Data::ScheduledMessages &scheduledMessages() const {
 		return *_scheduledMessages;
@@ -340,7 +336,6 @@ private:
 	const std::unique_ptr<Data::ScheduledMessages> _scheduledMessages;
 	const std::unique_ptr<Data::WelcomeMessages> _welcomeMessages;
 	const std::unique_ptr<Data::EphemeralMessages> _ephemeralMessages;
-	const std::unique_ptr<Data::SponsoredMessages> _sponsoredMessages;
 	const std::unique_ptr<Data::TopPeers> _topPeers;
 	const std::unique_ptr<Data::TopPeers> _topBotApps;
 	const std::unique_ptr<Data::TopPeers> _topGuestChatBots;

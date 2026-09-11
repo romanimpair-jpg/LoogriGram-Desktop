@@ -86,7 +86,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/premium_preview_box.h"
 #include "boxes/send_gif_with_caption_box.h"
 #include "core/crash_reports.h"
-#include "data/components/sponsored_messages.h"
 #include "data/data_session.h"
 #include "data/data_changes.h"
 #include "data/data_folder.h"
@@ -882,8 +881,7 @@ void ListWidget::refreshRows(const Data::MessagesSlice &old) {
 	for (auto e = end(_items), i = e - revealCount; i != e; ++i) {
 		const auto item = (*i)->data();
 		const auto streamed = item->history()->streamedDraftsIfExists();
-		if (!item->isSponsored()
-			&& (!streamed || !streamed->hasFor(item))) {
+		if (!streamed || !streamed->hasFor(item)) {
 			_itemRevealPending.emplace(*i);
 		}
 	}
@@ -3143,7 +3141,6 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 		if (metricsStale && height > 0) {
 			_readMetricsTracker->push(item, top, height);
 		}
-		const auto isSponsored = item->isSponsored();
 		const auto isUnread = _delegate->listElementShownUnread(view)
 			&& item->isRegular();
 		const auto withReaction = context.reactionInfo
@@ -3152,17 +3149,13 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 			return (_visibleBottom >= y && _visibleTop <= y);
 		};
 		const auto markShown = (_context != Context::ChatPreview)
-			&& (isSponsored
-				? view->markSponsoredViewed(_visibleBottom - top)
-				: withReaction
+			&& (withReaction
 				? yShown(top + context.reactionInfo->position.y())
 				: isUnread
 				? yShown(top + height)
 				: yShown(top + height / 2));
 		if (markShown) {
-			if (isSponsored) {
-				session->sponsoredMessages().view(item->fullId());
-			} else if (isUnread) {
+			if (isUnread) {
 				readTill = item;
 			}
 			if (markingContentRead
@@ -3655,14 +3648,12 @@ auto ListWidget::countScrollState() const -> ScrollTopState {
 		return { Data::MessagePosition(), 0 };
 	}
 	const auto index = findItemIndexByY(_visibleTop);
-	for (auto i = index, count = int(_items.size()); i != count; ++i) {
-		const auto view = _items[i];
-		if (!view->data()->isSponsored()) {
-			return {
-				view->data()->position(),
-				_visibleTop - itemTop(view),
-			};
-		}
+	if (index < int(_items.size())) {
+		const auto view = _items[index];
+		return {
+			view->data()->position(),
+			_visibleTop - itemTop(view),
+		};
 	}
 	return { Data::MessagePosition(), 0 };
 }
@@ -5845,14 +5836,11 @@ void ListWidget::editMessageRequestNotify(FullMsgId item) const {
 bool ListWidget::lastMessageEditRequestNotify() const {
 	const auto now = base::unixtime::now();
 	const auto &list = ranges::views::reverse(_items);
-	const auto notSponsored = ranges::find_if(list, [](
-			not_null<Element*> view) {
-		return !view->data()->isSponsored();
-	});
-	if (notSponsored != end(list) && (*notSponsored)->data()->isLocal()) {
-		const auto last = (*notSponsored)->data();
+	if (!_items.empty() && _items.back()->data()->isLocal()) {
+		const auto view = _items.back();
+		const auto last = view->data();
 		if (last->media() && last->media()->allowsEdit()) {
-			controller()->show(Box(Ui::EditCaptionBox, *notSponsored));
+			controller()->show(Box(Ui::EditCaptionBox, view));
 			return true;
 		}
 		return false;

@@ -12,7 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/platform/base_platform_haptic.h"
 #include "core/application.h"
 #include "core/core_settings.h"
-#include "data/components/sponsored_messages.h"
 #include "data/stickers/data_custom_emoji.h"
 #include "data/data_chat_filters.h"
 #include "data/data_folder.h"
@@ -834,9 +833,7 @@ bool PullToNextChannel::active() const {
 		return Core::App().settings().pullToNextChannel()
 			&& history
 			&& history->peer->isBroadcast()
-			&& atBottom()
-			&& !_controller->session().sponsoredMessages().hasUnshownFor(
-				history);
+			&& atBottom();
 	}
 	case Mode::Topic:
 		return Core::App().settings().pullToNextChannel()

@@ -58,7 +58,6 @@ struct MessageReaction;
 class MessageReactions;
 class ForumTopic;
 class Thread;
-struct SponsoredFrom;
 class Story;
 class SavedSublist;
 struct PaidReactionSend;
@@ -140,12 +139,6 @@ public:
 		const MTPDmessageEmpty &data,
 		MessageFlags localFlags);
 
-	HistoryItem( // Sponsored message.
-		not_null<History*> history,
-		MsgId id,
-		Data::SponsoredFrom from,
-		const TextWithEntities &textWithEntities,
-		HistoryItem *injectedAfter);
 	HistoryItem( // Story wrap.
 		not_null<History*> history,
 		MsgId id,
@@ -208,7 +201,6 @@ public:
 	[[nodiscard]] bool isFromScheduled() const;
 	[[nodiscard]] bool isScheduled() const;
 	[[nodiscard]] TimeId scheduleRepeatPeriod() const;
-	[[nodiscard]] bool isSponsored() const;
 	[[nodiscard]] bool canLookupMessageAuthor() const;
 	[[nodiscard]] bool skipNotification() const;
 	[[nodiscard]] bool isUserpicSuggestion() const;

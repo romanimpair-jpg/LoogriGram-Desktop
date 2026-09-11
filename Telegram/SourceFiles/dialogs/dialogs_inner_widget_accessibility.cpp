@@ -601,9 +601,7 @@ QString HashtagAccessibilityName(QStringView tag) {
 		+ tag.toString();
 }
 
-QString PeerSearchResultAccessibilityName(
-		not_null<PeerData*> peer,
-		bool sponsored) {
+QString PeerSearchResultAccessibilityName(not_null<PeerData*> peer) {
 	QStringList parts;
 
 	const auto type = ChatTypeString(peer);
@@ -633,10 +631,6 @@ QString PeerSearchResultAccessibilityName(
 		if (Data::IsUserOnline(user)) {
 			parts << tr::lng_sr_chat_online(tr::now);
 		}
-	}
-
-	if (sponsored) {
-		parts << tr::lng_sr_chat_sponsored(tr::now);
 	}
 
 	return parts.join(u", "_q);

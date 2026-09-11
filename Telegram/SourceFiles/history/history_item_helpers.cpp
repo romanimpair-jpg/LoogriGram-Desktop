@@ -12,7 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/premium_preview_box.h"
 #include "calls/calls_instance.h"
 #include "data/components/ephemeral_messages.h"
-#include "data/components/sponsored_messages.h"
 #include "data/stickers/data_custom_emoji.h"
 #include "data/notify/data_notify_settings.h"
 #include "data/data_channel.h"
@@ -37,7 +36,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_domain.h"
 #include "main/main_session.h"
 #include "main/main_session_settings.h"
-#include "menu/menu_sponsored.h"
 #include "platform/platform_notifications_manager.h"
 #include "window/window_controller.h"
 #include "window/window_session_controller.h"
@@ -891,44 +889,6 @@ ClickHandlerPtr JumpToStoryClickHandler(
 				peer,
 				storyId,
 				{ Data::StoriesContextSingle() });
-		}
-	});
-}
-
-ClickHandlerPtr HideSponsoredClickHandler() {
-	return std::make_shared<LambdaClickHandler>([=](ClickContext context) {
-		const auto my = context.other.value<ClickHandlerContext>();
-		if (const auto controller = my.sessionWindow.get()) {
-			const auto &session = controller->session();
-			if (session.premium()) {
-				using Result = Data::SponsoredReportResult;
-				session.sponsoredMessages().createReportCallback(
-					my.itemId
-				).callback(Result::Id("-1"), [](const auto &) {});
-			} else {
-				ShowPremiumPreviewBox(controller, PremiumFeature::NoAds);
-			}
-		}
-	});
-}
-
-ClickHandlerPtr ReportSponsoredClickHandler(not_null<HistoryItem*> item) {
-	return std::make_shared<LambdaClickHandler>([=](ClickContext context) {
-		const auto my = context.other.value<ClickHandlerContext>();
-		if (const auto controller = my.sessionWindow.get()) {
-			Menu::ShowSponsored(
-				controller->widget(),
-				controller->uiShow(),
-				item->fullId());
-		}
-	});
-}
-
-ClickHandlerPtr AboutSponsoredClickHandler() {
-	return std::make_shared<LambdaClickHandler>([=](ClickContext context) {
-		const auto my = context.other.value<ClickHandlerContext>();
-		if (const auto controller = my.sessionWindow.get()) {
-			Menu::ShowSponsoredAbout(controller->uiShow(), my.itemId);
 		}
 	});
 }

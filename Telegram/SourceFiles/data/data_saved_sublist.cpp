@@ -1095,9 +1095,6 @@ void SavedSublist::setChatListMessage(HistoryItem *item) {
 	}
 	const auto was = _chatListMessage.value_or(nullptr);
 	if (item) {
-		if (item->isSponsored()) {
-			return;
-		}
 		if (_chatListMessage
 			&& *_chatListMessage
 			&& !(*_chatListMessage)->isRegular()

@@ -340,8 +340,6 @@ enum class MessageFlag : uint64 {
 
 	ShowSimilarChannels   = (1ULL << 42),
 
-	Sponsored             = (1ULL << 43),
-
 	ReactionsAreTags      = (1ULL << 44),
 
 	ShortcutMessage       = (1ULL << 45),
@@ -383,7 +381,6 @@ enum class MediaWebPageFlag : uint8 {
 	ForceSmallMedia = (1 << 1),
 	Manual = (1 << 2),
 	Safe = (1 << 3),
-	Sponsored = (1 << 4),
 };
 inline constexpr bool is_flag_type(MediaWebPageFlag) { return true; }
 using MediaWebPageFlags = base::flags<MediaWebPageFlag>;

@@ -37,7 +37,6 @@ public:
 			OutLayout      = 0x002,
 			Sending        = 0x004,
 			RepliesContext = 0x008,
-			Sponsored      = 0x010,
 			Pinned         = 0x020,
 			Imported       = 0x040,
 			Shortcut       = 0x080,
