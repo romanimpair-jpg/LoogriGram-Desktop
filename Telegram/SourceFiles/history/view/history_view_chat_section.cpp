@@ -91,7 +91,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/components/ephemeral_messages.h"
 #include "data/components/recent_inline_bots.h"
 #include "data/components/scheduled_messages.h"
-#include "data/components/sponsored_messages.h"
 #include "data/data_histories.h"
 #include "data/data_history_messages.h"
 #include "data/data_msg_id.h"
@@ -618,9 +617,6 @@ ChatWidget::ChatWidget(
 	} else if (mode() == Mode::History) {
 		_pullToNext->setHistory(_history);
 	}
-	_scroll->setBottomContentRequest([=] {
-		return appendSponsoredMessages();
-	});
 	_scroll->scrolls(
 	) | rpl::on_next([=] {
 		onScroll();
@@ -1101,9 +1097,6 @@ ChatWidget::~ChatWidget() {
 		controller()->saveSubsectionTabs(base::take(_subsectionTabs));
 	}
 	if (mode() == Mode::History) {
-		if (!_topic) {
-			session().sponsoredMessages().clearItems(_history);
-		}
 		auto state = ListMemento();
 		_inner->saveState(&state);
 		saveHistoryScrollState(state);
@@ -4811,9 +4804,6 @@ void ChatWidget::markLoaded() {
 			updatePinnedVisibility();
 		});
 		crl::on_main(this, [=] {
-			requestSponsoredMessages();
-		});
-		crl::on_main(this, [=] {
 			checkSuggestToGigagroup();
 		});
 		crl::on_main(this, [=] {
@@ -4990,110 +4980,6 @@ void ChatWidget::maybeUpdateLastKeyboardFromSlice(
 			updateBotKeyboard();
 		}
 	}
-}
-
-void ChatWidget::requestSponsoredMessages() {
-	if (mode() != Mode::History || _topic) {
-		return;
-	} else if (session().sponsoredMessages().isTopBarFor(_history)) {
-		return;
-	}
-	const auto checkState = [=] {
-		using State = Data::SponsoredMessages::State;
-		const auto state = session().sponsoredMessages().state(_history);
-		if (state == State::InjectToMiddle) {
-			injectSponsoredMessages();
-		}
-	};
-	const auto history = _history;
-	session().sponsoredMessages().request(
-		_history,
-		crl::guard(this, [=] {
-			if (history == _history) {
-				checkState();
-			}
-		}));
-	checkState();
-}
-
-void ChatWidget::injectSponsoredMessages() {
-	if (mode() != Mode::History || _topic || _injectingSponsored) {
-		return;
-	}
-	_injectingSponsored = true;
-	while (injectNextSponsoredMessage()) {
-	}
-	_injectingSponsored = false;
-}
-
-bool ChatWidget::injectNextSponsoredMessage() {
-	auto &sponsored = session().sponsoredMessages();
-	const auto state = sponsored.injectState(_history);
-	if (!state) {
-		return false;
-	}
-	const auto useUnreadBar = !state->lastInjected
-		&& (_lastShownAt.msg == ShowAtUnreadMsgId);
-	const auto anchor = state->lastInjected
-		? state->lastInjected
-		: useUnreadBar
-		? nullptr
-		: session().data().message(_lastShownAt);
-	if (!anchor && !useUnreadBar) {
-		return false;
-	}
-	const auto lookup = _inner->lookupInjectAfter(
-		anchor,
-		state->postsBetween,
-		_scroll->height() * 2);
-	if (!lookup.after
-		|| (lookup.ranOffEnd
-			&& (state->injectedAny
-				|| !_inner->loadedAtBottomKnown()
-				|| !_inner->loadedAtBottom()))) {
-		return false;
-	}
-	const auto after = not_null{ lookup.after };
-	const auto item = sponsored.injectItem(_history, after);
-	return (item != nullptr) && _inner->insertAfter(after, item);
-}
-
-bool ChatWidget::appendSponsoredMessages() {
-	if (mode() != Mode::History
-		|| _topic
-		|| !_inner->loadedAtBottomKnown()
-		|| !_inner->loadedAtBottom()) {
-		return false;
-	}
-	using Result = Data::SponsoredMessages::AppendResult;
-	const auto tryToAppend = [=] {
-		const auto result = session().sponsoredMessages().append(_history);
-		if (result == Result::Appended && !showAppendedSponsored()) {
-			return Result::None;
-		}
-		return result;
-	};
-	const auto result = tryToAppend();
-	if (result == Result::MediaLoading
-		&& !_historySponsoredPreloading) {
-		session().downloaderTaskFinished(
-		) | rpl::on_next([=] {
-			if (tryToAppend() != Result::MediaLoading) {
-				_historySponsoredPreloading.destroy();
-			}
-		}, _historySponsoredPreloading);
-	}
-	return (result == Result::Appended);
-}
-
-bool ChatWidget::showAppendedSponsored() {
-	auto shown = false;
-	for (const auto &item : _history->clientSideMessages()) {
-		if (item->isSponsored() && _inner->appendToEnd(item)) {
-			shown = true;
-		}
-	}
-	return shown;
 }
 
 rpl::producer<Data::MessagesSlice> ChatWidget::historySource(
@@ -5300,7 +5186,6 @@ MessagesBarData ChatWidget::listMessagesBar(
 }
 
 void ChatWidget::listContentRefreshed() {
-	injectSponsoredMessages();
 	checkMaybeSendBotStart();
 	refreshAboutView();
 	_bottom->updateControlsVisibility();

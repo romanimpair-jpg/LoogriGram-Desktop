@@ -103,10 +103,6 @@ private:
 	void setupGroupCallBar();
 	void setupRequestsBar();
 	void setupPeerBars();
-	void requestSponsoredMessageBar();
-	void checkSponsoredMessageBar();
-	[[nodiscard]] bool checkSponsoredMessageBarVisibility() const;
-	void createSponsoredMessageBar();
 	void setupPinnedTracker();
 	void rebuildModeSensitiveBars();
 	void checkPinnedBarState();
@@ -145,7 +141,6 @@ private:
 	std::unique_ptr<PinnedTracker> _pinnedTracker;
 	std::unique_ptr<Ui::PinnedBar> _pinnedBar;
 	std::unique_ptr<Ui::PinnedBar> _hidingPinnedBar;
-	base::unique_qptr<Ui::SlideWrap<Ui::RpWidget>> _sponsoredMessageBar;
 	std::unique_ptr<Ui::PinnedBar> _repliesRootView;
 	std::unique_ptr<TopicReopenBar> _topicReopenBar;
 	std::unique_ptr<PaysStatus> _paysStatus;
@@ -158,7 +153,6 @@ private:
 	int _requestsBarHeight = 0;
 	int _translateBarHeight = 0;
 	int _pinnedBarHeight = 0;
-	int _sponsoredMessageBarHeight = 0;
 	int _repliesRootViewHeight = 0;
 	int _topicReopenBarHeight = 0;
 	int _paysStatusHeight = 0;
