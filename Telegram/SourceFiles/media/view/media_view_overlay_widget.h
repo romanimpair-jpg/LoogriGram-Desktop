@@ -89,7 +89,6 @@ struct ContentLayout;
 namespace Media::View {
 
 class VideoStream;
-class PlaybackSponsored;
 class GroupThumbs;
 class Pip;
 
@@ -150,7 +149,6 @@ private:
 	class RendererSW;
 	class RendererGL;
 	class RendererRhi;
-	class SponsoredButton;
 
 	// If changing, see paintControls()!
 	enum class Over {
@@ -159,7 +157,6 @@ private:
 		Right,
 		LeftStories,
 		RightStories,
-		SponsoredButton,
 		Header,
 		Name,
 		Date,
@@ -479,10 +476,6 @@ private:
 	void initThemePreview();
 	void destroyThemePreview();
 	void updateThemePreviewGeometry();
-
-	void initSponsoredButton();
-	void refreshSponsoredButtonGeometry();
-	void refreshSponsoredButtonWidth();
 
 	void refreshVoteButton();
 	void refreshVoteButtonGeometry();
@@ -820,7 +813,6 @@ private:
 	object_ptr<Ui::DropdownMenu> _dropdown;
 	base::Timer _dropdownShowTimer;
 
-	base::unique_qptr<SponsoredButton> _sponsoredButton;
 	object_ptr<Ui::RoundButton> _voteButton = { nullptr };
 	object_ptr<Ui::RpWidget> _pollVotersWidget = { nullptr };
 	rpl::lifetime _pollUpdateLifetime;

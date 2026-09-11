@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/qt/qt_common_adapters.h"
 #include "base/timer_rpl.h"
 #include "lang/lang_keys.h"
-#include "menu/menu_sponsored.h"
 #include "boxes/premium_preview_box.h"
 #include "calls/calls_instance.h"
 #include "core/application.h"
@@ -62,7 +61,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "media/view/media_view_overlay_raster.h"
 #include "media/view/media_view_overlay_opengl.h"
 #include "media/view/media_view_overlay_rhi.h"
-#include "media/view/media_view_playback_sponsored.h"
 #include "media/view/media_view_video_stream.h"
 #include "media/stories/media_stories_share.h"
 #include "media/stories/media_stories_view.h"
@@ -75,7 +73,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/media/history_view_media_common.h"
 #include "history/view/history_view_group_call_bar.h"
 #include "history/view/reactions/history_view_reactions_selector.h"
-#include "data/components/sponsored_messages.h"
 #include "data/data_group_call.h"
 #include "data/data_session.h"
 #include "data/data_changes.h"
@@ -372,72 +369,6 @@ void RefreshCaptionQuoteCaches(
 
 } // namespace
 
-class OverlayWidget::SponsoredButton : public Ui::RippleButton {
-public:
-	SponsoredButton(QWidget *parent)
-	: Ui::RippleButton(parent, st::mediaviewSponsoredButton.ripple) {
-	}
-
-	void setText(QString text) {
-		_text = Ui::Text::String(
-			st::mediaviewSponsoredButton.style,
-			std::move(text),
-			kDefaultTextOptions,
-			width());
-		resize(width(), _text.minHeight() * 2);
-	}
-	void setOpacity(float opacity) {
-		_opacity = opacity;
-	}
-
-protected:
-	void paintEvent(QPaintEvent *e) override {
-		auto p = QPainter(this);
-		const auto &st = st::mediaviewSponsoredButton;
-
-		p.setOpacity(_opacity);
-
-		const auto over = Ui::AbstractButton::isOver();
-		const auto down = Ui::AbstractButton::isDown();
-		{
-			auto hq = PainterHighQualityEnabler(p);
-			p.setPen(Qt::NoPen);
-			p.setBrush((over || down) ? st.textBgOver : st.textBg);
-			p.drawRoundedRect(
-				rect(),
-				st::mediaviewCaptionRadius,
-				st::mediaviewCaptionRadius);
-		}
-
-		Ui::RippleButton::paintRipple(p, 0, 0);
-
-		p.setPen(st.textFg);
-		p.setBrush(Qt::NoBrush);
-		_text.draw(p, {
-			.position = QPoint(
-				(width() - _text.maxWidth()) / 2,
-				(height() - _text.minHeight()) / 2),
-			.outerWidth = width(),
-			.availableWidth = width(),
-		});
-	}
-
-	QImage prepareRippleMask() const override {
-		return Ui::RippleAnimation::RoundRectMask(
-			size(),
-			st::mediaviewCaptionRadius);
-	}
-	QPoint prepareRippleStartPosition() const override {
-		return mapFromGlobal(QCursor::pos())
-			- rect::m::pos::tl(st::mediaviewSponsoredButton.padding);
-	}
-
-private:
-	Ui::Text::String _text;
-	float64 _opacity = 1.;
-
-};
-
 
 struct OverlayWidget::SharedMedia {
 	SharedMedia(SharedMediaKey key) : key(key) {
@@ -486,7 +417,6 @@ struct OverlayWidget::Streamed {
 
 	Streaming::Instance instance;
 	std::unique_ptr<PlaybackControls> controls;
-	std::unique_ptr<PlaybackSponsored> sponsored;
 	std::unique_ptr<base::PowerSaveBlocker> powerSaveBlocker;
 
 	bool ready = false;
@@ -1040,8 +970,6 @@ void OverlayWidget::setupWindow() {
 				&& (widgetPoint.y() > st::mediaviewHeaderTop)
 				&& QRect(_x, _y, _w, _h).contains(widgetPoint)) {
 		} else if (_stories && _stories->ignoreWindowMove(widgetPoint)) {
-		} else if (_sponsoredButton
-			&& _sponsoredButton->geometry().contains(widgetPoint)) {
 		} else if (_showRecognitionResults
 			&& _recognitionResult.success
 			&& !_recognitionResult.items.empty()
@@ -1892,13 +1820,11 @@ void OverlayWidget::resizeCenteredControls() {
 	_groupThumbsTop = _groupThumbs ? (height() - _groupThumbs->height()) : 0;
 
 	refreshClipControllerGeometry();
-	refreshSponsoredButtonGeometry();
 	refreshVoteButton();
 	refreshPollVotersWidget();
 	refreshVoteButtonGeometry();
 	refreshPollVotersWidgetGeometry();
 	refreshCaptionGeometry();
-	refreshSponsoredButtonWidth();
 
 	_pollUpdateLifetime.destroy();
 	if (currentPollAnswer()) {
@@ -1941,8 +1867,6 @@ void OverlayWidget::refreshCaptionGeometry() {
 	}
 	const auto captionBottom = _stories
 		? (_y + _h)
-		: _sponsoredButton
-		? (_sponsoredButton->y() - st::mediaviewCaptionMargin.height())
 		: _voteButton
 		? (_voteButton->y() - st::mediaviewCaptionMargin.height())
 		: _pollVotersWidget
@@ -1989,40 +1913,6 @@ void OverlayWidget::refreshCaptionGeometry() {
 			- st::mediaviewCaptionPadding.bottom()),
 		captionWidth,
 		captionHeight);
-}
-
-void OverlayWidget::refreshSponsoredButtonGeometry() {
-	if (!_sponsoredButton) {
-		return;
-	}
-	const auto controllerBottom = (_groupThumbs && !_fullScreenVideo)
-		? _groupThumbsTop
-		: height();
-	const auto captionRect = captionGeometry();
-	_sponsoredButton->resize(
-		captionRect.width(),
-		_sponsoredButton->height());
-	_sponsoredButton->move(
-		(width() - captionRect.width()) / 2,
-		(controllerBottom // Duplicated in recountSkipTop().
-			- ((_streamed && _streamed->controls)
-				? (_streamed->controls->height()
-					+ st::mediaviewCaptionPadding.bottom())
-				: 0)
-			- _sponsoredButton->height()
-			- st::mediaviewCaptionMargin.height()));
-	Ui::SendPendingMoveResizeEvents(_sponsoredButton.get());
-}
-
-void OverlayWidget::refreshSponsoredButtonWidth() {
-	if (!_sponsoredButton) {
-		return;
-	}
-	const auto captionWidth = captionGeometry().width();
-	_sponsoredButton->resize(captionWidth, _sponsoredButton->height());
-	_sponsoredButton->move(
-		(width() - captionWidth) / 2,
-		_sponsoredButton->y());
 }
 
 const PollAnswer *OverlayWidget::currentPollAnswer() const {
@@ -2203,18 +2093,6 @@ void OverlayWidget::refreshPollVotersWidgetGeometry() {
 
 void OverlayWidget::fillContextMenuActions(
 		const Ui::Menu::MenuCallback &addAction) {
-	if (_message && _message->isSponsored()) {
-		if (const auto window = findWindow()) {
-			const auto show = window->uiShow();
-			const auto fullId = _message->fullId();
-			Menu::FillSponsored(
-				addAction,
-				show,
-				fullId,
-				{ .dark = true, .skipInfo = true });
-		}
-		return;
-	}
 	if (_message) {
 		const auto media = _message->media();
 		const auto invoice = media ? media->invoice() : nullptr;
@@ -2559,13 +2437,6 @@ bool OverlayWidget::updateControlsAnimation(crl::time now) {
 		updateCursor();
 	} else {
 		_controlsOpacity.update(dt, anim::linear);
-	}
-	if (_sponsoredButton) {
-		const auto value = _controlsOpacity.current();
-		_sponsoredButton->setOpacity(value);
-		_sponsoredButton->setAttribute(
-			Qt::WA_TransparentForMouseEvents,
-			value < 1);
 	}
 	if (_voteButton) {
 		const auto value = _controlsOpacity.current();
@@ -4194,12 +4065,6 @@ void OverlayWidget::refreshCaption() {
 			}
 			if (const auto media = _message->media()) {
 				if (media->webpage()) {
-					if (_message->isSponsored()) {
-						return TextWithEntities()
-							.append(tr::bold(media->webpage()->title))
-							.append('\n')
-							.append(media->webpage()->description);
-					}
 					return TextWithEntities();
 				} else if (const auto poll = media->poll()) {
 					const auto current = _photo
@@ -4649,8 +4514,6 @@ void OverlayWidget::displayPhoto(
 
 	tryStartTextRecognition();
 
-	initSponsoredButton();
-
 	refreshCaption();
 
 	_blurred = true;
@@ -4750,7 +4613,6 @@ void OverlayWidget::displayDocument(
 				).toImage());
 			}
 		} else {
-			initSponsoredButton();
 			if (_documentMedia->canBePlayed()
 				&& initStreaming(startStreaming)) {
 			} else if (_document->isVideoFile()) {
@@ -4876,30 +4738,6 @@ void OverlayWidget::displayVideoStream(
 	contentSizeChanged();
 	_blurred = false;
 	displayFinished(activation);
-}
-
-void OverlayWidget::initSponsoredButton() {
-	const auto has = _message && _message->isSponsored() && _session;
-	if (has && _sponsoredButton) {
-		return;
-	} else if (!has && _sponsoredButton) {
-		_sponsoredButton = nullptr;
-		return;
-	} else if (!has && !_sponsoredButton) {
-		return;
-	}
-	const auto sponsoredMessages = &_session->sponsoredMessages();
-	const auto fullId = _message->fullId();
-	const auto details = sponsoredMessages->lookupDetails(fullId);
-	_sponsoredButton = base::make_unique_q<SponsoredButton>(_body);
-	_sponsoredButton->setText(details.buttonText);
-	_sponsoredButton->setOpacity(1.0);
-
-	_sponsoredButton->setClickedCallback([=, link = details.link] {
-		UrlClickHandler::Open(link);
-		sponsoredMessages->clicked(fullId, false, true);
-		hide();
-	});
 }
 
 void OverlayWidget::updateThemePreviewGeometry() {
@@ -5055,9 +4893,6 @@ void OverlayWidget::markStreamedReady() {
 		return;
 	}
 	_streamed->ready = true;
-	if (const auto sponsored = _streamed->sponsored.get()) {
-		sponsored->start();
-	}
 }
 
 void OverlayWidget::initStreamingThumbnail() {
@@ -5201,18 +5036,6 @@ bool OverlayWidget::createStreamingObjects() {
 			_body,
 			static_cast<PlaybackControls::Delegate*>(this));
 		_streamed->controls->show();
-		_streamed->sponsored = PlaybackSponsored::Has(_message)
-			? std::make_unique<PlaybackSponsored>(
-				_streamed->controls.get(),
-				uiShow(),
-				_message)
-			: nullptr;
-		if (const auto sponsored = _streamed->sponsored.get()) {
-			_layerBg->layerShownValue(
-			) | rpl::on_next([=](bool shown) {
-				sponsored->setPaused(shown);
-			}, sponsored->lifetime());
-		}
 		refreshClipControllerGeometry();
 	}
 	return true;
@@ -8502,20 +8325,7 @@ void OverlayWidget::handleMouseRelease(
 				if (_over == Over::Video
 					&& _streamed
 					&& !_window->mousePressCancelled()) {
-					if (_sponsoredButton && _session && _message) {
-						const auto sponsoredMessages
-							= &_session->sponsoredMessages();
-						const auto fullId = _message->fullId();
-						const auto details = sponsoredMessages->lookupDetails(
-							fullId);
-						if (const auto link = details.link; !link.isEmpty()) {
-							UrlClickHandler::Open(link);
-							sponsoredMessages->clicked(fullId, true, true);
-							hide();
-						}
-					} else {
-						playbackPauseResume();
-					}
+					playbackPauseResume();
 				}
 			}
 		}
@@ -8849,7 +8659,6 @@ void OverlayWidget::clearBeforeHide() {
 	_helper->setControlsOpacity(1.);
 	_groupThumbs = nullptr;
 	_groupThumbsRect = QRect();
-	_sponsoredButton = nullptr;
 	_voteButton.destroy();
 	_pollVotersWidget.destroy();
 	_pollUpdateLifetime.destroy();

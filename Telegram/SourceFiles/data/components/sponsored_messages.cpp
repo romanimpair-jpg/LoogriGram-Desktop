@@ -98,7 +98,6 @@ void SponsoredMessages::clearOldRequests() {
 		}
 	};
 	clear(_requests);
-	clear(_requestsForVideo);
 }
 
 SponsoredMessages::AppendResult SponsoredMessages::append(
@@ -355,78 +354,6 @@ void SponsoredMessages::request(not_null<History*> history, Fn<void()> done) {
 	}).send();
 }
 
-void SponsoredMessages::requestForVideo(
-		not_null<HistoryItem*> item,
-		Fn<void(SponsoredForVideo)> done) {
-	Expects(done != nullptr);
-
-	if (!canHaveFor(item)) {
-		done({});
-		return;
-	}
-	const auto peer = item->history()->peer;
-	auto &request = _requestsForVideo[peer];
-	if (TooEarlyForRequest(request.lastReceived)) {
-		auto prepared = prepareForVideo(peer);
-		if (prepared.list.empty()
-			|| prepared.state.itemIndex < prepared.list.size()
-			|| prepared.state.leftTillShow > 0) {
-			done(std::move(prepared));
-			return;
-		}
-	}
-	request.callbacks.push_back(std::move(done));
-	if (request.requestId) {
-		return;
-	}
-	{
-		const auto it = _dataForVideo.find(peer);
-		if (it != end(_dataForVideo)) {
-			const auto &list = it->second;
-			// Don't rebuild currently displayed messages.
-			const auto proj = [](const Entry &e) {
-				return e.item != nullptr;
-			};
-			if (ranges::any_of(list.entries, proj)) {
-				return;
-			}
-		}
-	}
-	const auto finish = [=] {
-		const auto i = _requestsForVideo.find(peer);
-		if (i != end(_requestsForVideo)) {
-			for (const auto &callback : base::take(i->second.callbacks)) {
-				callback(prepareForVideo(peer));
-			}
-		}
-	};
-	using Flag = MTPmessages_GetSponsoredMessages::Flag;
-	request.requestId = _session->api().request(
-		MTPmessages_GetSponsoredMessages(
-			MTP_flags(Flag::f_msg_id),
-			peer->input(),
-			MTP_int(item->id.bare))
-	).done([=](const MTPmessages_sponsoredMessages &result) {
-		parseForVideo(peer, result);
-		finish();
-	}).fail([=] {
-		_requestsForVideo.remove(peer);
-		finish();
-	}).send();
-}
-
-void SponsoredMessages::updateForVideo(
-		FullMsgId itemId,
-		SponsoredForVideoState state) {
-	if (state.initial()) {
-		return;
-	}
-	const auto i = _dataForVideo.find(_session->data().peer(itemId.peer));
-	if (i != end(_dataForVideo)) {
-		i->second.state = state;
-	}
-}
-
 void SponsoredMessages::parse(
 		not_null<History*> history,
 		const MTPmessages_sponsoredMessages &list) {
@@ -460,52 +387,6 @@ void SponsoredMessages::parse(
 		}
 	}, [](const MTPDmessages_sponsoredMessagesEmpty &) {
 	});
-}
-
-void SponsoredMessages::parseForVideo(
-		not_null<PeerData*> peer,
-		const MTPmessages_sponsoredMessages &list) {
-	auto &request = _requestsForVideo[peer];
-	request.lastReceived = crl::now();
-	request.requestId = 0;
-	if (!_clearTimer.isActive()) {
-		_clearTimer.callOnce(kRequestTimeLimit * 2);
-	}
-
-	list.match([&](const MTPDmessages_sponsoredMessages &data) {
-		_session->data().processUsers(data.vusers());
-		_session->data().processChats(data.vchats());
-
-		const auto history = _session->data().history(peer);
-		const auto &messages = data.vmessages().v;
-		auto &list = _dataForVideo.emplace(peer).first->second;
-		list.entries.clear();
-		list.received = crl::now();
-		list.startDelay = data.vstart_delay().value_or_empty() * kMs;
-		list.betweenDelay = data.vbetween_delay().value_or_empty() * kMs;
-		for (const auto &message : messages) {
-			append([=] {
-				return &_dataForVideo[peer].entries;
-			}, history, message);
-		}
-	}, [](const MTPDmessages_sponsoredMessagesEmpty &) {
-	});
-}
-
-SponsoredForVideo SponsoredMessages::prepareForVideo(
-		not_null<PeerData*> peer) {
-	const auto i = _dataForVideo.find(peer);
-	if (i == end(_dataForVideo) || i->second.entries.empty()) {
-		return {};
-	}
-	return SponsoredForVideo{
-		.list = i->second.entries | ranges::views::transform(
-			&Entry::sponsored
-		) | ranges::to_vector,
-		.startDelay = i->second.startDelay,
-		.betweenDelay = i->second.betweenDelay,
-		.state = i->second.state,
-	};
 }
 
 FullMsgId SponsoredMessages::fillTopBar(
