@@ -25,6 +25,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
 
+#include <zlib.h>
+
 namespace Core::LoogriGram {
 namespace {
 
@@ -36,7 +38,11 @@ constexpr auto kLatestReleaseUrl = "https://api.github.com/repos/"
 
 // The asset CI attaches to every release. Only Windows is published, so on
 // any other platform the lookup simply finds nothing and the check stops.
-constexpr auto kAssetName = "LoogriGram.exe";
+//
+// Shipped gzipped: the binary is ~220MB raw and ~71MB compressed, measured on
+// a real build, and zlib is already linked and already decoding gzip streams
+// elsewhere in the tree, so the saving costs almost nothing.
+constexpr auto kAssetName = "LoogriGram.exe.gz";
 
 // Let the app finish starting before spending bandwidth on this. Nothing
 // depends on the result, so being late costs nothing.
@@ -46,6 +52,13 @@ constexpr auto kStartDelay = crl::time(10000);
 // GitHub over TLS for that - it only stops an error page or a truncated
 // download from being swapped in as if it were the program.
 constexpr auto kMinimumSize = 32 * 1024 * 1024;
+
+// Refuse to keep inflating past this. Nothing we publish comes close, and it
+// means a malformed or hostile stream cannot expand until we run out of
+// memory.
+constexpr auto kMaximumSize = 512 * 1024 * 1024;
+
+constexpr auto kInflateChunk = 1024 * 1024;
 
 bool Started/* = false*/;
 
@@ -78,6 +91,43 @@ struct State final : QObject {
 		QNetworkRequest::RedirectPolicyAttribute,
 		QNetworkRequest::NoLessSafeRedirectPolicy);
 	return request;
+}
+
+// The release asset is a gzip stream. 16 + MAX_WBITS is what tells zlib to
+// expect a gzip header rather than a raw zlib one - the same incantation
+// session_private.cpp and mtproto_dump_to_text.cpp already use.
+[[nodiscard]] QByteArray Ungzip(QByteArray packed) {
+	auto stream = z_stream();
+	const auto init = inflateInit2(&stream, 16 + MAX_WBITS);
+	if (init != Z_OK) {
+		LOG(("Update Error: could not init zlib, code %1.").arg(init));
+		return {};
+	}
+	const auto guard = gsl::finally([&] { inflateEnd(&stream); });
+	stream.avail_in = uInt(packed.size());
+	stream.next_in = reinterpret_cast<Bytef*>(packed.data());
+
+	auto result = QByteArray();
+	while (true) {
+		const auto already = result.size();
+		if (already > kMaximumSize) {
+			LOG(("Update Error: download expands past %1 bytes."
+				).arg(kMaximumSize));
+			return {};
+		}
+		result.resize(already + kInflateChunk);
+		stream.avail_out = uInt(kInflateChunk);
+		stream.next_out = reinterpret_cast<Bytef*>(result.data() + already);
+		const auto res = inflate(&stream, Z_NO_FLUSH);
+		if (res != Z_OK && res != Z_STREAM_END) {
+			LOG(("Update Error: could not unpack, code %1.").arg(res));
+			return {};
+		}
+		result.resize(already + kInflateChunk - int(stream.avail_out));
+		if (res == Z_STREAM_END) {
+			return result;
+		}
+	}
 }
 
 void ShowRestartBox() {
@@ -150,7 +200,9 @@ void DownloadAndApply(not_null<State*> state, const QString &url) {
 			LOG(("Update Error: download failed, %1."
 				).arg(reply->errorString()));
 			return;
-		} else if (ApplyUpdate(reply->readAll())) {
+		}
+		const auto unpacked = Ungzip(reply->readAll());
+		if (!unpacked.isEmpty() && ApplyUpdate(unpacked)) {
 			ShowRestartBox();
 		}
 	});

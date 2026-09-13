@@ -529,6 +529,35 @@ jobs:
           rem here costs about forty minutes, so collecting them matters.
           cmake --build ..\out --config ${{ inputs.config }} --parallel -- -k 0
 
+      # Free measurement, to decide later whether splitting Qt and OpenSSL out
+      # of the binary is worth doing. Static library sizes are an upper bound,
+      # not a contribution: /OPT:REF drops everything the link never
+      # references, so a 60MB .lib may put a fraction of that in the exe. Read
+      # them as a ranking of candidates, not as a breakdown - only a linker map
+      # answers it properly, and that needs a linker flag this build does not
+      # carry.
+      - name: Report size composition.
+        if: always() && inputs.mode == 'build'
+        shell: bash
+        run: |
+          OUT="$TBUILD/$REPO_NAME/out/${{ inputs.config }}"
+          echo "== final binary =="
+          ls -l "$OUT/LoogriGram.exe" 2>/dev/null || echo "  (not built)"
+          echo
+          echo "== our compiled objects (upper bound on 'our code') =="
+          du -sh "$OUT/Telegram" 2>/dev/null || echo "  (none)"
+          echo
+          echo "== 25 largest dependency static libs =="
+          find "$LibrariesPath" -name "*.lib" -o -name "*.a" 2>/dev/null |
+            while read -r f; do echo "$(stat -c %s "$f") $f"; done |
+            sort -rn | head -25 |
+            awk '{ s = $1; $1 = ""; printf "%9.1f MB %s\n", s/1048576, $0 }'
+          echo
+          echo "== total of all dependency static libs =="
+          find "$LibrariesPath" -name "*.lib" -o -name "*.a" 2>/dev/null |
+            while read -r f; do stat -c %s "$f"; done |
+            awk '{ t += $1 } END { printf "%9.1f MB across %d files\n", t/1048576, NR }'
+
       # Saved even when the compile fails, so a broken build still leaves the
       # objects that did compile for the next run to reuse.
       - name: Save build tree cache.
@@ -592,7 +621,13 @@ jobs:
             echo "replacing existing release $BUILD_TAG"
             gh release delete "$BUILD_TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
           fi
-          gh release create "$BUILD_TAG" artifact/LoogriGram.exe \
+          # ~220MB raw, ~71MB gzipped, measured on a real build. The updater
+          # inflates it with zlib, which is already linked and already decodes
+          # gzip streams elsewhere in the tree. The uploaded artifact above
+          # stays uncompressed - that one is for us, not for the updater.
+          gzip -9 -c artifact/LoogriGram.exe > artifact/LoogriGram.exe.gz
+          ls -l artifact/
+          gh release create "$BUILD_TAG" artifact/LoogriGram.exe.gz \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "$BUILD_TAG" \

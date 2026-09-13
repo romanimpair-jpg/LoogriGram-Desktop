@@ -261,6 +261,31 @@ nothing about the account — an unauthenticated GET of a public endpoint.
 - **A locally built binary never updates itself.** The committed tag is `"dev"`,
   which matches no release; the updater refuses to run unless the tag looks
   real, otherwise every local build would immediately overwrite itself with CI's.
+- **The asset is gzipped.** Measured on a real build: 220MB raw, 71MB with
+  gzip, 57MB with xz. gzip wins because zlib is already linked *and already
+  decoding gzip streams* - `inflateInit2(&stream, 16 + MAX_WBITS)` appears
+  twice in the tree - so it cost about thirty lines, while xz would add a
+  dependency for another 14MB. The uploaded CI artifact stays uncompressed;
+  only the release asset is packed.
+- **Why not ship Qt and OpenSSL separately and update only our code?** Because
+  static linking means they do not exist as separate things: the linker takes
+  only the objects we reference, drops the rest (`/OPT:REF`), and lays the
+  survivors out among ours, so identical Qt code lands at different offsets
+  whenever our code changes size. Getting that would mean linking dynamically -
+  rebuilding every dependency as a shared library, which is the most fragile
+  part of this build - and multi-file updates then lose atomicity, need a
+  helper process that runs after exit, and need a manifest of files and hashes.
+  That is Telegram's packed-archive plus `Updater.exe` design, reinvented. The
+  `Report size composition.` CI step exists to price this properly before
+  anyone tries: it ranks the dependency static libs by size. Read it as a
+  ranking only - `/OPT:REF` means a 60MB `.lib` may contribute a fraction of
+  that, and only a linker map answers it exactly.
+- **Deltas are a separate question from file count** - a single 220MB file can
+  be binary-diffed fine. Not done: executables delta poorly under naive bsdiff
+  because relinking shifts every address (this is why Chrome built Courgette),
+  our builds relink wholesale every time since the stamped tag guarantees it,
+  and a corrupt patch produces a subtly broken binary that still passes the
+  `MZ` check. Worth revisiting only if updating becomes frequent.
 - **Trust is GitHub over TLS**, deliberately — no signature checking. The
   exposure is that whoever controls the GitHub account can push a binary this
   machine will run. The size and `MZ` checks before swapping are not security;
