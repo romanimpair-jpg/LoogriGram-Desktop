@@ -1057,13 +1057,9 @@ void Widget::chosenRow(const ChosenRow &row) {
 			session().data().saveViewAsMessages(topic->forum(), false);
 			controller()->showThread(topic, row.message.fullId.msg, params);
 		}
-	} else if (history
-		&& row.userpicClick
-		&& (row.message.fullId.msg == ShowAtUnreadMsgId)
-		&& history->peer->hasActiveStories()
-		&& !history->peer->isSelf()) {
-		controller()->openPeerStories(history->peer->id);
-		return;
+	// LoogriGram: a click on a chat list userpic opens the chat, as a click
+	// anywhere else on the row does. Upstream opened that peer's stories
+	// instead whenever they had any.
 	} else if (userpicCommunity) {
 		controller()->showPeerInfo(userpicCommunity);
 		return;

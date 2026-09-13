@@ -386,11 +386,8 @@ void WrapWidget::createTopBar() {
 			_controller->parentController()->closeThirdSection();
 		});
 	}
-	_topBar->storyClicks() | rpl::on_next([=] {
-		if (const auto peer = _controller->key().peer()) {
-			_controller->parentController()->openPeerStories(peer->id);
-		}
-	}, _topBar->lifetime());
+	// LoogriGram: the info top bar no longer opens stories when its userpic
+	// is clicked - see info_profile_top_bar.cpp for the same removal.
 	if (wrapValue == Wrap::Layer) {
 		auto close = _topBar->addButton(
 			base::make_unique_q<Ui::IconButton>(

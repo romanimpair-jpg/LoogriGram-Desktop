@@ -507,8 +507,6 @@ PRIVATE
     ui/controls/send_as_button.h
     ui/controls/send_button.cpp
     ui/controls/send_button.h
-    ui/controls/stars_rating.cpp
-    ui/controls/stars_rating.h
     ui/controls/subsection_tabs_slider.cpp
     ui/controls/subsection_tabs_slider.h
     ui/controls/subsection_tabs_slider_reorder.cpp

@@ -735,16 +735,15 @@ void Row::paintUserpic(
 	const auto cornerBadgeShown = !_cornerBadgeUserpic
 		? _cornerBadgeShown
 		: !_cornerBadgeUserpic->layersManager.isDisplayedNone();
-	const auto storiesPeer = peer
-		? ((peer->isUser() || peer->isChannel()) ? peer : nullptr)
-		: nullptr;
-	const auto storiesFolder = peer ? nullptr : _id.folder();
-	const auto storiesHas = storiesPeer
-		? storiesPeer->hasActiveStories()
-		: storiesFolder
-		? (storiesFolder->storiesCount() > 0)
-		: false;
-	if (!cornerBadgeShown && !storiesHas) {
+	// LoogriGram: no story ring around chat list userpics. Stories attached to
+	// a peer are not surfaced any more - the userpic click opens the chat like
+	// the rest of the row - so a ring here would be decoration promising
+	// something that no longer happens. These stay as named constants because
+	// the corner badge frame below is cached on them.
+	const auto storiesCount = 0;
+	const auto storiesUnreadCount = 0;
+	const auto storiesHasVideoStream = 0;
+	if (!cornerBadgeShown) {
 		BasicRow::paintUserpic(p, entry, peer, videoUserpic, context, false);
 		if (!peer || !_cornerBadgeShown) {
 			_cornerBadgeUserpic = nullptr;
@@ -760,31 +759,6 @@ void Row::paintUserpic(
 	const auto frameSide = (2 * framePadding + context.st->photoSize)
 		* ratio;
 	const auto frameSize = QSize(frameSide, frameSide);
-	const auto storiesSource = (storiesHas && storiesPeer)
-		? storiesPeer->owner().stories().source(storiesPeer->id)
-		: nullptr;
-	const auto storiesCountReal = storiesSource
-		? int(storiesSource->ids.size())
-		: storiesFolder
-		? storiesFolder->storiesCount()
-		: storiesHas
-		? 1
-		: 0;
-	const auto storiesUnreadCountReal = storiesSource
-		? storiesSource->unreadCount()
-		: storiesFolder
-		? storiesFolder->storiesUnreadCount()
-		: (storiesPeer && storiesPeer->hasUnreadStories())
-		? 1
-		: 0;
-	const auto storiesHasVideoStream = storiesSource
-		? storiesSource->hasVideoStream
-		: (storiesPeer && storiesPeer->hasActiveVideoStream())
-		? 1
-		: 0;
-	const auto limit = Ui::kOutlineSegmentsMax;
-	const auto storiesCount = std::min(storiesCountReal, limit);
-	const auto storiesUnreadCount = std::min(storiesUnreadCountReal, limit);
 	if (_cornerBadgeUserpic->frame.size() != frameSize) {
 		_cornerBadgeUserpic->frame = QImage(
 			frameSize,

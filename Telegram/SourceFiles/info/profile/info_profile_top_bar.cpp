@@ -69,7 +69,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/sections/settings_premium.h"
 #include "ui/boxes/show_or_premium_box.h"
 #include "ui/color_contrast.h"
-#include "ui/controls/stars_rating.h"
 #include "ui/controls/swipe_handler.h"
 #include "ui/controls/userpic_button.h"
 #include "ui/effects/animated_string.h"
@@ -393,16 +392,6 @@ TopBar::TopBar(
 			: st::infoProfileTopBarActionButtonsHeight);
 }())
 , _title(this, nameValue(), _st.title)
-, _starsRating((_peer->isUser() && !_savedMessages)
-	? std::make_unique<Ui::StarsRating>(
-		this,
-		descriptor.controller->uiShow(),
-		_peer->isSelf() ? QString() : _peer->shortName(),
-		Data::StarsRatingValue(_peer),
-		(_peer->isSelf()
-			? [=] { return _peer->owner().pendingStarsRating(); }
-			: Fn<Data::StarsRatingPending()>()))
-	: nullptr)
 , _status(this, QString(), statusStyle())
 , _statusLabel(std::make_unique<StatusLabel>(_status.data(), _peer))
 , _customStatus(std::move(descriptor.customStatus))
@@ -726,56 +715,30 @@ void TopBar::adjustColors(const std::optional<QColor> &edgeColor) {
 		: &st::infoColoredPeerBadge
 		: nullptr);
 
-	if (_starsRating) {
-		const auto shouldOverrideRating = shouldOverride(st::windowBgActive);
-		_starsRating->setCustomColors(
-			shouldOverrideRating
-				? edgeColor
-				: std::nullopt,
-			shouldOverrideRating
-				? std::make_optional<QColor>(st::windowFgActive->c)
-				: std::nullopt);
-	}
-
 	_edgeColor = edgeColor;
 }
 
 void TopBar::updateCollectibleStatus() {
+	// LoogriGram: profiles have no decorated background. The gradient, the
+	// solid colour band and the pattern emoji behind the header all come from
+	// a bought peer colour or a collectible gift, which is the premium economy
+	// wearing a different hat - and this fork has no premium surfaces. Killing
+	// the three inputs here turns every painter below into its plain branch,
+	// which is the same one a peer without any of this always took.
+	// The collectible and colour profile are still read below, for the badge
+	// and text colours that have to stay legible - only the background they
+	// also drove is dropped.
 	const auto collectible = effectiveCollectible();
 	const auto colorProfile = effectiveColorProfile();
-	_hasGradientBg = (collectible != nullptr)
-		|| (colorProfile && colorProfile->bg.size() > 1);
-	_solidBg = (colorProfile && colorProfile->bg.size() == 1)
-		? std::make_optional(colorProfile->bg.front())
-		: std::nullopt;
+	_hasGradientBg = false;
+	_solidBg = std::nullopt;
 	_cachedClipPath = QPainterPath();
 	_cachedGradient = QImage();
 	_basePatternImage = QImage();
 	_lastUserpicRect = QRect();
-	const auto patternEmojiId = _localPatternEmojiId
-		? *_localPatternEmojiId
-		: collectible && collectible->patternDocumentId
-		? collectible->patternDocumentId
-		: _peer->profileBackgroundEmojiId();
-	if (patternEmojiId) {
-		const auto document = _peer->owner().document(patternEmojiId);
-		if (!_patternEmoji
-			|| _patternEmoji->entityData()
-				!= Data::SerializeCustomEmojiId(document)) {
-			_patternEmoji = document->owner().customEmojiManager().create(
-				document,
-				[=] { update(); },
-				Data::CustomEmojiSizeTag::Normal);
-		}
-	} else {
-		_patternEmoji = nullptr;
-	}
-	if (collectible || _localPatternEmojiId) {
-		setupAnimatedPattern();
-	} else {
-		_animatedPoints.clear();
-		_pinnedToTopGifts.clear();
-	}
+	_patternEmoji = nullptr;
+	_animatedPoints.clear();
+	_pinnedToTopGifts.clear();
 	const auto verifiedFg = [&]() -> std::optional<QColor> {
 		if (collectible) {
 			return Ui::BlendColors(
@@ -1611,9 +1574,12 @@ void TopBar::setupUserpicButton(
 						});
 					}
 				}
-			} else if (_hasStories) {
-				controller->openPeerStories(_peer->id);
 			} else {
+				// LoogriGram: clicking a profile photo opens the profile
+				// photo. Upstream hijacks this click whenever the peer has
+				// an active story and shows that instead, which is how you
+				// end up watching a story when you meant to look at someone's
+				// profile. There is no story branch here any more.
 				openPhoto();
 			}
 		}
@@ -2058,7 +2024,6 @@ void TopBar::updateStatusPosition(float64 progressCurrent) {
 		_forumButton->setVisible(!tabSwapActive());
 
 		_status->hide();
-		// _starsRating->hide();
 		_showLastSeen->hide(anim::type::instant);
 		return;
 	}
@@ -2077,17 +2042,12 @@ void TopBar::updateStatusPosition(float64 progressCurrent) {
 		st::infoProfileTopBarStatusTop,
 		progressCurrent) + swapShift;
 	const auto totalElementsWidth = _status->width()
-		+ (_starsRating ? _starsRating->width() : 0)
 		+ (_showLastSeen->toggled() ? _showLastSeen->width() : 0);
 	const auto statusLeft = anim::interpolate(
 		statusMostLeft(),
 		(width() - totalElementsWidth) / 2,
 		progressCurrent);
 
-	if (const auto rating = _starsRating.get()) {
-		rating->moveTo(statusLeft, statusTop - st::lineWidth);
-		rating->setOpacity(progressCurrent);
-	}
 	const auto statusShift = _statusShift.current()
 		* std::clamp((progressCurrent) / 0.15, 0., 1.);
 
@@ -3775,12 +3735,11 @@ void TopBar::updateStoryOutline(std::optional<QColor> edgeColor) {
 		return;
 	}
 
-	const auto hasActiveStories = (_source == Source::Preview)
-		? true
-		: (user ? user->hasActiveStories() : channel->hasActiveStories());
-	const auto hasLiveStories = (_source == Source::Preview)
-		? false
-		: (user ? user->hasActiveVideoStream() : false);
+	// LoogriGram: no story ring around the profile photo. The click that ring
+	// advertised now opens the photo, so drawing it would promise something
+	// that no longer happens.
+	const auto hasActiveStories = false;
+	const auto hasLiveStories = false;
 
 	if (_hasStories != hasActiveStories
 		|| _hasLiveStories != hasLiveStories) {
@@ -3917,13 +3876,6 @@ void TopBar::bindStatus() {
 
 void TopBar::setupStatusWithRating() {
 	_status->setAttribute(Qt::WA_TransparentForMouseEvents);
-	if (const auto rating = _starsRating.get()) {
-		_statusShift = rating->widthValue();
-		_statusShift.changes() | rpl::on_next([=] {
-			updateLabelsPosition();
-		}, _status->lifetime());
-		rating->raise();
-	}
 }
 
 rpl::producer<std::optional<QColor>> TopBar::edgeColor() const {

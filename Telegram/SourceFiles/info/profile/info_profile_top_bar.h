@@ -64,7 +64,6 @@ class LabelWithNumbers;
 class MarqueeLabel;
 class PopupMenu;
 class RoundButton;
-class StarsRating;
 template <typename Widget>
 class FadeWrap;
 class HorizontalFitContainer;
@@ -271,7 +270,6 @@ private:
 	uint64 _badgeCollectibleId = 0;
 
 	object_ptr<Ui::MarqueeLabel> _title;
-	std::unique_ptr<Ui::StarsRating> _starsRating;
 	std::unique_ptr<Ui::AnimatedString> _tabSubtitle;
 	QString _tabSubtitleText;
 	std::optional<QColor> _tabSubtitleOverride;

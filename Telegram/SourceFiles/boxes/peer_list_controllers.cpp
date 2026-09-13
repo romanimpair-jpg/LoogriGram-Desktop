@@ -564,41 +564,15 @@ void PeerListStories::updateFor(uint64 id, Counts counts) {
 }
 
 void PeerListStories::process(not_null<PeerListRow*> row) {
-	const auto user = row->peer()->asUser();
-	if (!user) {
-		return;
-	}
-	const auto stories = &_session->data().stories();
-	const auto source = stories->source(user->id);
-	const auto count = source
-		? int(source->ids.size())
-		: user->hasActiveStories()
-		? 1
-		: 0;
-	const auto unread = source
-		? int(source->info().unreadCount)
-		: user->hasUnreadStories()
-		? 1
-		: 0;
-	const auto videoStream = source
-		? bool(source->info().hasVideoStream)
-		: user->hasActiveVideoStream();
-	applyForRow(row, { count, unread, videoStream }, true);
+	// LoogriGram: no story ring on peer list rows. The click it advertised is
+	// gone from handleClick below, so painting one would only promise
+	// something that no longer happens.
 }
 
-bool PeerListStories::handleClick(not_null<PeerData*> peer) {
-	const auto point = _delegate->peerListLastRowMousePosition();
-	const auto &st = _controller->computeListSt().item;
-	if (point && point->x() < st.photoPosition.x() + st.photoSize) {
-		if (const auto window = peer->session().tryResolveWindow()) {
-			if (const auto user = peer->asUser()) {
-				if (user->hasActiveStories()) {
-					window->openPeerStories(peer->id);
-					return true;
-				}
-			}
-		}
-	}
+bool PeerListStories::handleClick(not_null<PeerData*>) {
+	// LoogriGram: clicking the userpic in a peer list row used to open that
+	// user's stories instead of the row's own action. Returning false leaves
+	// the click to the list, which does what the rest of the row does.
 	return false;
 }
 
