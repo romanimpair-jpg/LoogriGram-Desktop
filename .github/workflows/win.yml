@@ -64,7 +64,20 @@ jobs:
     strategy:
       matrix:
         arch: [x64]
-        qt: [qt6]
+        # LoogriGram: empty means upstream's default Qt, which on Windows is
+        # Qt 5 - and that is what the official client actually ships. It
+        # matters far beyond the version number: ANGLE is compiled in only
+        # when QT_VERSION < 6 (lib_ui, ui/gl/gl_detection.h), so Qt 5 puts us
+        # on the OpenGL renderer the official build uses, while Qt 6 has no
+        # ANGLE and falls through to QRhi/D3D11.
+        #
+        # This was never a decision. Upstream builds x64 twice, qt: ["", qt6],
+        # and trimming the matrix to one entry kept the wrong one - which put
+        # us alone on a renderer the official Windows build never exercises.
+        # The media viewer's white flash on every open was the first bug that
+        # came of it: it lives in media_view_overlay_rhi.cpp, and the official
+        # client cannot reproduce it because it never runs that file.
+        qt: [""]
         generator: ["Ninja Multi-Config"]
 
     env:
@@ -85,7 +98,13 @@ jobs:
       # off-by-one strings elsewhere. Our own strings now live in
       # core/loogrigram_lang.cpp precisely so this never needs bumping for
       # them again; this bump is to clear the tree that mistake left behind.
-      OUT_CACHE_SALT: "2"
+      #
+      # Raised to 3 for the Qt 6 -> Qt 5 switch above. The out/ cache key does
+      # not include the Qt variant, so without this a Qt 5 build would restore
+      # objects compiled against Qt 6 headers; ninja decides by timestamp and
+      # would reuse every one of them. That is the silently wrong binary this
+      # salt exists to prevent, so it is not optional here.
+      OUT_CACHE_SALT: "3"
 
     defaults:
       run:
@@ -325,8 +344,13 @@ jobs:
             !${{ env.LibrariesPath }}\[qQ]t[_-]*
             ${{ env.LibrariesPath }}\cache_keys\*
             !${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
-          key: ${{ runner.OS }}-${{ matrix.arch }}-libs-${{ inputs.config }}-v1-${{ env.CACHE_KEY }}
-          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-libs-${{ inputs.config }}-v1-
+          # LoogriGram: v2 for the Qt 6 -> Qt 5 switch. This cache excludes the
+          # Qt directories themselves, but not everything in it is Qt-free -
+          # kimageformats is a Qt plugin and links against it. prepare.py skips
+          # any library that already has a cache_keys entry, so a Qt 6-built
+          # kimageformats would simply be kept and never rebuilt against Qt 5.
+          key: ${{ runner.OS }}-${{ matrix.arch }}-libs-${{ inputs.config }}-v2-${{ env.CACHE_KEY }}
+          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-libs-${{ inputs.config }}-v2-
 
       - name: Qt cache.
         id: cache-qt
