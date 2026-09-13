@@ -2062,4 +2062,26 @@ void Restart() {
    Quit();
 }
 
+// LoogriGram: Restart() above is built for a restart the user asked for from
+// a settings row that needs one, so it always sets RestartingToSettings and
+// the new instance opens Settings on top of the chat list. After our updater
+// swaps the binary that is just wrong - nothing was being configured.
+//
+// It also has to come back visible. The relaunch inherits how this process was
+// launched, and there are two separate ways that hides it: -startintray, and
+// -autostart, which MainWindow::firstShow turns into a hidden window whenever
+// the stored StartMinimized is on. A client autostarted minimised therefore
+// came back minimised and the update looked like it had done nothing.
+//
+// RestartingAfterUpdate carries that to the Windows launcher, which drops both
+// arguments. Clearing StartMinimized instead would have been wrong twice over:
+// it is a stored preference, so we would either be overwriting the user's
+// choice or changing a value the new process re-reads from disk anyway.
+void RestartAfterUpdate() {
+   cSetRestarting(true);
+   cSetRestartingToSettings(false);
+   cSetRestartingAfterUpdate(true);
+   Quit();
+}
+
 } // namespace Core

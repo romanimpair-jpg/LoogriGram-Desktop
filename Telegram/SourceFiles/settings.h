@@ -75,6 +75,10 @@ DeclareSetting(bool, SeenTrayTooltip);
 DeclareSetting(bool, RestartingUpdate);
 DeclareSetting(bool, Restarting);
 DeclareSetting(bool, RestartingToSettings);
+// LoogriGram: set only by Core::RestartAfterUpdate, read only by the Windows
+// launcher, which drops -autostart and -startintray when it is set so the
+// relaunched build actually shows itself. See Core::RestartAfterUpdate.
+DeclareSetting(bool, RestartingAfterUpdate);
 DeclareSetting(bool, WriteProtected);
 DeclareSetting(int32, LastUpdateCheck);
 DeclareSetting(bool, NoStartUpdate);

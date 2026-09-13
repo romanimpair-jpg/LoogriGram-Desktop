@@ -496,4 +496,8 @@ void Quit(QuitReason reason = QuitReason::Default);
 
 void Restart();
 
+// LoogriGram: the restart our own updater performs once the new binary is in
+// place. Restart() above is the wrong shape for that - see the definition.
+void RestartAfterUpdate();
+
 } // namespace Core

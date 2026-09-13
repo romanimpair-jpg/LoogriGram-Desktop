@@ -146,7 +146,7 @@ void ShowRestartBox() {
 	Ui::show(Ui::MakeConfirmBox({
 		.text = u"A newer LoogriGram has been installed beside this one. "
 			"Restart to run it?"_q,
-		.confirmed = [] { Core::Restart(); },
+		.confirmed = [] { Core::RestartAfterUpdate(); },
 		.confirmText = u"Restart"_q,
 		.cancelText = u"Later"_q,
 	}));

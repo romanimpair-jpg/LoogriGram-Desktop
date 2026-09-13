@@ -160,13 +160,20 @@ bool Launcher::launchUpdater(UpdaterLaunch action) {
 	const auto pushArgument = [&](const QString &argument) {
 		argumentsList.push_back(argument.trimmed());
 	};
-	if (cLaunchMode() == LaunchModeAutoStart) {
+	// LoogriGram: a relaunch after our own update must come back visible.
+	// -autostart alone is enough to hide it, because MainWindow::firstShow
+	// hides on (LaunchModeAutoStart && cStartMinimized()), and StartMinimized
+	// is a stored preference we must not touch just to get a window.
+	// -startintray hides it outright. Neither describes what is happening
+	// here: the user clicked Restart, so this is a normal, deliberate launch.
+	const auto afterUpdate = cRestartingAfterUpdate();
+	if (cLaunchMode() == LaunchModeAutoStart && !afterUpdate) {
 		pushArgument(u"-autostart"_q);
 	}
 	if (Logs::DebugEnabled()) {
 		pushArgument(u"-debug"_q);
 	}
-	if (cStartInTray()) {
+	if (cStartInTray() && !afterUpdate) {
 		pushArgument(u"-startintray"_q);
 	}
 	if (customWorkingDir()) {
