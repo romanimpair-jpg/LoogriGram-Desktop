@@ -1,7 +1,8 @@
 # LoogriGram — fork notes and handoff
 
 Personal fork of Telegram Desktop. Three original goals: no ads, no non-essential
-telemetry, no auto-updates — plus an always-on-by-default "ghost mode". Started
+telemetry, no auto-updates *from Telegram* (we have our own, pointed at our own
+releases) — plus an always-on-by-default "ghost mode". Started
 2026-09-07.
 
 Upstream's `AGENTS.md` is still canonical for code style. This file covers only
@@ -228,8 +229,44 @@ are still suppressed, so story rings may reappear as unread on other devices.
   `!premiumPossible` branch — an explanation with an OK button. Nulling
   `emojiStatusId()` instead does **not** work: it promotes premium users to the
   static star and still reserves badge width.
-- **No auto-update**: `DESKTOP_APP_DISABLE_AUTOUPDATE=ON` (also drops the
-  `Updater.exe` target, so the artifact step must not try to move it).
+- **No auto-update from Telegram**: `DESKTOP_APP_DISABLE_AUTOUPDATE=ON` (also
+  drops the `Updater.exe` target, so the artifact step must not try to move it).
+  Upstream's updater stays off; ours replaces it — see below.
+
+### Our own updater
+
+`core/loogrigram_update.cpp`, started once per launch from `Application::run()`.
+It reads **our** GitHub releases, never Telegram, and the request carries
+nothing about the account — an unauthenticated GET of a public endpoint.
+
+- **Releases, not artifacts.** Downloading an Actions artifact needs an
+  authenticated token even on a public repo, so a shipped binary cannot fetch
+  one. Release assets are a plain anonymous HTTPS GET. CI publishes a release
+  on every `mode=build` + `config=Release` run.
+- **The version is the commit.** CI stamps the short sha into
+  `core/loogrigram_build_tag.h` before configuring and tags the release with
+  the same value; the updater compares the two as strings. No arithmetic, so it
+  cannot drift against upstream's `AppVersion`, and re-running a commit
+  replaces its release rather than looking like a new version. Only
+  `loogrigram_update.cpp` includes that header, so the stamp costs one object
+  per build, not a full rebuild.
+- **A running exe can be renamed, just not deleted or overwritten** — the image
+  is mapped by file object, not by path. Verified on this machine: rename
+  succeeded with the process still live, writing a new file at the freed path
+  succeeded, deleting the running image failed with access denied. So the swap
+  is: write `.new` beside it, move the running binary to `.previous`, move
+  `.new` into place. `Core::Restart()` then relaunches `cExeDir() + cExeName()`
+  — the same path, now holding the new build. `JustRelaunch` does not touch
+  `Updater.exe`, so it works with upstream's updater disabled.
+- **A locally built binary never updates itself.** The committed tag is `"dev"`,
+  which matches no release; the updater refuses to run unless the tag looks
+  real, otherwise every local build would immediately overwrite itself with CI's.
+- **Trust is GitHub over TLS**, deliberately — no signature checking. The
+  exposure is that whoever controls the GitHub account can push a binary this
+  machine will run. The size and `MZ` checks before swapping are not security;
+  they only stop an error page or truncated download being installed as the
+  program. If that tradeoff ever stops being acceptable, sign the asset in CI
+  and verify before the swap.
 - **Branding**: `AppName`/`AppFile` = `LoogriGram` in `core/version.h` — `AppName`
   is what `psAppDataPath()` appends to `%APPDATA%`. Fresh `AppId` GUID so Windows
   registry entries cannot collide. `CompanyName` is `LoogriMedia`, not Telegram

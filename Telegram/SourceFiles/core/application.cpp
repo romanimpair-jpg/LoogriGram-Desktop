@@ -27,6 +27,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/shortcuts.h"
 #include "core/sandbox.h"
 #include "core/local_url_handlers.h"
+#include "core/loogrigram_update.h"
 #include "core/launcher.h"
 #include "core/proxy_rotation_manager.h"
 #include "core/ui_integration.h"
@@ -454,6 +455,11 @@ void Application::run() {
 	if (Ui::GL::LastCrashCheckFailed()) {
 		showOpenGLCrashNotification();
 	}
+
+	// LoogriGram: upstream's updater stays disabled; this one checks our own
+	// GitHub releases instead. Started here, once the window is up, because it
+	// needs somewhere to show the restart prompt and nothing else waits on it.
+	Core::LoogriGram::StartUpdateCheck();
 
 	_openInMediaViewRequests.events(
 	) | rpl::on_next([=](Media::View::OpenRequest &&request) {

@@ -34,9 +34,12 @@ jobs:
 
     # actions: write is only for pruning old build tree caches; without it the
     # prune step cannot delete and the pool fills until the dependency caches
-    # get evicted.
+    # get evicted. contents: write is for publishing the release the in-app
+    # updater reads; artifacts cannot serve it, since downloading one needs an
+    # authenticated token even on a public repository, while release assets are
+    # anonymously downloadable.
     permissions:
-      contents: read
+      contents: write
       actions: write
 
     # Below GitHub's hard 6h cap so a cancelled job still runs its cache-save
@@ -467,6 +470,37 @@ jobs:
           key: ${{ runner.OS }}-${{ matrix.arch }}-out-${{ inputs.config }}-v${{ env.OUT_CACHE_SALT }}-${{ env.CACHE_KEY }}-${{ github.sha }}
           restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-out-${{ inputs.config }}-v${{ env.OUT_CACHE_SALT }}-${{ env.CACHE_KEY }}-
 
+      # The updater compares the tag baked in here against the newest release
+      # tag on this repository, so the two have to be written from the same
+      # value. The short commit sha is that value: rebuilding the same commit
+      # produces the same tag and therefore no phantom update, which a run
+      # counter would not give us.
+      #
+      # Stamped after "Normalize source timestamps" on purpose. That step dates
+      # every tracked file by its last commit; this one is then newer than its
+      # cached object, so ninja rebuilds it. Only loogrigram_update.cpp includes
+      # this header, so that is one object per run, not a full rebuild.
+      - name: Stamp the build tag.
+        if: inputs.mode == 'build'
+        shell: bash
+        run: |
+          TAG="g${GITHUB_SHA::7}"
+          echo "BUILD_TAG=$TAG" >> "$GITHUB_ENV"
+          python - "$CHECKOUT_ROOT/$REPO_NAME" "$TAG" <<'PY'
+          import io, sys
+          root = sys.argv[1].replace('\\', '/')
+          tag = sys.argv[2]
+          path = root + '/Telegram/SourceFiles/core/loogrigram_build_tag.h'
+          text = io.open(path, encoding='utf-8').read()
+          old = '#define LOOGRIGRAM_BUILD_TAG "dev"'
+          new = '#define LOOGRIGRAM_BUILD_TAG "%s"' % tag
+          if text.count(old) != 1:
+              sys.exit('::error::build tag placeholder not found in ' + path)
+          io.open(path, 'w', encoding='utf-8', newline='').write(
+              text.replace(old, new, 1))
+          print('stamped ' + tag)
+          PY
+
       - name: Telegram Desktop build.
         id: telegram
         if: inputs.mode == 'build'
@@ -536,3 +570,31 @@ jobs:
           name: ${{ env.ARTIFACT_NAME }} ${{ inputs.config }}
           path: artifact\
           retention-days: 30
+
+      # What the in-app updater actually reads. The artifact above is for us:
+      # downloading one needs an authenticated token even on a public
+      # repository, so a shipped binary cannot fetch it, while a release asset
+      # is a plain anonymous https GET.
+      #
+      # Release only - a Debug build is not something to hand to the updater.
+      # The tag is the one baked into this binary, so re-running a commit
+      # replaces its release rather than presenting itself as a new version,
+      # and the retention-days above do not apply: releases do not expire, so
+      # an old build stays installable.
+      - name: Publish release.
+        if: inputs.mode == 'build' && inputs.config == 'Release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          if gh release view "$BUILD_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "replacing existing release $BUILD_TAG"
+            gh release delete "$BUILD_TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          fi
+          gh release create "$BUILD_TAG" artifact/LoogriGram.exe \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$BUILD_TAG" \
+            --notes "Built from $GITHUB_SHA on $(date -u +%Y-%m-%d)."
+          echo "published $BUILD_TAG"
