@@ -14,6 +14,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "logs.h"
 #include "settings.h"
 #include "ui/boxes/confirm_box.h"
+#include "ui/toast/toast.h"
 #include "ui/ui_utility.h"
 
 #include <QtCore/QCoreApplication>
@@ -22,6 +23,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
+#include <QtCore/QPointer>
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
@@ -62,6 +64,15 @@ constexpr auto kMaximumSize = 512 * 1024 * 1024;
 constexpr auto kInflateChunk = 1024 * 1024;
 
 bool Started/* = false*/;
+
+// An automatic check says nothing unless it finds something. A manual one has
+// to answer, even when the answer is "nothing to do" - otherwise the button
+// looks broken.
+void Report(bool manual, const QString &text) {
+	if (manual) {
+		Ui::Toast::Show({ .text = { text } });
+	}
+}
 
 [[nodiscard]] bool TagLooksReal(const QString &tag) {
 	// A local build carries "dev", which matches no published tag and would
@@ -228,42 +239,54 @@ void ShowRestartBox() {
 	return true;
 }
 
-void DownloadAndApply(not_null<State*> state, const QString &url) {
+void DownloadAndApply(
+		not_null<State*> state,
+		const QString &url,
+		bool manual) {
 	const auto reply = state->manager.get(PrepareRequest(url));
 	QObject::connect(reply, &QNetworkReply::finished, reply, [=] {
 		reply->deleteLater();
 		if (reply->error() != QNetworkReply::NoError) {
 			LOG(("Update Error: download failed, %1."
 				).arg(reply->errorString()));
+			Report(manual, u"Could not download the update."_q);
 			return;
 		}
 		const auto unpacked = Ungzip(reply->readAll());
-		if (!unpacked.isEmpty() && ApplyUpdate(unpacked)) {
+		if (unpacked.isEmpty()) {
+			Report(manual, u"The downloaded update was unreadable."_q);
+		} else if (!ApplyUpdate(unpacked)) {
+			Report(manual, u"Could not install the update."_q);
+		} else {
 			ShowRestartBox();
 		}
 	});
 }
 
-void CheckLatestRelease(not_null<State*> state) {
+void CheckLatestRelease(not_null<State*> state, bool manual) {
 	const auto reply = state->manager.get(PrepareRequest(kLatestReleaseUrl));
 	QObject::connect(reply, &QNetworkReply::finished, reply, [=] {
 		reply->deleteLater();
 		if (reply->error() != QNetworkReply::NoError) {
 			LOG(("Update Info: check failed, %1.").arg(reply->errorString()));
+			Report(manual, u"Could not reach GitHub to check for updates."_q);
 			return;
 		}
 		const auto json = QJsonDocument::fromJson(reply->readAll());
 		if (!json.isObject()) {
 			LOG(("Update Error: malformed reply from GitHub."));
+			Report(manual, u"GitHub returned something unexpected."_q);
 			return;
 		}
 		const auto root = json.object();
 		const auto tag = root.value(u"tag_name"_q).toString();
 		if (tag.isEmpty()) {
 			LOG(("Update Error: release carries no tag."));
+			Report(manual, u"The newest release has no version tag."_q);
 			return;
 		} else if (tag == QString::fromLatin1(LOOGRIGRAM_BUILD_TAG)) {
 			LOG(("Update Info: already on %1.").arg(tag));
+			Report(manual, u"Already on the newest build (%1)."_q.arg(tag));
 			return;
 		}
 		const auto assets = root.value(u"assets"_q).toArray();
@@ -279,29 +302,62 @@ void CheckLatestRelease(not_null<State*> state) {
 			}
 			LOG(("Update Info: %1 is newer than %2, downloading."
 				).arg(tag, QString::fromLatin1(LOOGRIGRAM_BUILD_TAG)));
-			DownloadAndApply(state, url);
+			Report(manual, u"Downloading %1..."_q.arg(tag));
+			DownloadAndApply(state, url, manual);
 			return;
 		}
 		LOG(("Update Error: release %1 has no %2."
 			).arg(tag, QString::fromLatin1(kAssetName)));
+		Report(manual, u"Release %1 has no download for this platform."_q
+			.arg(tag));
 	});
+}
+
+[[nodiscard]] State *EnsureState() {
+	static auto instance = QPointer<State>();
+	if (!instance) {
+		instance = Ui::CreateChild<State>(qApp);
+	}
+	return instance.data();
+}
+
+[[nodiscard]] bool UpdatesPossible(bool manual) {
+	if (TagLooksReal(QString::fromLatin1(LOOGRIGRAM_BUILD_TAG))) {
+		return true;
+	}
+	LOG(("Update Info: locally built, not checking for updates."));
+	Report(manual, u"This is a local build, so it does not update itself."_q);
+	return false;
 }
 
 } // namespace
 
 void StartUpdateCheck() {
 #ifdef Q_OS_WIN
-	if (Started) {
-		return;
-	} else if (!TagLooksReal(QString::fromLatin1(LOOGRIGRAM_BUILD_TAG))) {
-		LOG(("Update Info: locally built, not checking for updates."));
+	if (Started || !UpdatesPossible(false)) {
 		return;
 	}
 	Started = true;
 
-	const auto state = Ui::CreateChild<State>(qApp);
-	state->timer.setCallback([=] { CheckLatestRelease(state); });
+	const auto state = EnsureState();
+	state->timer.setCallback([=] { CheckLatestRelease(state, false); });
 	state->timer.callOnce(kStartDelay);
+#endif // Q_OS_WIN
+}
+
+void CheckForUpdatesNow() {
+#ifdef Q_OS_WIN
+	// Deliberately ignores the once-per-launch guard and the start delay: the
+	// point of the button is to ask again, now.
+	if (!UpdatesPossible(true)) {
+		return;
+	}
+	Started = true;
+	CheckLatestRelease(EnsureState(), true);
+#else // Q_OS_WIN
+	Ui::Toast::Show({
+		.text = { u"Updates are only wired up on Windows."_q },
+	});
 #endif // Q_OS_WIN
 }
 

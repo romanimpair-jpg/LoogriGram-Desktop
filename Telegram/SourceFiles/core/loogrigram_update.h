@@ -15,4 +15,9 @@ namespace Core::LoogriGram {
 // the account. Called once per launch; further calls are ignored.
 void StartUpdateCheck();
 
+// Same check, on demand, from the main menu. Ignores the once-per-launch
+// guard and the start delay, and reports the outcome even when it is "nothing
+// to do" - a button that answers nothing looks broken.
+void CheckForUpdatesNow();
+
 } // namespace Core::LoogriGram

@@ -19,6 +19,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/calls_instance.h"
 #include "core/application.h"
 #include "core/click_handler_types.h"
+#include "core/loogrigram_update.h"
 #include "data/data_changes.h"
 #include "data/data_document_media.h"
 #include "data/data_folder.h"
@@ -766,6 +767,16 @@ void MainMenu::setupMenu() {
 			controller->session().applyGhostModePrivacy();
 		}
 	}, ghostToggle->lifetime());
+
+	// LoogriGram: our updater checks once at launch and otherwise says
+	// nothing, which leaves no way to ask it to look now - needed at minimum
+	// to test it without restarting. Reports the outcome either way.
+	addAction(
+		tr::lng_menu_check_updates(),
+		{ &st::menuIconDownload }
+	)->setClickedCallback([] {
+		Core::LoogriGram::CheckForUpdatesNow();
+	});
 
 	_nightThemeToggle = addAction(
 		tr::lng_menu_night_mode(),
