@@ -27,16 +27,70 @@ Telegram help rows.
 
 ### Where to pick up
 
-- **The media start-up delay is the main open bug.** Measured and narrowed, not
-  fixed — see "Open: media takes a beat to start loading". Leading suspect is
-  the views / read-marking path.
-- **Ads are done.** Premium, the suggestion getters and the six ghost-mode
-  early returns are still at the forced-getter stage.
-- **The updater has never actually performed an update.** Everything around it
-  has run — stamp, publish, compress, check — but no release newer than the
-  running build has existed yet, so the download-and-swap path is untested in
-  the wild. The first time one does, watch `log.txt` for `Update Info:`.
-- Installed build and newest release are both `ga8b589e`.
+**Build `34754096133` (commit `336228e`) was dispatched at the end of the last
+session — a full ~2h rebuild.** Install it by hand rather than letting the
+updater carry you: the build it would update *from* is the broken one.
+
+Then, in order:
+
+1. **Open the main menu.** It must not crash. If it does, the lang rework did
+   not take and everything below is moot.
+2. **Open an image. It will still flash white — that is expected, not a
+   regression.** Do not relaunch afterwards; `log.txt` is overwritten on every
+   start. Read the `Viewer Trace:` lines first.
+
+Those traces are the whole point of that build. They print what the show path
+was about to show, when the window was shown, and what the first four frames
+rendered and painted. **The question they answer is ordering:** does a frame
+carrying the media exist *before* `Viewer Trace: window shown.`, or only after?
+Timestamps are second-resolution, so read the order of lines, not the times.
+
+### The white flash — what is established, and what is not
+
+Reproduces as: **white on the first media opened after a fresh start, then the
+clear colour on every open after that.**
+
+Established:
+
+- **The surface contents at hide time are what the window shows when it is next
+  mapped.** Proven by clearing to opaque black: every reopen then flashed black.
+- **Therefore the first-open white is the surface before anything has cleared
+  it** — the hide path has not run yet at that point.
+- **It is not the `_hideWorkaround` pass.** Black proved that pass works, and
+  the first open was still white.
+- Upstream `025c6aae` ("[qrhi] Fixed media viewer blink with last content on
+  reopen") is already taken; it fixes the *stale frame*, not this.
+
+Not established, and **do not assume**:
+
+- Why a transparent clear composites as white here rather than see-through.
+- Whether painting before the window is presented fixes it. `showAndActivate()`
+  calls `_widget->update()`, which only queues a repaint; forcing a synchronous
+  one was tried in a previous session and reverted unverified. Upstream still
+  has the plain `update()` and has not addressed this.
+
+On Windows x64 there is no escaping the RHI renderer: `use-qt-rhi`'s `.scope`
+excludes that platform, so it is forced wherever Qt is 6.7 or newer.
+
+### Never add or remove keys in `lang.strings`
+
+Our strings live in **`core/loogrigram_lang.cpp`**, with their own keys and
+lookup. Add an accessor there; that is the whole process.
+
+`lang.strings` feeds a code generator whose key indices are **positional**, so
+inserting one string renumbers every key after it. The incremental build tree
+does not cope: adding one key rebuilt five objects, and `lang_instance.cpp` —
+which sizes the value array from `kKeysCount` — was not among them. The
+resulting binary asserted `"key < _values.size()"` on opening the main menu and
+returned off-by-one strings elsewhere, which is what the `Lang Error:
+Unexpected tag` spam at startup had been reporting all along.
+
+Changing an existing string's *text* is safe; only adding and removing keys
+renumbers. If you ever must, **bump `OUT_CACHE_SALT`** in the same commit.
+
+The wider hazard is unresolved: that build showed a generated-header change not
+propagating to its dependents at all. It is sidestepped for our strings, not
+fixed, and could bite on any future codegen change.
 
 ### Editing lessons, learned expensively
 
@@ -77,6 +131,29 @@ must stay put. Running a copy of the exe from anywhere else silently creates a
 second empty profile and looks like a logout.
 
 ---
+
+### Debugging, and how not to waste builds
+
+Three sessions were burned guessing at the viewer flash and shipping the guess.
+What actually solved the crash took one log line. Prefer ground truth:
+
+- **A failed `Expects`/`Assert` writes its message, file and line to `log.txt`
+  before it dies** (`base/assertion.h` in lib_base: `log()`, then a deliberate
+  null write). So the answer is usually already on disk.
+- **That deliberate null write means a failed assertion appears as an access
+  violation, `0xc0000005`.** Do not read that code as memory corruption.
+- **`log.txt` is overwritten on every start.** To capture a crash: reproduce
+  it, then *do not relaunch* until the file has been read.
+- **The Windows Application event log records both the crash time and the
+  process start time**, so "how long was it alive" is measurable — enough to
+  tell a startup-path fault from something triggered by a user action.
+- **Crash reports are off** (`DESKTOP_APP_DISABLE_CRASH_REPORTS=ON`) and there
+  are no symbols (debug info is blanked for Release), so fault offsets cannot
+  be resolved. Logging is the tool available; add it deliberately rather than
+  inferring from behaviour.
+- **Do not dispatch a build to test a hypothesis that logging could settle**,
+  and ask before dispatching at all. A wrong 25m build is cheap only once;
+  the habit of building instead of thinking is what cost the time here.
 
 ## Repo layout
 
