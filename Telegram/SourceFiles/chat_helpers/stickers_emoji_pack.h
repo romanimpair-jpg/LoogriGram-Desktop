@@ -43,13 +43,6 @@ namespace Stickers {
 
 using IsolatedEmoji = Ui::Text::IsolatedEmoji;
 
-struct LargeEmojiImage {
-	std::optional<Image> image;
-	FnMut<void()> load;
-
-	[[nodiscard]] static QSize Size();
-};
-
 enum class EffectType : uint8 {
 	EmojiInteraction,
 	PremiumSticker,
@@ -80,7 +73,6 @@ public:
 
 	[[nodiscard]] Sticker stickerForEmoji(EmojiPtr emoji);
 	[[nodiscard]] Sticker stickerForEmoji(const IsolatedEmoji &emoji);
-	[[nodiscard]] std::shared_ptr<LargeEmojiImage> image(EmojiPtr emoji);
 
 	[[nodiscard]] EmojiPtr chooseInteractionEmoji(
 		not_null<HistoryItem*> item) const;
@@ -141,7 +133,6 @@ private:
 	base::flat_map<
 		IsolatedEmoji,
 		base::flat_set<not_null<HistoryView::Element*>>> _items;
-	base::flat_map<EmojiPtr, std::weak_ptr<LargeEmojiImage>> _images;
 	mtpRequestId _requestId = 0;
 
 	base::flat_set<not_null<HistoryView::Element*>> _onlyCustomItems;

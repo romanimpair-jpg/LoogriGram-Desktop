@@ -964,8 +964,6 @@ PRIVATE
     history/view/media/history_view_giveaway.h
     history/view/media/history_view_invoice.cpp
     history/view/media/history_view_invoice.h
-    history/view/media/history_view_large_emoji.cpp
-    history/view/media/history_view_large_emoji.h
     history/view/media/history_view_location.cpp
     history/view/media/history_view_location.h
     history/view/media/history_view_media.cpp

@@ -16,7 +16,6 @@ struct OnlyCustomEmoji;
 } // namespace Ui::Text
 
 namespace Stickers {
-struct LargeEmojiImage;
 } // namespace Stickers
 
 namespace ChatHelpers {

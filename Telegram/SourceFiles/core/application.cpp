@@ -33,7 +33,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/ui_integration.h"
 #include "core/version.h"
 #include "chat_helpers/emoji_keywords.h"
-#include "chat_helpers/stickers_emoji_image_loader.h"
 #include "base/platform/base_platform_global_shortcuts.h"
 #include "base/platform/base_platform_url_scheme.h"
 #include "base/platform/base_platform_last_input.h"
@@ -114,7 +113,6 @@ namespace {
 
 constexpr auto kQuitPreventTimeoutMs = crl::time(1500);
 constexpr auto kAutoLockTimeoutLateMs = crl::time(3000);
-constexpr auto kClearEmojiImageSourceTimeout = 10 * crl::time(1000);
 
 LaunchState GlobalLaunchState/* = LaunchState::Running*/;
 
@@ -167,7 +165,6 @@ Application::Application()
 , _screenshotProtection(std::make_unique<ScreenshotProtection>())
 , _databases(std::make_unique<Storage::Databases>())
 , _animationsManager(std::make_unique<Ui::Animations::Manager>())
-, _clearEmojiImageLoaderTimer([=] { clearEmojiSourceImages(); })
 , _audio(std::make_unique<Media::Audio::Instance>())
 , _fallbackProductionConfig(
 	std::make_unique<MTP::Config>(MTP::Environment::Production))
@@ -345,7 +342,6 @@ void Application::run() {
 	Ui::Emoji::Init();
 	Ui::PreloadTextSpoilerMask(_lifetime);
 	startShortcuts();
-	startEmojiImageLoader();
 	startSystemDarkModeViewer();
 	Media::Player::start(_audio.get());
 	Media::Encode::ClearStaleTempFiles();
@@ -684,24 +680,6 @@ void Application::activate() {
 	}
 }
 
-auto Application::prepareEmojiSourceImages()
--> std::shared_ptr<Ui::Emoji::UniversalImages> {
-	const auto &images = Ui::Emoji::SourceImages();
-	if (settings().largeEmoji()) {
-		return images;
-	}
-	Ui::Emoji::ClearSourceImages(images);
-	return std::make_shared<Ui::Emoji::UniversalImages>(images->id());
-}
-
-void Application::clearEmojiSourceImages() {
-	_emojiImageLoader.with([](Stickers::EmojiImageLoader &loader) {
-		crl::on_main([images = loader.releaseImages()]{
-			Ui::Emoji::ClearSourceImages(images);
-		});
-	});
-}
-
 bool Application::isActiveForTrayMenu() const {
 	return ranges::any_of(ranges::views::values(_windows), [=](
 			const std::unique_ptr<Window::Controller> &controller) {
@@ -947,34 +925,6 @@ void Application::startLocalStorage() {
 	_saveSettingsTimer.emplace([=] { saveSettings(); });
 	settings().saveDelayedRequests() | rpl::on_next([=] {
 		saveSettingsDelayed();
-	}, _lifetime);
-}
-
-void Application::startEmojiImageLoader() {
-	_emojiImageLoader.with([
-		source = prepareEmojiSourceImages(),
-		large = settings().largeEmoji()
-	](Stickers::EmojiImageLoader &loader) mutable {
-		loader.init(std::move(source), large);
-	});
-
-	settings().largeEmojiChanges(
-	) | rpl::on_next([=](bool large) {
-		if (large) {
-			_clearEmojiImageLoaderTimer.cancel();
-		} else {
-			_clearEmojiImageLoaderTimer.callOnce(
-				kClearEmojiImageSourceTimeout);
-		}
-	}, _lifetime);
-
-	Ui::Emoji::Updated(
-	) | rpl::on_next([=] {
-		_emojiImageLoader.with([
-			source = prepareEmojiSourceImages()
-		](Stickers::EmojiImageLoader &loader) mutable {
-			loader.switchTo(std::move(source));
-		});
 	}, _lifetime);
 }
 

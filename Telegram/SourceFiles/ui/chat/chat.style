@@ -588,10 +588,12 @@ historyGroupCallUserpics: GroupCallUserpics {
 historyGroupCallBlobMinRadius: 23px;
 historyGroupCallBlobMaxRadius: 25px;
 
+// LoogriGram: large emoji is removed, but these two survive it - they are
+// what data_custom_emoji.cpp sizes SizeTag::Isolated from, and what
+// history_view_media_unwrapped.cpp uses for its minimal height. The padding
+// and skip went with the LargeEmoji media that was their only user.
 largeEmojiSize: 36px;
 largeEmojiOutline: 1px;
-largeEmojiPadding: margins(0px, 0px, 0px, 0px);
-largeEmojiSkip: 4px;
 
 youtubeIcon: icon {
 	{ "media_youtube_play_bg", youtubePlayIconBg },

@@ -735,12 +735,6 @@ HistoryWidget::HistoryWidget(
 		item->mainView()->itemDataChanged();
 	}, lifetime());
 
-	Core::App().settings().largeEmojiChanges(
-	) | rpl::on_next([=] {
-		crl::on_main(this, [=] {
-			updateHistoryGeometry();
-		});
-	}, lifetime());
 	Core::App().settings().sendSubmitWayValue(
 	) | rpl::on_next([=] {
 		crl::on_main(this, [=] {

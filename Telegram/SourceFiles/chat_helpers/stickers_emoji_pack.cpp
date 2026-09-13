@@ -7,7 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "chat_helpers/stickers_emoji_pack.h"
 
-#include "chat_helpers/stickers_emoji_image_loader.h"
 #include "history/view/history_view_element.h"
 #include "history/history_item.h"
 #include "history/history.h"
@@ -51,12 +50,6 @@ constexpr auto kPremiumCachesCount = 8;
 		: std::nullopt;
 }
 
-[[nodiscard]] QSize SingleSize() {
-	const auto single = st::largeEmojiSize;
-	const auto outline = st::largeEmojiOutline;
-	return Size(2 * outline + single) * style::DevicePixelRatio();
-}
-
 [[nodiscard]] const Lottie::ColorReplacements *ColorReplacements(int index) {
 	Expects(index >= 1 && index <= 5);
 
@@ -92,10 +85,6 @@ constexpr auto kPremiumCachesCount = 8;
 
 } // namespace
 
-QSize LargeEmojiImage::Size() {
-	return SingleSize();
-}
-
 EmojiPack::EmojiPack(not_null<Main::Session*> session)
 : _session(session) {
 	refresh();
@@ -107,14 +96,8 @@ EmojiPack::EmojiPack(not_null<Main::Session*> session)
 		remove(item);
 	}, _lifetime);
 
-	Core::App().settings().largeEmojiChanges(
-	) | rpl::on_next([=](bool large) {
-		refreshAll();
-	}, _lifetime);
-
 	Ui::Emoji::Updated(
 	) | rpl::on_next([=] {
-		_images.clear();
 		refreshAll();
 	}, _lifetime);
 }
@@ -179,41 +162,6 @@ auto EmojiPack::stickerForEmoji(const IsolatedEmoji &emoji) -> Sticker {
 		return stickerForEmoji(*regular);
 	}
 	return {};
-}
-
-std::shared_ptr<LargeEmojiImage> EmojiPack::image(EmojiPtr emoji) {
-	const auto i = _images.emplace(
-		emoji,
-		std::weak_ptr<LargeEmojiImage>()).first;
-	if (const auto result = i->second.lock()) {
-		return result;
-	}
-	auto result = std::make_shared<LargeEmojiImage>();
-	const auto raw = result.get();
-	const auto weak = base::make_weak(_session);
-	raw->load = [=] {
-		Core::App().emojiImageLoader().with([=](
-				const EmojiImageLoader &loader) {
-			crl::on_main(weak, [
-				=,
-				image = loader.prepare(emoji)
-			]() mutable {
-				const auto i = _images.find(emoji);
-				if (i != end(_images)) {
-					if (const auto strong = i->second.lock()) {
-						if (!strong->image) {
-							strong->load = nullptr;
-							strong->image.emplace(std::move(image));
-							_session->notifyDownloaderTaskFinished();
-						}
-					}
-				}
-			});
-		});
-		raw->load = nullptr;
-	};
-	i->second = result;
-	return result;
 }
 
 EmojiPtr EmojiPack::chooseInteractionEmoji(

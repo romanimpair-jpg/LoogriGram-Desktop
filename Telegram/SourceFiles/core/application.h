@@ -95,7 +95,6 @@ class DownloadManager;
 } // namespace Data
 
 namespace Stickers {
-class EmojiImageLoader;
 } // namespace Stickers
 
 namespace Export {
@@ -282,10 +281,6 @@ public:
 	[[nodiscard]] ChatHelpers::EmojiKeywords &emojiKeywords() {
 		return *_emojiKeywords;
 	}
-	[[nodiscard]] auto emojiImageLoader() const
-	-> const crl::object_on_queue<Stickers::EmojiImageLoader> & {
-		return _emojiImageLoader;
-	}
 
 	// Internal links.
 	void checkStartUrls();
@@ -372,13 +367,9 @@ private:
 	friend Application &App();
 
 	void autoRegisterUrlScheme();
-	void clearEmojiSourceImages();
-	[[nodiscard]] auto prepareEmojiSourceImages()
-		-> std::shared_ptr<Ui::Emoji::UniversalImages>;
 	void startLocalStorage();
 	void startShortcuts();
 	void startDomain();
-	void startEmojiImageLoader();
 	void startSystemDarkModeViewer();
 	void startMediaView();
 	void startTray();
@@ -426,8 +417,6 @@ private:
 
 	const std::unique_ptr<Storage::Databases> _databases;
 	const std::unique_ptr<Ui::Animations::Manager> _animationsManager;
-	crl::object_on_queue<Stickers::EmojiImageLoader> _emojiImageLoader;
-	base::Timer _clearEmojiImageLoaderTimer;
 	const std::unique_ptr<Media::Audio::Instance> _audio;
 	mutable std::unique_ptr<MTP::Config> _fallbackProductionConfig;
 

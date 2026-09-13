@@ -236,7 +236,8 @@ void SessionSettings::addFromSerialized(const QByteArray &serialized) {
 	qint32 skipArchiveInSearch = 0;
 	qint32 legacyAutoplayGifs = 1;
 	qint32 appLoopAnimatedStickers = app.loopAnimatedStickers() ? 1 : 0;
-	qint32 appLargeEmoji = app.largeEmoji() ? 1 : 0;
+	// LoogriGram: large emoji removed; slot kept, this stream is positional.
+	qint32 appLargeEmoji = 0;
 	qint32 appReplaceEmoji = app.replaceEmoji() ? 1 : 0;
 	qint32 appSuggestEmoji = app.suggestEmoji() ? 1 : 0;
 	qint32 appSuggestStickersByEmoji = app.suggestStickersByEmoji() ? 1 : 0;
@@ -830,7 +831,6 @@ void SessionSettings::addFromSerialized(const QByteArray &serialized) {
 		app.setCountUnreadMessages(appCountUnreadMessages == 1);
 		app.setNotifyAboutPinned(appNotifyAboutPinned == 1);
 		app.setLoopAnimatedStickers(appLoopAnimatedStickers == 1);
-		app.setLargeEmoji(appLargeEmoji == 1);
 		app.setReplaceEmoji(appReplaceEmoji == 1);
 		app.setSuggestEmoji(appSuggestEmoji == 1);
 		app.setSuggestStickersByEmoji(appSuggestStickersByEmoji == 1);

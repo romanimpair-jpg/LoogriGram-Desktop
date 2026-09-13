@@ -958,17 +958,6 @@ void BuildStickersEmojiSection(SectionBuilder &builder) {
 
 	builder.add(nullptr, [] {
 		return SearchEntry{
-			.id = u"chat/large-emoji"_q,
-			.title = tr::lng_settings_large_emoji(tr::now),
-			.keywords = { u"large"_q, u"emoji"_q, u"big"_q },
-			.checkIcon = Core::App().settings().largeEmoji()
-				? SearchEntryCheckIcon::Checked
-				: SearchEntryCheckIcon::Unchecked,
-		};
-	});
-
-	builder.add(nullptr, [] {
-		return SearchEntry{
 			.id = u"chat/replace-emoji"_q,
 			.title = tr::lng_settings_replace_emojis(tr::now),
 			.keywords = { u"replace"_q, u"emoji"_q, u"convert"_q },
@@ -1418,20 +1407,6 @@ void SetupStickersEmoji(
 			inner->lifetime());
 		return wrap->entity();
 	};
-
-	const auto largeEmoji = addWithReturn(
-		tr::lng_settings_large_emoji(tr::now),
-		Core::App().settings().largeEmoji(),
-		[=](bool checked) {
-			Core::App().settings().setLargeEmoji(checked);
-			Core::App().saveSettingsDelayed();
-		});
-	if (highlights) {
-		highlights->push_back({ u"chat/large-emoji"_q, {
-			largeEmoji,
-			{ .radius = st::boxRadius }
-		} });
-	}
 
 	const auto replaceEmoji = addWithReturn(
 		tr::lng_settings_replace_emojis(tr::now),

@@ -234,7 +234,7 @@ QByteArray Settings::serialize() const {
 		+ sizeof(qint32) // legacy exe launch warning
 		+ sizeof(qint32) // _notifyAboutPinned
 		+ sizeof(qint32) // _loopAnimatedStickers
-		+ sizeof(qint32) // _largeEmoji
+		+ sizeof(qint32) // _largeEmoji (removed, slot kept)
 		+ sizeof(qint32) // _replaceEmoji
 		+ sizeof(qint32) // _suggestEmoji
 		+ sizeof(qint32) // _suggestStickersByEmoji
@@ -388,7 +388,10 @@ QByteArray Settings::serialize() const {
 			<< qint32(1) // legacy exe launch warning
 			<< qint32(_notifyAboutPinned.current() ? 1 : 0)
 			<< qint32(_loopAnimatedStickers ? 1 : 0)
-			<< qint32(_largeEmoji.current() ? 1 : 0)
+			// LoogriGram: large emoji is removed, but this slot is still written.
+		// The stream is positional, so skipping it would shift every setting
+		// after it and misread an existing tdata.
+		<< qint32(0)
 			<< qint32(_replaceEmoji.current() ? 1 : 0)
 			<< qint32(_suggestEmoji ? 1 : 0)
 			<< qint32(_suggestStickersByEmoji ? 1 : 0)
@@ -577,7 +580,7 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	qint32 legacyExeLaunchWarning = 1;
 	qint32 notifyAboutPinned = _notifyAboutPinned.current() ? 1 : 0;
 	qint32 loopAnimatedStickers = _loopAnimatedStickers ? 1 : 0;
-	qint32 largeEmoji = _largeEmoji.current() ? 1 : 0;
+	qint32 largeEmoji = 0; // LoogriGram: read and discarded.
 	qint32 replaceEmoji = _replaceEmoji.current() ? 1 : 0;
 	qint32 suggestEmoji = _suggestEmoji ? 1 : 0;
 	qint32 suggestStickersByEmoji = _suggestStickersByEmoji ? 1 : 0;
@@ -1125,7 +1128,6 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	_ipRevealWarning = (ipRevealWarning == 1);
 	_notifyAboutPinned = (notifyAboutPinned == 1);
 	_loopAnimatedStickers = (loopAnimatedStickers == 1);
-	_largeEmoji = (largeEmoji == 1);
 	_replaceEmoji = (replaceEmoji == 1);
 	_systemTextReplace = (systemTextReplace == 1);
 	_suggestEmoji = (suggestEmoji == 1);
@@ -1720,7 +1722,6 @@ void Settings::resetOnLastLogout() {
 	_noWarningExtensions.clear();
 	_ipRevealWarning = true;
 	_loopAnimatedStickers = true;
-	_largeEmoji = true;
 	_replaceEmoji = true;
 	_systemTextReplace = true;
 	_suggestEmoji = true;

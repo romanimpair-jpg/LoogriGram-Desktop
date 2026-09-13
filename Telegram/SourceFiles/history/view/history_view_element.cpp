@@ -17,7 +17,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/media/history_view_media_grouped.h"
 #include "history/view/media/history_view_similar_channels.h"
 #include "history/view/media/history_view_sticker.h"
-#include "history/view/media/history_view_large_emoji.h"
 #include "history/view/media/history_view_custom_emoji.h"
 #include "history/view/media/history_view_no_forwards_request.h"
 #include "history/view/media/history_view_suggest_decision.h"
@@ -1645,32 +1644,11 @@ void Element::refreshMedia(Element *replacing) {
 		_media = media->createView(this, replacing);
 	} else if (item->showSimilarChannels()) {
 		_media = std::make_unique<SimilarChannels>(this);
-	} else if (isOnlyCustomEmoji()
-		&& Core::App().settings().largeEmoji()) {
-		_media = std::make_unique<UnwrappedMedia>(
-			this,
-			std::make_unique<CustomEmoji>(this, onlyCustomEmoji()));
-	} else if (isIsolatedEmoji()
-		&& Core::App().settings().largeEmoji()) {
-		const auto emoji = isolatedEmoji();
-		const auto emojiStickers = &history()->session().emojiStickersPack();
-		const auto skipPremiumEffect = false;
-		if (const auto sticker = emojiStickers->stickerForEmoji(emoji)) {
-			auto content = std::make_unique<Sticker>(
-				this,
-				sticker.document,
-				skipPremiumEffect,
-				replacing,
-				sticker.replacements);
-			content->setEmojiSticker();
-			_media = std::make_unique<UnwrappedMedia>(
-				this,
-				std::move(content));
-		} else {
-			_media = std::make_unique<UnwrappedMedia>(
-				this,
-				std::make_unique<LargeEmoji>(this, emoji));
-		}
+	// LoogriGram: large emoji is removed as a concept. These two branches were
+	// all of it: a message of only custom emoji became large CustomEmoji
+	// media, and an isolated emoji became either the matching animated
+	// sticker or a LargeEmoji image. Both are gone, so such a message now
+	// falls through and renders as ordinary inline text at emoji size.
 	} else if (const auto nfr = item->Get<HistoryServiceNoForwardsRequest>()
 		; nfr && (!nfr->expired || nfr->actionTaken)) {
 		_media = std::make_unique<MediaGeneric>(

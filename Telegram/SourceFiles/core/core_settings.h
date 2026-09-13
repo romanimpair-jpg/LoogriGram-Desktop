@@ -449,18 +449,11 @@ public:
 	void setLoopAnimatedStickers(bool value) {
 		_loopAnimatedStickers = value;
 	}
-	void setLargeEmoji(bool value) {
-		_largeEmoji = value;
-	}
-	[[nodiscard]] bool largeEmoji() const {
-		return _largeEmoji.current();
-	}
-	[[nodiscard]] rpl::producer<bool> largeEmojiValue() const {
-		return _largeEmoji.value();
-	}
-	[[nodiscard]] rpl::producer<bool> largeEmojiChanges() const {
-		return _largeEmoji.changes();
-	}
+	// LoogriGram: large emoji is gone entirely - no setting, no accessor, no
+	// way back. A message of only emoji renders at text size like any other.
+	// The serialised slot is still written and read in core_settings.cpp,
+	// because that stream is positional and dropping a field would shift
+	// every setting after it.
 	void setReplaceEmoji(bool value) {
 		_replaceEmoji = value;
 	}
@@ -1159,7 +1152,6 @@ private:
 	base::flat_set<QString> _noWarningExtensions;
 	bool _ipRevealWarning = true;
 	bool _loopAnimatedStickers = true;
-	rpl::variable<bool> _largeEmoji = true;
 	rpl::variable<bool> _replaceEmoji = true;
 	rpl::variable<bool> _systemTextReplace = true;
 	bool _suggestEmoji = true;
