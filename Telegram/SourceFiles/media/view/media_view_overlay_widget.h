@@ -898,6 +898,10 @@ private:
 
 	std::unique_ptr<Ui::RpWidget> _hideWorkaround;
 
+	// LoogriGram: frames still to trace after a show, to find where the
+	// white first-open flash comes from. Zero means tracing is off.
+	int _logFramesLeft = 0;
+
 };
 
 } // namespace Media::View

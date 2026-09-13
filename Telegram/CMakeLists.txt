@@ -588,6 +588,8 @@ PRIVATE
     core/local_url_handlers.cpp
     core/local_url_handlers.h
     core/loogrigram_build_tag.h
+    core/loogrigram_lang.cpp
+    core/loogrigram_lang.h
     core/loogrigram_update.cpp
     core/loogrigram_update.h
     core/phone_click_handler.cpp

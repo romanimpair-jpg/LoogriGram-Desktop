@@ -19,6 +19,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/calls_instance.h"
 #include "core/application.h"
 #include "core/click_handler_types.h"
+#include "core/loogrigram_lang.h"
 #include "core/loogrigram_update.h"
 #include "data/data_changes.h"
 #include "data/data_document_media.h"
@@ -756,7 +757,7 @@ void MainMenu::setupMenu() {
 	// flip back, not something configured once. Reading the current value
 	// once is enough: nothing else in the app changes it.
 	const auto ghostToggle = addAction(
-		tr::lng_menu_ghost_mode(),
+		LoogriGram::Lang::GhostMode(),
 		{ &st::menuIconStealth }
 	)->toggleOn(rpl::single(Core::App().settings().ghostMode()));
 	ghostToggle->toggledChanges(
@@ -772,7 +773,7 @@ void MainMenu::setupMenu() {
 	// nothing, which leaves no way to ask it to look now - needed at minimum
 	// to test it without restarting. Reports the outcome either way.
 	addAction(
-		tr::lng_menu_check_updates(),
+		LoogriGram::Lang::CheckUpdates(),
 		{ &st::menuIconDownload }
 	)->setClickedCallback([] {
 		Core::LoogriGram::CheckForUpdatesNow();

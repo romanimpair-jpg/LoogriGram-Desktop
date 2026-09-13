@@ -479,6 +479,10 @@ void OverlayWidget::RendererRhi::render(
 		QRhi *rhi,
 		QRhiRenderTarget *rt,
 		QRhiCommandBuffer *cb) {
+	if (_owner->_logFramesLeft > 0) {
+		LOG(("Viewer Trace: rhi render, hideWorkaround=%1."
+			).arg(_owner->_hideWorkaround ? 1 : 0));
+	}
 	if (_owner->_hideWorkaround) {
 		// LoogriGram: upstream 025c6aae, "[qrhi] Fixed media viewer blink with
 		// last content on reopen" (2026-09-10), lands after the commit this
@@ -486,15 +490,14 @@ void OverlayWidget::RendererRhi::render(
 		// the frame it already had, so the viewer reopens showing the
 		// previously viewed media.
 		//
-		// Cleared opaque black rather than upstream's QColor(0, 0, 0, 0).
-		// With the transparent clear this flashes pure white on open here,
-		// and a transparent clear cannot paint white - so either the surface
-		// is not composited with alpha the way that assumes, or the white
-		// comes from somewhere else entirely. Black settles it either way:
-		// whatever the surface holds at hide time is what the window shows
-		// when it is next mapped, and black is what the viewer looks like
-		// anyway. If the flash survives this, it is not this pass.
-		cb->beginPass(rt, QColor(0, 0, 0, 255), { 1.0f, 0 });
+		// Clearing this black instead showed black on every reopen, which
+		// proved the surface contents at hide time are what the window shows
+		// when it is next mapped - but the very first open of a session was
+		// still white, because nothing has cleared the surface yet at that
+		// point. So the white is not this pass, and the black was only
+		// hiding the second case. The _logFramesLeft tracing below is here
+		// to find where the first frame actually comes from.
+		cb->beginPass(rt, QColor(0, 0, 0, 0), { 1.0f, 0 });
 		cb->endPass();
 		return;
 	}

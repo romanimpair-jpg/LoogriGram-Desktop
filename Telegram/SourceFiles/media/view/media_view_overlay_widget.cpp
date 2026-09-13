@@ -4786,6 +4786,18 @@ void OverlayWidget::showAndActivate() {
 		_wasWindowedMode = false;
 	}
 	updateGeometry();
+
+	// LoogriGram: trace the first frames of a show. The question is whether a
+	// frame carrying the new media exists before the window is presented, or
+	// whether the compositor shows the surface first and paints after.
+	_logFramesLeft = 4;
+	LOG(("Viewer Trace: about to show, hidden=%1, staticNull=%2, photo=%3, "
+		"document=%4."
+		).arg(isHidden() ? 1 : 0
+		).arg(_staticContent.isNull() ? 1 : 0
+		).arg(_photo ? 1 : 0
+		).arg(_document ? 1 : 0));
+
 	if (_windowed || Platform::IsMac()) {
 		_window->showNormal();
 		_wasWindowedMode = true;
@@ -4794,6 +4806,7 @@ void OverlayWidget::showAndActivate() {
 	} else {
 		_window->showMaximized();
 	}
+	LOG(("Viewer Trace: window shown."));
 	_helper->afterShow(_fullscreen);
 	_widget->update();
 	activate();
@@ -6194,6 +6207,15 @@ Ui::GL::ChosenRenderer OverlayWidget::chooseRenderer(
 }
 
 void OverlayWidget::paint(not_null<Renderer*> renderer) {
+	if (_logFramesLeft > 0) {
+		--_logFramesLeft;
+		LOG(("Viewer Trace: paint, contentShown=%1, videoShown=%2, "
+			"staticNull=%3, opaque=%4."
+			).arg(contentShown() ? 1 : 0
+			).arg(videoShown() ? 1 : 0
+			).arg(_staticContent.isNull() ? 1 : 0
+			).arg(opaqueContentShown() ? 1 : 0));
+	}
 	renderer->paintBackground();
 	if (contentShown()) {
 		if (videoShown()) {

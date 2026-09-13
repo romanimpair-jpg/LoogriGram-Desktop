@@ -71,11 +71,21 @@ jobs:
       UPLOAD_ARTIFACT: "true"
       ONLY_CACHE: "false"
       PREPARE_PATH: "Telegram/build/prepare/prepare.py"
-      # Bump this whenever a submodule pointer changes. Submodule files are
-      # pinned to a fixed old mtime so their fresh checkout does not rebuild
-      # the tree, which also means a genuine submodule update would otherwise
-      # be missed and stale objects reused.
-      OUT_CACHE_SALT: "1"
+      # Bump this whenever a submodule pointer changes, or whenever keys are
+      # added to or removed from lang.strings. Submodule files are pinned to a
+      # fixed old mtime so their fresh checkout does not rebuild the tree,
+      # which also means a genuine submodule update would otherwise be missed
+      # and stale objects reused.
+      #
+      # Raised to 2 because lang key indices are positional: adding one key
+      # renumbered every key after it, and the incremental build rebuilt only
+      # five objects - lang_instance.cpp, which sizes the value array from
+      # kKeysCount, was not among them. The result asserted on
+      # "key < _values.size()" when opening the main menu and returned
+      # off-by-one strings elsewhere. Our own strings now live in
+      # core/loogrigram_lang.cpp precisely so this never needs bumping for
+      # them again; this bump is to clear the tree that mistake left behind.
+      OUT_CACHE_SALT: "2"
 
     defaults:
       run:
