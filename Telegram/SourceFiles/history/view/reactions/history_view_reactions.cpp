@@ -916,32 +916,15 @@ InlineListData InlineListDataFromMessage(not_null<Element*> view) {
 	auto result = InlineListData();
 	result.reactions = item->reactionsWithLocal();
 
-	const auto shouldAddEmptyPaidButton = [&] {
-		if (view->context() == Context::ChatPreview) {
-			return false;
-		}
-		if (result.reactions.empty()) {
-			return false;
-		}
-		const auto hasPaidReaction = ranges::any_of(
+	// LoogriGram: no star counts on posts, including our own channels'. The
+	// empty "add a paid reaction" button is not added, and any paid reaction
+	// the server reports on a message is dropped before layout, so a post that
+	// other clients show covered in stars just shows its ordinary reactions.
+	result.reactions.erase(
+		ranges::remove_if(
 			result.reactions,
-			[](const MessageReaction &r) { return r.id.paid(); });
-		if (hasPaidReaction) {
-			return false;
-		}
-		if (const auto channel = item->history()->peer->asChannel()) {
-			return channel->allowedReactions().paidEnabled;
-		} else if (const auto chat = item->history()->peer->asChat()) {
-			return chat->allowedReactions().paidEnabled;
-		}
-		return false;
-	}();
-
-	if (shouldAddEmptyPaidButton) {
-		result.reactions.insert(
-			result.reactions.begin(),
-			MessageReaction{ .id = ReactionId::Paid(), .count = 0 });
-	}
+			[](const MessageReaction &r) { return r.id.paid(); }),
+		end(result.reactions));
 	if (const auto user = item->history()->peer->asUser()) {
 		// Always show userpics, we have all information.
 		result.recent.reserve(result.reactions.size());

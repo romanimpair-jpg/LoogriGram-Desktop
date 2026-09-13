@@ -185,7 +185,14 @@ bool ApplyBotMenuButton(
 AllowedReactions Parse(
 		const MTPChatReactions &value,
 		int maxCount,
-		bool paidEnabled) {
+		bool paidEnabledFromServer) {
+	// LoogriGram: paying stars to react is not a reaction, it is a purchase
+	// wearing a reaction's clothes. Dropping the server's flag here is the one
+	// place that covers every consumer: the star never enters the reaction
+	// selector, the "add a paid reaction" button never appears on a post, and
+	// the channel admin toggle can never turn it back on, so this holds for
+	// our own channels too.
+	const auto paidEnabled = false;
 	return value.match([&](const MTPDchatReactionsNone &) {
 		return AllowedReactions{
 			.maxCount = maxCount,

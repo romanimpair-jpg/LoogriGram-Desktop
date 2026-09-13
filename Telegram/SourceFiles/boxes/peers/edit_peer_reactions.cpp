@@ -922,28 +922,9 @@ void EditAllowedReactionsBox(
 
 		Ui::AddDividerText(inner, tr::lng_manage_peer_reactions_max_about());
 
-		Ui::AddSkip(inner);
-		const auto paid = inner->add(object_ptr<Ui::SettingsButton>(
-			inner,
-			tr::lng_manage_peer_reactions_paid(),
-			st::manageGroupNoIconButton.button));
-		paid->toggleOn(state->paidEnabled.value());
-		paid->toggledValue(
-		) | rpl::on_next([=](bool value) {
-			state->paidEnabled = value;
-		}, paid->lifetime());
-		Ui::AddSkip(inner);
-
-		Ui::AddDividerText(
-			inner,
-			tr::lng_manage_peer_reactions_paid_about(
-				lt_link,
-				tr::lng_manage_peer_reactions_paid_link([=](QString text) {
-					return tr::link(
-						text,
-						u"https://telegram.org/tos/stars"_q);
-				}),
-				tr::marked));
+		// LoogriGram: no "paid reactions" toggle when managing a channel. The
+		// flag it edited is dropped in Data::Parse regardless, so the switch
+		// could only ever have lied about what it does.
 	}
 	const auto collect = [=] {
 		auto result = AllowedReactions();
