@@ -26,6 +26,20 @@ on:
           - Debug
           - Release
 
+# Starting a build supersedes any build already running on the same branch,
+# so a redundant one stops burning a runner the moment it stops being wanted.
+#
+# The mode is part of the group on purpose. Grouping on workflow and ref alone
+# would let a three minute validate run cancel a twenty five minute build,
+# which is the opposite of useful.
+#
+# Safe against the caches: the tree cache is saved under `if: always()`, and a
+# cancelled job still runs those, so a superseded build leaves its objects
+# behind for the next one to reuse rather than throwing the work away.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.mode }}
+  cancel-in-progress: true
+
 jobs:
 
   windows:
