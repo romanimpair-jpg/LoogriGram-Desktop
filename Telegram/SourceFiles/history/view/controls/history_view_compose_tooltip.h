@@ -40,6 +40,4 @@ private:
 
 };
 
-using AiTooltipManager = ComposeTooltipManager;
-
 } // namespace HistoryView::Controls

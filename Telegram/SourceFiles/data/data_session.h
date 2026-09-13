@@ -60,7 +60,6 @@ class SendActionManager;
 class Reactions;
 class EmojiStatuses;
 class ForumIcons;
-class AiComposeTones;
 class ChatFilters;
 class CloudThemes;
 class Streaming;
@@ -186,9 +185,6 @@ public:
 	}
 	[[nodiscard]] const Groups &groups() const {
 		return _groups;
-	}
-	[[nodiscard]] AiComposeTones &aiComposeTones() const {
-		return *_aiComposeTones;
 	}
 	[[nodiscard]] ChatFilters &chatsFilters() const {
 		return *_chatsFilters;
@@ -1427,7 +1423,6 @@ private:
 	mutable base::flat_map<PeerId, std::vector<FullMsgId>> _messagesWithPeer;
 
 	Groups _groups;
-	const std::unique_ptr<AiComposeTones> _aiComposeTones;
 	const std::unique_ptr<ChatFilters> _chatsFilters;
 	const std::unique_ptr<CloudThemes> _cloudThemes;
 	const std::unique_ptr<SendActionManager> _sendActionManager;

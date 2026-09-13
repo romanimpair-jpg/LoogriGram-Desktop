@@ -5,7 +5,7 @@ the official desktop application for the Telegram messaging service.
 For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
-#include "history/view/controls/history_view_compose_ai_tooltip.h"
+#include "history/view/controls/history_view_compose_tooltip.h"
 
 #include "core/application.h"
 #include "core/core_settings.h"
@@ -78,7 +78,7 @@ void ComposeTooltipManager::updateGeometry() {
 			- size.width();
 		return QPoint(
 			std::max(std::min(left, maxWidth - size.width()), 0),
-			geometry.y() - size.height() - st::historyAiComposeTooltipSkip);
+			geometry.y() - size.height() - st::historyComposeTooltipSkip);
 	};
 	_tooltip->pointAt(geometry, RectPart::Top, countPosition);
 }

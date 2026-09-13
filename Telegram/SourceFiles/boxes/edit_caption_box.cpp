@@ -37,7 +37,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_drag_area.h"
 #include "history/history_item.h"
 #include "history/history.h"
-#include "history/view/controls/history_view_compose_ai_button.h"
 #include "lang/lang_keys.h"
 #include "menu/menu_checked_action.h"
 #include "main/main_session.h"
@@ -53,7 +52,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/chat/attach/attach_item_single_media_preview.h"
 #include "ui/chat/attach/attach_single_file_preview.h"
 #include "ui/chat/attach/attach_single_media_preview.h"
-#include "ui/controls/compose_ai_button_factory.h"
+#include "ui/controls/compose_text_helpers.h"
 #include "ui/controls/emoji_button.h"
 #include "ui/effects/scroll_content_shadow.h"
 #include "ui/image/image.h"
@@ -578,7 +577,10 @@ void EditCaptionBox::setupField() {
 	const auto allow = [=](not_null<DocumentData*> emoji) {
 		return Data::AllowEmojiWithoutPremium(peer, emoji);
 	};
-	const auto chatStyle = InitMessageFieldHandlers({
+	// LoogriGram: the returned chat style was only needed to build the AI
+	// caption button, which is gone; the call itself still installs the
+	// field's handlers and has to stay.
+	InitMessageFieldHandlers({
 		.session = &_controller->session(),
 		.show = _controller->uiShow(),
 		.field = _field.get(),
@@ -623,14 +625,6 @@ void EditCaptionBox::setupField() {
 			return fileFromClipboard(data);
 		}
 		Unexpected("Action in MimeData hook.");
-	});
-
-	_aiButton = Ui::SetupCaptionAiButton({
-		.parent = this,
-		.field = _field.get(),
-		.session = &_controller->session(),
-		.show = _controller->uiShow(),
-		.chatStyle = chatStyle,
 	});
 }
 
@@ -1241,11 +1235,6 @@ void EditCaptionBox::resizeEvent(QResizeEvent *e) {
 			- _emojiToggle->width()),
 		_field->y() + st::boxAttachEmojiTop);
 	_emojiToggle->update();
-
-	if (_aiButton) {
-		Ui::UpdateCaptionAiButtonGeometry(_aiButton, _field.get());
-		_aiButton->raise();
-	}
 
 	if (!_controls->isHidden()) {
 		_controls->resizeToWidth(width());

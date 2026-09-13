@@ -1501,32 +1501,37 @@ historySend: SendButton {
 	stopSize: size(14px, 14px);
 	stopRadius: 3px;
 }
-historyAiComposeButton: IconButton(historyAttach) {
+// LoogriGram: this was historyAiComposeButton, the AI button's own style, and
+// three unrelated buttons inherited from it - send-as-file, the rich editor
+// expand button and discard-rich-draft. Deleting it with the AI feature would
+// have taken all three with it, so it keeps its shape under a neutral name.
+// The AI letter and star icons that went with it are gone.
+historyComposeInnerButton: IconButton(historyAttach) {
 	width: 28px;
 	height: 28px;
 	rippleAreaSize: 28px;
 	rippleAreaPosition: point(0px, 0px);
 }
-historyAiComposeButtonLetters: icon{{ "chat/ai_letters-20x20", historyComposeIconFg }};
-historyAiComposeButtonStar1: icon{{ "chat/ai_star1-20x20", historyComposeIconFg }};
-historyAiComposeButtonStar2: icon{{ "chat/ai_star2-20x20", historyComposeIconFg }};
-historyAiComposeButtonPosition: point(-8px, -4px);
-historySendAsFileButton: IconButton(historyAiComposeButton) {
+historyComposeInnerButtonPosition: point(-8px, -4px);
+historySendAsFileButton: IconButton(historyComposeInnerButton) {
 	icon: icon {{ "chat/text_to_file-18x18", historyComposeIconFg }};
 	iconOver: icon {{ "chat/text_to_file-18x18", historyComposeIconFgOver }};
 }
-historyExpandComposeButton: IconButton(historyAiComposeButton) {
+historyExpandComposeButton: IconButton(historyComposeInnerButton) {
 	icon: icon {{ "menu/rich/expand-20x20", historyComposeIconFg }};
 	iconOver: icon {{ "menu/rich/expand-20x20", historyComposeIconFgOver }};
 }
-historyDiscardRichDraftButton: IconButton(historyAiComposeButton) {
+historyDiscardRichDraftButton: IconButton(historyComposeInnerButton) {
 	width: 34px;
 	height: 34px;
 	rippleAreaSize: 34px;
 	icon: icon {{ "chat/input_discard-26x26", historyComposeIconFg }};
 	iconOver: icon {{ "chat/input_discard-26x26", historyComposeIconFgOver }};
 }
-historyAiComposeTooltipSkip: 8px;
+// LoogriGram: was historyAiComposeTooltipSkip. The tooltip manager it spaces
+// is generic - the send-as-file tooltip uses it too - so it outlives the AI
+// button that happened to be its first caller.
+historyComposeTooltipSkip: 8px;
 importantTooltipHide: IconButton(defaultIconButton) {
 	width: 34px;
 	height: 20px;

@@ -7,6 +7,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+// LoogriGram: what is left of compose_ai_button_factory.h after the AI compose
+// feature was removed. None of this was ever about AI - the paste-as-file check
+// and the expand-button line count merely shared a file with the AI button
+// factory, and every caller of them is a plain compose or caption field. Kept
+// under a name that says what they actually do.
+
 class QMimeData;
 
 namespace Main {
@@ -14,41 +20,16 @@ class Session;
 } // namespace Main
 
 namespace Ui {
-class ChatStyle;
 class InputField;
-class Show;
 } // namespace Ui
-
-namespace HistoryView::Controls {
-class ComposeAiButton;
-} // namespace HistoryView::Controls
 
 namespace Ui {
 
 struct PreparedList;
 
-extern const char kOptionHideAiButton[];
-
-[[nodiscard]] bool HasEnoughLinesForAi(
-	not_null<Main::Session*> session,
-	not_null<Ui::InputField*> field);
-
+// Whether the field holds enough non-blank text, over enough lines, to be
+// worth offering the expand button.
 [[nodiscard]] bool HasEnoughLinesForExpand(not_null<Ui::InputField*> field);
-
-struct SetupCaptionAiButtonArgs {
-	not_null<QWidget*> parent;
-	not_null<Ui::InputField*> field;
-	not_null<Main::Session*> session;
-	std::shared_ptr<Ui::Show> show;
-	std::shared_ptr<Ui::ChatStyle> chatStyle;
-};
-
-[[nodiscard]] auto SetupCaptionAiButton(SetupCaptionAiButtonArgs &&args)
--> not_null<HistoryView::Controls::ComposeAiButton*>;
-
-void UpdateCaptionAiButtonGeometry(
-	not_null<HistoryView::Controls::ComposeAiButton*> button,
-	not_null<Ui::InputField*> field);
 
 [[nodiscard]] PreparedList PrepareTextAsFile(const QString &text);
 
@@ -57,6 +38,8 @@ struct LargeTextPasteResult {
 	QString resultingText;
 };
 
+// A paste that would push the field past the message length limit several
+// times over is offered as a file instead.
 [[nodiscard]] LargeTextPasteResult CheckLargeTextPaste(
 	not_null<Main::Session*> session,
 	not_null<Ui::InputField*> field,

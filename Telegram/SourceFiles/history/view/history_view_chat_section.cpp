@@ -1553,12 +1553,6 @@ void ChatWidget::setupComposeControls() {
 		.showSlowmodeError = [=] { return showSlowmodeError(); },
 		.showScheduleSendError = [=] { return showScheduleSendError(); },
 		.sendActionFactory = [=] { return prepareSendAction({}); },
-		.sendWithText = [=](
-				TextWithEntities &&text,
-				Api::SendOptions options,
-				Fn<void()> done) {
-			sendWithTextOverride(std::move(text), options, std::move(done));
-		},
 		.slowmodeSecondsLeft = SlowmodeSecondsLeft(_peer),
 		.sendDisabledBySlowmode = SendDisabledBySlowmode(_peer),
 		.writeRestriction = std::move(writeRestriction),
@@ -2628,18 +2622,6 @@ void ChatWidget::sendTextWithTags(
 	if (done) {
 		done();
 	}
-}
-
-void ChatWidget::sendWithTextOverride(
-		TextWithEntities text,
-		Api::SendOptions options,
-		Fn<void()> done) {
-	const auto useCurrentWebPageDraft
-		= (text.text == _composeControls->prepareTextForEditMsg().text);
-	sendTextWithTags({
-		text.text,
-		TextUtilities::ConvertEntitiesToTextTags(text.entities),
-	}, useCurrentWebPageDraft, options, std::move(done));
 }
 
 void ChatWidget::edit(

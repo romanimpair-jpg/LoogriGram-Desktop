@@ -112,7 +112,6 @@ struct Labeled {
 		{ C::SendSilentMessage, tr::lng_shortcuts_silent_send() },
 		{ C::ScheduleMessage, tr::lng_shortcuts_schedule() },
 		separator,
-		{ C::ComposeAiApplyInPlace, tr::lng_shortcuts_ai_compose_apply() },
 		{ C::ShowRichEditor, tr::lng_shortcuts_rich_editor() },
 		{ C::ToggleWebPagePreview, tr::lng_shortcuts_toggle_link_preview() },
 		separator,
@@ -761,8 +760,9 @@ Type ShortcutsId() {
 
 QString ShortcutsHighlightId(::Shortcuts::Command command) {
 	switch (command) {
-	case ::Shortcuts::Command::ComposeAiApplyInPlace:
-		return u"shortcuts/ai_compose_apply"_q;
+	// LoogriGram: the AI compose shortcut was the only highlighted command.
+	// The switch stays so a future one has somewhere to go, and so the
+	// parameter is still used.
 	default:
 		return {};
 	}

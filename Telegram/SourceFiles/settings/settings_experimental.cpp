@@ -26,7 +26,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/vertical_list.h"
 #include "ui/gl/gl_detection.h"
 #include "ui/chat/chat_style_radius.h"
-#include "ui/controls/compose_ai_button_factory.h"
 #include "base/options.h"
 #include "boxes/moderate_messages_box.h"
 #include "core/application.h"
@@ -401,7 +400,6 @@ void SetupExperimental(
 				Ui::kOptionUseSmallMsgBubbleRadius,
 				HistoryView::kOptionUnlimitedMessageWidth,
 				HistoryView::Controls::kOptionMacCmdReplyImmediately,
-				Ui::kOptionHideAiButton,
 				kForceComposeSearchOneColumn,
 			}
 		},

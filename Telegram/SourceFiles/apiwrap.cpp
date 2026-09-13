@@ -36,7 +36,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_confirm_phone.h"
 #include "api/api_unread_things.h"
 #include "api/api_ringtones.h"
-#include "api/api_compose_with_ai.h"
 #include "api/api_transcribes.h"
 #include "api/api_premium.h"
 #include "api/api_user_names.h"
@@ -227,7 +226,6 @@ ApiWrap::ApiWrap(not_null<Main::Session*> session)
 , _communities(std::make_unique<Api::Communities>(this))
 , _unreadThings(std::make_unique<Api::UnreadThings>(this))
 , _ringtones(std::make_unique<Api::Ringtones>(this))
-, _composeWithAi(std::make_unique<Api::ComposeWithAi>(this))
 , _transcribes(std::make_unique<Api::Transcribes>(this))
 , _premium(std::make_unique<Api::Premium>(this))
 , _usernames(std::make_unique<Api::Usernames>(this))
@@ -5830,10 +5828,6 @@ Api::UnreadThings &ApiWrap::unreadThings() {
 
 Api::Ringtones &ApiWrap::ringtones() {
 	return *_ringtones;
-}
-
-Api::ComposeWithAi &ApiWrap::composeWithAi() {
-	return *_composeWithAi;
 }
 
 Api::Transcribes &ApiWrap::transcribes() {

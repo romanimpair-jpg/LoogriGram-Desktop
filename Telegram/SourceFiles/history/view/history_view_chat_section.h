@@ -371,10 +371,6 @@ private:
 	void sendRichDraftWithoutFormatting(
 		std::shared_ptr<const Iv::RichPage> page,
 		Api::SendOptions options);
-	void sendWithTextOverride(
-		TextWithEntities text,
-		Api::SendOptions options,
-		Fn<void()> done);
 	void send();
 	void send(Api::SendOptions options);
 	void sendVoice(const Controls::VoiceToSend &data);

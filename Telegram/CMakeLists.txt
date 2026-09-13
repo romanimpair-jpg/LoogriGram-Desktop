@@ -138,8 +138,6 @@ PRIVATE
     api/api_common.h
     api/api_confirm_phone.cpp
     api/api_confirm_phone.h
-    api/api_compose_with_ai.cpp
-    api/api_compose_with_ai.h
     api/api_credits.cpp
     api/api_credits.h
     api/api_credits_history_entry.cpp
@@ -402,14 +400,6 @@ PRIVATE
     boxes/stickers_box.h
     boxes/transfer_gift_box.cpp
     boxes/transfer_gift_box.h
-    boxes/compose_ai_box.cpp
-    boxes/compose_ai_box.h
-    boxes/create_ai_box.cpp
-    boxes/create_ai_box.h
-    boxes/create_ai_tone_box.cpp
-    boxes/create_ai_tone_box.h
-    boxes/preview_ai_tone_box.cpp
-    boxes/preview_ai_tone_box.h
     boxes/translate_box.cpp
     boxes/translate_box.h
     boxes/unconfirmed_auth_denied_box.cpp
@@ -661,8 +651,6 @@ PRIVATE
     data/data_abstract_sparse_ids.h
     data/data_abstract_structure.cpp
     data/data_abstract_structure.h
-    data/data_ai_compose_tones.cpp
-    data/data_ai_compose_tones.h
     data/data_audio_msg_id.cpp
     data/data_audio_msg_id.h
     data/data_auto_download.cpp
@@ -924,10 +912,6 @@ PRIVATE
     history/view/controls/compose_controls_common.h
     history/view/controls/history_view_bottom_controls.cpp
     history/view/controls/history_view_bottom_controls.h
-    history/view/controls/history_view_compose_ai_button.cpp
-    history/view/controls/history_view_compose_ai_button.h
-    history/view/controls/history_view_compose_ai_tooltip.cpp
-    history/view/controls/history_view_compose_ai_tooltip.h
     history/view/controls/history_view_compose_controls.cpp
     history/view/controls/history_view_compose_controls.h
     history/view/controls/history_view_top_controls.cpp
@@ -936,6 +920,8 @@ PRIVATE
     history/view/controls/history_view_compose_media_edit_manager.h
     history/view/controls/history_view_compose_search.cpp
     history/view/controls/history_view_compose_search.h
+    history/view/controls/history_view_compose_tooltip.cpp
+    history/view/controls/history_view_compose_tooltip.h
     history/view/controls/history_view_draft_options.cpp
     history/view/controls/history_view_draft_options.h
     history/view/controls/history_view_forward_panel.cpp
@@ -2019,8 +2005,8 @@ PRIVATE
     ui/chat/choose_send_as.h
     ui/chat/choose_theme_controller.cpp
     ui/chat/choose_theme_controller.h
-    ui/controls/compose_ai_button_factory.cpp
-    ui/controls/compose_ai_button_factory.h
+    ui/controls/compose_text_helpers.cpp
+    ui/controls/compose_text_helpers.h
     ui/controls/custom_emoji_toast_icon.cpp
     ui/controls/custom_emoji_toast_icon.h
     ui/controls/emoji_button_factory.cpp

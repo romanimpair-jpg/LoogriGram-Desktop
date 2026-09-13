@@ -76,7 +76,6 @@ enum class PremiumFeature {
 	PeerColors,
 	Gifts,
 	NoForwards,
-	AiCompose,
 	RichFormatting,
 
 	// Business features.

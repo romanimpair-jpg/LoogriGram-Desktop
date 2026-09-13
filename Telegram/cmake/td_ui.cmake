@@ -41,11 +41,9 @@ set(style_files
     ui/boxes/choose_date_time.style
     ui/boxes/collectible_info_box.style
     ui/boxes/country_select_box.style
-    ui/controls/labeled_emoji_tabs.style
     ui/widgets/color_editor.style
     ui/widgets/marquee_label.style
     window/window_lock_widgets.style
-    boxes/compose_ai_box.style
     boxes/connection_box.style
     boxes/polls.style
     dialogs/dialogs.style
@@ -498,8 +496,6 @@ PRIVATE
     ui/controls/invite_link_buttons.h
     ui/controls/invite_link_label.cpp
     ui/controls/invite_link_label.h
-    ui/controls/labeled_emoji_tabs.cpp
-    ui/controls/labeled_emoji_tabs.h
     ui/controls/peer_list_dummy.cpp
     ui/controls/peer_list_dummy.h
     ui/controls/popup_selector.cpp

@@ -258,7 +258,6 @@ using Order = std::vector<QString>;
 		u"premium_stickers"_q,
 		u"business"_q,
 		u"effects"_q,
-		u"ai_compose"_q,
 		u"rich_formatting"_q,
 	};
 }
@@ -470,16 +469,6 @@ using Order = std::vector<QString>;
 				tr::lng_premium_summary_subtitle_no_forwards(),
 				tr::lng_premium_summary_about_no_forwards(),
 				PremiumFeature::NoForwards,
-			},
-		},
-		{
-			u"ai_compose"_q,
-			Entry{
-				&st::settingsPremiumIconAiCompose,
-				tr::lng_premium_summary_subtitle_ai_compose(),
-				tr::lng_premium_summary_about_ai_compose(),
-				PremiumFeature::AiCompose,
-				true,
 			},
 		},
 		{
@@ -1055,8 +1044,6 @@ void TopBarWithSticker::resizeEvent(QResizeEvent *e) {
 		return tr::lng_premium_summary_subtitle_todo_lists(tr::now);
 	} else if (key == u"no_forwards"_q) {
 		return tr::lng_premium_summary_subtitle_no_forwards(tr::now);
-	} else if (key == u"ai_compose"_q) {
-		return tr::lng_premium_summary_subtitle_ai_compose(tr::now);
 	} else if (key == u"rich_formatting"_q) {
 		return tr::lng_premium_summary_subtitle_rich_formatting(tr::now);
 	}
@@ -2143,8 +2130,6 @@ std::vector<PremiumFeature> PremiumFeaturesOrder(
 			return PremiumFeature::Gifts;
 		} else if (s == u"no_forwards"_q) {
 			return PremiumFeature::NoForwards;
-		} else if (s == u"ai_compose"_q) {
-			return PremiumFeature::AiCompose;
 		} else if (s == u"rich_formatting"_q) {
 			return PremiumFeature::RichFormatting;
 		}

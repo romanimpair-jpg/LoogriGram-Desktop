@@ -70,7 +70,6 @@ enum class Command {
 	JustSendMessage,
 	SendSilentMessage,
 	ScheduleMessage,
-	ComposeAiApplyInPlace,
 	ShowRichEditor,
 	ToggleWebPagePreview,
 

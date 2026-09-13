@@ -25,7 +25,6 @@ class PhotoMedia;
 } // namespace Data
 
 namespace HistoryView::Controls {
-class ComposeAiButton;
 } // namespace HistoryView::Controls
 
 namespace Ui {
@@ -135,7 +134,6 @@ private:
 	const base::unique_qptr<Ui::ScrollArea> _scroll;
 	const base::unique_qptr<Ui::InputField> _field;
 	const base::unique_qptr<Ui::EmojiButton> _emojiToggle;
-	HistoryView::Controls::ComposeAiButton *_aiButton = nullptr;
 
 	std::unique_ptr<ChatHelpers::FieldAutocomplete> _autocomplete;
 
