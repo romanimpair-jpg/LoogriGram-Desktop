@@ -480,16 +480,21 @@ void OverlayWidget::RendererRhi::render(
 		QRhiRenderTarget *rt,
 		QRhiCommandBuffer *cb) {
 	if (_owner->_hideWorkaround) {
-		// LoogriGram: clear the target instead of returning without a pass.
-		// The hide workaround exists because the viewer otherwise blinks with
-		// the last shown content on reopen, and the other two renderers do
-		// clear for it: RendererGL and RendererSW both go through
-		// Renderer::clearColor(), which Ui::GL::Surface applies. Nothing reads
-		// rhiClearColor() though - Ui::Rhi::SurfaceRhi only forwards render()
-		// - so skipping the pass here left the previous frame sitting in the
-		// widget texture, and every fresh open of an image or a video showed
-		// the previously viewed one for a few frames.
-		cb->beginPass(rt, QColor(0, 0, 0, 0), { 1.0f, 0 });
+		// LoogriGram: upstream 025c6aae, "[qrhi] Fixed media viewer blink with
+		// last content on reopen" (2026-09-10), lands after the commit this
+		// fork is based on. Without opening a pass the widget texture keeps
+		// the frame it already had, so the viewer reopens showing the
+		// previously viewed media.
+		//
+		// Cleared opaque black rather than upstream's QColor(0, 0, 0, 0).
+		// With the transparent clear this flashes pure white on open here,
+		// and a transparent clear cannot paint white - so either the surface
+		// is not composited with alpha the way that assumes, or the white
+		// comes from somewhere else entirely. Black settles it either way:
+		// whatever the surface holds at hide time is what the window shows
+		// when it is next mapped, and black is what the viewer looks like
+		// anyway. If the flash survives this, it is not this pass.
+		cb->beginPass(rt, QColor(0, 0, 0, 255), { 1.0f, 0 });
 		cb->endPass();
 		return;
 	}
