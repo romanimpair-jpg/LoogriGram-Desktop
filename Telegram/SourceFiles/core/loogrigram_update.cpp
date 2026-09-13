@@ -17,6 +17,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/ui_utility.h"
 
 #include <QtCore/QCoreApplication>
+#include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
@@ -151,6 +152,38 @@ void ShowRestartBox() {
 // The old binary is kept rather than deleted, both because Windows would
 // refuse to remove it while it is running and because it is the way back if a
 // build turns out to be broken.
+// Picks a backup name that is actually free.
+//
+// .previous is taken more often than it looks. After an update that has not
+// been restarted into yet, .previous *is* the running image, and Windows will
+// neither delete nor overwrite that. Without this, the second update before a
+// restart fails on the rename below and updates quietly stop until the app is
+// restarted - which is exactly what happened the first time two of them landed
+// back to back.
+//
+// Old backups are cleared first; the one that is running refuses, harmlessly,
+// and gets cleared by whichever update follows the next restart.
+[[nodiscard]] QString ChooseBackupName(const QString &current) {
+	const auto base = current + u".previous"_q;
+	const auto dir = QDir(cExeDir());
+	const auto stale = dir.entryList(
+		QStringList{ cExeName() + u".previous*"_q },
+		QDir::Files);
+	for (const auto &name : stale) {
+		QFile::remove(dir.filePath(name));
+	}
+	if (!QFile::exists(base)) {
+		return base;
+	}
+	for (auto i = 1; i != 100; ++i) {
+		const auto candidate = base + u"."_q + QString::number(i);
+		if (!QFile::exists(candidate)) {
+			return candidate;
+		}
+	}
+	return QString();
+}
+
 [[nodiscard]] bool ApplyUpdate(const QByteArray &data) {
 	if (data.size() < kMinimumSize || !data.startsWith("MZ")) {
 		LOG(("Update Error: refusing %1 bytes that are not a Windows binary."
@@ -158,7 +191,6 @@ void ShowRestartBox() {
 		return false;
 	}
 	const auto current = cExeDir() + cExeName();
-	const auto previous = current + u".previous"_q;
 	const auto fresh = current + u".new"_q;
 
 	QFile::remove(fresh);
@@ -174,8 +206,12 @@ void ShowRestartBox() {
 			return false;
 		}
 	}
-	QFile::remove(previous);
-	if (!QFile::rename(current, previous)) {
+	const auto previous = ChooseBackupName(current);
+	if (previous.isEmpty()) {
+		LOG(("Update Error: no free name to move %1 aside.").arg(current));
+		QFile::remove(fresh);
+		return false;
+	} else if (!QFile::rename(current, previous)) {
 		LOG(("Update Error: could not move %1 aside.").arg(current));
 		QFile::remove(fresh);
 		return false;
@@ -227,7 +263,7 @@ void CheckLatestRelease(not_null<State*> state) {
 			LOG(("Update Error: release carries no tag."));
 			return;
 		} else if (tag == QString::fromLatin1(LOOGRIGRAM_BUILD_TAG)) {
-			DEBUG_LOG(("Update Info: already on %1.").arg(tag));
+			LOG(("Update Info: already on %1.").arg(tag));
 			return;
 		}
 		const auto assets = root.value(u"assets"_q).toArray();

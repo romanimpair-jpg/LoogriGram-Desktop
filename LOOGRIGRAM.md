@@ -15,13 +15,60 @@ what is specific to the fork.
 | Part | State |
 |---|---|
 | Desktop features | Implemented, built, installed and in daily use |
-| Desktop CI | Green. Dependencies cached (~9s), incremental compile ~46m |
+| Desktop CI | Green. Dependencies cached, warm incremental compile ~25m |
+| Ads | **Deleted**, not gated. See "Finish the removals properly" |
+| Updater | Ours, live. Checks our releases once per launch |
 | **Android** | **Not started.** See "Android" below |
 
 Verified working in the installed build: no sponsored messages, no premium
 badges or purchase surfaces, ghost mode toggle in the main menu, Last Seen and
 read date hidden server-side, no hover reactions, no suggestion popups, no
 Telegram help rows.
+
+### Where to pick up
+
+- **The media start-up delay is the main open bug.** Measured and narrowed, not
+  fixed — see "Open: media takes a beat to start loading". Leading suspect is
+  the views / read-marking path.
+- **Ads are done.** Premium, the suggestion getters and the six ghost-mode
+  early returns are still at the forced-getter stage.
+- **The updater has never actually performed an update.** Everything around it
+  has run — stamp, publish, compress, check — but no release newer than the
+  running build has existed yet, so the download-and-swap path is untested in
+  the wild. The first time one does, watch `log.txt` for `Update Info:`.
+- Installed build and newest release are both `ga8b589e`.
+
+### Editing lessons, learned expensively
+
+- **Never cut a range between two markers without checking what is inside it.**
+  Removing one function by slicing from its opening line to "the next function"
+  took nine unrelated `InnerWidget` methods with it, because the function
+  assumed to follow sat 370 lines further down. It compiled — nothing in that
+  translation unit referenced them — and only the linker caught it, after a
+  1h47m build. Diff the set of `Class::method(` definitions against the
+  pre-edit baseline and confirm only intended names disappeared:
+
+  ```
+  for f in $(git diff --name-only BASE HEAD -- '*.cpp'); do
+    diff <(git show BASE:$f | grep -oE '^[A-Za-z_][A-Za-z0-9_:<>*& ]*::[A-Za-z_~][A-Za-z0-9_]*\(' | sort -u) \
+         <(grep -oE '^[A-Za-z_][A-Za-z0-9_:<>*& ]*::[A-Za-z_~][A-Za-z0-9_]*\(' $f | sort -u) | grep '^<'
+  done
+  ```
+
+- **Reading the result back is not enough by itself.** It was done, and it
+  confirmed the sponsored symbols were gone — which is the wrong question. Ask
+  what *else* went with them.
+- **A running executable can be renamed, but not deleted or overwritten.**
+  Measured rather than assumed: rename succeeded with the process live, writing
+  a new file at the freed path succeeded, deleting the running image failed
+  with access denied. The whole updater rests on this.
+- **Actions artifacts need an authenticated token even on a public repo.**
+  Release assets do not. That is why the updater reads releases.
+- **The binary's bulk is `tg_owt` (WebRTC), not Qt.** Release archives:
+  tg_owt 275MB, Qt6Gui 97MB, Qt6Widgets 97MB, Qt6Core 81MB. Archive size
+  overstates contribution, but the ranking holds — so shrinking the download
+  means asking whether the calls stack is needed, not whether Qt can be split
+  out. There is no CMake flag for it; `lib_webrtc` is linked unconditionally.
 
 Installed app lives at `C:\LoogriProjects\LoogriGram\app\LoogriGram.exe`.
 **To update: replace only the .exe.** tdesktop keeps its profile *beside the
@@ -395,25 +442,22 @@ The Android fork has the same backlog; see `loogrigram-android/LOOGRIGRAM.md`.
 
 Still sitting at the "forced getter" stage:
 
-- **Ads.** `SponsoredMessages::canHaveFor` (both overloads) and `isTopBarFor`
-  return false, and `request()`/`inject()` early-return, leaving `append`,
-  `state`, `fillTopBar` and the beacon paths in the tree, inert. **This one has
-  an actual defect, not just dead code:** `request()` returns without ever
-  calling its `done` callback, which four call sites pass. Upstream's own
-  sibling `requestForVideo()` calls `done({})` on the same check — upstream
-  could return silently because `canHaveFor` was false only for peers where
-  nobody was listening, and forcing it false everywhere broke that. Nothing
-  hangs today (three of the four sites also call `checkState()` synchronously,
-  and the flag it sets gates only another sponsored request), but it violates
-  the fork's own "answer requests, don't drop them" rule. `state()` can now
-  never return anything but `None`, so `_sponsoredMessagesStateKnown` is
-  permanently false and `HistoryWidget::loadMessagesDown`'s branch on it is
-  unreachable.
-  Scope, when this is done: 973 occurrences across 76 files. Sponsored **peer
-  search** (`api_peer_search.cpp`, `dialogs_inner_widget.cpp`) was never gated
-  at all, so sponsored channels in search results are presumably still being
-  requested and shown — that is a separate subsystem from the message pipeline
-  and a gap in the ad removal, not just leftover code.
+- ~~**Ads.**~~ **Done** — deleted across three commits, ~4,500 lines: the
+  message pipeline, the viewer's playback ads, `Data::SponsoredMessages`
+  itself, `MessageFlag::Sponsored` and the fake-webpage `HistoryItem`
+  constructor that ads were built on, and sponsored **peer search**, which had
+  never been gated at all and was still requesting and showing sponsored
+  channels in search results.
+
+  Deliberately left, being different features rather than ads shown to us: the
+  **promoted / proxy-sponsor channel** (`Data::PromoSuggestions`,
+  `help.getPromoData`, `History::isPromoted`, `SubItem::Sponsored`, and the
+  `lng_proxy_sponsor_warning` label in `connection_box.cpp` — that label is
+  honest disclosure, and the same slot also carries PSAs), and the
+  channel-owner side: Business "Sponsored Messages",
+  `channels.restrictSponsoredMessages`, `account.toggleSponsoredMessages`, and
+  ad revenue in `api_earn` / `info_channel_earn_list`. Those belong with the
+  premium and monetisation removal — and the Business one is wanted gone.
 - **Premium.** `premiumBadgesShown()` and `premiumCanBuy()` are two lines that
   neutralise the badge painters, the settings block and every limit box. What
   they neutralise is all still compiled.
