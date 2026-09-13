@@ -31,7 +31,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_cursor_state.h"
 #include "history/view/history_view_reply_button.h"
 #include "history/view/history_view_context_menu.h"
-#include "history/view/history_view_reaction_preview.h"
 #include "history/view/history_view_quick_action.h"
 #include "history/view/history_view_add_poll_option.h"
 #include "history/view/history_view_element_overlay.h"
@@ -2865,12 +2864,13 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 				_whoReactedMenuLifetime);
 			e->accept();
 			return;
-		} else if (HistoryView::ShowReactionPreview(
-				_controller,
-				leaderOrSelf->fullId(),
-				clickedReaction)) {
-			return;
 		}
+		// LoogriGram: right-clicking a reaction already on a message used to
+		// open ShowReactionPreview - a body-sized overlay playing the sticker
+		// with its pack name. Gone; the right click now falls through to the
+		// ordinary message menu. The who-reacted list above is kept, and so is
+		// the preview for a custom emoji clicked in message text, which is a
+		// different gesture.
 	}
 	if (!linkPhoneNumber.isEmpty()) {
 		PhoneClickHandler(session, linkPhoneNumber).onClick(

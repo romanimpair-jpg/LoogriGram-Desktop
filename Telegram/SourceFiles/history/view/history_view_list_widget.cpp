@@ -53,7 +53,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_views.h"
 #include "layout/layout_selection.h"
 #include "payments/payments_reaction_process.h"
-#include "history/view/history_view_reaction_preview.h"
 #include "window/section_widget.h"
 #include "window/window_adaptive.h"
 #include "window/window_session_controller.h"
@@ -4086,12 +4085,10 @@ void ListWidget::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 				_whoReactedMenuLifetime);
 			e->accept();
 			return;
-		} else if (HistoryView::ShowReactionPreview(
-				controller(),
-				leaderOrSelf->fullId(),
-				clickedReaction)) {
-			return;
 		}
+		// LoogriGram: see history_inner_widget.cpp - the body-sized reaction
+		// preview on right click is removed here too, so both message views
+		// behave the same.
 	}
 	if (!linkPhoneNumber.isEmpty()) {
 		PhoneClickHandler(&session(), linkPhoneNumber).onClick(
