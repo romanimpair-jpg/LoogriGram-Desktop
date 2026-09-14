@@ -16,12 +16,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/emoji_sets_manager.h"
 #include "boxes/edit_privacy_box.h"
 #include "boxes/peers/edit_peer_color_box.h"
-#include "info/bot/earn/info_bot_earn_widget.h"
-#include "info/bot/starref/info_bot_starref_common.h"
-#include "info/bot/starref/info_bot_starref_join_widget.h"
 #include "settings/settings_privacy_controllers.h"
 #include "ui/chat/chat_style.h"
-#include "boxes/star_gift_box.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/text/text_utilities.h"
 #include "ui/widgets/buttons.h"
@@ -43,13 +39,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/sections/settings_active_sessions.h"
 #include "settings/sections/settings_advanced.h"
 #include "settings/sections/settings_blocked_peers.h"
-#include "settings/sections/settings_business.h"
 #include "settings/sections/settings_calls.h"
 #include "settings/sections/settings_chat.h"
 #include "settings/sections/settings_passkeys.h"
 #include "data/components/passkeys.h"
 #include "calls/calls_box_controller.h"
-#include "settings/sections/settings_credits.h"
 #include "settings/sections/settings_folders.h"
 #include "settings/sections/settings_global_ttl.h"
 #include "settings/sections/settings_local_storage.h"
@@ -67,7 +61,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/settings_power_saving.h"
 #include "settings/settings_search.h"
 #include "settings/settings_experimental.h"
-#include "settings/sections/settings_premium.h"
 #include "ui/power_saving.h"
 #include "settings/sections/settings_privacy_security.h"
 #include "settings/sections/settings_shortcuts.h"
@@ -1595,104 +1588,12 @@ void RegisterSettingsHandlers(Router &router) {
 		.requiresAuth = false,
 	});
 
-	router.add(u"settings"_q, {
-		.path = u"premium"_q,
-		.action = SettingsSection{ ::Settings::PremiumId() },
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"stars"_q,
-		.action = SettingsSection{ ::Settings::CreditsId() },
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"stars/top-up"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			static auto handler = ::Settings::BuyStarsHandler();
-			handler.handler(ctx.controller->uiShow())();
-			return Result::Handled;
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"stars/stats"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			const auto self = ctx.controller->session().user();
-			ctx.controller->showSection(Info::BotEarn::Make(self));
-			return Result::Handled;
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"stars/gift"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			Ui::ShowGiftCreditsBox(ctx.controller, nullptr);
-			return Result::Handled;
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"stars/earn"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			const auto self = ctx.controller->session().user();
-			if (Info::BotStarRef::Join::Allowed(self)) {
-				ctx.controller->showSection(Info::BotStarRef::Join::Make(self));
-			}
-			return Result::Handled;
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"ton"_q,
-		.action = SettingsSection{ ::Settings::CurrencyId() },
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"business"_q,
-		.action = SettingsSection{ ::Settings::BusinessId() },
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"business/do-not-hide-ads"_q,
-		.action = SettingsControl{
-			::Settings::BusinessId(),
-			u"business/sponsored"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"send-gift"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			Ui::ChooseStarGiftRecipient(ctx.controller);
-			return Result::Handled;
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"send-gift/self"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			Ui::ShowStarGiftBox(ctx.controller, ctx.controller->session().user());
-			return Result::Handled;
-		}},
-	});
+	// LoogriGram: the premium, stars, TON, business, gift and referral links
+	// are gone. They were the last way into those screens after the settings
+	// rows stopped listing them - a tg://premium link, or a tap through from a
+	// gift someone sent, still opened the whole subscription and wallet UI.
+	// An unregistered path falls through to the router's own not-handled
+	// answer, which is what a link to a feature we do not have should do.
 
 	router.add(u"settings"_q, {
 		.path = u"saved-messages"_q,

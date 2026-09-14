@@ -28,11 +28,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peers/edit_peer_info_box.h"
 #include "boxes/share_box.h"
 #include "boxes/connection_box.h"
-#include "boxes/gift_premium_box.h"
 #include "boxes/edit_privacy_box.h"
-#include "boxes/premium_preview_box.h"
 #include "boxes/sticker_set_box.h"
-#include "boxes/star_gift_box.h"
 #include "boxes/language_box.h"
 #include "boxes/url_auth_box.h"
 #include "passport/passport_form_controller.h"
@@ -54,10 +51,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_peer_menu.h"
 #include "window/themes/window_theme_editor_box.h" // GenerateSlug.
 #include "payments/payments_checkout_process.h"
-#include "settings/sections/settings_credits.h"
 #include "settings/settings_credits_graphics.h"
 #include "settings/settings_privacy_controllers.h"
-#include "settings/sections/settings_premium.h"
 #include "storage/storage_account.h"
 #include "mainwidget.h"
 #include "main/main_account.h"
@@ -553,19 +548,9 @@ bool ResolveUsernameOrPhone(
 	const auto appnameParam = params.value(u"appname"_q);
 	const auto myContext = context.value<ClickHandlerContext>();
 
-	if (domainParam == u"giftcode"_q && !appnameParam.isEmpty()) {
-		const auto itemId = myContext.itemId;
-		const auto item = controller->session().data().message(itemId);
-		const auto fromId = item ? item->from()->id : PeerId();
-		const auto selfId = controller->session().userPeerId();
-		const auto toId = !item
-			? PeerId()
-			: (fromId == selfId)
-			? item->history()->peer->id
-			: selfId;
-		ResolveGiftCode(controller, appnameParam, fromId, toId);
-		return true;
-	}
+	// LoogriGram: a t.me/giftcode link no longer opens the gift code box.
+	// It falls through to being treated as an ordinary username link, the
+	// same as any other resolve we do not special-case.
 	if (domainParam == u"oauth"_q) {
 		const auto token = params.value(u"startapp"_q);
 		if (!token.isEmpty()) {
@@ -878,17 +863,6 @@ bool CopyPeerId(
 			.iconLottieSize = st::toastLottieIconSize,
 		});
 	}
-	return true;
-}
-
-bool ShowSearchTagsPromo(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	ShowPremiumPreviewBox(controller, PremiumFeature::TagsForMessages);
 	return true;
 }
 
@@ -1424,59 +1398,6 @@ bool ResolveTestChatTheme(
 	return true;
 }
 
-bool ResolveInvoice(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	const auto params = url_parse_params(
-		match->captured(1),
-		qthelp::UrlParamNameTransform::ToLower);
-	const auto slug = params.value(u"slug"_q);
-	if (slug.isEmpty()) {
-		return false;
-	}
-	const auto window = &controller->window();
-	Payments::CheckoutProcess::Start(
-		&controller->session(),
-		slug,
-		crl::guard(window, [=](auto) { window->activate(); }),
-		Payments::ProcessNonPanelPaymentFormFactory(controller));
-	return true;
-}
-
-bool ResolvePremiumOffer(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	const auto params = url_parse_params(
-		match->captured(1).mid(1),
-		qthelp::UrlParamNameTransform::ToLower);
-	const auto refAddition = params.value(u"ref"_q);
-	const auto ref = "deeplink"
-		+ (refAddition.isEmpty() ? QString() : '_' + refAddition);
-	::Settings::ShowPremium(controller, ref);
-	controller->window().activate();
-	return true;
-}
-
-bool ResolvePremiumMultigift(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	Ui::ChooseStarGiftRecipient(controller);
-	controller->window().activate();
-	return true;
-}
-
 bool ResolveLoginCode(
 		Window::SessionController *controller,
 		const Match &match,
@@ -1494,78 +1415,6 @@ bool ResolveLoginCode(
 	} else if (const auto window = Core::App().activeWindow()) {
 		window->activate();
 	}
-	return true;
-}
-
-bool ResolveBoost(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	const auto params = url_parse_params(
-		match->captured(1),
-		qthelp::UrlParamNameTransform::ToLower);
-	const auto domainParam = params.value(u"domain"_q);
-	const auto channelParam = params.contains(u"c"_q)
-		? params.value(u"c"_q)
-		: params.value(u"channel"_q);
-
-	const auto myContext = context.value<ClickHandlerContext>();
-	controller->window().activate();
-	controller->showPeerByLink(Window::PeerByLinkInfo{
-		.usernameOrId = (!domainParam.isEmpty()
-			? std::variant<QString, ChannelId>(domainParam)
-			: ChannelId(BareId(channelParam.toULongLong()))),
-		.resolveType = Window::ResolveType::Boost,
-		.clickFromMessageId = myContext.itemId,
-	});
-	return true;
-}
-
-bool ResolveTopUp(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	const auto params = url_parse_params(
-		match->captured(1),
-		qthelp::UrlParamNameTransform::ToLower);
-	const auto amount = std::clamp(
-		params.value(u"balance"_q).toULongLong(),
-		qulonglong(1),
-		qulonglong(1'000'000));
-	const auto purpose = params.value(u"purpose"_q);
-	const auto weak = base::make_weak(controller);
-	const auto done = [=](::Settings::SmallBalanceResult result) {
-		if (result == ::Settings::SmallBalanceResult::Already) {
-			if (const auto strong = weak.get()) {
-				const auto filter = [=](const auto &...) {
-					strong->showSettings(::Settings::CreditsId());
-					return false;
-				};
-				strong->showToast(Ui::Toast::Config{
-					.text = tr::lng_credits_enough(
-						tr::now,
-						lt_link,
-						tr::link(
-							tr::bold(
-								tr::lng_credits_enough_link(tr::now))),
-						tr::rich),
-					.filter = filter,
-					.duration = 4 * crl::time(1000),
-				});
-			}
-		}
-	};
-	::Settings::MaybeRequestBalanceIncrease(
-		controller->uiShow(),
-		amount,
-		::Settings::SmallBalanceDeepLink{ .purpose = purpose },
-		done);
 	return true;
 }
 
@@ -1588,36 +1437,6 @@ bool ResolveChatLink(
 	return true;
 }
 
-bool ResolveUniqueGift(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	const auto slug = match->captured(1);
-	if (slug.isEmpty()) {
-		return false;
-	}
-	ResolveAndShowUniqueGift(controller->uiShow(), slug);
-	return true;
-}
-
-bool ResolveGiftAuction(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	const auto slug = match->captured(1);
-	if (slug.isEmpty()) {
-		return false;
-	}
-	controller->showStarGiftAuction(slug);
-	return true;
-}
-
 bool ResolveConferenceCall(
 		Window::SessionController *controller,
 		const Match &match,
@@ -1632,30 +1451,6 @@ bool ResolveConferenceCall(
 	const auto myContext = context.value<ClickHandlerContext>();
 	controller->window().activate();
 	controller->resolveConferenceCall(match->captured(1), myContext.itemId);
-	return true;
-}
-
-bool ResolveStarsSettings(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	controller->showSettings(::Settings::CreditsId());
-	controller->window().activate();
-	return true;
-}
-
-bool ResolveTonSettings(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	controller->showSettings(::Settings::CurrencyId());
-	controller->window().activate();
 	return true;
 }
 
@@ -1747,57 +1542,25 @@ const std::vector<LocalUrlHandler> &LocalUrlHandlers() {
 			u"^privatepost/?\\?(.+)(#|$)"_q,
 			ResolvePrivatePost
 		},
+		// LoogriGram: the invoice, premium offer, multigift, boost, stars
+		// top-up, collectible gift, gift auction, stars and TON links are
+		// unregistered. An unmatched local link falls through to the same
+		// "cannot open" answer as any other unknown one.
 		{
 			u"^test_chat_theme/?\\?(.+)(#|$)"_q,
 			ResolveTestChatTheme,
-		},
-		{
-			u"^invoice/?\\?(.+)(#|$)"_q,
-			ResolveInvoice,
-		},
-		{
-			u"^premium_offer/?(\\?.+)?(#|$)"_q,
-			ResolvePremiumOffer,
-		},
-		{
-			u"^premium_multigift/?\\?(.+)(#|$)"_q,
-			ResolvePremiumMultigift,
 		},
 		{
 			u"^login/?(\\?code=([0-9]+))(&|$)"_q,
 			ResolveLoginCode
 		},
 		{
-			u"^boost/?\\?(.+)(#|$)"_q,
-			ResolveBoost,
-		},
-		{
 			u"^message/?\\?slug=([a-zA-Z0-9\\.\\_\\-]+)(&|$)"_q,
 			ResolveChatLink
 		},
 		{
-			u"^stars_topup/?\\?(.+)(#|$)"_q,
-			ResolveTopUp
-		},
-		{
-			u"^nft/?\\?slug=([a-zA-Z0-9\\.\\_\\-]+)(&|$)"_q,
-			ResolveUniqueGift
-		},
-		{
-			u"^stargift_auction/?\\?slug=([a-zA-Z0-9\\.\\_\\-]+)(&|$)"_q,
-			ResolveGiftAuction
-		},
-		{
 			u"^call/?\\?slug=([a-zA-Z0-9\\.\\_\\-]+)(&|$)"_q,
 			ResolveConferenceCall
-		},
-		{
-			u"^stars/?(^\\?.*)?(#|$)"_q,
-			ResolveStarsSettings
-		},
-		{
-			u"^(ton|grams)/?(^\\?.*)?(#|$)"_q,
-			ResolveTonSettings
 		},
 		{
 			u"^oauth/?\\?(.+)(#|$)"_q,
@@ -1828,10 +1591,6 @@ const std::vector<LocalUrlHandler> &InternalUrlHandlers() {
 		{
 			u"^copy:(.+)$"_q,
 			CopyPeerId
-		},
-		{
-			u"^about_tags$"_q,
-			ShowSearchTagsPromo
 		},
 		{
 			u"^edit_birthday(.*)$"_q,
