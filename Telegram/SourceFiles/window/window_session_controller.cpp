@@ -1578,16 +1578,12 @@ SessionController::SessionController(
 		}));
 	}, _lifetime);
 
-	session->downloader().nonPremiumDelays(
-	) | rpl::on_next([=](DocumentId id) {
-		checkNonPremiumLimitToastDownload(id);
-	}, _lifetime);
-
-	session->uploader().nonPremiumDelays(
-	) | rpl::on_next([=](FullMsgId id) {
-		checkNonPremiumLimitToastUpload(id);
-	}, _lifetime);
-
+	// LoogriGram: the server marks a download or an upload as having been
+	// deliberately slowed for a non-subscriber, and upstream answered that
+	// by nagging - a periodic toast reading "Subscribe to Telegram Premium
+	// to increase download speed by 50%". That is an advertisement dressed
+	// as a status message, so the whole chain is gone, down through the two
+	// managers to the MTProto flag that started it.
 	session->addWindow(this);
 
 	crl::on_main(this, [=] {
@@ -1638,50 +1634,6 @@ SessionController::SessionController(
 		}).send();
 	});
 #endif
-}
-
-bool SessionController::skipNonPremiumLimitToast(bool download) const {
-	if (session().premium()) {
-		return true;
-	}
-	const auto now = base::unixtime::now();
-	const auto last = download
-		? session().settings().lastNonPremiumLimitDownload()
-		: session().settings().lastNonPremiumLimitUpload();
-	const auto delay = session().appConfig().get<int>(
-		u"upload_premium_speedup_notify_period"_q,
-		3600);
-	return (last && now < last + delay && now > last - delay);
-}
-
-void SessionController::checkNonPremiumLimitToastDownload(DocumentId id) {
-	if (skipNonPremiumLimitToast(true)) {
-		return;
-	}
-	const auto document = session().data().document(id);
-	const auto visible = session().data().queryDocumentVisibility(document)
-		|| DownloadingDocument(document);
-	if (!visible) {
-		return;
-	}
-	content()->showNonPremiumLimitToast(true);
-	const auto now = base::unixtime::now();
-	session().settings().setLastNonPremiumLimitDownload(now);
-	session().saveSettingsDelayed();
-}
-
-void SessionController::checkNonPremiumLimitToastUpload(FullMsgId id) {
-	if (skipNonPremiumLimitToast(false)) {
-		return;
-	} else if (const auto item = session().data().message(id)) {
-		if (!session().data().queryItemVisibility(item)) {
-			return;
-		}
-		content()->showNonPremiumLimitToast(false);
-		const auto now = base::unixtime::now();
-		session().settings().setLastNonPremiumLimitUpload(now);
-		session().saveSettingsDelayed();
-	}
 }
 
 void SessionController::suggestArchiveAndMute() {

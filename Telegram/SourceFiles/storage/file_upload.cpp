@@ -119,7 +119,6 @@ struct Uploader::Request {
 	uchar dcIndex = 0;
 	bool docPart = false;
 	bool bigPart = false;
-	bool nonPremiumDelayed = false;
 };
 
 Uploader::Entry::Entry(
@@ -223,13 +222,8 @@ Uploader::Uploader(not_null<ApiWrap*> api)
 		processDocumentFailed(fullId);
 	}, _lifetime);
 
-	_api->instance().nonPremiumDelayedRequests(
-	) | rpl::on_next([=](mtpRequestId id) {
-		const auto i = _requests.find(id);
-		if (i != end(_requests)) {
-			i->second.nonPremiumDelayed = true;
-		}
-	}, _lifetime);
+	// LoogriGram: this watched for parts the server had deliberately slowed
+	// for a non-subscriber, so a toast could sell a faster subscription.
 }
 
 void Uploader::processPhotoProgress(FullMsgId itemId) {
@@ -1059,10 +1053,6 @@ void Uploader::partLoaded(const MTPBool &result, mtpRequestId requestId) {
 			.size = entry.file->partssize,
 		});
 	}
-	if (request.nonPremiumDelayed) {
-		_nonPremiumDelays.fire_copy(itemId);
-	}
-
 	if (!_queue.empty() && itemId == _queue.front().itemId) {
 		maybeFinishFront();
 	}

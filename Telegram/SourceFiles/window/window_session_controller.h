@@ -779,9 +779,6 @@ private:
 		CachedTheme &theme,
 		bool generateGradient = true) const;
 
-	[[nodiscard]] bool skipNonPremiumLimitToast(bool download) const;
-	void checkNonPremiumLimitToastDownload(DocumentId id);
-	void checkNonPremiumLimitToastUpload(FullMsgId id);
 
 	bool openFolderInDifferentWindow(not_null<Data::Folder*> folder);
 	bool openCommunityInDifferentWindow(

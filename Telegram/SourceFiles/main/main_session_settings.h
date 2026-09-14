@@ -141,18 +141,6 @@ public:
 	[[nodiscard]] std::vector<TimeId> mutePeriods() const;
 	void addMutePeriod(TimeId period);
 
-	[[nodiscard]] TimeId lastNonPremiumLimitDownload() const {
-		return _lastNonPremiumLimitDownload;
-	}
-	[[nodiscard]] TimeId lastNonPremiumLimitUpload() const {
-		return _lastNonPremiumLimitUpload;
-	}
-	void setLastNonPremiumLimitDownload(TimeId when) {
-		_lastNonPremiumLimitDownload = when;
-	}
-	void setLastNonPremiumLimitUpload(TimeId when) {
-		_lastNonPremiumLimitUpload = when;
-	}
 	void setRingtoneVolume(
 		Data::DefaultNotify defaultNotify,
 		ushort volume);
@@ -228,8 +216,6 @@ private:
 	int _photoEditorHintShowsCount = 0;
 	int _disableSharingBoxShowsCount = 0;
 	std::vector<TimeId> _mutePeriods;
-	TimeId _lastNonPremiumLimitDownload = 0;
-	TimeId _lastNonPremiumLimitUpload = 0;
 
 	Support::SwitchSettings _supportSwitch;
 	bool _supportFixChatsOrder = true;

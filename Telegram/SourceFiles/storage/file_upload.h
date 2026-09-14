@@ -109,9 +109,6 @@ public:
 		return _secureFailed.events();
 	}
 
-	[[nodiscard]] rpl::producer<FullMsgId> nonPremiumDelays() const {
-		return _nonPremiumDelays.events();
-	}
 
 	void unpause();
 	void stopSessions();
@@ -219,7 +216,6 @@ private:
 	rpl::event_stream<FullMsgId> _documentFailed;
 	rpl::event_stream<FullMsgId> _secondaryFileFailed;
 	rpl::event_stream<FullMsgId> _secureFailed;
-	rpl::event_stream<FullMsgId> _nonPremiumDelays;
 
 	rpl::lifetime _lifetime;
 

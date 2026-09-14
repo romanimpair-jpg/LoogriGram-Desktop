@@ -99,8 +99,6 @@ public:
 	void restartedByTimeout(ShiftedDcId shiftedDcId);
 	[[nodiscard]] rpl::producer<ShiftedDcId> restartsByTimeout() const;
 
-	[[nodiscard]] auto nonPremiumDelayedRequests() const
-	-> rpl::producer<mtpRequestId>;
 	[[nodiscard]] rpl::producer<> frozenErrorReceived() const;
 
 	void restart();
@@ -287,7 +285,6 @@ private:
 	Fn<void(ShiftedDcId shiftedDcId, int32 state)> _stateChangedHandler;
 	Fn<void(ShiftedDcId shiftedDcId)> _sessionResetHandler;
 
-	rpl::event_stream<mtpRequestId> _nonPremiumDelayedRequests;
 	rpl::event_stream<> _frozenErrorReceived;
 
 	base::Timer _checkDelayedTimer;
@@ -558,11 +555,6 @@ void Instance::Private::restartedByTimeout(ShiftedDcId shiftedDcId) {
 
 rpl::producer<ShiftedDcId> Instance::Private::restartsByTimeout() const {
 	return _restartsByTimeout.events();
-}
-
-auto Instance::Private::nonPremiumDelayedRequests() const
--> rpl::producer<mtpRequestId> {
-	return _nonPremiumDelayedRequests.events();
 }
 
 rpl::producer<> Instance::Private::frozenErrorReceived() const {
@@ -1500,7 +1492,6 @@ bool Instance::Private::onErrorDefault(
 		}
 
 		auto secs = 1;
-		auto nonPremiumDelay = false;
 		if (code < 0 || code >= 500) {
 			auto body = mtpTypeId(0);
 			{
@@ -1526,8 +1517,12 @@ bool Instance::Private::onErrorDefault(
 			secs = m1.captured(1).toInt();
 //			if (secs >= 60) return false;
 		} else if (m2.hasMatch()) {
+			// LoogriGram: this match is the server saying it slowed the
+			// request because the account is not a subscriber. The delay it
+			// carries is real and is still honoured; what is gone is
+			// reporting it upwards, which existed only to raise a toast
+			// selling a faster subscription.
 			secs = m2.captured(1).toInt();
-			nonPremiumDelay = true;
 		} else if (m3.hasMatch()) {
 			secs = m3.captured(1).toInt();
 		}
@@ -1543,10 +1538,6 @@ bool Instance::Private::onErrorDefault(
 		_delayedRequests.insert(it, std::make_pair(requestId, sendAt));
 
 		checkDelayedRequests();
-
-		if (nonPremiumDelay) {
-			_nonPremiumDelayedRequests.fire_copy(requestId);
-		}
 
 		return true;
 	} else if ((code == 401 && type != u"AUTH_KEY_PERM_EMPTY"_q)
@@ -1937,10 +1928,6 @@ void Instance::restartedByTimeout(ShiftedDcId shiftedDcId) {
 
 rpl::producer<ShiftedDcId> Instance::restartsByTimeout() const {
 	return _private->restartsByTimeout();
-}
-
-rpl::producer<mtpRequestId> Instance::nonPremiumDelayedRequests() const {
-	return _private->nonPremiumDelayedRequests();
 }
 
 rpl::producer<> Instance::frozenErrorReceived() const {

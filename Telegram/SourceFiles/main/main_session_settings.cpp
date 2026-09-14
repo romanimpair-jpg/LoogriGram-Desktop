@@ -136,8 +136,8 @@ QByteArray SessionSettings::serialize() const {
 			stream << SerializePeerId(peerId);
 		}
 		stream
-			<< qint32(_lastNonPremiumLimitDownload)
-			<< qint32(_lastNonPremiumLimitUpload)
+			<< qint32(0) // LoogriGram: was _lastNonPremiumLimitDownload.
+			<< qint32(0) // LoogriGram: was _lastNonPremiumLimitUpload.
 			<< qint32(_hiddenPinnedMessages.size());
 		for (const auto &[key, value] : _hiddenPinnedMessages) {
 			stream
@@ -789,8 +789,9 @@ void SessionSettings::addFromSerialized(const QByteArray &serialized) {
 	_supportAllSilent = (supportAllSilent == 1);
 	_photoEditorHintShowsCount = std::move(photoEditorHintShowsCount);
 	_mutePeriods = std::move(mutePeriods);
-	_lastNonPremiumLimitDownload = lastNonPremiumLimitDownload;
-	_lastNonPremiumLimitUpload = lastNonPremiumLimitUpload;
+	// LoogriGram: the two speed-limit nag timestamps are read and dropped.
+	// The stream keeps their slots so the stored settings blob stays the
+	// same shape - this file is append-only and position-sensitive.
 	_subsectionTabsModes = std::move(subsectionTabsModes);
 	_ringtoneDefaultVolumes = std::move(ringtoneDefaultVolumes);
 	_ringtoneVolumes = std::move(ringtoneVolumes);
