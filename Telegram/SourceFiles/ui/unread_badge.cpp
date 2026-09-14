@@ -9,8 +9,15 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "data/data_peer.h"
 #include "data/stickers/data_custom_emoji.h"
+// LoogriGram: both of these were reaching this file by accident, through
+// main_session.h and data_session.h, and went with them when the emoji
+// status removal dropped those. dialogs_layout.h is what makes
+// Dialogs::Ui::UnreadBadgeStyle resolve - it has a `using namespace ::Ui`
+// inside Dialogs::Ui - and rect.h is what rect::m::sum::h and ::v need.
+#include "dialogs/ui/dialogs_layout.h"
 #include "lang/lang_keys.h"
 #include "ui/painter.h"
+#include "ui/rect.h"
 #include "ui/text/text_custom_emoji.h"
 #include "ui/unread_badge_paint.h"
 #include "styles/style_dialogs.h"
