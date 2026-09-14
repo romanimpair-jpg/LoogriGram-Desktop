@@ -119,8 +119,6 @@ PRIVATE
 
     chat_helpers/field_characters_count_manager.cpp
     chat_helpers/field_characters_count_manager.h
-    chat_helpers/stickers_emoji_image_loader.cpp
-    chat_helpers/stickers_emoji_image_loader.h
 
     core/current_geo_location.cpp
     core/current_geo_location.h
