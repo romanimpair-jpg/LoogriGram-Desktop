@@ -16,13 +16,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/text/text_utilities.h"
 #include "lang/lang_keys.h"
 #include "data/data_premium_limits.h"
-#include "boxes/premium_limits_box.h"
 #include "history/history.h"
 #include "history/history_item.h"
 #include "history/history_item_components.h"
 #include "apiwrap.h"
 #include "storage/storage_account.h"
-#include "settings/sections/settings_premium.h"
 #include "core/application.h"
 #include "core/core_settings.h"
 #include "main/main_session.h"
@@ -44,58 +42,36 @@ constexpr auto kPremiumToastDuration = 5 * crl::time(1000);
 
 using SetFlag = StickersSetFlag;
 
+// LoogriGram: the second sentence of each of these was "you can
+// increase the limit to N", with the phrase itself a link into the
+// subscription page. The title is the part that is any use - it says
+// the cap was hit, and by implication that the oldest entry made way.
 [[nodiscard]] TextWithEntities SavedGifsToast(
 		const Data::PremiumLimits &limits) {
-	const auto defaultLimit = limits.gifsDefault();
-	const auto premiumLimit = limits.gifsPremium();
-	return tr::bold(
-		tr::lng_saved_gif_limit_title(tr::now, lt_count, defaultLimit)
-	).append('\n').append(
-		tr::lng_saved_gif_limit_more(
-			tr::now,
-			lt_count,
-			premiumLimit,
-			lt_link,
-			tr::link(tr::lng_saved_gif_limit_link(tr::now)),
-			tr::marked));
+	return tr::bold(tr::lng_saved_gif_limit_title(
+		tr::now,
+		lt_count,
+		limits.gifsDefault()));
 }
 
 [[nodiscard]] TextWithEntities FaveStickersToast(
 		const Data::PremiumLimits &limits) {
-	const auto defaultLimit = limits.stickersFavedDefault();
-	const auto premiumLimit = limits.stickersFavedPremium();
-	return tr::bold(
-		tr::lng_fave_sticker_limit_title(tr::now, lt_count, defaultLimit)
-	).append('\n').append(
-		tr::lng_fave_sticker_limit_more(
-			tr::now,
-			lt_count,
-			premiumLimit,
-			lt_link,
-			tr::link(tr::lng_fave_sticker_limit_link(tr::now)),
-			tr::marked));
+	return tr::bold(tr::lng_fave_sticker_limit_title(
+		tr::now,
+		lt_count,
+		limits.stickersFavedDefault()));
 }
 
-void MaybeShowPremiumToast(
+void ShowLimitReachedToast(
 		std::shared_ptr<ChatHelpers::Show> show,
-		TextWithEntities text,
-		const QString &ref) {
+		TextWithEntities text) {
 	if (!show) {
 		return;
-	}
-	const auto session = &show->session();
-	if (session->user()->isPremium()) {
+	} else if (show->session().user()->isPremium()) {
 		return;
 	}
-	const auto filter = [=](const auto ...) {
-		if (const auto controller = show->resolveWindow()) {
-			Settings::ShowPremium(controller, ref);
-		}
-		return false;
-	};
 	show->showToast({
 		.text = std::move(text),
-		.filter = filter,
 		.duration = kPremiumToastDuration,
 	});
 }
@@ -331,10 +307,7 @@ void Stickers::addSavedGif(
 	const auto limits = Data::PremiumLimits(session);
 	if (_savedGifs.size() > limits.gifsCurrent()) {
 		_savedGifs.pop_back();
-		MaybeShowPremiumToast(
-			show,
-			SavedGifsToast(limits),
-			LimitsPremiumRef("saved_gifs"));
+		ShowLimitReachedToast(show, SavedGifsToast(limits));
 	}
 	session->local().writeSavedGifs();
 
@@ -540,10 +513,7 @@ void Stickers::checkFavedLimit(
 		}
 		++i;
 	}
-	MaybeShowPremiumToast(
-		std::move(show),
-		FaveStickersToast(limits),
-		LimitsPremiumRef("stickers_faved"));
+	ShowLimitReachedToast(std::move(show), FaveStickersToast(limits));
 }
 
 void Stickers::pushFavedToFront(
