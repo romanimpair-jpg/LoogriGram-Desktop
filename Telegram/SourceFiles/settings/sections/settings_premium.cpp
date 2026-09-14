@@ -1551,7 +1551,6 @@ base::weak_qptr<Ui::RpWidget> Premium::createPinnedToTop(
 				.clickContextOther = clickContextOther,
 				.title = std::move(title),
 				.about = std::move(about),
-				.use3dStar = true,
 				.showFinished = _showFinished.events(),
 			});
 	}();

@@ -2127,7 +2127,6 @@ PRIVATE
 )
 
 include(cmake/qrhi_shaders.cmake)
-include(cmake/generate_models.cmake)
 
 # message(${CMAKE_GENERATOR})
 # mt.exe -manifest "${res_loc}/winrc/Telegram.manifest" "-inputresource:\"$<TARGET_FILE:Telegram>\";#1" "-outputresource:\"$<TARGET_FILE:Telegram>\";#1" >NUL
