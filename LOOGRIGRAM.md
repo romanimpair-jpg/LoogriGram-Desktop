@@ -16,8 +16,9 @@ what is specific to the fork.
 |---|---|
 | Desktop features | Implemented, built, installed and in daily use |
 | Desktop CI | Green. Builds **Qt 5**, not Qt 6 — see below, this matters |
-| Ads, AI, large emoji, paid reactions | **Deleted**, not gated |
-| Updater | Ours, live, and its restart path is fixed and verified |
+| Ads, AI, large emoji, paid reactions, emoji statuses | **Deleted**, not gated |
+| macOS and Linux | **Deleted** — this tree builds Windows and nothing else |
+| Updater | Ours, live, with progress on the row that starts it |
 | **Android** | **Built, signed, installed and in use since 2026-09-10.** The "Android" section at the bottom of this file is stale history — read `loogrigram-android/LOOGRIGRAM.md` instead |
 
 Verified in the installed build (`g2533f37`): no sponsored messages, no premium
@@ -28,18 +29,44 @@ bar, no "Premium users" privacy row, and the tray menu says LoogriGram.
 
 ### Where to pick up
 
-One thing is known broken, and one large job is half-finished.
+Everything below is committed but **not yet built**. The next build is a full
+one - the salt was bumped - so allow two hours, and check three things in the
+result: the new artwork in the exe, no emoji status beside any name, and the
+ring on the update row while a download runs.
 
-**Broken: the new icons are not reaching the binary.** `g2533f37` contains the
-*old* Telegram artwork - verified by searching the exe for the bytes of both
-the old and new `logo_256.png`; the old ones are present, the new ones are
-not. This is **not** a Windows icon cache. The likely cause is that changing a
-file *listed in* a `.qrc` does not invalidate the generated resource object
-when the `.qrc` itself is unchanged, so the warm `out/` tree reused a stale
-one; `icon256.ico` reaches the exe through `Telegram.rc`, which has the same
-shape of problem. First thing to try is a cold tree: bump `OUT_CACHE_SALT`.
+### Two bugs from one cause: source that never reached the binary
 
-**Half-finished: the premium backlog.** See "Finish the removals properly".
+`g2533f37` shipped upstream's artwork *and* went on painting the emoji status
+beside message authors, from a tree where both had been fixed for hours. One
+cause, and it was the incremental build, not the code.
+
+A rebase on 2026-09-14 stamped three commits `13:34:59Z`. The run that built
+the commit *before* them finished at `14:12Z` and cached its `out/` tree. The
+next run picked those three up, dated their files by git - and every one of
+them looked older than objects built from the previous content. ninja reused
+them. `logo_256.png` reached the exe through a `.qrc` whose generated resource
+object was stale; `history_view_message.cpp` simply was not recompiled.
+
+The lesson is not "use committer date instead of author date" - that was the
+first fix and it would have lost to this too, because all three commits shared
+one committer date that still predated the cached tree. **A git date and an
+object's mtime are different clocks measuring different things**, and a
+commit's date can precede a build that did not contain it.
+
+So the comparison is gone. `out/` records the commit it was last built from
+in `.loogrigram-build-base`, written only after a compile that *succeeded*,
+and "Age sources against the cached build tree" diffs the checkout against it:
+changed files are dated now, everything else 2000-01-01. A failed run still
+caches its half-rebuilt tree but keeps the older marker, so the next run is
+compared against a commit the tree was wholly consistent with. No marker means
+dating everything now, which is the right answer for a tree we know nothing
+about. A submodule bump no longer needs a manual salt bump either - it shows
+up as that path in the diff.
+
+**If a binary ever disagrees with the source again, suspect this before the
+code.** Searching the exe for the bytes of an asset settles the artwork half
+in a minute; for behaviour, check whether the commit that fixed it shares a
+committer date with a rebase.
 
 ### The white flash is fixed, and the cause was the build, not the code
 
@@ -126,8 +153,12 @@ the same mistake wearing different clothes, so check all four every time:
 That last one is the nastiest. The style codegen parses every `.style` file in
 full on every platform, so deleting a macOS-only icon breaks the *Windows*
 build - there is no `#if` in a style file. And the fix is to delete the style
-entry, not to restore the asset; this fork ships Windows only and mac code is
-not compiled, so it does not need to work.
+entry, not to restore the asset.
+
+Both checks below are scripted and were run over the macOS and Linux removal;
+the icon one is the reason that landed without a wasted build. Worth writing
+them out again rather than trusting a grep: a `.style` name has no extension,
+and `-WxH` and `-flip_*` are codegen directives rather than part of it.
 
 `Telegram/cmake/generate_models.cmake` bakes every `*.obj` under
 `Resources/art` into `.binobj` at build time, so a `.obj` with no apparent
@@ -230,6 +261,12 @@ What actually solved the crash took one log line. Prefer ground truth:
   `github.com/romanimpair-jpg/LoogriGram-Desktop` (public).
 - Upstream's own workflows (Linux, macOS, Snap, Docker, issue bots) are
   **disabled** on purpose — they fired on every push and did nothing useful.
+  Their subjects are deleted now too, so re-enabling any of them would only
+  fail; `win.yml` is the only workflow with anything left to build.
+- **Rebasing onto upstream will now conflict widely.** Removing macOS and
+  Linux touched 272 files, mostly by taking branches out of files upstream
+  keeps editing. Take ours for anything under a deleted platform, and expect
+  to re-resolve `#ifdef` chains by hand where upstream adds one.
 
 Note: upstream's `AGENTS.md` forbids `Co-Authored-By:` trailers, which conflicts
 with some assistant configurations. Ask before adding them.
@@ -260,12 +297,11 @@ To cut that 2 hours there is now an **incremental build tree cache**. ninja
 decides what to rebuild from mtimes, and a fresh checkout stamps everything with
 the checkout time, so a restored `out/` always looked stale. Two pieces fix that:
 
-- **`Normalize source timestamps`** dates each tracked file by the commit that
-  last touched it (hence `fetch-depth: 0`), so unchanged files stay older than
-  their cached objects. Submodule files get one fixed old timestamp instead —
-  `lib_ui` and `lib_base` are submodules and their fresh-checkout headers would
-  otherwise rebuild most of the tree. **If a submodule pointer is ever bumped,
-  raise `OUT_CACHE_SALT`**, or stale objects will be reused.
+- **`Age sources against the cached build tree`** diffs the checkout against
+  the commit `out/` was last built from (hence `fetch-depth: 0`) and dates
+  changed files now, everything else 2000-01-01. Do **not** replace this with
+  a git date per file: that is what put upstream's artwork and a removed emoji
+  status into `g2533f37`, and the section above says why it cannot work.
 - **`out/` is cached per commit**, restored by prefix so a run picks up the
   newest tree, and saved even on failure so a broken compile still leaves its
   objects behind. Old entries are pruned to the newest two, because the tree is
@@ -288,10 +324,9 @@ because those are all in the cache key.
 
 Two things to keep in mind rather than rediscover:
 
-- **Bump `OUT_CACHE_SALT` if a submodule pointer changes.** Submodule files are
-  pinned to a fixed old mtime, so a genuine submodule update would otherwise be
-  invisible to ninja and stale objects would be reused — a silently wrong binary,
-  which is worse than a slow build.
+- **A submodule pointer bump no longer needs a salt bump.** It shows up as
+  that path in the diff and the whole submodule tree is dated now. Adding or
+  removing keys in `lang.strings` still does — see above.
 - **Do not let the tree cache go unpruned.** It is ~1.5GB per entry against a
   10GB pool shared with the dependency caches. This is not housekeeping: an
   unbounded cache evicts the dependency caches, and that already cost one
@@ -423,6 +458,12 @@ are still suppressed, so story rings may reappear as unread on other devices.
 ### Our own updater
 
 `core/loogrigram_update.cpp`, started once per launch from `Application::run()`.
+It publishes what it is doing - None, Checking, Downloading, Ready plus a
+progress pair - and the main menu row reads that: the label follows the state
+and a ring fills around the icon. Ready is terminal, and the row then offers
+the restart, because the build is already on disk by then. The asset's total
+size can be unknown until the redirect resolves, so the label drops the
+percentage rather than claiming 0%.
 It reads **our** GitHub releases, never Telegram, and the request carries
 nothing about the account — an unauthenticated GET of a public endpoint.
 
@@ -635,16 +676,33 @@ Still sitting at the "forced getter" stage:
   `paid_reactions_available`, which covers sending, the button and the admin
   toggle at once; display is separate, so `InlineListDataFromMessage` also
   drops any paid reaction a message arrives carrying.
+- ~~**Premium emoji statuses.**~~ **Done.** Not one painter but two, plus a
+  slot inside the message bubble that belonged to neither, and
+  `premiumBadgesShown()` was a gate in front of the first two rather than a
+  removal of any of them. All deleted, along with the machinery that only
+  existed to keep an animated status moving: `PeerListRow::_statusIconRect`,
+  `PeerListContent::updateRowStatus` and the badge rect in every `CachedRow`
+  all existed to punch the status out of a scrolling row cache and repaint it
+  live. Nothing animates in a row name now, so a cached row is just the row.
+  `BadgeType::Premium` is gone with them, which took the only clickable badge
+  and so the three places that opened the status picker from one.
+
+  Left on purpose: the verified check and the scam / fake / direct badges,
+  which are warnings rather than purchases; the bot verification icon, drawn
+  *before* the name from a separate ungated path - a different feature; and
+  `EmojiStatusPanel`, which is also the custom emoji picker for topic icons
+  and profile pattern emoji. "Set as status" in the emoji picker menu still
+  exists and now sets something no client here displays.
 - ~~**Stories on profiles, rating, profile backgrounds.**~~ **Done.** The
   userpic click opened stories from four places, all removed, with the rings.
   `Ui::StarsRating` deleted outright. The gradient/solid/pattern profile
   background is off at its three inputs.
-- **Premium.** `premiumBadgesShown()` and `premiumCanBuy()` are two lines that
-  neutralise the badge painters, the settings block and every limit box. What
-  they neutralise is all still compiled. **Note:** `premiumBadgesShown()` never
-  covered the badge beside a group message author's name - that is painted from
-  `Message::_fromNameStatus`, the message's own slot, and needed its own fix.
-  Assume other painters have their own slots too.
+- **Premium.** `premiumCanBuy()` is one line that neutralises the settings
+  block and every limit box, and what it neutralises is all still compiled.
+  `premiumBadgesShown()` is gone - the badges it gated are deleted rather than
+  hidden. The lesson it left stands: **a gate in front of two painters is not
+  a removal, and a third painter can have its own slot.** That is exactly how
+  the author-name status survived it.
 - **The premium 3D effect renderers.** `premium_coin_renderer`,
   `premium_3d_mesh` and five siblings still compile, which is why
   `Resources/art/premium/` cannot be deleted yet - `flecks.png`,
@@ -659,6 +717,22 @@ Still sitting at the "forced getter" stage:
   `Updates::updateOnline`, `ViewsManager::viewsIncrement`,
   `Histories::reportPendingDeliveries`, `RepliesList::sendReadTillRequest` and
   `ReadMetrics::send`.
+- **The bot verification icon.** `PeerBadge::drawVerified` paints an arbitrary
+  server-supplied custom emoji *before* a name, from a path that never touched
+  `premiumBadgesShown()` and so survived the emoji status removal. It is a
+  different feature - a third party paid to mark that account - and it is the
+  only coloured emoji left beside a name. Four call sites: `dialogs_layout`,
+  `dialogs_inner_widget`, `history_view_top_bar_widget`, `peer_list_box`. Take
+  it and `PeerBadge` holds no state at all, so it becomes a free function and
+  every `_badge` member that exists to carry that state goes with it.
+- **The emoji status picker.** Still reachable from the emoji panel's context
+  menu (`menu/menu_emoji_status.cpp`) even though nothing here displays what
+  it sets. `EmojiStatusPanel` itself has to stay - it is also the topic icon
+  and profile pattern emoji picker.
+- **Collectible status gradients.** `ui/top_background_gradient.cpp`,
+  `calls/calls_panel_background.cpp` and `history_view_about_view.cpp` read
+  `emojiStatusId().collectible` directly, with no gate at all, and still tint
+  profile headers and the call panel from it.
 
 Two of these cannot simply be deleted and need the caller rewritten instead,
 which is the work rather than a reason to stop: `updateOnline` also drives
@@ -709,7 +783,8 @@ lists above.
 Originals are kept in `branding/original/` alongside the official portable zip,
 outside the checkout, for comparison.
 
-**Open:** the new artwork is not reaching the binary. See "Where to pick up".
+The artwork was correct in the tree the whole time - it was the build that
+kept serving a stale resource object. See "Two bugs from one cause".
 
 ## Constraints and known limits
 
