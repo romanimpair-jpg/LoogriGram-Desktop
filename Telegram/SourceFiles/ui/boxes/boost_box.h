@@ -47,31 +47,8 @@ struct BoostFeatures {
 	int sponsoredLevel = 0;
 };
 
-struct BoostBoxData {
-	QString name;
-	BoostCounters boost;
-	BoostFeatures features;
-	int lifting = 0;
-	bool allowMulti = false;
-	bool group = false;
-};
-
-void BoostBox(
-	not_null<GenericBox*> box,
-	BoostBoxData data,
-	Fn<void(Fn<void(BoostCounters)>)> boost);
-
-void BoostBoxAlready(not_null<GenericBox*> box, bool group);
-void GiftForBoostsBox(
-	not_null<GenericBox*> box,
-	QString channel,
-	int receive,
-	bool again);
-void GiftedNoBoostsBox(not_null<GenericBox*> box, bool group);
-void PremiumForBoostsBox(
-	not_null<GenericBox*> box,
-	bool group,
-	Fn<void()> buyPremium);
+// LoogriGram: BoostBoxData and the five boxes that used it are gone - see
+// boost_box.cpp. Everything below is the channel-owner side.
 
 struct AskBoostChannelColor {
 	int requiredLevel = 0;

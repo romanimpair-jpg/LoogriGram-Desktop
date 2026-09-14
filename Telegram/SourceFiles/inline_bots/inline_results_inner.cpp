@@ -119,19 +119,12 @@ void Inner::checkRestrictedPeer() {
 		}
 		_restrictedLabelKey = error.text;
 		if (error) {
-			const auto window = _controller;
-			const auto peer = _inlineQueryPeer;
+			// LoogriGram: as in tabbed_selector - the restriction is stated,
+			// and the link that offered to boost past it is gone.
 			_restrictedLabel.create(
 				this,
-				rpl::single(error.boostsToLift
-					? tr::link(error.text)
-					: TextWithEntities{ error.text }),
+				rpl::single(TextWithEntities{ error.text }),
 				st::stickersRestrictedLabel);
-			const auto lifting = error.boostsToLift;
-			_restrictedLabel->setClickHandlerFilter([=](auto...) {
-				window->resolveBoostState(peer->asChannel(), lifting);
-				return false;
-			});
 			_restrictedLabel->show();
 			updateRestrictedLabelGeometry();
 			if (_switchPmButton) {

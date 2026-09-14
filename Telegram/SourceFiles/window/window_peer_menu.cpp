@@ -345,7 +345,6 @@ private:
 	void addDeleteTopic();
 	void addVideoChat();
 	void addViewStatistics();
-	void addBoostChat();
 	void addToggleFee();
 	void addSetPersonalChannel();
 
@@ -1291,22 +1290,9 @@ void Filler::addManageChat() {
 	}, &st::menuIconManage);
 }
 
-void Filler::addBoostChat() {
-	if (const auto channel = _peer->asChannel()) {
-		if (channel->isMonoforum()) {
-			return;
-		}
-		const auto text = channel->isMegagroup()
-			? tr::lng_boost_group_button(tr::now)
-			: tr::lng_boost_channel_button(tr::now);
-		const auto weak = base::make_weak(_controller);
-		_addAction(text, [=] {
-			if (const auto strong = weak.get()) {
-				strong->resolveBoostState(channel);
-			}
-		}, &st::menuIconBoosts);
-	}
-}
+// LoogriGram: addBoostChat put a "Boost Channel" / "Boost Group" item in
+// three menus. Boosting spends a Telegram Premium slot, so the item and
+// the three calls to it are gone.
 
 void Filler::addViewStatistics() {
 	if (const auto channel = _peer->asChannel()) {
@@ -1860,7 +1846,6 @@ void Filler::fillChatsListActions() {
 	}
 	addManageChat();
 	addNewMembers();
-	addBoostChat();
 	addVideoChat();
 	_addAction(PeerMenuCallback::Args{ .isSeparator = true });
 	addReport();
@@ -1927,7 +1912,6 @@ void Filler::fillHistoryActions() {
 	addManageChat();
 	addStoryArchive();
 	addSupportInfo();
-	addBoostChat();
 	addCreatePoll();
 	addCreateTodoList();
 	addThemeEdit();
@@ -1976,7 +1960,6 @@ void Filler::fillRepliesActions() {
 		addInfo();
 		addManageTopic();
 	}
-	addBoostChat();
 	addCreatePoll();
 	addCreateTodoList();
 	addToggleTopicClosed();

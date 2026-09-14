@@ -1151,20 +1151,13 @@ void TabbedSelector::checkRestrictedPeer() {
 		}
 		_restrictedLabelKey = error.text;
 		if (error) {
-			const auto show = _show;
-			const auto peer = _currentPeer;
+			// LoogriGram: when the restriction could be lifted by boosting,
+			// this label was a link into the boost box. It states the
+			// restriction and nothing more now.
 			_restrictedLabel.create(
 				this,
-				rpl::single(error.boostsToLift
-					? tr::link(error.text)
-					: TextWithEntities{ error.text }),
+				rpl::single(TextWithEntities{ error.text }),
 				st::stickersRestrictedLabel);
-			const auto lifting = error.boostsToLift;
-			_restrictedLabel->setClickHandlerFilter([=](auto...) {
-				const auto window = show->resolveWindow();
-				window->resolveBoostState(peer->asChannel(), lifting);
-				return false;
-			});
 			_restrictedLabel->show();
 			updateRestrictedLabelGeometry();
 			currentTab()->footer()->hide();

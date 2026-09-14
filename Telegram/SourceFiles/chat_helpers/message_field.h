@@ -191,12 +191,6 @@ private:
 	QWidget *parent,
 	not_null<UserData*> user,
 	not_null<Window::SessionController*> controller);
-[[nodiscard]] auto BoostsToLiftWriteRestriction(
-	not_null<QWidget*> parent,
-	std::shared_ptr<ChatHelpers::Show> show,
-	not_null<PeerData*> peer,
-	int boosts)
--> std::unique_ptr<Ui::AbstractButton>;
 
 struct FreezeInfoStyleOverride {
 	const style::Box *box = nullptr;

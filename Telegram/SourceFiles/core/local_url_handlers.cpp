@@ -611,9 +611,10 @@ bool ResolveUsernameOrPhone(
 		startToken = params.value(u"startgroup"_q);
 	} else if (params.contains(u"startchannel"_q)) {
 		resolveType = ResolveType::AddToChannel;
-	} else if (params.contains(u"boost"_q)) {
-		resolveType = ResolveType::Boost;
 	}
+	// LoogriGram: a ?boost link used to open the boost box. Boosting spends a
+	// Telegram Premium slot, so the flow is gone and the parameter is ignored
+	// - the link still resolves and opens the channel.
 	auto post = ShowAtUnreadMsgId;
 	auto adminRights = ChatAdminRights();
 	if (resolveType == ResolveType::AddToGroup

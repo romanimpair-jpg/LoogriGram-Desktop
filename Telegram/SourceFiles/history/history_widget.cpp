@@ -8101,14 +8101,9 @@ void HistoryWidget::updateSendRestriction() {
 			this,
 			_peer->asUser(),
 			controller());
-	} else if (const auto lifting = restriction.boostsToLift) {
-		const auto show = controller()->uiShow();
-		_sendRestriction = BoostsToLiftWriteRestriction(
-			this,
-			show,
-			_peer,
-			lifting);
 	} else {
+		// LoogriGram: the boostsToLift case used to put a "Boost the group"
+		// button here. It lands on the plain restriction text instead.
 		_sendRestriction = TextErrorSendRestriction(this, restriction.text);
 	}
 	if (_sendRestriction) {

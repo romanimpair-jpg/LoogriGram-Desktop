@@ -263,25 +263,10 @@ object_ptr<Ui::BoxContent> MakeSendErrorBox(
 			tr::bold(error.thread->chatListName())
 		).append("\n\n");
 	}
-	if (error.error.boostsToLift) {
-		text.append(tr::link(error.error.text));
-	} else {
-		text.append(error.error.text);
-	}
-	const auto peer = error.thread->peer();
-	const auto lifting = error.error.boostsToLift;
-	const auto filter = [=](const auto &...) {
-		Expects(peer->isChannel());
-
-		const auto window = ChatHelpers::ResolveWindowDefault()(
-			&peer->session());
-		window->resolveBoostState(peer->asChannel(), lifting);
-		return false;
-	};
-	return Ui::MakeInformBox({
-		.text = text,
-		.labelFilter = filter,
-	});
+	// LoogriGram: the error text was a link into the boost box whenever
+	// boosting could have lifted it. It is plain text now.
+	text.append(error.error.text);
+	return Ui::MakeInformBox({ .text = text });
 }
 
 void ShowSendPaidConfirm(

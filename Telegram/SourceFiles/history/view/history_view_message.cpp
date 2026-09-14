@@ -4130,26 +4130,11 @@ bool Message::getStateFromName(
 			const auto boostLeft = boostTextWidth
 				? (trect.left() + trect.width() - boostTextWidth)
 				: 0;
-			if (boostTextWidth
-				&& point.x() >= boostLeft
-				&& point.x() < badgeRight) {
-				if (!badge->boostsLink) {
-					const auto fullId = item->fullId();
-					badge->boostsLink = std::make_shared<LambdaClickHandler>([
-						fullId
-					](ClickContext context) {
-						if (const auto controller = ExtractController(context)) {
-							if (const auto item = controller->session().data().message(fullId)) {
-								if (const auto channel = item->history()->peer->asChannel()) {
-									controller->resolveBoostState(channel);
-								}
-							}
-						}
-					});
-				}
-				outResult->link = badge->boostsLink;
-				return true;
-			}
+			// LoogriGram: the "boosted by N" count beside a group message
+			// was a link into the boost box. The count still paints - it
+			// says something true about the sender - but clicking it did
+			// nothing but offer to spend a Premium slot, so it is no longer
+			// a hit target and boostsLink is gone from RightBadge.
 			const auto tagRight = boostTextWidth
 				? (boostLeft - st::msgTagBadgeBoostSkip)
 				: badgeRight;

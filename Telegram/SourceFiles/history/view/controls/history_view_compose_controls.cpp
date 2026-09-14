@@ -4194,15 +4194,9 @@ void SetupRestrictionView(
 				widget,
 				show,
 				FrozenWriteRestrictionType::MessageField);
-		} else if (const auto lifting = value.boostsToLift) {
-			state->icon = nullptr;
-			state->unlock = nullptr;
-			state->label = nullptr;
-			state->button = BoostsToLiftWriteRestriction(
-				widget,
-				show,
-				peer,
-				lifting);
+		// LoogriGram: a restriction that boosting could lift used to replace
+		// the composer with a "Boost the group" button. It falls through to
+		// the plain restriction label now, which states the same fact.
 		} else if (value.type == Type::Rights) {
 			state->icon = nullptr;
 			state->unlock = nullptr;

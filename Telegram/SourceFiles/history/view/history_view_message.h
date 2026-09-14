@@ -137,7 +137,6 @@ struct RightBadge : RuntimeComponent<RightBadge, Element> {
 	Ui::Text::String tag;
 	Ui::Text::String boosts;
 	mutable ClickHandlerPtr tagLink;
-	mutable ClickHandlerPtr boostsLink;
 	int width = 0;
 	BadgeRole role = BadgeRole::User;
 	bool overridden = false;

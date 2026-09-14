@@ -542,18 +542,9 @@ void ShowSendErrorToast(
 		std::shared_ptr<ChatHelpers::Show> show,
 		not_null<PeerData*> peer,
 		Data::SendError error) {
-	if (!error.boostsToLift) {
-		show->showToast(*error);
-		return;
-	}
-	const auto boost = [=] {
-		const auto window = show->resolveWindow();
-		window->resolveBoostState(peer->asChannel(), error.boostsToLift);
-	};
-	show->showToast({
-		.text = tr::link(*error),
-		.filter = [=](const auto &...) { boost(); return false; },
-	});
+	// LoogriGram: an error that boosting could have lifted used to be shown
+	// as a link into the boost box. Every send error is a plain toast now.
+	show->showToast(*error);
 }
 
 bool ShowSendError(

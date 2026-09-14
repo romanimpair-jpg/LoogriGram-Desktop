@@ -72,7 +72,6 @@ struct ChatPaintContext;
 struct ChatThemeBackground;
 struct ChatThemeBackgroundData;
 class MessageSendingAnimationController;
-struct BoostCounters;
 struct ChatPaintContextArgs;
 struct PreparedList;
 struct PreparedBundle;
@@ -312,10 +311,6 @@ public:
 		Dialogs::Key inChat,
 		PeerData *searchFrom = nullptr);
 
-	void resolveBoostState(
-		not_null<ChannelData*> channel,
-		int boostsToLift = 0);
-
 	void resolveCollectible(
 		PeerId ownerId,
 		const QString &entity,
@@ -374,14 +369,6 @@ private:
 		not_null<PeerData*> peer,
 		const PeerByLinkInfo &info);
 
-	void applyBoost(
-		not_null<ChannelData*> channel,
-		Fn<void(Ui::BoostCounters)> done);
-	void applyBoostsChecked(
-		not_null<ChannelData*> channel,
-		std::vector<int> slots,
-		Fn<void(Ui::BoostCounters)> done);
-
 	const not_null<Main::Session*> _session;
 
 	MTP::Sender _api;
@@ -393,8 +380,6 @@ private:
 	MsgId _showingRepliesRootId = 0;
 	mtpRequestId _showingRepliesRequestId = 0;
 
-	ChannelData *_boostStateResolving = nullptr;
-	int _boostsToLift = 0;
 
 	QString _collectibleEntity;
 	mtpRequestId _collectibleRequestId = 0;

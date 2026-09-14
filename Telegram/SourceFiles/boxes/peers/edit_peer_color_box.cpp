@@ -1563,11 +1563,14 @@ void ProcessButton(not_null<Ui::RoundButton*> button) {
 	crl::on_main(button, [=] { button->raise(); });
 }
 
+// LoogriGram: this took a callback that opened the boost box, hung off a
+// "What are boosts?" link. The box is gone - boosting spends a Telegram
+// Premium slot - so the link goes with it and the footer is left stating how
+// many boosts the group has, which is what it is there to report.
 void CreateBoostLevelContainer(
 		not_null<Ui::VerticalLayout*> container,
 		int levelHint,
-		rpl::producer<std::optional<QColor>> colorProducer,
-		Fn<void()> callback) {
+		rpl::producer<std::optional<QColor>> colorProducer) {
 	const auto boostLevelContainer = container->add(
 		object_ptr<Ui::RpWidget>(container));
 	boostLevelContainer->resize(
@@ -1604,11 +1607,7 @@ void CreateBoostLevelContainer(
 					lt_count,
 					rpl::single(levelHint) | tr::to_count(),
 					lt_link,
-					tr::lng_settings_color_group_boost_footer_link(
-					) | rpl::map([=](QString t) {
-						using namespace Ui::Text;
-						return Link(std::move(t), u"internal:"_q);
-					}),
+					rpl::single(TextWithEntities()),
 					tr::rich),
 				style);
 			state->label->show();
@@ -1618,10 +1617,6 @@ void CreateBoostLevelContainer(
 					(s.width() - state->label->width()) / 2,
 					(s.height() - state->label->height()) / 2);
 			}, state->label->lifetime());
-			state->label->setClickHandlerFilter([=](auto...) {
-				callback();
-				return false;
-			});
 		}
 	}, boostLevelContainer->lifetime());
 }
@@ -1737,12 +1732,7 @@ void EditPeerColorSection(
 			CreateBoostLevelContainer(
 				container,
 				channel->levelHint(),
-				std::move(colorProducer),
-				[=] {
-					if (const auto strong = show->resolveWindow()) {
-						strong->resolveBoostState(channel);
-					}
-				});
+				std::move(colorProducer));
 		}
 
 		const auto profileMargin = st::settingsColorRadioMargin;

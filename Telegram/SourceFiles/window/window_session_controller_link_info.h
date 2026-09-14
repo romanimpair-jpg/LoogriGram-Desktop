@@ -22,7 +22,6 @@ enum class ResolveType {
 	HashtagSearch,
 	ShareGame,
 	Mention,
-	Boost,
 	ChannelDirect,
 	Profile,
 };
