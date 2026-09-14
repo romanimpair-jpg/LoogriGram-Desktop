@@ -1877,57 +1877,11 @@ QString LookupPremiumRef(PremiumFeature section) {
 	return QString();
 }
 
-void ShowPremiumPromoToast(
-		std::shared_ptr<ChatHelpers::Show> show,
-		TextWithEntities textWithLink,
-		const QString &ref) {
-	ShowPremiumPromoToast(show, [=](
-			not_null<::Main::Session*> session) {
-		Expects(&show->session() == session);
-
-		return show->resolveWindow();
-	}, std::move(textWithLink), ref);
-}
-
-void ShowPremiumPromoToast(
-		std::shared_ptr<::Main::SessionShow> show,
-		Fn<Window::SessionController*(
-			not_null<::Main::Session*>)> resolveWindow,
-		TextWithEntities textWithLink,
-		const QString &ref) {
-	using WeakToast = base::weak_ptr<Ui::Toast::Instance>;
-	const auto toast = std::make_shared<WeakToast>();
-	(*toast) = show->showToast({
-		.text = std::move(textWithLink),
-		.filter = crl::guard(&show->session(), [=](
-				const ClickHandlerPtr &handler,
-				Qt::MouseButton button) {
-			if (button != Qt::LeftButton) {
-				return false;
-			}
-			const auto url = handler ? handler->url() : QString();
-			if (!url.isEmpty() && !url.startsWith(u"internal:"_q)) {
-				if (const auto strong = toast->get()) {
-					strong->hideAnimated();
-					(*toast) = nullptr;
-				}
-				return true;
-			}
-			if (const auto strong = toast->get()) {
-				strong->hideAnimated();
-				(*toast) = nullptr;
-				if (const auto controller = resolveWindow(
-						&show->session())) {
-					Settings::ShowPremium(controller, ref);
-				}
-			}
-			return true;
-		}),
-		.icon = &st::settingsToastStarIcon,
-		.adaptive = true,
-		.duration = Ui::Toast::kDefaultDuration * 2,
-	});
-}
+// LoogriGram: ShowPremiumPromoToast lived here. It showed a toast whose
+// only link opened the subscription page, and the seven texts it was given
+// carried no other link, so with that destination gone the filter had
+// nothing left to do. Each caller now shows the same text as a plain
+// adaptive toast.
 
 not_null<Ui::RoundButton*> CreateLockedButton(
 		not_null<QWidget*> parent,

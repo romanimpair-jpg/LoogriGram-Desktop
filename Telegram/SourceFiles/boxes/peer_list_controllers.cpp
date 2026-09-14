@@ -12,10 +12,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/random.h"
 #include "boxes/filters/edit_filter_chats_list.h"
 #include "settings/settings_common.h"
-#include "settings/sections/settings_premium.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/effects/round_checkbox.h"
 #include "ui/text/text_utilities.h"
+#include "ui/toast/toast.h"
 #include "ui/widgets/menu/menu_add_action_callback_factory.h"
 #include "ui/widgets/checkbox.h"
 #include "ui/widgets/popup_menu.h"
@@ -800,6 +800,11 @@ std::unique_ptr<PeerListRow> ContactsBoxController::createRow(
 	return std::make_unique<PeerListRow>(user);
 }
 
+// LoogriGram: this text is shown when someone only accepts messages from
+// subscribers, which is their setting and true either way, so it stays. The
+// name of the subscription was a link into the page that sells it and is
+// plain bold text now - the only link these toasts ever carried, which is
+// why they no longer need a click filter at all.
 RecipientMoneyRestrictionError WriteMoneyRestrictionError(
 		not_null<UserData*> user) {
 	return {
@@ -808,10 +813,7 @@ RecipientMoneyRestrictionError WriteMoneyRestrictionError(
 			lt_user,
 			TextWithEntities{ user->shortName() },
 			lt_link,
-			tr::link(
-				tr::bold(
-					tr::lng_send_non_premium_message_toast_link(
-						tr::now))),
+			tr::bold(tr::lng_send_non_premium_message_toast_link(tr::now)),
 			tr::rich),
 	};
 }
@@ -1001,11 +1003,11 @@ bool RecipientRow::ShowLockedError(
 	if (!recipient->restriction().premiumRequired) {
 		return false;
 	}
-	::Settings::ShowPremiumPromoToast(
-		controller->delegate()->peerListUiShow(),
-		ChatHelpers::ResolveWindowDefault(),
-		error(row->peer()->asUser()).text,
-		u"require_premium"_q);
+	controller->delegate()->peerListUiShow()->showToast({
+		.text = error(row->peer()->asUser()).text,
+		.adaptive = true,
+		.duration = Ui::Toast::kDefaultDuration * 2,
+	});
 	return true;
 }
 

@@ -36,7 +36,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/controls/history_view_forward_panel.h"
 #include "history/view/history_view_element.h"
 #include "history/view/history_view_context_menu.h" // CopyPostLink.
-#include "settings/sections/settings_premium.h"
 #include "window/window_session_controller.h"
 #include "boxes/peer_list_controllers.h"
 #include "chat_helpers/emoji_suggestions_widget.h"
@@ -907,11 +906,11 @@ bool ShareBox::Inner::showLockedError(not_null<Chat*> chat) {
 	if (!chat->restriction.premiumRequired) {
 		return false;
 	}
-	::Settings::ShowPremiumPromoToast(
-		Main::MakeSessionShow(_show, _descriptor.session),
-		ChatHelpers::ResolveWindowDefault(),
-		_descriptor.moneyRestrictionError(chat->peer->asUser()).text,
-		u"require_premium"_q);
+	_show->showToast({
+		.text = _descriptor.moneyRestrictionError(chat->peer->asUser()).text,
+		.adaptive = true,
+		.duration = Ui::Toast::kDefaultDuration * 2,
+	});
 	return true;
 }
 

@@ -2923,16 +2923,16 @@ void ShowUniqueGiftWearBox(
 				box->closeBox();
 				emojiStatuses->set(peer, id);
 			} else {
-				const auto link = tr::bold(
-					tr::lng_send_as_premium_required_link(tr::now));
-				Settings::ShowPremiumPromoToast(
-					show,
-					tr::lng_gift_wear_subscribe(
+				show->showToast({
+					.text = tr::lng_gift_wear_subscribe(
 						tr::now,
 						lt_link,
-						tr::link(link),
+						tr::bold(tr::lng_send_as_premium_required_link(
+							tr::now)),
 						tr::marked),
-					u"wear_collectibles"_q);
+					.adaptive = true,
+					.duration = Ui::Toast::kDefaultDuration * 2,
+				});
 			}
 		});
 		const auto lock = Ui::Text::IconEmoji(&st::giftBoxLock);

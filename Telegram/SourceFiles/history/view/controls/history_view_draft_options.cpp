@@ -32,7 +32,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_helpers.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
-#include "settings/sections/settings_premium.h"
 #include "settings/settings_common.h"
 #include "ui/chat/chat_style.h"
 #include "ui/chat/chat_theme.h"
@@ -995,15 +994,16 @@ void DraftOptionsBox(
 				st::settingsButtonDisabledWithIcon,
 				{ &st::menuIconUserHideDisabled }
 			)->setClickedCallback([=] {
-				Settings::ShowPremiumPromoToast(
-					show,
-					tr::lng_article_premium_required(
+				show->showToast({
+					.text = tr::lng_article_premium_required(
 						tr::now,
 						lt_link,
-						tr::link(tr::bold(
-							tr::lng_article_premium_required_link(tr::now))),
+						tr::bold(tr::lng_article_premium_required_link(
+							tr::now)),
 						tr::marked),
-					u"rich_message"_q);
+					.adaptive = true,
+					.duration = Ui::Toast::kDefaultDuration * 2,
+				});
 			});
 		} else if (canDropNames) {
 			Settings::AddButtonWithIcon(

@@ -67,16 +67,6 @@ void StartPremiumPayment(
 
 [[nodiscard]] QString LookupPremiumRef(PremiumFeature section);
 
-void ShowPremiumPromoToast(
-	std::shared_ptr<ChatHelpers::Show> show,
-	TextWithEntities textWithLink,
-	const QString &ref);
-void ShowPremiumPromoToast(
-	std::shared_ptr<::Main::SessionShow> show,
-	Fn<Window::SessionController*(not_null<::Main::Session*>)> resolveWindow,
-	TextWithEntities textWithLink,
-	const QString &ref);
-
 struct SubscribeButtonArgs final {
 	Window::SessionController *controller = nullptr;
 	not_null<Ui::RpWidget*> parent;

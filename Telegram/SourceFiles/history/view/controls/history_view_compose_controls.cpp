@@ -105,12 +105,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "menu/menu_checked_action.h"
 #include "mtproto/mtproto_config.h"
 #include "menu/menu_send.h"
-#include "settings/sections/settings_premium.h"
 #include "support/support_common.h"
 #include "support/support_helper.h"
 #include "ui/item_text_options.h"
 #include "ui/text/text_options.h"
 #include "ui/text/text_utilities.h"
+#include "ui/toast/toast.h"
 #include "ui/ui_utility.h"
 #include "ui/widgets/fields/input_field.h"
 #include "ui/widgets/dropdown_menu.h"
@@ -4213,19 +4213,19 @@ void SetupRestrictionView(
 			state->unlock = makeUnlock(value.button, peer->shortName());
 			state->button = std::make_unique<Ui::AbstractButton>(widget);
 			state->button->setClickedCallback([=] {
-				::Settings::ShowPremiumPromoToast(
-					show,
-					tr::lng_send_non_premium_message_toast(
+				show->showToast({
+					.text = tr::lng_send_non_premium_message_toast(
 						tr::now,
 						lt_user,
 						TextWithEntities{ peer->shortName() },
 						lt_link,
-						tr::link(
-							tr::bold(
-								tr::lng_send_non_premium_message_toast_link(
-									tr::now))),
+						tr::bold(
+							tr::lng_send_non_premium_message_toast_link(
+								tr::now)),
 						tr::rich),
-					u"require_premium"_q);
+					.adaptive = true,
+					.duration = Ui::Toast::kDefaultDuration * 2,
+				});
 			});
 			state->label = makeLabel(value.text, st->premiumRequired.label);
 		}

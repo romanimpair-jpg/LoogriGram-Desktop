@@ -30,6 +30,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/dynamic_thumbnails.h"
 #include "ui/rect.h"
 #include "ui/text/text_utilities.h"
+#include "ui/toast/toast.h"
 #include "ui/ui_utility.h"
 #include "ui/widgets/fields/input_field.h"
 #include "ui/widgets/labels.h"
@@ -38,7 +39,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/wrap/padding_wrap.h"
 #include "main/main_session.h"
 #include "menu/menu_send.h"
-#include "settings/sections/settings_premium.h"
 #include "styles/style_boxes.h"
 #include "styles/style_info.h"
 #include "styles/style_menu_icons.h"
@@ -361,17 +361,18 @@ void ScheduleBox(
 			if (session->premium()) {
 				return false;
 			}
-			Settings::ShowPremiumPromoToast(
-				Main::MakeSessionShow(boxShow, session),
-				ChatHelpers::ResolveWindowDefault(),
-				tr::lng_schedule_repeat_promo(
+			// LoogriGram: repeating a scheduled message is subscriber-only
+			// on the server, so the row stays locked and still says why -
+			// without the link into the page that sells the subscription.
+			boxShow->showToast({
+				.text = tr::lng_schedule_repeat_promo(
 					tr::now,
 					lt_link,
-					tr::link(
-						tr::bold(
-							tr::lng_schedule_repeat_promo_link(tr::now))),
+					tr::bold(tr::lng_schedule_repeat_promo_link(tr::now)),
 					tr::rich),
-				u"schedule_repeat"_q);
+				.adaptive = true,
+				.duration = Ui::Toast::kDefaultDuration * 2,
+			});
 			return true;
 		};
 		auto locked = Data::AmPremiumValue(

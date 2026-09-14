@@ -15,12 +15,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "ui/controls/send_as_button.h"
 #include "ui/text/text_utilities.h"
+#include "ui/toast/toast.h"
 #include "ui/painter.h"
 #include "window/window_session_controller.h"
 #include "main/main_session.h"
 #include "main/session/send_as_peers.h"
 #include "lang/lang_keys.h"
-#include "settings/sections/settings_premium.h"
 #include "styles/style_calls.h"
 #include "styles/style_chat_helpers.h"
 
@@ -231,17 +231,19 @@ void SetupSendAsButton(
 			if (i != end(list)
 				&& i->premiumRequired
 				&& !sendAs->session().premium()) {
-				Settings::ShowPremiumPromoToast(
-					show,
-					tr::lng_send_as_premium_required(
+				// LoogriGram: still says why this channel cannot be used to
+				// comment - that is the server's rule - but the name of the
+				// subscription no longer links into the page selling it.
+				show->showToast({
+					.text = tr::lng_send_as_premium_required(
 						tr::now,
 						lt_link,
-						tr::link(
-							tr::bold(
-								tr::lng_send_as_premium_required_link(
-									tr::now))),
+						tr::bold(
+							tr::lng_send_as_premium_required_link(tr::now)),
 						tr::marked),
-					u"send_as"_q);
+					.adaptive = true,
+					.duration = Ui::Toast::kDefaultDuration * 2,
+				});
 				return false;
 			}
 			session->sendAsPeers().saveChosen(peer, sendAs);
