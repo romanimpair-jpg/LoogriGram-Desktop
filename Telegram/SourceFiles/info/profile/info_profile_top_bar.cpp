@@ -66,7 +66,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/settings_credits_graphics.h"
 #include "settings/sections/settings_information.h"
 #include "settings/sections/settings_premium.h"
-#include "ui/boxes/show_or_premium_box.h"
 #include "ui/color_contrast.h"
 #include "ui/controls/swipe_handler.h"
 #include "ui/controls/userpic_button.h"
@@ -387,12 +386,6 @@ TopBar::TopBar(
 , _status(this, QString(), statusStyle())
 , _statusLabel(std::make_unique<StatusLabel>(_status.data(), _peer))
 , _customStatus(std::move(descriptor.customStatus))
-, _showLastSeen(
-	this,
-	object_ptr<Ui::RoundButton>(
-		this,
-		tr::lng_status_lastseen_when(),
-		st::infoProfileTopBarShowLastSeen))
 , _forumButton([&, controller = descriptor.controller] {
 	const auto topic = _key.topic();
 	if (!topic) {
@@ -459,10 +452,11 @@ TopBar::TopBar(
 		setupStatusWithRating();
 	}
 
-	if (!_topic) {
-		setupShowLastSeen(controller);
-	}
-
+	// LoogriGram: a "last seen when?" pill used to sit beside the status on
+	// another user's profile, offering to reveal your own last seen in
+	// exchange for theirs or to subscribe instead. It was built only for
+	// !premium() && premiumPossible(), so it could never appear here - and
+	// revealing our own last seen is what ghost mode exists to prevent.
 	bindStatus();
 
 	_title->setContextCopyText(tr::lng_profile_copy_fullname(tr::now));
@@ -623,16 +617,6 @@ void TopBar::adjustColors(const std::optional<QColor> &edgeColor) {
 		? std::optional<QColor>(st::groupCallVideoSubTextFg->c)
 		: std::nullopt;
 	update();
-	if (_showLastSeen->toggled()) {
-		if (shouldOverrideTitle) {
-			const auto st = mapActionStyle(edgeColor);
-			_showLastSeen->entity()->setBrushOverride(st.bgColor);
-			_showLastSeen->entity()->setTextFgOverride(st.fgColor);
-		} else {
-			_showLastSeen->entity()->setBrushOverride(std::nullopt);
-			_showLastSeen->entity()->setTextFgOverride(std::nullopt);
-		}
-	}
 	{
 		const auto membersLinkCallback = _statusLabel->membersLinkCallback();
 		const auto hiddenLinkCallback = _statusLabel->hiddenLinkCallback();
@@ -1949,7 +1933,6 @@ void TopBar::updateStatusPosition(float64 progressCurrent) {
 		_forumButton->setVisible(!tabSwapActive());
 
 		_status->hide();
-		_showLastSeen->hide(anim::type::instant);
 		return;
 	}
 
@@ -1966,30 +1949,15 @@ void TopBar::updateStatusPosition(float64 progressCurrent) {
 		_st.subtitlePosition.y(),
 		st::infoProfileTopBarStatusTop,
 		progressCurrent) + swapShift;
-	const auto totalElementsWidth = _status->width()
-		+ (_showLastSeen->toggled() ? _showLastSeen->width() : 0);
 	const auto statusLeft = anim::interpolate(
 		statusMostLeft(),
-		(width() - totalElementsWidth) / 2,
+		(width() - _status->width()) / 2,
 		progressCurrent);
 
 	const auto statusShift = _statusShift.current()
 		* std::clamp((progressCurrent) / 0.15, 0., 1.);
 
 	_status->moveToLeft(statusLeft + statusShift, statusTop);
-
-	if (_showLastSeen->toggled()) {
-		_showLastSeen->moveToLeft(
-			statusLeft
-				+ statusShift
-				+ _status->textMaxWidth()
-				+ st::infoProfileTopBarLastSeenSkip.x(),
-			statusTop + st::infoProfileTopBarLastSeenSkip.y());
-		_showLastSeen->setOpacity(progressCurrent);
-		_showLastSeen->entity()->setAttribute(
-			Qt::WA_TransparentForMouseEvents,
-			!progressCurrent);
-	}
 }
 
 void TopBar::bindActiveTab(
@@ -3076,75 +3044,6 @@ void TopBar::updateVideoUserpic() {
 		_videoUserpicPlayer = std::make_unique<Ui::VideoUserpicPlayer>();
 	}
 	_videoUserpicPlayer->setup(_peer, photo);
-}
-
-void TopBar::setupShowLastSeen(
-		not_null<Window::SessionController*> controller) {
-	const auto user = _peer->asUser();
-	if (!user
-		|| user->isSelf()
-		|| user->isBot()
-		|| user->isServiceUser()
-		|| !user->session().premiumPossible()) {
-		_showLastSeen->hide(anim::type::instant);
-		return;
-	}
-
-	if (user->session().premium()) {
-		if (user->lastseen().isHiddenByMe()) {
-			user->updateFullForced();
-		}
-		_showLastSeen->hide(anim::type::instant);
-		return;
-	}
-
-	rpl::combine(
-		user->session().changes().peerFlagsValue(
-			user,
-			Data::PeerUpdate::Flag::OnlineStatus),
-		Data::AmPremiumValue(&user->session())
-	) | rpl::on_next([=](auto, bool premium) {
-		const auto wasShown = _showLastSeen->toggled();
-		const auto hiddenByMe = user->lastseen().isHiddenByMe();
-		const auto shown = hiddenByMe
-			&& !user->lastseen().isOnline(base::unixtime::now())
-			&& !premium
-			&& user->session().premiumPossible();
-		_showLastSeen->toggle(shown, anim::type::instant);
-		if (wasShown && premium && hiddenByMe) {
-			user->updateFullForced();
-		}
-	}, _showLastSeen->lifetime());
-
-	controller->session().api().userPrivacy().value(
-		Api::UserPrivacy::Key::LastSeen
-	) | rpl::filter([=](Api::UserPrivacy::Rule rule) {
-		return (rule.option == Api::UserPrivacy::Option::Everyone);
-	}) | rpl::on_next([=] {
-		if (user->lastseen().isHiddenByMe()) {
-			user->updateFullForced();
-		}
-	}, _showLastSeen->lifetime());
-
-	_showLastSeen->setOpacity(0.);
-
-	_showLastSeen->entity()->setFullRadius(true);
-
-	_showLastSeen->entity()->setClickedCallback([=] {
-		const auto type = Ui::ShowOrPremium::LastSeen;
-		controller->show(Box(
-			Ui::ShowOrPremiumBox,
-			type,
-			user->shortName(),
-			[=] {
-				controller->session().api().userPrivacy().save(
-					::Api::UserPrivacy::Key::LastSeen,
-					{});
-			},
-			[=] {
-				::Settings::ShowPremium(controller, u"lastseen_hidden"_q);
-			}));
-	});
 }
 
 void TopBar::setupAnimatedPattern(const QRect &userpicGeometry) {

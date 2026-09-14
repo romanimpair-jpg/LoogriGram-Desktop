@@ -1206,20 +1206,15 @@ shortInfoCover: ShortInfoCover {
 
 permissionsExpandIcon: icon{{ "info/edit/expand_arrow_small", windowBoldFg }};
 
-similarChannelsLockOverlap: 58px;
-similarChannelsLockFade: 58px;
+// LoogriGram: the fade, padding and about-label that dressed the locked
+// "Show more" panel at the end of the similar-peers list are gone with it.
+// The button itself is still read by settings_premium.cpp for a text metric
+// and outlives the panel until that file goes.
 similarChannelsLock: RoundButton(defaultActiveButton) {
 	height: 44px;
 	textTop: 12px;
 	style: semiboldTextStyle;
 }
-similarChannelsLockPadding: margins(12px, 12px, 12px, 12px);
-similarChannelsLockAbout: FlatLabel(defaultFlatLabel) {
-	textFg: windowSubTextFg;
-	align: align(top);
-	minWidth: 128px;
-}
-similarChannelsLockAboutPadding: margins(12px, 12px, 12px, 12px);
 
 
 infoSharedMediaScroll: ScrollArea(defaultScrollArea) {

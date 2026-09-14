@@ -12,18 +12,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peer_list_box.h"
 #include "data/data_channel.h"
 #include "data/data_peer_values.h"
-#include "data/data_premium_limits.h"
 #include "data/data_session.h"
 #include "data/data_user.h"
 #include "info/info_controller.h"
 #include "main/main_session.h"
-#include "ui/text/text_utilities.h"
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/scroll_area.h"
-#include "ui/widgets/tooltip.h"
-#include "ui/ui_utility.h"
 #include "lang/lang_keys.h"
-#include "settings/sections/settings_premium.h"
 #include "window/window_session_controller.h"
 #include "styles/style_info.h"
 
@@ -49,21 +44,14 @@ public:
 	std::unique_ptr<PeerListState> saveState() const override;
 	void restoreState(std::unique_ptr<PeerListState> state) override;
 
-	void setContentWidget(not_null<Ui::RpWidget*> widget);
-	[[nodiscard]] rpl::producer<int> unlockHeightValue() const;
-
 private:
 	std::unique_ptr<PeerListRow> createRow(not_null<PeerData*> peer);
-	void setupUnlock();
 	void rebuild();
 
 	struct SavedState : SavedStateBase {
 	};
 	const not_null<AbstractController*> _controller;
 	const not_null<PeerData*> _peer;
-	Ui::RpWidget *_content = nullptr;
-	Ui::RpWidget *_unlock = nullptr;
-	rpl::variable<int> _unlockHeight;
 
 };
 
@@ -116,14 +104,6 @@ void ListController::prepare() {
 	}, lifetime());
 }
 
-void ListController::setContentWidget(not_null<Ui::RpWidget*> widget) {
-	_content = widget;
-}
-
-rpl::producer<int> ListController::unlockHeightValue() const {
-	return _unlockHeight.value();
-}
-
 void ListController::rebuild() {
 	const auto participants = &_peer->session().api().chatParticipants();
 	const auto &list = participants->similar(_peer);
@@ -132,110 +112,12 @@ void ListController::rebuild() {
 			delegate()->peerListAppendRow(createRow(peer));
 		}
 	}
-	if (!list.more
-		|| _peer->session().premium()
-		|| !_peer->session().premiumPossible()) {
-		delete base::take(_unlock);
-		_unlockHeight = 0;
-	} else if (!_unlock) {
-		setupUnlock();
-	}
+	// LoogriGram: the tail of this list used to fade out behind a locked
+	// "Show more" button and a line about the larger premium limit, both of
+	// which opened the subscription page. It was built only when
+	// !premium() && premiumPossible(), which is a contradiction here, so the
+	// panel and the height it reserved are deleted rather than left unbuilt.
 	delegate()->peerListRefreshRows();
-}
-
-void ListController::setupUnlock() {
-	Expects(_content != nullptr);
-
-	_unlock = Ui::CreateChild<Ui::RpWidget>(_content);
-	_unlock->show();
-
-	const auto button = ::Settings::CreateLockedButton(
-		_unlock,
-		(_peer->isBroadcast()
-			? tr::lng_similar_channels_show_more()
-			: tr::lng_similar_bots_show_more()),
-		st::similarChannelsLock,
-		rpl::single(true));
-	button->setTextTransform(Ui::RoundButtonTextTransform::ToUpper);
-	button->setClickedCallback([=] {
-		const auto window = _controller->parentController();
-		::Settings::ShowPremium(window, u"similar_channels"_q);
-	});
-
-	const auto upto = Data::PremiumLimits(
-		&_peer->session()).similarChannelsPremium();
-	const auto about = Ui::CreateChild<Ui::FlatLabel>(
-		_unlock,
-		(_peer->isBroadcast()
-			? tr::lng_similar_channels_premium_all
-			: tr::lng_similar_bots_premium_all)(
-				lt_count,
-				rpl::single(upto * 1.),
-				lt_link,
-				tr::lng_similar_channels_premium_all_link(
-					tr::bold
-				) | rpl::map(tr::link),
-				tr::rich),
-		st::similarChannelsLockAbout);
-	about->setClickHandlerFilter([=](const auto &...) {
-		const auto window = _controller->parentController();
-		::Settings::ShowPremium(window, u"similar_channels"_q);
-		return false;
-	});
-
-	rpl::combine(
-		_content->sizeValue(),
-		(_peer->isBroadcast()
-			? tr::lng_similar_channels_show_more()
-			: tr::lng_similar_bots_show_more())
-	) | rpl::on_next([=](QSize size, const auto &) {
-		auto top = st::similarChannelsLockFade
-			+ st::similarChannelsLockPadding.top();
-		button->setGeometry(
-			st::similarChannelsLockPadding.left(),
-			top,
-			(size.width()
-				- st::similarChannelsLockPadding.left()
-				- st::similarChannelsLockPadding.right()),
-			button->height());
-		top += button->height() + st::similarChannelsLockPadding.bottom();
-
-		const auto minWidth = st::similarChannelsLockAbout.minWidth;
-		const auto maxWidth = std::max(
-			minWidth + 1,
-			(size.width()
-				- st::similarChannelsLockAboutPadding.left()
-				- st::similarChannelsLockAboutPadding.right()));
-		const auto countAboutHeight = [&](int width) {
-			about->resizeToWidth(width);
-			return about->height();
-		};
-		const auto desired = Ui::FindNiceTooltipWidth(
-			minWidth,
-			maxWidth,
-			countAboutHeight);
-		about->resizeToWidth(desired);
-		about->move((size.width() - about->width()) / 2, top);
-		top += about->height()
-			+ st::similarChannelsLockAboutPadding.bottom();
-		_unlock->setGeometry(0, size.height() - top, size.width(), top);
-	}, _unlock->lifetime());
-
-	_unlockHeight = _unlock->heightValue();
-
-	_unlock->paintRequest(
-	) | rpl::on_next([=] {
-		auto p = QPainter(_unlock);
-		const auto width = _unlock->width();
-		const auto fade = st::similarChannelsLockFade;
-		auto gradient = QLinearGradient(0, 0, 0, fade);
-		gradient.setStops({
-			{ 0., QColor(255, 255, 255, 0) },
-			{ 1., st::windowBg->c },
-		});
-		p.fillRect(0, 0, width, fade, gradient);
-		p.fillRect(0, fade, width, _unlock->height() - fade, st::windowBg);
-	}, _unlock->lifetime());
 }
 
 void ListController::loadMoreRows() {
@@ -368,7 +250,6 @@ object_ptr<InnerWidget::ListWidget> InnerWidget::setupList(
 	auto result = object_ptr<ListWidget>(
 		parent,
 		controller);
-	controller->setContentWidget(this);
 	result->scrollToRequests(
 	) | rpl::on_next([this](Ui::ScrollToRequest request) {
 		auto addmin = (request.ymin < 0)
@@ -386,15 +267,11 @@ object_ptr<InnerWidget::ListWidget> InnerWidget::setupList(
 	) | rpl::on_next([list = result.data()](int newWidth) {
 		list->resizeToWidth(newWidth);
 	}, result->lifetime());
-	rpl::combine(
-		result->heightValue(),
-		controller->unlockHeightValue()
-	) | rpl::on_next([=](int listHeight, int unlockHeight) {
+	result->heightValue(
+	) | rpl::on_next([=](int listHeight) {
 		auto newHeight = st::infoCommonGroupsMargin.top()
 			+ listHeight
-			+ (unlockHeight
-				? (unlockHeight - st::similarChannelsLockOverlap)
-				: st::infoCommonGroupsMargin.bottom());
+			+ st::infoCommonGroupsMargin.bottom();
 		parent->resize(parent->width(), std::max(newHeight, 0));
 	}, result->lifetime());
 	return result;

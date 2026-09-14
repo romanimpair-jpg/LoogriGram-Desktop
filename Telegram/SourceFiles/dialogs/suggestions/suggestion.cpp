@@ -16,8 +16,6 @@ std::vector<Spec> AllSpecs() {
 	result.push_back(MakeCustomPromoSpec());
 	result.push_back(MakeGiftAuctionsSpec());
 	result.push_back(MakeLowCreditsSubsSpec());
-	result.push_back(MakePremiumGraceSpec());
-	result.push_back(MakePremiumOfferSpec());
 	result.push_back(MakeUnreviewedAuthSpec());
 	result.push_back(MakeUserpicSetupSpec());
 	return result;

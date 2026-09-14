@@ -12,7 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_toggling_media.h"
 #include "apiwrap.h"
 #include "base/unixtime.h"
-#include "boxes/premium_preview_box.h"
 #include "boxes/share_box.h"
 #include "boxes/sticker_creator_box.h"
 #include "chat_helpers/compose/compose_show.h"
@@ -38,7 +37,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "menu/menu_emoji_status.h"
 #include "menu/menu_send.h"
 #include "mtproto/sender.h"
-#include "settings/sections/settings_premium.h"
 #include "storage/storage_account.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/cached_round_corners.h"
@@ -296,7 +294,6 @@ public:
 
 	[[nodiscard]] bool loaded() const;
 	[[nodiscard]] bool notInstalled() const;
-	[[nodiscard]] bool premiumEmojiSet() const;
 	[[nodiscard]] bool official() const;
 	[[nodiscard]] rpl::producer<TextWithEntities> title() const;
 	[[nodiscard]] QString shortName() const;
@@ -1008,40 +1005,26 @@ void StickerSetBox::updateButtons() {
 			});
 		}();
 		if (_inner->notInstalled()) {
-			if (!_session->premium()
-				&& _session->premiumPossible()
-				&& _inner->premiumEmojiSet()) {
-				const auto &st = st::premiumPreviewDoubledLimitsBox;
-				setStyle(st);
-				auto button = CreateUnlockButton(
-					this,
-					tr::lng_premium_unlock_emoji());
-				button->resizeToWidth(st::boxWideWidth
-					- st.buttonPadding.left()
-					- st.buttonPadding.left());
-				button->setClickedCallback([=] {
-					if (const auto window = _show->resolveWindow()) {
-						Settings::ShowPremium(window, u"animated_emoji"_q);
-					}
-				});
-				addButton(std::move(button));
-			} else {
-				const auto addText = ((type == Data::StickersType::Emoji)
-					? tr::lng_stickers_add_emoji
-					: (type == Data::StickersType::Masks)
-					? tr::lng_stickers_add_masks
-					: tr::lng_stickers_add_pack)(tr::now);
-				const auto add = addButton(
-					rpl::single(QString()),
-					[=] { addStickers(); });
-				add->setFullRadius(true);
-				addTextWithBadge(
-					add.data(),
-					addText,
-					st::stickerSetBox.button,
-					st::activeButtonBg,
-					st::activeButtonFg);
-			}
+			// LoogriGram: a premium emoji set used to replace the Add button
+			// with an "Unlock" one that opened the subscription page. That
+			// asked for !premium() && premiumPossible(), and premiumPossible()
+			// is premium() here, so it was already a contradiction - the set
+			// simply adds like any other.
+			const auto addText = ((type == Data::StickersType::Emoji)
+				? tr::lng_stickers_add_emoji
+				: (type == Data::StickersType::Masks)
+				? tr::lng_stickers_add_masks
+				: tr::lng_stickers_add_pack)(tr::now);
+			const auto add = addButton(
+				rpl::single(QString()),
+				[=] { addStickers(); });
+			add->setFullRadius(true);
+			addTextWithBadge(
+				add.data(),
+				addText,
+				st::stickerSetBox.button,
+				st::activeButtonBg,
+				st::activeButtonFg);
 		} else if (_inner->amSetCreator()) {
 			auto editText = ((type == Data::StickersType::Emoji)
 				? tr::lng_custom_emoji_edit_pack_button
@@ -2465,12 +2448,6 @@ void StickerSetBox::Inner::paintSticker(
 
 bool StickerSetBox::Inner::loaded() const {
 	return _loaded && !_pack.isEmpty();
-}
-
-bool StickerSetBox::Inner::premiumEmojiSet() const {
-	return (_setFlags & SetFlag::Emoji)
-		&& !_pack.empty()
-		&& _pack.front()->isPremiumEmoji();
 }
 
 bool StickerSetBox::Inner::notInstalled() const {

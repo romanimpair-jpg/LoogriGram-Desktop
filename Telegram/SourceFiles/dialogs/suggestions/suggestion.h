@@ -40,13 +40,18 @@ struct ActivateArgs {
 	Fn<void()> recompute;
 };
 
+// LoogriGram: two of these are gone - PremiumOffer at 2, the annual /
+// upgrade / restore subscription pitch, and PremiumGrace at 6, which offered
+// to repair a lapsed subscription through @premiumbot. Both were already
+// unreachable: one asked premiumPossible() && !premium(), which is a
+// contradiction here, and the other asked premiumCanBuy() outright. The
+// numbers are a sort order rather than an index, so the gaps are harmless and
+// the rest keep their relative places.
 enum class Priority : int {
 	UserpicSetup     = 1,
-	PremiumOffer     = 2,
 	BirthdaySetup    = 3,
 	BirthdayContacts = 4,
 	LowCreditsSubs   = 5,
-	PremiumGrace     = 6,
 	CustomPromo      = 7,
 	GiftAuctions     = 8,
 	UnreviewedAuth   = 9,
@@ -66,8 +71,6 @@ struct Spec {
 [[nodiscard]] Spec MakeCustomPromoSpec();
 [[nodiscard]] Spec MakeGiftAuctionsSpec();
 [[nodiscard]] Spec MakeLowCreditsSubsSpec();
-[[nodiscard]] Spec MakePremiumGraceSpec();
-[[nodiscard]] Spec MakePremiumOfferSpec();
 [[nodiscard]] Spec MakeUnreviewedAuthSpec();
 [[nodiscard]] Spec MakeUserpicSetupSpec();
 

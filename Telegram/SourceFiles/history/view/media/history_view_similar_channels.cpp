@@ -23,7 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/info_memento.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
-#include "settings/sections/settings_premium.h"
 #include "ui/chat/chat_style.h"
 #include "ui/chat/chat_theme.h"
 #include "ui/effects/ripple_animation.h"
@@ -55,31 +54,16 @@ using Channels = Api::ChatParticipants::Peers;
 //	delegate()->peerListRefreshRows();
 //}
 
+// LoogriGram: the "+N more" bubble used to answer a click with a toast
+// naming the larger premium limit instead of opening the list, which is why
+// this took a promoForNonPremium flag and why the bubble was drawn with a
+// padlock. Both are gone and every click opens the list.
 [[nodiscard]] ClickHandlerPtr MakeViewAllLink(
-		not_null<ChannelData*> channel,
-		bool promoForNonPremium) {
+		not_null<ChannelData*> channel) {
 	return std::make_shared<LambdaClickHandler>([=](ClickContext context) {
 		const auto my = context.other.value<ClickHandlerContext>();
 		if (const auto strong = my.sessionWindow.get()) {
 			Assert(channel != nullptr);
-			if (promoForNonPremium && !channel->session().premium()) {
-				const auto upto = Data::PremiumLimits(
-					&channel->session()).similarChannelsPremium();
-				Settings::ShowPremiumPromoToast(
-					strong->uiShow(),
-					tr::lng_similar_channels_premium_all(
-						tr::now,
-						lt_count,
-						upto,
-						lt_link,
-						tr::link(
-							tr::bold(
-								tr::lng_similar_channels_premium_all_link(
-									tr::now))),
-						tr::rich),
-					u"similar_channels"_q);
-				return;
-			}
 			const auto api = &channel->session().api();
 			const auto &list = api->chatParticipants().similar(channel);
 			if (list.list.empty()) {
@@ -167,7 +151,7 @@ void SimilarChannels::draw(Painter &p, const PaintContext &context) const {
 	const auto padding = st::chatSimilarChannelPadding;
 	p.setClipRect(geometry);
 	_hasHeavyPart = 1;
-	validateLastPremiumLock();
+	validateMoreThumbnails();
 	const auto drawOne = [&](const Channel &channel) {
 		const auto geometry = channel.geometry.translated(-int(_scrollLeft), 0);
 		const auto right = geometry.x() + geometry.width();
@@ -266,26 +250,19 @@ void SimilarChannels::draw(Painter &p, const PaintContext &context) const {
 			auto textLeft = badge.x();
 			const auto &font = st::chatSimilarBadgeFont;
 			const auto textTop = badge.y() + font->ascent;
-			const auto icon = !channel.more
-				? &st::chatSimilarBadgeIcon
-				: channel.moreLocked
-				? &st::chatSimilarLockedIcon
-				: nullptr;
-			const auto position = !channel.more
-				? st::chatSimilarBadgeIconPosition
-				: st::chatSimilarLockedIconPosition;
-			if (icon) {
-				const auto skip = channel.more
-					? (badge.width() - icon->width())
-					: 0;
-				icon->paint(
+			// LoogriGram: the "+N more" bubble is the only one that ever
+			// carried the other icon here, a padlock right-aligned in the
+			// badge. With that gone the subscriber-count icon is the only
+			// case left, so its position and offset are unconditional.
+			if (!channel.more) {
+				const auto &icon = st::chatSimilarBadgeIcon;
+				const auto position = st::chatSimilarBadgeIconPosition;
+				icon.paint(
 					*q,
-					badge.x() + position.x() + skip,
+					badge.x() + position.x(),
 					badge.y() + position.y(),
 					width());
-				if (!channel.more) {
-					textLeft += position.x() + icon->width();
-				}
+				textLeft += position.x() + icon.width();
 			}
 			q->setFont(font);
 			q->setPen(st::premiumButtonFg);
@@ -343,25 +320,17 @@ void SimilarChannels::draw(Painter &p, const PaintContext &context) const {
 	p.setClipping(false);
 }
 
-void SimilarChannels::validateLastPremiumLock() const {
-	if (_channels.empty()) {
+// LoogriGram: this was validateLastPremiumLock, and the lock half of it -
+// recomputing whether the "+N more" bubble wears a padlock - is gone, because
+// it asked for !premium() && premiumPossible(). Filling the thumbnails behind
+// that bubble is the other half and is load-bearing, so the function stays
+// under the name of the work it still does.
+void SimilarChannels::validateMoreThumbnails() const {
+	if (_channels.empty() || _moreThumbnailsValid) {
 		return;
 	}
-	if (!_moreThumbnailsValid) {
-		_moreThumbnailsValid = 1;
-		fillMoreThumbnails();
-	}
-	const auto &last = _channels.back();
-	if (!last.more) {
-		return;
-	}
-	const auto premium = history()->session().premium();
-	const auto locked = !premium && history()->session().premiumPossible();
-	if (last.moreLocked == locked) {
-		return;
-	}
-	last.moreLocked = locked ? 1 : 0;
-	last.counterBgValid = 0;
+	_moreThumbnailsValid = 1;
+	fillMoreThumbnails();
 }
 
 void SimilarChannels::fillMoreThumbnails() const {
@@ -391,11 +360,7 @@ void SimilarChannels::validateCounterBg(const Channel &channel) const {
 	const auto outer = inner.marginsAdded(st::chatSimilarChannelPadding);
 	const auto length = st::chatSimilarBadgeFont->width(channel.counter);
 	const auto contents = length
-		+ (!channel.more
-			? st::chatSimilarBadgeIcon.width()
-			: channel.moreLocked
-			? st::chatSimilarLockedIcon.width()
-			: 0);
+		+ (!channel.more ? st::chatSimilarBadgeIcon.width() : 0);
 	const auto delta = (outer.width() - contents) / 2;
 	const auto badge = QRect(
 		delta,
@@ -497,7 +462,7 @@ TextState SimilarChannels::textState(
 		if (!_viewAllLink) {
 			const auto channel = parent()->history()->peer->asChannel();
 			Assert(channel != nullptr);
-			_viewAllLink = MakeViewAllLink(channel, false);
+			_viewAllLink = MakeViewAllLink(channel);
 		}
 		result.link = _viewAllLink;
 		return result;
@@ -522,7 +487,6 @@ QSize SimilarChannels::countOptimalSize() {
 	_moreThumbnails = {};
 	const auto api = &channel->session().api();
 	api->chatParticipants().loadSimilarPeers(channel);
-	const auto premium = channel->session().premium();
 	const auto &similar = api->chatParticipants().similar(channel);
 	_empty = similar.list.empty() ? 1 : 0;
 	_moreThumbnailsValid = 0;
@@ -565,11 +529,10 @@ QSize SimilarChannels::countOptimalSize() {
 				st::chatSimilarChannelPhoto),
 			.thumbnail = Ui::MakeUserpicThumbnail(channel),
 			.more = uint32(moreCounter),
-			.moreLocked = uint32((moreCounter && !premium) ? 1 : 0),
 		});
 		auto &last = _channels.back();
 		last.link = moreCounter
-			? MakeViewAllLink(parent()->history()->peer->asChannel(), true)
+			? MakeViewAllLink(parent()->history()->peer->asChannel())
 			: channel->openLink();
 
 		const auto counter = moreCounter

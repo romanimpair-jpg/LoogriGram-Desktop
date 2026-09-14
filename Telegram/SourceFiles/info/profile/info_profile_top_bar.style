@@ -59,7 +59,6 @@ infoProfileTopBarPhotoTop: 24px;
 infoProfileTopBarPhotoBgShift: 55px;
 infoProfileTopBarPhotoBgNoActionsShift: 30px;
 infoProfileTopBarPhotoSize: 80px;
-infoProfileTopBarLastSeenSkip: point(8px, 1px);
 infoProfileTopBarGiftSize: 20px;
 infoProfileTopBarGiftLeft: point(15px, 13px);
 infoProfileTopBarGiftTopLeft: point(4px, 4px);
@@ -88,19 +87,6 @@ infoProfileTopBarActionSearch: icon{{ "menu/search", windowBoldFg }};
 infoProfileTopBarActionLiveStream: icon{{ "profile/live_stream-23x23", windowBoldFg }};
 infoProfileTopBarTopicStatusButton: RoundButton(defaultTableSmallButton) {
 	radius: 4px;
-}
-infoProfileTopBarShowLastSeen: RoundButton(defaultActiveButton) {
-	textFg: windowBoldFg;
-	textFgOver: windowBoldFg;
-	textBg: windowBg;
-	textBgOver: windowBgOver;
-	width: -12px;
-	height: 18px;
-	textTop: 0px;
-	style: TextStyle(defaultTextStyle) {
-		font: font(12px);
-	}
-	ripple: universalRippleAnimation;
 }
 infoStatusHiddenToastIcon: icon{{ "community/requests_hidden", toastFg }};
 infoBotVerifyBadge: InfoPeerBadge(infoPeerBadge) {

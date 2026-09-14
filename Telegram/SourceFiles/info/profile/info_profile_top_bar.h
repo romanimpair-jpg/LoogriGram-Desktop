@@ -183,7 +183,6 @@ private:
 		not_null<Window::SessionController*> controller,
 		Source source);
 	void setupSwipeBack(not_null<Window::SessionController*> controller);
-	void setupShowLastSeen(not_null<Window::SessionController*> controller);
 	void setupAnimatedPattern(const QRect &userpicGeometry = QRect());
 	void paintAnimatedPattern(
 		QPainter &p,
@@ -297,7 +296,6 @@ private:
 	std::unique_ptr<StatusLabel> _statusLabel;
 	rpl::variable<int> _statusShift = 0;
 	rpl::producer<TextWithEntities> _customStatus;
-	object_ptr<Ui::FadeWrap<Ui::RoundButton>> _showLastSeen = { nullptr };
 	object_ptr<Ui::RoundButton> _forumButton = { nullptr };
 
 	std::shared_ptr<style::FlatLabel> _statusSt;

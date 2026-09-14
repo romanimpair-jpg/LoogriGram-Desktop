@@ -64,14 +64,13 @@ private:
 		mutable QRect counterRect;
 		mutable QImage counterBg;
 		mutable std::unique_ptr<Ui::RippleAnimation> ripple;
-		uint32 more : 29 = 0;
-		mutable uint32 moreLocked : 1 = 0;
+		uint32 more : 30 = 0;
 		mutable uint32 subscribed : 1 = 0;
 		mutable uint32 counterBgValid : 1 = 0;
 	};
 
 	void ensureCacheReady(QSize size) const;
-	void validateLastPremiumLock() const;
+	void validateMoreThumbnails() const;
 	void fillMoreThumbnails() const;
 	void validateCounterBg(const Channel &channel) const;
 	[[nodiscard]] ClickHandlerPtr ensureToggleLink() const;
