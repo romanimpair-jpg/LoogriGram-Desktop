@@ -248,6 +248,12 @@ What actually solved the crash took one log line. Prefer ground truth:
 - **Do not dispatch a build to test a hypothesis that logging could settle**,
   and ask before dispatching at all. A wrong 25m build is cheap only once;
   the habit of building instead of thinking is what cost the time here.
+- **A `mode=build` + `config=Release` run is not just spent compute - it
+  publishes a release.** The installed app polls that endpoint once per
+  launch, so a build that merely compiles will offer itself to this machine
+  as an update. That is why the dispatch gets asked about every time, not
+  only when the build looks risky. A build that *fails* publishes nothing:
+  `Publish release.` carries no `always()`, so a failed compile skips it.
 
 ## Repo layout
 
