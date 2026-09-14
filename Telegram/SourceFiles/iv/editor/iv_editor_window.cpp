@@ -11,16 +11,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtGui/QCloseEvent>
 
-#ifdef Q_OS_WIN
 #include <QtNetwork/QNetworkProxy>
 
 #include "core/sandbox.h"
 
 #include <windows.h>
-#elif defined Q_OS_MAC // Q_OS_WIN
-#include "core/sandbox.h"
-#include "platform/mac/native_event_mac.h"
-#endif // Q_OS_WIN || Q_OS_MAC
 
 namespace Iv::Editor {
 namespace {
@@ -110,7 +105,6 @@ bool Window::eventHook(QEvent *event) {
 	return Ui::RpWindow::eventHook(event);
 }
 
-#ifdef Q_OS_WIN
 
 bool Window::nativeEvent(
 		const QByteArray &eventType,
@@ -127,23 +121,6 @@ bool Window::nativeEvent(
 	return false;
 }
 
-#elif defined Q_OS_MAC // Q_OS_WIN
-
-bool Window::nativeEvent(
-		const QByteArray &eventType,
-		void *message,
-		qintptr *result) {
-	if (message && eventType == "NSEvent") {
-		if (Platform::PossiblyTextTypingEvent(message)) {
-			Core::Sandbox::Instance().customEnterFromEventLoop([&] {
-				imeCompositionStartReceived();
-			});
-		}
-	}
-	return false;
-}
-
-#endif // Q_OS_WIN || Q_OS_MAC
 
 bool CloseActiveWindow() {
 	if (const auto window = ActiveWindow()) {

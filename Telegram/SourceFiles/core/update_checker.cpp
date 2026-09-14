@@ -41,11 +41,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <ksandbox.h>
 
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
-#include "base/platform/linux/base_linux_xdp_utilities.h"
-
-#include <flatpakportal/flatpakportal.hpp>
-#endif // !Q_OS_WIN && !Q_OS_MAC
 
 extern "C" {
 #include <openssl/rsa.h>
@@ -55,16 +50,9 @@ extern "C" {
 } // extern "C"
 
 #ifndef TDESKTOP_DISABLE_AUTOUPDATE
-#if defined Q_OS_WIN && !defined TDESKTOP_USE_PACKAGED // use Lzma SDK for win
 #include <LzmaLib.h>
-#else // Q_OS_WIN && !TDESKTOP_USE_PACKAGED
-#include <lzma.h>
-#endif // else of Q_OS_WIN && !TDESKTOP_USE_PACKAGED
 #endif // !TDESKTOP_DISABLE_AUTOUPDATE
 
-#ifndef Q_OS_WIN
-#include <unistd.h>
-#endif // !Q_OS_WIN
 
 namespace Core {
 namespace {
@@ -76,11 +64,6 @@ constexpr auto kMaxResponseSize = 1024 * 1024;
 // 64-bit (base << 32 | counter) version. 0x7FFFFFFF is the alpha marker.
 constexpr auto kVersionFileCanaryMarker = quint32(0x7FFFFFFE);
 
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
-constexpr auto kFlatpakPortalService = "org.freedesktop.portal.Flatpak";
-constexpr auto kFlatpakPortalObjectPath = "/org/freedesktop/portal/Flatpak";
-constexpr auto kFlatpakUpdated = "/app/.updated"_cs;
-#endif // !Q_OS_WIN && !Q_OS_MAC
 
 #ifdef TDESKTOP_DISABLE_AUTOUPDATE
 bool UpdaterIsDisabled = true;
@@ -93,20 +76,11 @@ std::weak_ptr<Updater> UpdaterInstance;
 using Progress = UpdateChecker::Progress;
 using State = UpdateChecker::State;
 
-#ifdef Q_OS_WIN
 using VersionInt = DWORD;
 using VersionChar = WCHAR;
-#else // Q_OS_WIN
-using VersionInt = int;
-using VersionChar = wchar_t;
-#endif // Q_OS_WIN
 
 using Loader = MTP::AbstractDedicatedLoader;
 
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
-using namespace gi::repository;
-namespace GObject = gi::repository::GObject;
-#endif // !Q_OS_WIN && !Q_OS_MAC
 
 struct BIODeleter {
 	void operator()(BIO *value) {
@@ -262,39 +236,6 @@ private:
 
 };
 
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
-class FlatpakChecker : public Checker {
-public:
-	FlatpakChecker(bool testing);
-
-	void start() override;
-
-	bool poll() const override;
-
-	~FlatpakChecker();
-
-private:
-	FlatpakPortal::Flatpak _interface;
-	FlatpakPortal::FlatpakUpdateMonitor _monitor;
-	QFileSystemWatcher _watcher;
-	ulong _updateAvailableSignal = 0;
-
-};
-
-class FlatpakLoader : public Loader {
-public:
-	FlatpakLoader(FlatpakPortal::FlatpakUpdateMonitor monitor);
-
-	~FlatpakLoader();
-
-private:
-	void startLoading() override;
-
-	FlatpakPortal::FlatpakUpdateMonitor _monitor;
-	ulong _progressSignal = 0;
-
-};
-#endif // !Q_OS_WIN && !Q_OS_MAC
 
 std::shared_ptr<Updater> GetUpdaterInstance() {
 	if (const auto result = UpdaterInstance.lock()) {
@@ -415,11 +356,7 @@ QString ExtractFilename(const QString &url) {
 [[nodiscard]] std::optional<QByteArray> DecompressUpdatePayload(
 		const char *data,
 		int32 size) {
-#if defined Q_OS_WIN && !defined TDESKTOP_USE_PACKAGED // use Lzma SDK for win
 	const int32 hPropsLen = LZMA_PROPS_SIZE;
-#else // Q_OS_WIN && !TDESKTOP_USE_PACKAGED
-	const int32 hPropsLen = 0;
-#endif // Q_OS_WIN && !TDESKTOP_USE_PACKAGED
 	const int32 hOriginalSizeLen = sizeof(int32);
 	const int32 hSize = hPropsLen + hOriginalSizeLen;
 	const int32 compressedLen = size - hSize;
@@ -439,57 +376,12 @@ QString ExtractFilename(const QString &url) {
 	uncompressed.resize(uncompressedLen);
 
 	size_t resultLen = uncompressed.size();
-#if defined Q_OS_WIN && !defined TDESKTOP_USE_PACKAGED // use Lzma SDK for win
 	SizeT srcLen = compressedLen;
 	int uncompressRes = LzmaUncompress((uchar*)uncompressed.data(), &resultLen, (const uchar*)(data + hSize), &srcLen, (const uchar*)data, LZMA_PROPS_SIZE);
 	if (uncompressRes != SZ_OK) {
 		LOG(("Update Error: could not uncompress lzma, code: %1").arg(uncompressRes));
 		return std::nullopt;
 	}
-#else // Q_OS_WIN && !TDESKTOP_USE_PACKAGED
-	lzma_stream stream = LZMA_STREAM_INIT;
-
-	lzma_ret ret = lzma_stream_decoder(&stream, UINT64_MAX, LZMA_CONCATENATED);
-	if (ret != LZMA_OK) {
-		const char *msg;
-		switch (ret) {
-		case LZMA_MEM_ERROR: msg = "Memory allocation failed"; break;
-		case LZMA_OPTIONS_ERROR: msg = "Specified preset is not supported"; break;
-		case LZMA_UNSUPPORTED_CHECK: msg = "Specified integrity check is not supported"; break;
-		default: msg = "Unknown error, possibly a bug"; break;
-		}
-		LOG(("Error initializing the decoder: %1 (error code %2)").arg(msg).arg(ret));
-		return std::nullopt;
-	}
-
-	stream.avail_in = compressedLen;
-	stream.next_in = (uint8_t*)(data + hSize);
-	stream.avail_out = resultLen;
-	stream.next_out = (uint8_t*)uncompressed.data();
-
-	lzma_ret res = lzma_code(&stream, LZMA_FINISH);
-	if (stream.avail_in) {
-		LOG(("Error in decompression, %1 bytes left in _in of %2 whole.").arg(stream.avail_in).arg(compressedLen));
-		return std::nullopt;
-	} else if (stream.avail_out) {
-		LOG(("Error in decompression, %1 bytes free left in _out of %2 whole.").arg(stream.avail_out).arg(resultLen));
-		return std::nullopt;
-	}
-	lzma_end(&stream);
-	if (res != LZMA_OK && res != LZMA_STREAM_END) {
-		const char *msg;
-		switch (res) {
-		case LZMA_MEM_ERROR: msg = "Memory allocation failed"; break;
-		case LZMA_FORMAT_ERROR: msg = "The input data is not in the .xz format"; break;
-		case LZMA_OPTIONS_ERROR: msg = "Unsupported compression options"; break;
-		case LZMA_DATA_ERROR: msg = "Compressed file is corrupt"; break;
-		case LZMA_BUF_ERROR: msg = "Compressed data is truncated or otherwise corrupt"; break;
-		default: msg = "Unknown error, possibly a bug"; break;
-		}
-		LOG(("Error in decompression: %1 (error code %2)").arg(msg).arg(res));
-		return std::nullopt;
-	}
-#endif // Q_OS_WIN && !TDESKTOP_USE_PACKAGED
 
 	return uncompressed;
 }
@@ -505,9 +397,6 @@ QString ExtractFilename(const QString &url) {
 		bool executable = false;
 
 		stream >> relativeName >> fileSize >> fileInnerData;
-#ifndef Q_OS_WIN
-		stream >> executable;
-#endif // !Q_OS_WIN
 		if (stream.status() != QDataStream::Ok) {
 			LOG(("Update Error: cant read file from downloaded stream, status: %1").arg(stream.status()));
 			return false;
@@ -707,11 +596,7 @@ bool UnpackUpdate(const QString &filepath) {
 		return false;
 	}
 
-#if defined Q_OS_WIN && !defined TDESKTOP_USE_PACKAGED // use Lzma SDK for win
 	const int32 hSigLen = 128, hShaLen = 20, hPropsLen = LZMA_PROPS_SIZE, hOriginalSizeLen = sizeof(int32), hSize = hSigLen + hShaLen + hPropsLen + hOriginalSizeLen; // header
-#else // Q_OS_WIN && !TDESKTOP_USE_PACKAGED
-	const int32 hSigLen = 128, hShaLen = 20, hPropsLen = 0, hOriginalSizeLen = sizeof(int32), hSize = hSigLen + hShaLen + hOriginalSizeLen; // header
-#endif // Q_OS_WIN && !TDESKTOP_USE_PACKAGED
 
 	QByteArray compressed = input.readAll();
 	input.close();
@@ -1597,160 +1482,6 @@ Fn<void(const MTP::Error &error)> MtpChecker::failHandler() {
 	};
 }
 
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
-FlatpakChecker::FlatpakChecker(bool testing)
-: Checker(testing)
-, _watcher({u"/app"_q}) {
-	FlatpakPortal::FlatpakProxy::new_for_bus(
-			Gio::BusType::SESSION_,
-			Gio::DBusProxyFlags::NONE_,
-			kFlatpakPortalService,
-			kFlatpakPortalObjectPath,
-			crl::guard(this, [=](GObject::Object, Gio::AsyncResult res) {
-		auto result = FlatpakPortal::FlatpakProxy::new_for_bus_finish(res);
-		if (!result) {
-			Gio::DBusErrorNS_::strip_remote_error(result.error());
-			LOG(("Update Error: %1").arg(result.error().message_().c_str()));
-			return;
-		}
-
-		_interface = *result;
-		_interface.call_create_update_monitor(
-				GLib::Variant::new_array(
-					GLib::VariantType::new_("{sv}"),
-					{}),
-				[=](GObject::Object, Gio::AsyncResult res) {
-			const auto result = _interface.call_create_update_monitor_finish(
-				res);
-
-			if (!result) {
-				Gio::DBusErrorNS_::strip_remote_error(result.error());
-				LOG(("Update Error: %1").arg(
-					result.error().message_().c_str()));
-				fail();
-				return;
-			}
-
-			FlatpakPortal::FlatpakUpdateMonitorProxy::new_for_bus(
-					Gio::BusType::SESSION_,
-					Gio::DBusProxyFlags::NONE_,
-					kFlatpakPortalService,
-					std::get<1>(*result),
-					crl::guard(this, [=](GObject::Object, Gio::AsyncResult res) {
-				using FlatpakPortal::FlatpakUpdateMonitorProxy;
-				auto result = FlatpakUpdateMonitorProxy::new_for_bus_finish(
-					res);
-
-				if (!result) {
-					Gio::DBusErrorNS_::strip_remote_error(result.error());
-					LOG(("Update Error: %1").arg(
-						result.error().message_().c_str()));
-					fail();
-					return;
-				}
-
-				_monitor = *result;
-				_updateAvailableSignal
-					= _monitor.signal_update_available().connect([=](
-							FlatpakPortal::FlatpakUpdateMonitor,
-							GLib::Variant updateInfo) {
-						done(std::make_shared<FlatpakLoader>(_monitor));
-					});
-			}));
-		});
-	}));
-
-	QObject::connect(
-		&_watcher,
-		&QFileSystemWatcher::directoryChanged,
-		[=](const QString &path) {
-			start();
-		});
-}
-
-void FlatpakChecker::start() {
-	if (QFileInfo::exists(kFlatpakUpdated.utf16())) {
-		done(std::make_shared<FlatpakLoader>(_monitor));
-	}
-}
-
-bool FlatpakChecker::poll() const {
-	return false;
-}
-
-FlatpakChecker::~FlatpakChecker() {
-	if (_monitor) {
-		_monitor.disconnect(_updateAvailableSignal);
-		_monitor.call_close(nullptr);
-	}
-}
-
-FlatpakLoader::FlatpakLoader(FlatpakPortal::FlatpakUpdateMonitor monitor)
-: Loader({}, kChunkSize)
-, _monitor(monitor) {
-	if (!_monitor) {
-		return;
-	}
-
-	_progressSignal = _monitor.signal_progress().connect([=](
-			FlatpakPortal::FlatpakUpdateMonitor,
-			GLib::Variant info) {
-		auto dict = GLib::VariantDict::new_(info);
-		switch (dict.lookup_value("status").get_uint32()) {
-		case 0: {
-			const auto n_ops = dict.lookup_value("n_ops").get_uint32();
-			const auto op = dict.lookup_value("op").get_uint32();
-			const auto progress = dict.lookup_value("progress").get_uint32();
-			threadSafeProgress({
-				int64(
-					std::round((op + (progress / 100.)) / n_ops * 104857600)),
-				104857600,
-				true,
-			});
-		} break;
-		case 1:
-		case 2: threadSafeReady(); break;
-		case 3: {
-			LOG(("Update Error: %1").arg(
-				dict.lookup_value("error_message").get_string(
-					nullptr).c_str()));
-			threadSafeFailed();
-		} break;
-		}
-	});
-}
-
-void FlatpakLoader::startLoading() {
-	if (QFileInfo::exists(kFlatpakUpdated.utf16())) {
-		threadSafeReady();
-	}
-
-	if (!_monitor) {
-		return;
-	}
-
-	_monitor.call_update(
-		base::Platform::XDP::ParentWindowID(),
-		GLib::Variant::new_array(
-			GLib::VariantType::new_("{sv}"),
-			{}),
-		crl::guard(this, [=](GObject::Object, Gio::AsyncResult res) {
-			const auto result = _monitor.call_close_finish(res);
-			if (!result) {
-				Gio::DBusErrorNS_::strip_remote_error(result.error());
-				LOG(("Update Error: %1").arg(
-					result.error().message_().c_str()));
-				threadSafeFailed();
-			}
-		}));
-}
-
-FlatpakLoader::~FlatpakLoader() {
-	if (_monitor) {
-		_monitor.disconnect(_progressSignal);
-	}
-}
-#endif // !Q_OS_WIN && !Q_OS_MAC
 
 } // namespace
 
@@ -1979,13 +1710,6 @@ void Updater::start(bool forceWait) {
 	}
 
 	if (KSandbox::isFlatpak()) {
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
-		if (!_flatpakImplementation.checker) {
-			startImplementation(
-				&_flatpakImplementation,
-				std::make_unique<FlatpakChecker>(_testing));
-		}
-#endif // !Q_OS_WIN && !Q_OS_MAC
 	} else if (sendRequest) {
 		if (BuildIsCanary) {
 			// Canary builds discover updates only through their own MTP
@@ -2304,16 +2028,8 @@ bool checkReadyUpdate() {
 		fVersion.close();
 	}
 
-#ifdef Q_OS_WIN
 	QString curUpdater = (cExeDir() + u"Updater.exe"_q);
 	QFileInfo updater(cWorkingDir() + u"tupdates/temp/Updater.exe"_q);
-#elif defined Q_OS_MAC // Q_OS_WIN
-	QString curUpdater = (cExeDir() + cExeName() + u"/Contents/Frameworks/Updater"_q);
-	QFileInfo updater(cWorkingDir() + u"tupdates/temp/Telegram.app/Contents/Frameworks/Updater"_q);
-#else // Q_OS_MAC
-	QString curUpdater = (cExeDir() + u"Updater"_q);
-	QFileInfo updater(cWorkingDir() + u"tupdates/temp/Updater"_q);
-#endif // else for Q_OS_WIN || Q_OS_MAC
 	if (!updater.exists()) {
 		QFileInfo current(curUpdater);
 		if (!current.exists()) {
@@ -2325,7 +2041,6 @@ bool checkReadyUpdate() {
 			return false;
 		}
 	}
-#ifdef Q_OS_WIN
 	if (CopyFile(updater.absoluteFilePath().toStdWString().c_str(), curUpdater.toStdWString().c_str(), FALSE) == FALSE) {
 		DWORD errorCode = GetLastError();
 		if (errorCode == ERROR_ACCESS_DENIED) { // we are in write-protected dir, like Program Files
@@ -2340,47 +2055,7 @@ bool checkReadyUpdate() {
 		ClearAll();
 		return false;
 	}
-#elif defined Q_OS_MAC // Q_OS_WIN
-	QDir().mkpath(QFileInfo(curUpdater).absolutePath());
-	DEBUG_LOG(("Update Info: moving %1 to %2...").arg(updater.absoluteFilePath()).arg(curUpdater));
-	if (!objc_moveFile(updater.absoluteFilePath(), curUpdater)) {
-		ClearAll();
-		return false;
-	}
-#else // Q_OS_MAC
-	// if the files in the directory are owned by user, while the directory is not,
-	// update will still fail since it's not possible to remove files
-	if (QFile::exists(curUpdater)
-		&& unlink(QFile::encodeName(curUpdater).constData())) {
-		if (errno == EACCES) {
-			DEBUG_LOG(("Update Info: "
-				"could not unlink current Updater, access denied."));
-			cSetWriteProtected(true);
-			return true;
-		} else {
-			DEBUG_LOG(("Update Error: could not unlink current Updater."));
-			ClearAll();
-			return false;
-		}
-	}
-	if (!linuxMoveFile(QFile::encodeName(updater.absoluteFilePath()).constData(), QFile::encodeName(curUpdater).constData())) {
-		if (errno == EACCES) {
-			DEBUG_LOG(("Update Info: "
-				"could not copy new Updater, access denied."));
-			cSetWriteProtected(true);
-			return true;
-		} else {
-			DEBUG_LOG(("Update Error: could not copy new Updater."));
-			ClearAll();
-			return false;
-		}
-	}
-#endif // else for Q_OS_WIN || Q_OS_MAC
 
-#ifdef Q_OS_MAC
-	base::Platform::RemoveQuarantine(QFileInfo(curUpdater).absolutePath());
-	base::Platform::RemoveQuarantine(updater.absolutePath());
-#endif // Q_OS_MAC
 
 	return true;
 }
@@ -2388,18 +2063,12 @@ bool checkReadyUpdate() {
 void UpdateApplication() {
 	if (UpdaterDisabled()) {
 		const auto url = [&] {
-#ifdef OS_WIN_STORE
-			return "https://www.microsoft.com/en-us/store/p/telegram-desktop/9nztwsqntd0s";
-#elif defined OS_MAC_STORE // OS_WIN_STORE
-			return "https://itunes.apple.com/ae/app/telegram-desktop/id946399090";
-#else // OS_WIN_STORE || OS_MAC_STORE
 			if (KSandbox::isFlatpak()) {
 				return "https://flathub.org/apps/details/org.telegram.desktop";
 			} else if (KSandbox::isSnap()) {
 				return "https://snapcraft.io/telegram-desktop";
 			}
 			return "https://desktop.telegram.org";
-#endif // OS_WIN_STORE || OS_MAC_STORE
 		}();
 		UrlClickHandler::Open(url);
 	} else {

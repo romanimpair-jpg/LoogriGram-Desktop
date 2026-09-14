@@ -268,28 +268,6 @@ auto GenerateCodes() {
 		Ui::Toast::Show(now ? "Testing chat theme colors!" : "Not testing..");
 	});
 
-#ifdef Q_OS_MAC
-	codes.emplace(u"customicon"_q, [](SessionController *window) {
-		const auto iconFilters = u"Icon files (*.icns *.png);;"_q + FileDialog::AllFilesFilter();
-		const auto change = [](const QString &path) {
-			const auto success = path.isEmpty()
-				? base::ClearCustomAppIcon()
-				: base::SetCustomAppIcon(path);
-			Ui::Toast::Show(success
-				? (path.isEmpty()
-					? "Icon cleared. Restarting the Dock."
-					: "Icon updated. Restarting the Dock.")
-				: (path.isEmpty()
-					? "Icon clear failed. See log.txt for details."
-					: "Icon update failed. See log.txt for details."));
-		};
-		FileDialog::GetOpenPath(Core::App().getFileDialogParent(), "Choose custom icon", iconFilters, [=](const FileDialog::OpenResult &result) {
-			change(result.paths.isEmpty() ? QString() : result.paths.front());
-		}, [=] {
-			change(QString());
-		});
-	});
-#endif // Q_OS_MAC
 
 	return codes;
 }

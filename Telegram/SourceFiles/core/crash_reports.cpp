@@ -17,7 +17,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <mutex>
 
 #ifndef TDESKTOP_DISABLE_CRASH_REPORTS
-#ifdef Q_OS_WIN
 
 #include <new.h>
 
@@ -26,29 +25,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <client/windows/handler/exception_handler.h>
 #pragma warning(pop)
 
-#else // Q_OS_WIN
-
-#include <execinfo.h>
-#include <sys/syscall.h>
-
-#ifdef Q_OS_MAC
-
-#include <dlfcn.h>
-#include <unistd.h>
-
-#ifdef MAC_USE_BREAKPAD
-#include <client/mac/handler/exception_handler.h>
-#else // MAC_USE_BREAKPAD
-#include <client/crashpad_client.h>
-#endif // else for MAC_USE_BREAKPAD
-
-#else // Q_OS_MAC
-
-#include <client/linux/handler/exception_handler.h>
-
-#endif // Q_OS_MAC
-
-#endif // Q_OS_WIN
 #endif // !TDESKTOP_DISABLE_CRASH_REPORTS
 
 namespace CrashReports {
@@ -110,20 +86,12 @@ std::unique_ptr<ReservedMemoryChunk> ReservedMemory;
 
 void InstallOperatorNewHandler() {
 	ReservedMemory = std::make_unique<ReservedMemoryChunk>();
-#ifdef Q_OS_WIN
 	_set_new_handler([](size_t requested) -> int {
 		_set_new_handler(nullptr);
 		ReservedMemory.reset();
 		CrashReports::SetAnnotation("Requested", QString::number(requested));
 		Unexpected("Could not allocate!");
 	});
-#else // Q_OS_WIN
-	std::set_new_handler([] {
-		std::set_new_handler(nullptr);
-		ReservedMemory.reset();
-		Unexpected("Could not allocate!");
-	});
-#endif // Q_OS_WIN
 }
 
 void InstallQtMessageHandler() {
@@ -200,41 +168,9 @@ const int HandledSignals[] = {
 	SIGABRT,
 	SIGFPE,
 	SIGILL,
-#ifndef Q_OS_WIN
-	SIGBUS,
-	SIGTRAP,
-#endif // !Q_OS_WIN
 };
 
-#ifdef Q_OS_WIN
 void SignalHandler(int signum) {
-#else // Q_OS_WIN
-struct sigaction OldSigActions[32]/* = { 0 }*/;
-
-void RestoreSignalHandlers() {
-	for (const auto signum : HandledSignals) {
-		sigaction(signum, &OldSigActions[signum], nullptr);
-	}
-}
-
-void InvokeOldSignalHandler(int signum, siginfo_t *info, void *ucontext) {
-	if (signum < 0 || signum > 31) {
-		return;
-	} else if (OldSigActions[signum].sa_flags & SA_SIGINFO) {
-		if (OldSigActions[signum].sa_sigaction) {
-			OldSigActions[signum].sa_sigaction(signum, info, ucontext);
-		}
-	} else {
-		if (OldSigActions[signum].sa_handler) {
-			OldSigActions[signum].sa_handler(signum);
-		}
-	}
-}
-
-void SignalHandler(int signum, siginfo_t *info, void *ucontext) {
-	RestoreSignalHandlers();
-
-#endif // else for Q_OS_WIN
 
 	const char* name = 0;
 	switch (signum) {
@@ -242,10 +178,6 @@ void SignalHandler(int signum, siginfo_t *info, void *ucontext) {
 	case SIGSEGV: name = "SIGSEGV"; break;
 	case SIGILL: name = "SIGILL"; break;
 	case SIGFPE: name = "SIGFPE"; break;
-#ifndef Q_OS_WIN
-	case SIGBUS: name = "SIGBUS"; break;
-	case SIGSYS: name = "SIGSYS"; break;
-#endif // !Q_OS_WIN
 	}
 
 	auto expected = Qt::HANDLE(nullptr);
@@ -256,42 +188,21 @@ void SignalHandler(int signum, siginfo_t *info, void *ucontext) {
 		ReportingThreadId = nullptr;
 	}
 
-#ifndef Q_OS_WIN
-	InvokeOldSignalHandler(signum, info, ucontext);
-#endif // !Q_OS_WIN
 }
 
 bool SetSignalHandlers = true;
 bool CrashLogged = false;
-#if !defined Q_OS_MAC || defined MAC_USE_BREAKPAD
 google_breakpad::ExceptionHandler* BreakpadExceptionHandler = 0;
 
-#ifdef Q_OS_WIN
 bool DumpCallback(const wchar_t* _dump_dir, const wchar_t* _minidump_id, void* context, EXCEPTION_POINTERS* exinfo, MDRawAssertionInfo* assertion, bool success)
-#elif defined Q_OS_MAC // Q_OS_WIN
-bool DumpCallback(const char* _dump_dir, const char* _minidump_id, void *context, bool success)
-#else // Q_OS_MAC
-bool DumpCallback(const google_breakpad::MinidumpDescriptor &md, void *context, bool success)
-#endif // else for Q_OS_WIN || Q_OS_MAC
 {
 	if (CrashLogged) return success;
 	CrashLogged = true;
 
-#ifdef Q_OS_WIN
 	BreakpadDumpPathW = _minidump_id;
 	SignalHandler(-1);
-#else // Q_OS_WIN
-
-#ifdef Q_OS_MAC
-	BreakpadDumpPath = _minidump_id;
-#else // Q_OS_MAC
-	BreakpadDumpPath = md.path();
-#endif // else for Q_OS_MAC
-	SignalHandler(-1, 0, 0);
-#endif // else for Q_OS_WIN
 	return success;
 }
-#endif // !Q_OS_MAC || MAC_USE_BREAKPAD
 
 #endif // !TDESKTOP_DISABLE_CRASH_REPORTS
 
@@ -336,7 +247,6 @@ void StartCatching() {
 	QString dumpspath = cWorkingDir() + u"tdata/dumps"_q;
 	QDir().mkpath(dumpspath);
 
-#ifdef Q_OS_WIN
 	BreakpadExceptionHandler = new google_breakpad::ExceptionHandler(
 		dumpspath.toStdWString(),
 		google_breakpad::ExceptionHandler::FilterCallback(nullptr),
@@ -348,55 +258,14 @@ void StartCatching() {
 		(const wchar_t*)nullptr, // pipe_name
 		(const google_breakpad::CustomClientInfo*)nullptr
 	);
-#elif defined Q_OS_MAC // Q_OS_WIN
-
-#ifdef MAC_USE_BREAKPAD
-#ifndef _DEBUG
-	BreakpadExceptionHandler = new google_breakpad::ExceptionHandler(
-		QFile::encodeName(dumpspath).toStdString(),
-		/*FilterCallback*/ 0,
-		DumpCallback,
-		/*context*/ 0,
-		true,
-		0
-	);
-#endif // !_DEBUG
-	SetSignalHandlers = false;
-#else // MAC_USE_BREAKPAD
-	crashpad::CrashpadClient crashpad_client;
-	std::string handler = (cExeDir() + cExeName() + u"/Contents/Helpers/crashpad_handler"_q).toUtf8().constData();
-	std::string database = QFile::encodeName(dumpspath).constData();
-	if (crashpad_client.StartHandler(
-			base::FilePath(handler),
-			base::FilePath(database),
-			{}, // metrics_dir
-			std::string(), // url
-			ProcessAnnotations,
-			std::vector<std::string>(), // arguments
-			false, // restartable
-			false)) { // asynchronous_start
-	}
-#endif // else for MAC_USE_BREAKPAD
-#else
-	BreakpadExceptionHandler = new google_breakpad::ExceptionHandler(
-		google_breakpad::MinidumpDescriptor(QFile::encodeName(dumpspath).toStdString()),
-		/*FilterCallback*/ 0,
-		DumpCallback,
-		/*context*/ 0,
-		true,
-		-1
-	);
-#endif // else for Q_OS_WIN || Q_OS_MAC
 #endif // !TDESKTOP_DISABLE_CRASH_REPORTS
 }
 
 void FinishCatching() {
 #ifndef TDESKTOP_DISABLE_CRASH_REPORTS
-#if !defined Q_OS_MAC || defined MAC_USE_BREAKPAD
 
 	delete base::take(BreakpadExceptionHandler);
 
-#endif // !Q_OS_MAC || MAC_USE_BREAKPAD
 #endif // !TDESKTOP_DISABLE_CRASH_REPORTS
 }
 
@@ -404,14 +273,10 @@ StartResult Start() {
 #ifndef TDESKTOP_DISABLE_CRASH_REPORTS
 	ReportPath = cWorkingDir() + u"tdata/working"_q;
 
-#ifdef Q_OS_WIN
 	FILE *f = nullptr;
 	if (_wfopen_s(&f, ReportPath.toStdWString().c_str(), L"rb") != 0) {
 		f = nullptr;
 	} else {
-#else // !Q_OS_WIN
-	if (FILE *f = fopen(QFile::encodeName(ReportPath).constData(), "rb")) {
-#endif // else for !Q_OS_WIN
 		QByteArray lastdump;
 		char buffer[256 * 1024] = { 0 };
 		int32 read = fread(buffer, 1, 256 * 1024, f);
@@ -437,35 +302,15 @@ Status Restart() {
 		return Started;
 	}
 
-#ifdef Q_OS_WIN
 	if (_wfopen_s(&ReportFile, ReportPath.toStdWString().c_str(), L"wb") != 0) {
 		ReportFile = nullptr;
 	}
-#else // Q_OS_WIN
-	ReportFile = fopen(QFile::encodeName(ReportPath).constData(), "wb");
-#endif // else for Q_OS_WIN
 	if (ReportFile) {
-#ifdef Q_OS_WIN
 		ReportFileNo = _fileno(ReportFile);
-#else // Q_OS_WIN
-		ReportFileNo = fileno(ReportFile);
-#endif // else for Q_OS_WIN
 		if (SetSignalHandlers) {
-#ifndef Q_OS_WIN
-			struct sigaction sigact;
-
-			sigact.sa_sigaction = SignalHandler;
-			sigemptyset(&sigact.sa_mask);
-			sigact.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO;
-
-			for (const auto signum : HandledSignals) {
-				sigaction(signum, &sigact, &OldSigActions[signum]);
-			}
-#else // !Q_OS_WIN
 			for (const auto signum : HandledSignals) {
 				signal(signum, SignalHandler);
 			}
-#endif // else for !Q_OS_WIN
 		}
 
 		InstallOperatorNewHandler();
@@ -490,11 +335,7 @@ void Finish() {
 		fclose(ReportFile);
 		ReportFile = nullptr;
 
-#ifdef Q_OS_WIN
 		_wunlink(ReportPath.toStdWString().c_str());
-#else // Q_OS_WIN
-		unlink(ReportPath.toUtf8().constData());
-#endif // else for Q_OS_WIN
 	}
 #endif // !TDESKTOP_DISABLE_CRASH_REPORTS
 }

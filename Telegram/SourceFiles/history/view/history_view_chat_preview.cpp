@@ -51,9 +51,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat_helpers.h"
 #include "styles/style_settings.h"
 
-#ifdef Q_OS_WIN
 #include "ui/platform/win/ui_windows_direct_manipulation.h"
-#endif // Q_OS_WIN
 
 namespace HistoryView {
 namespace {
@@ -1026,9 +1024,7 @@ ChatPreview MakeChatPreview(
 		}, menu->lifetime());
 	}
 
-#ifdef Q_OS_WIN
 	Ui::Platform::ActivateDirectManipulation(menu);
-#endif
 
 	return result;
 }

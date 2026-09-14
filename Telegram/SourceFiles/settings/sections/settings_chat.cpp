@@ -1800,7 +1800,6 @@ void SetupDataStorage(
 		&controller->session().account(),
 		container);
 
-#ifndef OS_WIN_STORE
 	const auto showpath = container->lifetime(
 	).make_state<rpl::event_stream<bool>>();
 
@@ -1831,7 +1830,6 @@ void SetupDataStorage(
 	path->entity()->addClickHandler([=] {
 		controller->show(Box<DownloadPathBox>(controller));
 	});
-#endif // OS_WIN_STORE
 
 	SetupLocalStorage(controller, container);
 
@@ -1858,15 +1856,11 @@ void SetupDataStorage(
 		Core::App().settings().setAskDownloadPath(checked);
 		Core::App().saveSettingsDelayed();
 
-#ifndef OS_WIN_STORE
 		showpath->fire_copy(!checked);
-#endif // OS_WIN_STORE
 
 	}, ask->lifetime());
 
-#ifndef OS_WIN_STORE
 	path->toggleOn(ask->toggledValue() | rpl::map(!_1));
-#endif // OS_WIN_STORE
 
 	Ui::AddSkip(container, st::settingsCheckboxesSkip);
 }

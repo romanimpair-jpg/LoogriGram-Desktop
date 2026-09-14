@@ -378,7 +378,6 @@ void CheckLatestRelease(not_null<State*> state, bool manual) {
 } // namespace
 
 void StartUpdateCheck() {
-#ifdef Q_OS_WIN
 	if (Started || !UpdatesPossible(false)) {
 		return;
 	}
@@ -387,11 +386,9 @@ void StartUpdateCheck() {
 	const auto state = EnsureState();
 	state->timer.setCallback([=] { CheckLatestRelease(state, false); });
 	state->timer.callOnce(kStartDelay);
-#endif // Q_OS_WIN
 }
 
 void CheckForUpdatesNow() {
-#ifdef Q_OS_WIN
 	const auto state = EnsureState();
 	switch (state->state.current()) {
 	case UpdateState::Checking:
@@ -416,11 +413,6 @@ void CheckForUpdatesNow() {
 	}
 	Started = true;
 	CheckLatestRelease(state, true);
-#else // Q_OS_WIN
-	Ui::Toast::Show({
-		.text = { u"Updates are only wired up on Windows."_q },
-	});
-#endif // Q_OS_WIN
 }
 
 rpl::producer<UpdateState> UpdateStateValue() {

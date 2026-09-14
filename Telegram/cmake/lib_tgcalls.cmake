@@ -225,28 +225,6 @@ PRIVATE
     RTC_ENABLE_VP9
 )
 
-if (APPLE)
-    target_compile_options(lib_tgcalls
-    PRIVATE
-        -fobjc-arc
-    )
-    remove_target_sources(lib_tgcalls ${tgcalls_loc}
-        platform/darwin/VideoCameraCapturer.h
-        platform/darwin/VideoCameraCapturer.mm
-        platform/darwin/VideoMetalView.h
-        platform/darwin/VideoMetalView.mm
-        platform/darwin/VideoMetalViewMac.h
-        platform/darwin/VideoMetalViewMac.mm
-        platform/tdesktop/DesktopInterface.cpp
-        platform/tdesktop/DesktopInterface.h
-        platform/tdesktop/VideoCapturerInterfaceImpl.cpp
-        platform/tdesktop/VideoCapturerInterfaceImpl.h
-        platform/tdesktop/VideoCapturerTrackSource.cpp
-        platform/tdesktop/VideoCapturerTrackSource.h
-        platform/tdesktop/VideoCameraCapturer.cpp
-        platform/tdesktop/VideoCameraCapturer.h
-    )
-endif()
 
 if (NOT MSVC)
     target_compile_options_if_exists(lib_tgcalls

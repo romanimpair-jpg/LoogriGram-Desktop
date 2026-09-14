@@ -246,11 +246,7 @@ QString psAppDataPath() {
 	WCHAR wstrPath[maxFileLen];
 	if (GetEnvironmentVariable(L"APPDATA", wstrPath, maxFileLen)) {
 		QDir appData(QString::fromStdWString(std::wstring(wstrPath)));
-#ifdef OS_WIN_STORE
-		return appData.absolutePath() + u"/Telegram Desktop UWP/"_q;
-#else // OS_WIN_STORE
 		return appData.absolutePath() + '/' + AppName.utf16() + '/';
-#endif // OS_WIN_STORE
 	}
 	return QString();
 }
@@ -442,40 +438,9 @@ bool AutostartSupported() {
 }
 
 void AutostartRequestStateFromSystem(Fn<void(bool)> callback) {
-#ifdef OS_WIN_STORE
-	AutostartTask::RequestState([=](bool enabled) {
-		crl::on_main([=] {
-			callback(enabled);
-		});
-	});
-#endif // OS_WIN_STORE
 }
 
 void AutostartToggle(bool enabled, Fn<void(bool)> done) {
-#ifdef OS_WIN_STORE
-	const auto requested = enabled;
-	const auto callback = [=](bool enabled) { crl::on_main([=] {
-		if (!Core::IsAppLaunched()) {
-			return;
-		}
-		done(enabled);
-		if (!requested || enabled) {
-			return;
-		} else if (const auto window = Core::App().activeWindow()) {
-			window->show(Ui::MakeConfirmBox({
-				.text = tr::lng_settings_auto_start_disabled_uwp(),
-				.confirmed = [](Fn<void()> close) {
-					AutostartTask::OpenSettings();
-					close();
-				},
-				.confirmText = tr::lng_settings_open_system_settings(),
-			}));
-		}
-	}); };
-	AutostartTask::Toggle(
-		enabled,
-		done ? Fn<void(bool)>(callback) : nullptr);
-#else // OS_WIN_STORE
 	const auto silent = !done;
 	const auto success = ManageAppLink(
 		enabled,
@@ -487,15 +452,10 @@ void AutostartToggle(bool enabled, Fn<void(bool)> done) {
 	if (done) {
 		done(enabled && success);
 	}
-#endif // OS_WIN_STORE
 }
 
 bool AutostartSkip() {
-#ifdef OS_WIN_STORE
-	return false;
-#else // OS_WIN_STORE
 	return !cAutoStart();
-#endif // OS_WIN_STORE
 }
 
 void WriteCrashDumpDetails() {

@@ -284,7 +284,6 @@ file bak gbr plain dlc fon fnt otf ttc ttf gpx db rss cur \
 tdesktop-endpoints"_q);
 
 	static const auto kExecutable = SplitExtensions(
-#ifdef Q_OS_WIN
 		u"\
 ad ade adp ahk app application appref-ms asp aspx asx bas bat bin cab cdxml \
 cer cfg cgi chi chm cmd cnt com conf cpl crt csh der diagcab dll drv eml \
@@ -298,13 +297,6 @@ pyd pyi pyo pyw pyzw pyz rb reg rgs scf scr sct search-ms settingcontent-ms \
 sh shb shs slk sys swf t tmp u3p url vb vbe vbp vbs vbscript vdx vsmacros \
 vsd vsdm vsdx vss vssm vssx vst vstm vstx vsw vsx vtx website wlua ws wsc \
 wsf wsh xbap xll xlsb xlsm xnk xs"_q
-#elif defined Q_OS_MAC // Q_OS_MAC
-		u"\
-applescript action app bin command csh osx workflow terminal url caction \
-mpkg pkg scpt scptd xhtm xhtml webarchive"_q
-#else // Q_OS_WIN || Q_OS_MAC
-		u"bin csh deb desktop ksh out pet pkg pup rpm run sh shar slp zsh"_q
-#endif // !Q_OS_WIN && !Q_OS_MAC
 	);
 
 	const auto extension = FileExtension(filepath).toLower();
@@ -339,14 +331,7 @@ bool NameTypeAllowsThumbnail(NameType type) {
 bool IsIpRevealingPath(const QString &filepath) {
 	static const auto kExtensions = [] {
 		auto joined = u"htm html svg m4v m3u m3u8 xhtml xml kml kmz xspf"_q;
-#ifdef Q_OS_WIN
 		joined += u" wpl"_q;
-#endif // Q_OS_WIN
-#ifdef Q_OS_MAC
-		joined += u" docx dotx docm dotm"_q;
-		joined += u" xlsx xltx xlsm xltm xlsb"_q;
-		joined += u" pptx ppsx potx pptm ppsm potm"_q;
-#endif // Q_OS_MAC
 		const auto list = joined.split(' ');
 		return base::flat_set<QString>(list.begin(), list.end());
 	}();

@@ -103,12 +103,6 @@ public:
 
 	void setSystemMediaControls(SystemMediaControlsVideoSink *sink);
 
-	enum class TouchBarItemType {
-		Photo,
-		Video,
-		None,
-	};
-
 	[[nodiscard]] bool isActive() const;
 	[[nodiscard]] bool isHidden() const;
 	[[nodiscard]] bool isMinimized() const;
@@ -868,10 +862,6 @@ private:
 
 	base::flat_map<Over, crl::time> _animations;
 	base::flat_map<Over, anim::value> _animationOpacities;
-
-	rpl::event_stream<Media::Player::TrackState> _touchbarTrackState;
-	rpl::event_stream<TouchBarItemType> _touchbarDisplay;
-	rpl::event_stream<bool> _touchbarFullscreenToggled;
 
 	int _verticalWheelDelta = 0;
 	float64 _pinchZoomAccumulated = 0.;

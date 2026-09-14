@@ -14,11 +14,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/crash_reports.h"
 #include "base/debug_log.h"
 
-#ifdef Q_OS_MAC
-#include "media/streaming/media_streaming_native_frame_mac.h"
-
-#include <CoreVideo/CoreVideo.h>
-#endif // Q_OS_MAC
 
 namespace Media {
 namespace Streaming {
@@ -461,40 +456,6 @@ void VideoTrackObject::rasterizeFrame(not_null<Frame*> frame) {
 	frame->format = FrameFormat::None;
 	frame->nativeFrame = NativeFrame();
 	if (frame->decoded->hw_frames_ctx) {
-#ifdef Q_OS_MAC
-		const auto hwFormat = frame->decoded->format;
-		const auto wantARGB = requireARGB32();
-		const auto isVT = (hwFormat == AV_PIX_FMT_VIDEOTOOLBOX);
-		const auto pb = isVT ? (void*)frame->decoded->data[3] : nullptr;
-		const auto pbFormat = pb
-			? CVPixelBufferGetPixelFormatType(
-				static_cast<CVPixelBufferRef>(pb))
-			: 0;
-		const auto pbSupported = (pb != nullptr)
-			&& (pbFormat == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
-				|| pbFormat == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange);
-		if (!wantARGB && isVT && pbSupported) {
-				const auto w = frame->decoded->width;
-				const auto h = frame->decoded->height;
-				frame->nativeFrame = NativeFrame{
-					.pixelBuffer = pb,
-					.size = { w, h },
-					.chromaSize = {
-						(w + 1) / 2,
-						(h + 1) / 2,
-					},
-				};
-				frame->alpha = false;
-				frame->format = FrameFormat::NativeTexture;
-				if (!frame->original.isNull()) {
-					frame->original = QImage();
-					for (auto &[_, prepared] : frame->prepared) {
-						prepared.image = QImage();
-					}
-				}
-				return;
-		}
-#endif // Q_OS_MAC
 		if (!frame->transferred) {
 			frame->transferred = FFmpeg::MakeFramePointer();
 		}
@@ -1283,10 +1244,6 @@ QImage VideoTrack::frameImage(
 		if (frame->format == FrameFormat::YUV420
 			|| frame->format == FrameFormat::NV12) {
 			frame->original = ConvertToARGB32(frame->format, frame->yuv);
-#ifdef Q_OS_MAC
-		} else if (frame->format == FrameFormat::NativeTexture) {
-			frame->original = ConvertNativeFrameToARGB32(frame->nativeFrame);
-#endif // Q_OS_MAC
 		}
 	}
 	if (GoodForRequest(
@@ -1329,10 +1286,6 @@ QImage VideoTrack::currentFrameImage() {
 		if (frame->format == FrameFormat::YUV420
 			|| frame->format == FrameFormat::NV12) {
 			frame->original = ConvertToARGB32(frame->format, frame->yuv);
-#ifdef Q_OS_MAC
-		} else if (frame->format == FrameFormat::NativeTexture) {
-			frame->original = ConvertNativeFrameToARGB32(frame->nativeFrame);
-#endif // Q_OS_MAC
 		}
 	}
 	return frame->original;

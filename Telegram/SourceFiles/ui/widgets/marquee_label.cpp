@@ -732,15 +732,6 @@ void MarqueeLabel::keyPressEvent(QKeyEvent *e) {
 			copySelectedText();
 			e->accept();
 		}
-#ifdef Q_OS_MAC
-	} else if (e->key() == Qt::Key_E
-		&& e->modifiers().testFlag(Qt::ControlModifier)) {
-		if (!_selection.empty()) {
-			TextUtilities::SetClipboardText(
-				_text.toTextForMimeData(_selection),
-				QClipboard::FindBuffer);
-		}
-#endif // Q_OS_MAC
 	}
 }
 

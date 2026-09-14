@@ -955,13 +955,7 @@ void Selector::mouseReleaseEvent(QMouseEvent *e) {
 		return;
 	}
 	if (_pressed != lookupSelectedIndex(e->pos())) {
-#ifdef Q_OS_UNIX
-		if (!_over || e->button() != Qt::RightButton) {
-			return;
-		}
-#else
 		return;
-#endif // !Q_OS_UNIX
 	}
 	_pressed = -1;
 	const auto selected = _strip->selected();

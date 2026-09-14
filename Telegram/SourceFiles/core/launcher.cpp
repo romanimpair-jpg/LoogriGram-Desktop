@@ -79,16 +79,10 @@ FilteredCommandLineArguments::FilteredCommandLineArguments(
 		pushArgument(argv[i]);
 	}
 
-#if defined Q_OS_WIN || defined Q_OS_MAC
 	if (OptionFreeType.value() || OptionHighDpiDownscale.value()) {
 		pushArgument("-platform");
-#ifdef Q_OS_WIN
 		pushArgument("windows:fontengine=freetype");
-#else // Q_OS_WIN
-		pushArgument("cocoa:fontengine=freetype");
-#endif // !Q_OS_WIN
 	}
-#endif // Q_OS_WIN || Q_OS_MAC
 
 	pushArgument(nullptr);
 }
@@ -387,12 +381,6 @@ int Launcher::exec() {
 		return psFixPrevious();
 	}
 
-	// Before Logs::start(), which is where the working directory gets
-	// chosen: a translocated bundle never sees its TelegramForcePortable.
-	if (!Platform::CheckAppTranslocation()) {
-		return 0;
-	}
-
 	// Must be started before Platform is started.
 	Logs::start();
 	base::options::init(cWorkingDir() + "tdata/experimental_options.json");
@@ -407,15 +395,9 @@ int Launcher::exec() {
 
 		qputenv("ALSOFT_LOGLEVEL", "3");
 
-#ifdef Q_OS_WIN
 		_wputenv_s(
 			L"ALSOFT_LOGFILE",
 			openalLogPath.toStdWString().c_str());
-#else // Q_OS_WIN
-		qputenv(
-			"ALSOFT_LOGFILE",
-			QFile::encodeName(openalLogPath));
-#endif // !Q_OS_WIN
 	}
 
 	// Must be started before Sandbox is created.
@@ -590,7 +572,6 @@ void Launcher::processArguments() {
 	auto parseMap = std::map<QByteArray, KeyFormat> {
 		{ "-debug"          , KeyFormat::NoValues },
 		{ "-testagent"      , KeyFormat::NoValues },
-		{ Platform::kUntranslocatedArgument, KeyFormat::NoValues },
 		{ "-key"            , KeyFormat::OneValue },
 		{ "-autostart"      , KeyFormat::NoValues },
 		{ "-fixprevious"    , KeyFormat::NoValues },

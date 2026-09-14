@@ -163,11 +163,7 @@ void ShowInFolder(const QString &filepath) {
 }
 
 QString DefaultDownloadPathFolder(not_null<Main::Session*> session) {
-#if OS_MAC_STORE
-	return u"Telegram Lite"_q;
-#else // OS_MAC_STORE
 	return session->supportMode() ? u"Tsupport Desktop"_q : AppName.utf16();
-#endif // OS_MAC_STORE
 }
 
 QString DefaultDownloadPath(not_null<Main::Session*> session) {
@@ -313,11 +309,7 @@ void GetFolder(
 }
 
 QString AllFilesFilter() {
-#ifdef Q_OS_WIN
 	return u"All files (*.*)"_q;
-#else // Q_OS_WIN
-	return u"All files (*)"_q;
-#endif // Q_OS_WIN
 }
 
 QString ImagesFilter() {

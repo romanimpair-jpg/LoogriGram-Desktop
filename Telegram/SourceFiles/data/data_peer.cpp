@@ -147,11 +147,6 @@ std::vector<UnavailableReason> UnavailableReason::Extract(
 		return restriction.match([&](const MTPDrestrictionReason &data) {
 			const auto platform = data.vplatform().v;
 			return false
-#ifdef OS_MAC_STORE
-				|| (platform == "ios"_q)
-#elif defined OS_WIN_STORE // OS_MAC_STORE
-				|| (platform == "ms"_q)
-#endif // OS_MAC_STORE || OS_WIN_STORE
 				|| (platform == "all"_q);
 		});
 	}) | ranges::views::transform([](const MTPRestrictionReason &restriction) {

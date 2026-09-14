@@ -22,12 +22,6 @@ extern "C" {
 #include <libavformat/avformat.h>
 } // extern "C"
 
-#ifdef Q_OS_WIN
-#elif defined Q_OS_MAC
-#include <mach/mach_time.h>
-#else
-#include <time.h>
-#endif
 
 uint64 _SharedMemoryLocation[4] = { 0x00, 0x01, 0x02, 0x03 };
 
@@ -62,22 +56,11 @@ namespace ThirdParty {
 			const auto FeedSeed = [](auto value) {
 				RAND_seed(&value, sizeof(value));
 			};
-#ifdef Q_OS_WIN
 			LARGE_INTEGER li;
 			QueryPerformanceFrequency(&li);
 			FeedSeed(li.QuadPart);
 			QueryPerformanceCounter(&li);
 			FeedSeed(li.QuadPart);
-#elif defined Q_OS_MAC
-			mach_timebase_info_data_t tb = { 0 };
-			mach_timebase_info(&tb);
-			FeedSeed(tb);
-			FeedSeed(mach_absolute_time());
-#else
-			timespec ts = { 0 };
-			clock_gettime(CLOCK_MONOTONIC, &ts);
-			FeedSeed(ts);
-#endif
 			if (!RAND_status()) {
 				LOG(("MTP Error: Could not init OpenSSL rand, RAND_status() is 0..."));
 			}

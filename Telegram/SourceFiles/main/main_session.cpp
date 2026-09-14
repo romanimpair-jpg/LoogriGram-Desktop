@@ -290,11 +290,9 @@ void Session::appConfigRefreshed() {
 		.appealUrl = config.get<QString>(u"freeze_appeal_url"_q, QString()),
 	};
 
-#ifndef OS_MAC_STORE
 	_premiumPossible = !config.get<bool>(
 		u"premium_purchase_blocked"_q,
 		true);
-#endif // OS_MAC_STORE
 
 	_messagePrimaryEditedDate = config.get<bool>(
 		u"message_primary_edited_date"_q,

@@ -17,10 +17,4 @@ class MainWindow;
 
 // Platform dependent implementations.
 
-#ifdef Q_OS_WIN
 #include "platform/win/main_window_win.h"
-#elif defined Q_OS_MAC // Q_OS_WIN
-#include "platform/mac/main_window_mac.h"
-#else // Q_OS_WIN || Q_OS_MAC
-#include "platform/linux/main_window_linux.h"
-#endif // else Q_OS_WIN || Q_OS_MAC

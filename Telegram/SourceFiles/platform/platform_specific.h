@@ -20,16 +20,6 @@ namespace Platform {
 void start();
 void finish();
 
-// Passed to the instance relaunched from its original location after an
-// App Translocation fix, so a relaunch that is still translocated stops
-// instead of trying again.
-inline constexpr auto kUntranslocatedArgument = "-untranslocated";
-
-// Returns false when startup must stop right away: the process was
-// started by macOS from a read-only translocated copy of the bundle and
-// either relaunched itself from the original location or told the user.
-[[nodiscard]] bool CheckAppTranslocation();
-
 enum class PermissionStatus {
 	Granted,
 	CanRequest,
@@ -81,10 +71,4 @@ void finish();
 } // namespace ThirdParty
 } // namespace Platform
 
-#ifdef Q_OS_WIN
 #include "platform/win/specific_win.h"
-#elif defined Q_OS_MAC // Q_OS_WIN
-#include "platform/mac/specific_mac.h"
-#else // Q_OS_WIN || Q_OS_MAC
-#include "platform/linux/specific_linux.h"
-#endif // else for Q_OS_WIN || Q_OS_MAC

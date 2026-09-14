@@ -599,15 +599,6 @@ void Application::processCreatedWindow(
 }
 
 void Application::startMediaView() {
-#ifdef Q_OS_MAC
-	// On macOS we create some windows async, otherwise they're
-	// added to the Dock Menu as a visible window and are removed
-	// only after first show and then hide.
-	InvokeQueued(this, [=] {
-		_mediaView = std::make_unique<Media::View::OverlayWidget>();
-		_mediaView->setSystemMediaControls(_mediaControlsManager.get());
-	});
-#elif defined Q_OS_WIN // Q_OS_MAC || Q_OS_WIN
 	// On Windows we needed such hack for the main window, otherwise
 	// somewhere inside the media viewer creating code its geometry
 	// was broken / lost to some invalid values.
@@ -615,23 +606,10 @@ void Application::startMediaView() {
 	_mediaView = std::make_unique<Media::View::OverlayWidget>();
 	_mediaView->setSystemMediaControls(_mediaControlsManager.get());
 	_lastActivePrimaryWindow->widget()->Ui::RpWidget::setGeometry(current);
-#else
-	_mediaView = std::make_unique<Media::View::OverlayWidget>();
-	_mediaView->setSystemMediaControls(_mediaControlsManager.get());
-#endif // Q_OS_MAC || Q_OS_WIN
 }
 
 void Application::startTray() {
-#ifdef Q_OS_MAC
-	// On macOS we create some windows async, otherwise they're
-	// added to the Dock Menu as a visible window and are removed
-	// only after first show and then hide, tray icon being "Item-0".
-	InvokeQueued(this, [=] {
-		createTray();
-	});
-#else // Q_OS_MAC
 	createTray();
-#endif // Q_OS_MAC
 }
 
 void Application::createTray() {
@@ -1818,51 +1796,9 @@ bool Application::isSharingScreen() const {
 
 // macOS Qt bug workaround, sometimes no leaveEvent() gets to the nested widgets.
 void Application::registerLeaveSubscription(not_null<QWidget*> widget) {
-#ifdef Q_OS_MAC
-	if (const auto window = widget->window()) {
-		auto i = _leaveFilters.find(window);
-		if (i == end(_leaveFilters)) {
-			const auto check = [=](not_null<QEvent*> e) {
-				if (e->type() == QEvent::Leave) {
-					if (const auto taken = _leaveFilters.take(window)) {
-						for (const auto &weak : taken->registered) {
-							if (const auto widget = weak.get()) {
-								QEvent ev(QEvent::Leave);
-								QCoreApplication::sendEvent(widget, &ev);
-							}
-						}
-						delete taken->filter.data();
-					}
-				}
-				return base::EventFilterResult::Continue;
-			};
-			const auto filter = base::install_event_filter(window, check);
-			QObject::connect(filter, &QObject::destroyed, [=] {
-				_leaveFilters.remove(window);
-			});
-			i = _leaveFilters.emplace(
-				window,
-				LeaveFilter{ .filter = filter.get() }).first;
-		}
-		i->second.registered.push_back(widget.get());
-	}
-#endif // Q_OS_MAC
 }
 
 void Application::unregisterLeaveSubscription(not_null<QWidget*> widget) {
-#ifdef Q_OS_MAC
-	if (const auto topLevel = widget->window()) {
-		const auto i = _leaveFilters.find(topLevel);
-		if (i != end(_leaveFilters)) {
-			i->second.registered = std::move(
-				i->second.registered
-			) | ranges::actions::remove_if([&](QPointer<QWidget> weak) {
-				const auto pointer = weak.data();
-				return !pointer || (pointer == widget);
-			});
-		}
-	}
-#endif // Q_OS_MAC
 }
 
 void Application::postponeCall(FnMut<void()> &&callable) {

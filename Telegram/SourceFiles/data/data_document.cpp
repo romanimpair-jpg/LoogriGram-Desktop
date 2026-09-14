@@ -216,7 +216,6 @@ QString FileNameForSave(
 		name,
 		savingAs,
 		dir);
-#ifdef Q_OS_WIN
 	const auto lower = result.trimmed().toLower();
 	const auto kBadExtensions = { u".lnk"_q, u".scf"_q };
 	const auto kMaskExtension = u".download"_q;
@@ -225,7 +224,6 @@ QString FileNameForSave(
 			return result + kMaskExtension;
 		}
 	}
-#endif // Q_OS_WIN
 	return result;
 }
 

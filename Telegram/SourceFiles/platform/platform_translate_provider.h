@@ -16,10 +16,4 @@ namespace Platform {
 
 } // namespace Platform
 
-#if defined Q_OS_WINRT || defined Q_OS_WIN
 #include "platform/win/translate_provider_win.h"
-#elif defined Q_OS_MAC
-#include "platform/mac/translate_provider_mac.h"
-#else
-#include "platform/linux/translate_provider_linux.h"
-#endif

@@ -301,15 +301,6 @@ PRIVATE
     payments/ui/payments_reaction_box.cpp
     payments/ui/payments_reaction_box.h
 
-    platform/linux/current_geo_location_linux.cpp
-    platform/linux/current_geo_location_linux.h
-    platform/linux/text_recognition_linux.h
-    platform/mac/file_bookmark_mac.h
-    platform/mac/file_bookmark_mac.mm
-    platform/mac/current_geo_location_mac.h
-    platform/mac/current_geo_location_mac.mm
-    platform/mac/text_recognition_mac.h
-    platform/mac/text_recognition_mac.mm
     platform/win/current_geo_location_win.cpp
     platform/win/current_geo_location_win.h
     platform/win/text_recognition_win.h
@@ -422,8 +413,6 @@ PRIVATE
     ui/chat/attach/attach_bot_downloads.h
     ui/chat/attach/attach_bot_webview.cpp
     ui/chat/attach/attach_bot_webview.h
-    ui/chat/attach/attach_bot_webview_linux_shell.cpp
-    ui/chat/attach/attach_bot_webview_linux_shell.h
     ui/layers/standalone_layer_stack.cpp
     ui/layers/standalone_layer_stack.h
     ui/chat/attach/attach_controls.cpp
@@ -686,18 +675,9 @@ PRIVATE
 
 nice_target_sources(td_ui ${res_loc}
 PRIVATE
-    bot_webview_shell_html/body.html
-    bot_webview_shell_html/page.css
-    bot_webview_shell_html/page.js
     picker_html/picker.css
     picker_html/picker.js
 )
-
-if (WIN32 OR APPLE)
-    remove_target_sources(td_ui ${src_loc}
-        ui/chat/attach/attach_bot_webview_linux_shell.cpp
-    )
-endif()
 
 if (DESKTOP_APP_SPECIAL_TARGET)
     remove_target_sources(td_ui ${src_loc}

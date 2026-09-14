@@ -31,9 +31,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/ui_utility.h"
 #include "ui/effects/animations.h"
 
-#ifdef Q_OS_MAC
-#include "platform/mac/global_menu_mac.h"
-#endif // Q_OS_MAC
 
 #include <QtCore/QLockFile>
 #include <QtGui/QSessionManager>
@@ -62,9 +59,6 @@ bool Sandbox::SystemShuttingDown = false;
 Sandbox::Sandbox(int &argc, char **argv)
 : QApplication(argc, argv)
 , _mainThreadId(QThread::currentThreadId()) {
-#ifdef Q_OS_MAC
-	Platform::CreateGlobalMenu();
-#endif // Q_OS_MAC
 }
 
 int Sandbox::start() {
@@ -109,10 +103,6 @@ int Sandbox::start() {
 		}
 	}
 
-#if defined Q_OS_LINUX && QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
-	_localServer.setSocketOptions(QLocalServer::AbstractNamespaceOption);
-	_localSocket.setSocketOptions(QLocalSocket::AbstractNamespaceOption);
-#endif // Q_OS_LINUX && Qt >= 6.2.0
 
 	connect(
 		&_localSocket,
@@ -328,9 +318,6 @@ Sandbox::~Sandbox() {
 	customEnterFromEventLoop([&] {
 		closeApplication();
 	});
-#ifdef Q_OS_MAC
-	Platform::DestroyGlobalMenu();
-#endif // Q_OS_MAC
 }
 
 bool Sandbox::event(QEvent *e) {
@@ -422,14 +409,12 @@ void Sandbox::socketError(QLocalSocket::LocalSocketError e) {
 	_localSocket.close();
 
 	// Local server does not work in WinRT build.
-#ifndef Q_OS_WINRT
 	psCheckLocalSocket(_localServerName);
 
 	if (!_localServer.listen(_localServerName)) {
 		LOG(("Failed to start listening to %1 server: %2").arg(_localServerName, _localServer.errorString()));
 		return Quit();
 	}
-#endif // !Q_OS_WINRT
 
 	if (!Core::UpdaterDisabled()
 		&& !cNoStartUpdate()

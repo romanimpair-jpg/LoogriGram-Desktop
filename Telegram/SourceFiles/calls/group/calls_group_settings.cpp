@@ -67,9 +67,6 @@ constexpr auto kDropLoudAfterQuietCount = 5;
 constexpr auto kMicrophoneTooltipLevelThreshold = 0.2;
 constexpr auto kMicrophoneTooltipCheckInterval = crl::time(500);
 
-#ifdef Q_OS_MAC
-constexpr auto kCheckAccessibilityInterval = crl::time(500);
-#endif // Q_OS_MAC
 
 void SaveCallJoinMuted(
 		not_null<PeerData*> peer,
@@ -449,52 +446,6 @@ void SettingsBox(
 				Core::App().saveSettingsDelayed();
 			};
 			const auto showPrivacyRequest = [=] {
-#ifdef Q_OS_MAC
-				if (!Platform::IsMac10_14OrGreater()) {
-					return;
-				}
-				const auto requestInputMonitoring = Platform::IsMac10_15OrGreater();
-				box->getDelegate()->show(Box([=](not_null<Ui::GenericBox*> box) {
-					box->addRow(
-						object_ptr<Ui::FlatLabel>(
-							box.get(),
-							rpl::combine(
-								tr::lng_group_call_mac_access(),
-								(requestInputMonitoring
-									? tr::lng_group_call_mac_input()
-									: tr::lng_group_call_mac_accessibility())
-							) | rpl::map([](QString a, QString b) {
-								auto result = tr::rich(a);
-								result.append("\n\n").append(tr::rich(b));
-								return result;
-							}),
-							st::groupCallBoxLabel),
-						style::margins(
-							st::boxRowPadding.left(),
-							st::boxPadding.top(),
-							st::boxRowPadding.right(),
-							st::boxPadding.bottom()));
-					box->addButton(tr::lng_group_call_mac_settings(), [=] {
-						if (requestInputMonitoring) {
-							Platform::OpenInputMonitoringPrivacySettings();
-						} else {
-							Platform::OpenAccessibilityPrivacySettings();
-						}
-					});
-					box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
-
-					if (!requestInputMonitoring) {
-						// Accessibility is enabled without app restart, so short-poll it.
-						base::timer_each(
-							kCheckAccessibilityInterval
-						) | rpl::filter([] {
-							return base::GlobalShortcutsAllowed();
-						}) | rpl::on_next([=] {
-							box->closeBox();
-						}, box->lifetime());
-					}
-				}));
-#endif // Q_OS_MAC
 			};
 			const auto ensureManager = [=] {
 				if (state->manager) {

@@ -27,11 +27,7 @@ extern "C" {
 #include <openssl/evp.h>
 } // extern "C"
 
-#if defined Q_OS_WIN && !defined PACKER_USE_PACKAGED // use Lzma SDK for win
 #include <LzmaLib.h>
-#else
-#include <lzma.h>
-#endif
 
 #include <string>
 #include <iostream>

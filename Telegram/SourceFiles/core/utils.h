@@ -31,13 +31,9 @@ inline bool in_range(Value &&value, From &&from, Till &&till) {
 }
 
 inline bool CanReadDirectory(const QString &path) {
-#ifndef Q_OS_MAC // directory_iterator since 10.15
 	std::error_code error;
 	std::filesystem::directory_iterator(path.toStdString(), error);
 	return !error;
-#else
-	Unexpected("Not implemented.");
-#endif
 }
 
 } // namespace base
@@ -52,11 +48,7 @@ T *SharedMemoryLocation() {
 }
 
 inline void mylocaltime(struct tm * _Tm, const time_t * _Time) {
-#ifdef Q_OS_WIN
 	localtime_s(_Tm, _Time);
-#else
-	localtime_r(_Time, _Tm);
-#endif
 }
 
 namespace ThirdParty {

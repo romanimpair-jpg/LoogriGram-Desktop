@@ -23,7 +23,6 @@ void PreviewWindowFramePaint(QImage &preview, const style::palette &palette, QRe
 
 // Platform dependent implementations.
 
-#ifndef Q_OS_MAC
 
 namespace Platform {
 
@@ -37,4 +36,3 @@ inline void PreviewWindowFramePaint(QImage &preview, const style::palette &palet
 
 } // namespace Platform
 
-#endif // !Q_OS_MAC

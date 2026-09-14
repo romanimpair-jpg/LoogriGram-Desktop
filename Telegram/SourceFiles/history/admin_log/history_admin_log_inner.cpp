@@ -2060,10 +2060,6 @@ void InnerWidget::keyPressEvent(QKeyEvent *e) {
 		_cancelSignal.fire({});
 	} else if (e == QKeySequence::Copy && _selectedItem != nullptr) {
 		copySelectedText();
-#ifdef Q_OS_MAC
-	} else if (e->key() == Qt::Key_E && e->modifiers().testFlag(Qt::ControlModifier)) {
-		TextUtilities::SetClipboardText(getSelectedText(), QClipboard::FindBuffer);
-#endif // Q_OS_MAC
 	} else {
 		e->ignore();
 	}

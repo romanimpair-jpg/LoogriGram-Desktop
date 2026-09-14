@@ -56,17 +56,10 @@ public:
 protected:
 	bool eventHook(QEvent *event) override;
 
-#ifdef Q_OS_WIN
 	bool nativeEvent(
 		const QByteArray &eventType,
 		void *message,
 		native_event_filter_result *result) override;
-#elif defined Q_OS_MAC // Q_OS_WIN
-	bool nativeEvent(
-		const QByteArray &eventType,
-		void *message,
-		qintptr *result) override;
-#endif // Q_OS_WIN || Q_OS_MAC
 
 private:
 	const std::unique_ptr<Ui::LayerManager> _layers;

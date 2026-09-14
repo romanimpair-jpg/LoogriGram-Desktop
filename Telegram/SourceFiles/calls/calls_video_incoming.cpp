@@ -351,7 +351,6 @@ void Panel::Incoming::RendererGL::paint(
 
 	FillTexturedRectangle(f, &*program);
 
-#ifndef Q_OS_MAC
 	if (!shadowRect.empty()) {
 		f.glEnable(GL_BLEND);
 		f.glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -368,7 +367,6 @@ void Panel::Incoming::RendererGL::paint(
 
 		FillTexturedRectangle(f, &*_imageProgram, 4);
 	}
-#endif // Q_OS_MAC
 }
 
 void Panel::Incoming::RendererGL::validateShadowImage() {
@@ -491,7 +489,6 @@ void Panel::Incoming::RendererSW::initBottomShadow() {
 }
 
 void Panel::Incoming::RendererSW::fillTopShadow(QPainter &p) {
-#ifndef Q_OS_MAC
 	const auto widget = _owner->widget();
 	const auto width = widget->parentWidget()->width();
 	const auto left = (_owner->_topControlsAlignment == style::al_left);
@@ -511,7 +508,6 @@ void Panel::Incoming::RendererSW::fillTopShadow(QPainter &p) {
 	p.setClipRect(fill);
 	icon.paint(p, position - widget->pos(), width);
 	p.restore();
-#endif // Q_OS_MAC
 }
 
 void Panel::Incoming::RendererSW::fillBottomShadow(QPainter &p) {
@@ -671,7 +667,6 @@ public:
 		_yuv420Pipeline->setRenderPassDescriptor(rpDesc);
 		_yuv420Pipeline->create();
 
-#ifndef Q_OS_MAC
 		const auto shadowFs = Ui::Rhi::ShaderFromFile(
 			u":/shaders/argb32.frag.qsb"_q);
 
@@ -719,7 +714,6 @@ public:
 		_shadowBlendPipeline->setShaderResourceBindings(_shadowSrb);
 		_shadowBlendPipeline->setRenderPassDescriptor(rpDesc);
 		_shadowBlendPipeline->create();
-#endif
 
 		_initialized = true;
 	}
@@ -900,9 +894,7 @@ public:
 		rub->updateDynamicBuffer(
 			_vertexBuffer, 0, sizeof(coords), coords);
 
-#ifndef Q_OS_MAC
 		prepareTitleShadow(rub, pw, ph);
-#endif
 
 		cb->beginPass(rt, Qt::black, { 1.0f, 0 }, rub);
 		cb->setGraphicsPipeline(pipeline);
@@ -912,9 +904,7 @@ public:
 		cb->setVertexInput(0, 1, &vbuf);
 		cb->draw(4);
 
-#ifndef Q_OS_MAC
 		paintTitleShadow(cb, pw, ph);
-#endif
 
 		cb->endPass();
 	}

@@ -71,9 +71,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_menu_icons.h"
 #include "styles/style_settings.h"
 
-#ifdef Q_OS_MAC
-#include "base/platform/mac/base_confirm_quit.h"
-#endif // Q_OS_MAC
 
 #ifndef TDESKTOP_DISABLE_SPELLCHECK
 #include "boxes/dictionaries_manager.h"
@@ -88,12 +85,6 @@ namespace {
 
 using namespace Builder;
 
-#if defined Q_OS_MAC && !defined OS_MAC_STORE
-[[nodiscard]] const QImage &IconMacRound() {
-	static const auto result = QImage(u":/gui/art/icon_round512@2x.png"_q);
-	return result;
-}
-#endif // Q_OS_MAC && !OS_MAC_STORE
 
 void BuildDataStorageSection(SectionBuilder &builder) {
 	const auto controller = builder.controller();
@@ -398,69 +389,6 @@ void BuildWindowTitleSection(SectionBuilder &builder) {
 	builder.addSkip();
 }
 
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
-void BuildWindowCloseBehaviorSection(SectionBuilder &builder) {
-	using Behavior = Core::Settings::CloseBehavior;
-
-	const auto settings = &Core::App().settings();
-	auto shown = Platform::TrayIconSupported()
-		? (Core::App().settings().workModeValue(
-			) | rpl::map([](Core::Settings::WorkMode mode) {
-				return (mode == Core::Settings::WorkMode::WindowOnly);
-			}) | rpl::distinct_until_changed() | rpl::type_erased)
-		: rpl::producer<bool>(nullptr);
-
-	builder.scope([&] {
-		builder.addDivider();
-		builder.addSkip();
-		builder.addSubsectionTitle({
-			.id = u"advanced/window_close"_q,
-			.title = tr::lng_settings_window_close(),
-			.keywords = { u"close"_q, u"window"_q, u"background"_q, u"quit"_q, u"taskbar"_q, u"minimize"_q },
-		});
-
-		builder.add([settings](const WidgetContext &ctx) {
-			const auto container = ctx.container.get();
-			auto wrap = object_ptr<Ui::VerticalLayout>(container);
-			const auto inner = wrap.data();
-
-			const auto group = std::make_shared<Ui::RadioenumGroup<Behavior>>(
-				settings->closeBehavior());
-			const auto addRadio = [&](Behavior value, const QString &label) {
-				inner->add(
-					object_ptr<Ui::Radioenum<Behavior>>(
-						inner,
-						group,
-						value,
-						label,
-						st::settingsSendType),
-					st::settingsSendTypePadding);
-			};
-
-			addRadio(
-				Behavior::RunInBackground,
-				tr::lng_settings_run_in_background(tr::now));
-			addRadio(
-				Behavior::CloseToTaskbar,
-				tr::lng_settings_close_to_taskbar(tr::now));
-			addRadio(
-				Behavior::Quit,
-				tr::lng_settings_quit_on_close(tr::now));
-
-			group->value() | rpl::filter([=](Behavior value) {
-				return (value != settings->closeBehavior());
-			}) | rpl::on_next([=](Behavior value) {
-				settings->setCloseBehavior(value);
-				Local::writeSettings();
-			}, inner->lifetime());
-
-			return SectionBuilder::WidgetToAdd{ .widget = std::move(wrap) };
-		});
-
-		builder.addSkip();
-	}, std::move(shown));
-}
-#endif // !Q_OS_WIN && !Q_OS_MAC
 
 void BuildSystemIntegrationSection(SectionBuilder &builder) {
 	const auto controller = builder.controller();
@@ -567,71 +495,6 @@ void BuildSystemIntegrationSection(SectionBuilder &builder) {
 		}
 	}
 
-#ifdef Q_OS_MAC
-	const auto warnBeforeQuit = builder.addCheckbox({
-		.id = u"advanced/warn_before_quit"_q,
-		.title = tr::lng_settings_mac_warn_before_quit(
-			lt_text,
-			rpl::single(Platform::ConfirmQuit::QuitKeysString())),
-		.checked = settings->macWarnBeforeQuit(),
-		.keywords = { u"quit"_q, u"warn"_q, u"close"_q },
-	});
-	if (warnBeforeQuit) {
-		warnBeforeQuit->checkedChanges(
-		) | rpl::filter([=](bool checked) {
-			return (checked != settings->macWarnBeforeQuit());
-		}) | rpl::on_next([=](bool checked) {
-			settings->setMacWarnBeforeQuit(checked);
-			Core::App().saveSettingsDelayed();
-		}, warnBeforeQuit->lifetime());
-	}
-
-	const auto systemReplace = builder.addCheckbox({
-		.id = u"advanced/system_text_replace"_q,
-		.title = tr::lng_settings_system_text_replace(),
-		.checked = settings->systemTextReplace(),
-		.keywords = { u"text"_q, u"replace"_q, u"system"_q },
-	});
-	if (systemReplace) {
-		systemReplace->checkedChanges(
-		) | rpl::filter([=](bool checked) {
-			return (checked != settings->systemTextReplace());
-		}) | rpl::on_next([=](bool checked) {
-			settings->setSystemTextReplace(checked);
-			Core::App().saveSettingsDelayed();
-		}, systemReplace->lifetime());
-	}
-
-#ifndef OS_MAC_STORE
-	const auto roundIconEnabled = [=] {
-		const auto digest = base::Platform::CurrentCustomAppIconDigest();
-		return digest && (settings->macRoundIconDigest() == digest);
-	};
-	const auto roundIcon = builder.addCheckbox({
-		.id = u"advanced/round_icon"_q,
-		.title = tr::lng_settings_mac_round_icon(),
-		.checked = roundIconEnabled(),
-		.keywords = { u"icon"_q, u"round"_q, u"dock"_q },
-	});
-	if (roundIcon) {
-		roundIcon->checkedChanges(
-		) | rpl::filter([=](bool checked) {
-			return (checked != roundIconEnabled());
-		}) | rpl::on_next([=](bool checked) {
-			const auto digest = checked
-				? base::Platform::SetCustomAppIcon(IconMacRound())
-				: std::optional<uint64>();
-			if (!checked) {
-				base::Platform::ClearCustomAppIcon();
-			}
-			Window::OverrideApplicationIcon(checked ? IconMacRound() : QImage());
-			Core::App().refreshApplicationIcon();
-			settings->setMacRoundIconDigest(digest);
-			Core::App().saveSettings();
-		}, roundIcon->lifetime());
-	}
-#endif // OS_MAC_STORE
-#elif defined Q_OS_WIN // Q_OS_MAC
 	using Behavior = Core::Settings::CloseBehavior;
 
 	const auto container = builder.container();
@@ -667,7 +530,6 @@ void BuildSystemIntegrationSection(SectionBuilder &builder) {
 			Local::writeSettings();
 		}, closeToTaskbar->lifetime());
 	}
-#endif // Q_OS_MAC || Q_OS_WIN
 
 	if (Platform::AutostartSupported()) {
 		const auto minimizedToggled = [=] {
@@ -1345,9 +1207,6 @@ const auto kMeta = BuildHelper({
 	BuildDataStorageSection(builder);
 	BuildAutoDownloadSection(builder);
 	BuildWindowTitleSection(builder);
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
-	BuildWindowCloseBehaviorSection(builder);
-#endif
 	BuildSystemIntegrationSection(builder);
 	BuildPerformanceSection(builder);
 	BuildSpellcheckerSection(builder);
@@ -1801,45 +1660,6 @@ void SetupSystemIntegrationContent(
 		}
 	}
 
-#ifdef Q_OS_MAC
-	const auto warnBeforeQuit = addCheckbox(
-		tr::lng_settings_mac_warn_before_quit(
-			lt_text,
-			rpl::single(Platform::ConfirmQuit::QuitKeysString())),
-		settings->macWarnBeforeQuit());
-	warnBeforeQuit->checkedChanges(
-	) | rpl::filter([=](bool checked) {
-		return (checked != settings->macWarnBeforeQuit());
-	}) | rpl::on_next([=](bool checked) {
-		settings->setMacWarnBeforeQuit(checked);
-		Core::App().saveSettingsDelayed();
-	}, warnBeforeQuit->lifetime());
-
-#ifndef OS_MAC_STORE
-	const auto enabled = [=] {
-		const auto digest = base::Platform::CurrentCustomAppIconDigest();
-		return digest && (settings->macRoundIconDigest() == digest);
-	};
-	const auto roundIcon = addCheckbox(
-		tr::lng_settings_mac_round_icon(),
-		enabled());
-	roundIcon->checkedChanges(
-	) | rpl::filter([=](bool checked) {
-		return (checked != enabled());
-	}) | rpl::on_next([=](bool checked) {
-		const auto digest = checked
-			? base::Platform::SetCustomAppIcon(IconMacRound())
-			: std::optional<uint64>();
-		if (!checked) {
-			base::Platform::ClearCustomAppIcon();
-		}
-		Window::OverrideApplicationIcon(checked ? IconMacRound() : QImage());
-		Core::App().refreshApplicationIcon();
-		settings->setMacRoundIconDigest(digest);
-		Core::App().saveSettings();
-	}, roundIcon->lifetime());
-#endif // OS_MAC_STORE
-#elif defined Q_OS_WIN // Q_OS_MAC
 	using Behavior = Core::Settings::CloseBehavior;
 	const auto closeToTaskbar = addSlidingCheckbox(
 		tr::lng_settings_close_to_taskbar(),
@@ -1863,7 +1683,6 @@ void SetupSystemIntegrationContent(
 		settings->setCloseBehavior(value);
 		Local::writeSettings();
 	}, closeToTaskbar->lifetime());
-#endif // Q_OS_MAC || Q_OS_WIN
 
 	if (Platform::AutostartSupported() && controller) {
 		const auto minimizedToggled = [=] {

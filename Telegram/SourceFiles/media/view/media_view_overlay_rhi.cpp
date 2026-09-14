@@ -677,9 +677,6 @@ void OverlayWidget::RendererRhi::releaseResources() {
 	_usingExternalVideoTextures = false;
 	_trackFrameIndex = 0;
 	_streamedIndex = 0;
-#ifdef Q_OS_MAC
-	_metalTextureCache.flush();
-#endif // Q_OS_MAC
 
 	delete _placeholderTexture;
 	_placeholderTexture = nullptr;
@@ -1077,23 +1074,6 @@ void OverlayWidget::RendererRhi::paintTransformedVideoFrame(
 
 	if (upload) {
 		auto zeroCopied = false;
-#ifdef Q_OS_MAC
-		if (nativeTexture && data.nativeFrame
-			&& data.nativeFrame->pixelBuffer) {
-			if (_metalTextureCache.createTexturesFromPixelBuffer(
-					_rhi,
-					data.nativeFrame->pixelBuffer,
-					&_yTexture,
-					&_uvTexture,
-					&_lumaSize,
-					&_chromaSize)) {
-				_chromaNV12 = true;
-				zeroCopied = true;
-			} else {
-				return;
-			}
-		}
-#endif // Q_OS_MAC
 		if (!zeroCopied) {
 		if (_usingExternalVideoTextures) {
 			delete _yTexture;
@@ -1106,9 +1086,6 @@ void OverlayWidget::RendererRhi::paintTransformedVideoFrame(
 			_uvTexture = nullptr;
 			_lumaSize = QSize();
 			_chromaSize = QSize();
-#ifdef Q_OS_MAC
-			_metalTextureCache.flush();
-#endif // Q_OS_MAC
 		}
 		if (!yuv || yuv->size.isEmpty()) {
 			return;

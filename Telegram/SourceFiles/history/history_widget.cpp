@@ -470,14 +470,6 @@ HistoryWidget::HistoryWidget(
 		updateExpandButtonVisibility();
 		updateSendButtonType();
 	}, lifetime());
-#ifdef Q_OS_MAC
-	// Removed an ability to insert text from the menu bar
-	// when the field is hidden.
-	_field->shownValue(
-	) | rpl::on_next([=](bool shown) {
-		_field->setEnabled(shown);
-	}, _field->lifetime());
-#endif // Q_OS_MAC
 	controller->widget()->shownValue(
 	) | rpl::skip(1) | rpl::on_next([=] {
 		windowIsVisibleChanged();
@@ -6380,24 +6372,8 @@ bool HistoryWidget::eventFilter(QObject *obj, QEvent *e) {
 		const auto k = static_cast<QKeyEvent*>(e);
 		if ((k->modifiers() & kCommonModifiers) == Qt::ControlModifier) {
 			if (k->key() == Qt::Key_Up) {
-#ifdef Q_OS_MAC
-				// Cmd + Up is used instead of Home.
-				if (fieldHasSendText()
-					&& !base::options::value<bool>(
-						HistoryView::Controls::kOptionMacCmdReplyImmediately)) {
-					return false;
-				}
-#endif
 				return replyToPreviousMessage();
 			} else if (k->key() == Qt::Key_Down) {
-#ifdef Q_OS_MAC
-				// Cmd + Down is used instead of End.
-				if (fieldHasSendText()
-					&& !base::options::value<bool>(
-						HistoryView::Controls::kOptionMacCmdReplyImmediately)) {
-					return false;
-				}
-#endif
 				return replyToNextMessage();
 			}
 		}

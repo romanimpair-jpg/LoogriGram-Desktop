@@ -117,9 +117,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QGraphicsOpacityEffect>
 
-#ifdef Q_OS_MAC
-#include "platform/mac/touchbar/mac_touchbar_media_view.h"
-#endif // Q_OS_MAC
 
 #include <QtWidgets/QApplication>
 #include <QtCore/QBuffer>
@@ -859,15 +856,6 @@ OverlayWidget::OverlayWidget()
 	updateGeometry();
 	updateControlsGeometry();
 
-#ifdef Q_OS_MAC
-	TouchBar::SetupMediaViewTouchBar(
-		_window->winId(),
-		tr::lng_mediaview_title(tr::now),
-		static_cast<PlaybackControls::Delegate*>(this),
-		_touchbarTrackState.events(),
-		_touchbarDisplay.events(),
-		_touchbarFullscreenToggled.events());
-#endif // Q_OS_MAC
 
 	using namespace rpl::mappers;
 	rpl::combine(
@@ -4485,7 +4473,6 @@ void OverlayWidget::displayPhoto(
 		displayDocument(nullptr, activation);
 		return;
 	}
-	_touchbarDisplay.fire(TouchBarItemType::Photo);
 
 	clearStreaming();
 	destroyThemePreview();
@@ -4599,7 +4586,6 @@ void OverlayWidget::displayDocument(
 		clearRecognitionSelection();
 	}
 
-	_touchbarDisplay.fire(TouchBarItemType::None);
 
 	refreshMediaViewer();
 	if (_document) {
@@ -4630,14 +4616,12 @@ void OverlayWidget::displayDocument(
 						.path = location.name(),
 					}));
 					if (!_staticContent.isNull()) {
-						_touchbarDisplay.fire(TouchBarItemType::Photo);
 					}
 				} else {
 					setStaticContent(PrepareStaticImage({
 						.content = _documentMedia->bytes(),
 					}));
 					if (!_staticContent.isNull()) {
-						_touchbarDisplay.fire(TouchBarItemType::Photo);
 					}
 				}
 				location.accessDisable();
@@ -4733,7 +4717,6 @@ void OverlayWidget::displayVideoStream(
 	_rotation = 0;
 	_radial.stop();
 
-	_touchbarDisplay.fire(TouchBarItemType::None);
 
 	contentSizeChanged();
 	_blurred = false;
@@ -4911,7 +4894,6 @@ void OverlayWidget::markStreamedReady() {
 void OverlayWidget::initStreamingThumbnail() {
 	Expects(_photo || _document);
 
-	_touchbarDisplay.fire(TouchBarItemType::Video);
 
 	auto userpicImage = std::optional<Image>();
 	const auto computePhotoThumbnail = [&] {
@@ -5824,7 +5806,6 @@ void OverlayWidget::playbackToggleFullScreen() {
 		}
 		_streamed->controls->setInFullScreen(_fullScreenVideo);
 	}
-	_touchbarFullscreenToggled.fire_copy(_fullScreenVideo);
 	updateControls();
 	update();
 }
@@ -5875,7 +5856,6 @@ void OverlayWidget::updatePlaybackState() {
 		if (_streamed->controls) {
 			_streamed->controls->updatePlayback(state);
 			_streamed->controls->updateSpeedToggleQuality();
-			_touchbarTrackState.fire_copy(state);
 			updatePowerSaveBlocker(state);
 		}
 		if (_stories) {

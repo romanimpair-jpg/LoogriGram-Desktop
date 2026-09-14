@@ -28,7 +28,6 @@ namespace Ui {
 class FlatLabel;
 class BoxContent;
 class RpWidget;
-class StandaloneLayerStack;
 enum class LayerOption;
 using LayerOptions = base::flags<LayerOption>;
 } // namespace Ui
@@ -42,10 +41,6 @@ struct PopupResult;
 namespace Ui::Text {
 struct MarkedContext;
 } // namespace Ui::Text
-
-namespace Ui::BotWebView::LinuxShell {
-struct ResolvedColors;
-} // namespace Ui::BotWebView::LinuxShell
 
 namespace Ui::BotWebView {
 
@@ -191,57 +186,13 @@ private:
 		uint64 iconCustomEmojiId = 0;
 		QString text;
 	};
-	struct ExternalButtonState {
-		ButtonArgs args;
-		QColor color;
-		QColor textColor;
-		QString position;
-		uint64 iconGeneration = 0;
-	};
-	struct ExternalShellColorState {
-		bool titleUsesTheme = true;
-		bool bodyUsesTheme = true;
-		bool bottomUsesTheme = true;
-		std::optional<QColor> title;
-		std::optional<QColor> body;
-		std::optional<QColor> bottom;
-	};
-	struct ExternalShellAnchor {
-		std::optional<QRect> anchorGeometry;
-		std::optional<QSize> outerSize;
-		Platform::ForeignParent transientParent;
-	};
 	class Button;
 	struct Progress;
 	struct WebviewWithLifetime;
 
 	bool showWebview(Args &&args, const Webview::ThemeParams &params);
-	void invalidateExternalShellSession();
-	void showExternalShellError(TextWithEntities text);
-
 	bool createWebview(const Webview::ThemeParams &params);
-	void resetExternalShellIdentity();
 	[[nodiscard]] QWidget *webviewWindowForPopup() const;
-	void installExternalShellDocument();
-	void sendExternalShellBootstrap();
-	void sendExternalShellMethod(
-		const QByteArray &method,
-		const QJsonObject &data);
-	void sendExternalShellEvent(
-		const QString &event,
-		const QJsonObject &data);
-	void sendExternalShellButton(
-		const char *name,
-		const QJsonObject &args);
-	void sendExternalShellMenu();
-	void sendExternalShellAssets();
-	void handleExternalShellMenuAction(const QString &id);
-	void requestExternalShellButtonEmoji(const QString &name);
-	void applyExternalShellFullscreen(bool fullscreen);
-	void sendExternalShellChrome();
-	void setExternalShellBlocked(bool blocked);
-	void closeExternalShellLayer();
-	[[nodiscard]] ExternalShellAnchor externalShellAnchor() const;
 	void showPopup(
 		Webview::PopupArgs &&args,
 		Fn<void(Webview::PopupResult)> done);
@@ -270,12 +221,6 @@ private:
 	void processHeaderColor(const QJsonObject &args);
 	void processBackgroundColor(const QJsonObject &args);
 	void processBottomBarColor(const QJsonObject &args);
-	void setExternalShellTitleColor(std::optional<QColor> color);
-	void setExternalShellBodyColor(std::optional<QColor> color);
-	void setExternalShellBottomColor(std::optional<QColor> color);
-	[[nodiscard]] LinuxShell::ResolvedColors externalShellColors(
-		const Webview::ThemeParams &params) const;
-	void sendExternalShellColors(const Webview::ThemeParams &params);
 	void processDownloadRequest(const QJsonObject &args);
 	void openTgLink(const QJsonObject &args);
 	void openExternalLink(const QJsonObject &args);
@@ -322,29 +267,13 @@ private:
 
 	Webview::StorageId _storageId;
 	const not_null<Delegate*> _delegate;
-	QString _externalUrl;
-	QString _externalTitle;
-	int _externalBlockCount = 0;
 	bool _closeNeedConfirmation = false;
 	bool _hasSettingsButton = false;
-	bool _externalTitleBadgeVisible = false;
-	bool _externalShell = false;
-	bool _externalShellBootstrapped = false;
-	bool _externalWindowCloseRequested = false;
-	QString _externalShellToken;
 	QString _initialOrigin;
 	QString _currentOrigin;
-	uint64 _externalShellGeneration = 0;
-	bool _externalBackVisible = false;
-	ExternalShellColorState _externalShellColorState;
 	MenuButtons _menuButtons = {};
-	ExternalButtonState _externalMainButton;
-	ExternalButtonState _externalSecondaryButton;
-	std::unique_ptr<RpWidget> _externalPanelParent;
 	std::unique_ptr<SeparatePanel> _widget;
 	std::unique_ptr<WebviewWithLifetime> _webview;
-	std::unique_ptr<StandaloneLayerStack> _externalLayer;
-	std::unique_ptr<RpWidget> _externalWebviewParent;
 	std::unique_ptr<RpWidget> _webviewBottom;
 	QPointer<FlatLabel> _webviewBottomLabel;
 	rpl::variable<QString> _bottomText;

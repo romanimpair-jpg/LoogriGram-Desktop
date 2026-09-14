@@ -133,12 +133,6 @@ struct Labeled {
 
 [[nodiscard]] QString ToString(const QKeySequence &key) {
 	auto result = key.toString();
-#ifdef Q_OS_MAC
-	result = result.replace(u"Ctrl+"_q, QString() + QChar(0x2318));
-	result = result.replace(u"Meta+"_q, QString() + QChar(0x2303));
-	result = result.replace(u"Alt+"_q, QString() + QChar(0x2325));
-	result = result.replace(u"Shift+"_q, QString() + QChar(0x21E7));
-#endif // Q_OS_MAC
 	return result;
 }
 
@@ -147,11 +141,6 @@ struct Labeled {
 		return {};
 	}
 	auto text = key.toString();
-#ifdef Q_OS_MAC
-	text.replace(u"Ctrl+"_q, u"Ctrl Cmd Command "_q);
-	text.replace(u"Meta+"_q, u"Meta Control "_q);
-	text.replace(u"Alt+"_q, u"Alt Opt Option "_q);
-#endif // Q_OS_MAC
 	return SearchWords(text);
 }
 

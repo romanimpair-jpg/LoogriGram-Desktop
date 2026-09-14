@@ -1883,9 +1883,6 @@ QRect Panel::computeTitleRect() const {
 				: 0)
 			+ pin));
 	const auto width = widget()->width();
-#ifdef Q_OS_MAC
-	return QRect(70, 0, width - remove - 70, 28);
-#else // Q_OS_MAC
 	const auto controls = _window->controlsGeometry();
 	const auto onTheLeft = (controls.center().x() < width / 2);
 	const auto band = (_pinOnTop && !_pinOnTop->isHidden())
@@ -1895,7 +1892,6 @@ QRect Panel::computeTitleRect() const {
 	return onTheLeft
 		? QRect(right, 0, width - right - remove, band.height())
 		: QRect(remove, 0, band.x() - skip - remove, band.height());
-#endif // !Q_OS_MAC
 }
 
 bool Panel::updateMode() {

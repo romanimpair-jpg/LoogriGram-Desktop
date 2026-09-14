@@ -934,13 +934,11 @@ bool ReadSetting(
 		QString v;
 		stream >> v;
 		if (!CheckStreamStatus(stream)) return false;
-#ifndef OS_WIN_STORE
 		if (!v.isEmpty() && v != FileDialog::Tmp() && !v.endsWith('/')) {
 			v += '/';
 		}
 		Core::App().settings().setDownloadPathBookmark(QByteArray());
 		Core::App().settings().setDownloadPath(v);
-#endif // OS_WIN_STORE
 		context.legacyRead = true;
 	} break;
 
@@ -950,14 +948,12 @@ bool ReadSetting(
 		stream >> v >> bookmark;
 		if (!CheckStreamStatus(stream)) return false;
 
-#ifndef OS_WIN_STORE
 		if (!v.isEmpty() && v != FileDialog::Tmp() && !v.endsWith('/')) {
 			v += '/';
 		}
 		Core::App().settings().setDownloadPathBookmark(bookmark);
 		Core::App().settings().setDownloadPath(v);
 		psDownloadPathEnableAccess();
-#endif // OS_WIN_STORE
 		context.legacyRead = true;
 	} break;
 

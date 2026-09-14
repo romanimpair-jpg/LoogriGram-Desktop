@@ -44,17 +44,8 @@ if (DESKTOP_APP_DISABLE_CRASH_REPORTS)
     target_compile_definitions(Telegram PRIVATE TDESKTOP_DISABLE_CRASH_REPORTS)
 endif()
 
-if (DESKTOP_APP_USE_PACKAGED)
-    target_compile_definitions(Telegram PRIVATE TDESKTOP_USE_PACKAGED)
-endif()
-
 if (DESKTOP_APP_SPECIAL_TARGET)
     target_compile_definitions(Telegram PRIVATE TDESKTOP_ALLOW_CLOSED_ALPHA)
-endif()
-
-option(DESKTOP_APP_DISABLE_SWIFT6 "Disable local on-device translation (build without Swift 6 on macOS)." OFF)
-if (DESKTOP_APP_DISABLE_SWIFT6)
-    target_compile_definitions(Telegram PRIVATE TDESKTOP_DISABLE_SWIFT6)
 endif()
 
 set(TDESKTOP_UPDATE_CHANNEL "stable" CACHE STRING "Compile-time update channel (stable, beta, canary-public, canary-private).")

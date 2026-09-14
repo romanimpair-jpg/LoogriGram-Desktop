@@ -23,11 +23,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <mutex>
 #include <utility>
 
-#ifndef Q_OS_MAC
 void InitIvMarkdownMicrotexBundledResource() {
 	Q_INIT_RESOURCE(bundled);
 }
-#endif // !Q_OS_MAC
 
 namespace Iv::Markdown {
 namespace {
@@ -346,15 +344,9 @@ void FinalizeFailure(MeasuredFormula *result) {
 bool EnsureMicrotexInitialized(QString *error) {
 	std::call_once(MicrotexInitOnce, [] {
 		try {
-#ifdef Q_OS_MAC // Use resources from the .app bundle on macOS.
-
-			base::RegisterBundledResources(u"external_microtex_bundled.rcc"_q);
-
-#else // Q_OS_MAC
 
 			InitIvMarkdownMicrotexBundledResource();
 
-#endif // Q_OS_MAC
 
 			tex::LaTeX::initBundled();
 			MicrotexInitialized = true;

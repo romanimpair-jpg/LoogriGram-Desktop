@@ -7,9 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "webauthn/webauthn_common.h"
 
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
-#include "base/platform/linux/base_linux_library.h"
-#endif // !Q_OS_WIN && !Q_OS_MAC
 #include "base/weak_qptr.h"
 #include "core/application.h"
 #include "data/data_passkey_deserialize.h"
@@ -33,11 +30,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <mutex>
 #include <vector>
 
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
-extern "C" {
-void _libudev_so_tramp_resolve_all(void) __attribute__((weak));
-} // extern "C"
-#endif // !Q_OS_WIN && !Q_OS_MAC
 
 namespace Platform::WebAuthn {
 namespace {
@@ -45,13 +37,7 @@ namespace {
 constexpr auto kDefaultTimeout = 60000;
 
 [[nodiscard]] bool UdevLibraryAvailable() {
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
-	static const auto available = !_libudev_so_tramp_resolve_all
-		|| base::Platform::LoadLibrary("libudev.so.1");
-	return available;
-#else // !Q_OS_WIN && !Q_OS_MAC
 	return true;
-#endif // Q_OS_WIN || Q_OS_MAC
 }
 
 enum class Outcome {

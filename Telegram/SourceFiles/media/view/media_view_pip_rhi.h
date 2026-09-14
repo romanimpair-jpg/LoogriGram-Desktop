@@ -12,9 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/rhi/rhi_image.h"
 #include "ui/gl/gl_math.h"
 
-#ifdef Q_OS_MAC
-#include "media/view/media_view_metal_texture.h"
-#endif
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
 
@@ -175,9 +172,6 @@ private:
 
 	bool _initialized = false;
 
-#ifdef Q_OS_MAC
-	MetalTextureCache _metalTextureCache;
-#endif
 
 	rpl::lifetime _lifetime;
 

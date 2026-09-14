@@ -1358,7 +1358,6 @@ void Panel::updateControlsGeometry() {
 	const auto shown = _controlsShownAnimation.value(
 		_controlsShown ? 1. : 0.);
 	if (_fingerprint) {
-#ifndef Q_OS_MAC
 		const auto controlsGeometry = _window->controlsGeometry();
 		const auto halfWidth = widget()->width() / 2;
 		const auto controlsWidth = controlsGeometry.width()
@@ -1374,10 +1373,6 @@ void Panel::updateControlsGeometry() {
 		_incoming->setControlsAlignment(minLeft
 			? style::al_left
 			: style::al_right);
-#else // !Q_OS_MAC
-		const auto minLeft = 0;
-		const auto minRight = 0;
-#endif // _controls
 		const auto desired = (widget()->width() - _fingerprint->width()) / 2;
 		const auto top = anim::interpolate(
 			-_fingerprint->height(),

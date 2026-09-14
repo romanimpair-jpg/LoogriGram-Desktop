@@ -56,11 +56,7 @@ std::optional<MessageSelection> KeyboardTextSelection::extend(
 
 	const auto position = int(_focus.offset());
 	const auto forward = (key == Qt::Key_Right);
-#ifdef Q_OS_MAC
-	const auto byWord = (modifiers & Qt::AltModifier) != 0;
-#else // Q_OS_MAC
 	const auto byWord = (modifiers & Qt::ControlModifier) != 0;
-#endif // Q_OS_MAC
 	auto wanted = position;
 	if (key == Qt::Key_Home) {
 		wanted = 0;

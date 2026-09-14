@@ -34,9 +34,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QDirIterator>
 #include <QtCore/QSaveFile>
 
-#ifndef Q_OS_WIN
-#include <unistd.h>
-#endif // Q_OS_WIN
 
 //extern "C" {
 //#include <openssl/evp.h>

@@ -1194,13 +1194,7 @@ void Call::createAndStartController(const MTPDphoneCall &call) {
 		const auto callLogFolder = cWorkingDir() + u"DebugLogs"_q;
 		const auto callLogPath = callLogFolder + u"/last_call_log.txt"_q;
 		const auto callLogNative = QDir::toNativeSeparators(callLogPath);
-#ifdef Q_OS_WIN
 		descriptor.config.logPath.data = callLogNative.toStdWString();
-#else // Q_OS_WIN
-		const auto callLogUtf = QFile::encodeName(callLogNative);
-		descriptor.config.logPath.data.resize(callLogUtf.size());
-		ranges::copy(callLogUtf, descriptor.config.logPath.data.begin());
-#endif // Q_OS_WIN
 		QFile(callLogPath).remove();
 		QDir().mkpath(callLogFolder);
 	}

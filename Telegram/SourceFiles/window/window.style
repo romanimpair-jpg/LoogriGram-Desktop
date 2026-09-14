@@ -398,17 +398,3 @@ windowTaskbarThumbPrevious: icon {{ "player/player_backward", windowFg }};
 windowTaskbarThumbPlay: icon {{ "player/player_play", windowFg }};
 windowTaskbarThumbPause: icon {{ "player/player_pause", windowFg }};
 windowTaskbarThumbNext: icon {{ "player/player_forward", windowFg }};
-
-// Mac specific
-
-macAccessoryWidth: 450.;
-macAccessoryHeight: 90.;
-macEnableFilterAdd: 2;
-macEnableFilterTop: 5;
-macSelectorTop: 6;
-macAlwaysThisAppTop: 4;
-macAppHintTop: 8;
-macCautionIconSize: 16;
-
-macWindowRoundRadius: 10;
-macWindowShadowTopLeft: icon {{ "mac_window_shadow_top_left", windowShadowFg }};

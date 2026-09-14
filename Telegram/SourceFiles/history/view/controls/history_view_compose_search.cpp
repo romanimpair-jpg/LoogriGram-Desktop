@@ -790,20 +790,6 @@ bool BottomBar::handleKeyPress(not_null<QKeyEvent*> e) {
 			return true;
 		}
 	}
-#ifdef Q_OS_MAC
-	if (e->key() == Qt::Key_G) {
-		const auto modifiers = e->modifiers();
-		if (modifiers.testFlag(Qt::ControlModifier)) {
-			const auto &navigation = (modifiers.testFlag(Qt::ShiftModifier)
-				? _previous
-				: _next);
-			if (navigation.enabled) {
-				navigation->clicked(Qt::KeyboardModifiers(), Qt::LeftButton);
-				return true;
-			}
-		}
-	}
-#endif
 	return false;
 }
 

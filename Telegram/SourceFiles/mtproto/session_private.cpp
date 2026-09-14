@@ -89,17 +89,11 @@ using namespace details;
 	const auto arch = ' ' + QSysInfo::buildCpuArchitecture();
 #endif
 	return QString::fromLatin1(AppVersionStr) + arch + ([] {
-#if defined OS_MAC_STORE
-		return u" Mac App Store"_q;
-#elif defined OS_WIN_STORE // OS_MAC_STORE
-		return u" Microsoft Store"_q;
-#else // OS_MAC_STORE || OS_WIN_STORE
 		return KSandbox::isFlatpak()
 			? u" Flatpak"_q
 			: KSandbox::isSnap()
 			? u" Snap"_q
 			: QString();
-#endif // OS_MAC_STORE || OS_WIN_STORE
 	})();
 }
 

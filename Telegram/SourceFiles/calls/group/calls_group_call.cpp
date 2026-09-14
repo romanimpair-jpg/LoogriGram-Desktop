@@ -3129,13 +3129,7 @@ bool GroupCall::tryCreateController() {
 		auto callLogPath = callLogFolder + u"/last_group_call_log.txt"_q;
 		auto callLogNative = QDir::toNativeSeparators(callLogPath);
 		descriptor.config.need_log = true;
-#ifdef Q_OS_WIN
 		descriptor.config.logPath.data = callLogNative.toStdWString();
-#else // Q_OS_WIN
-		const auto callLogUtf = QFile::encodeName(callLogNative);
-		descriptor.config.logPath.data.resize(callLogUtf.size());
-		ranges::copy(callLogUtf, descriptor.config.logPath.data.begin());
-#endif // Q_OS_WIN
 		QFile(callLogPath).remove();
 		QDir().mkpath(callLogFolder);
 	} else {

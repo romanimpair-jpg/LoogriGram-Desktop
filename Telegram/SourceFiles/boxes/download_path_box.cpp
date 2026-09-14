@@ -123,7 +123,6 @@ void DownloadPathBox::editPath() {
 }
 
 void DownloadPathBox::save() {
-#ifndef OS_WIN_STORE
 	auto value = _group->current();
 	auto computePath = [this, value] {
 		if (value == Directory::Custom) {
@@ -138,7 +137,6 @@ void DownloadPathBox::save() {
 	Core::App().settings().setDownloadPath(computePath());
 	Core::App().saveSettings();
 	closeBox();
-#endif // OS_WIN_STORE
 }
 
 void DownloadPathBox::setPathText(const QString &text) {

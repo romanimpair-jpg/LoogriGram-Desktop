@@ -25,11 +25,7 @@ const PROPERTYKEY pkey_AppUserModel_ID = { { 0x9F4C2855, 0x9F79, 0x4B39, { 0xA8,
 const PROPERTYKEY pkey_AppUserModel_StartPinOption = { { 0x9F4C2855, 0x9F79, 0x4B39, { 0xA8, 0xD0, 0xE1, 0xD4, 0x2D, 0xE1, 0xD5, 0xF3 } }, 12 };
 const PROPERTYKEY pkey_AppUserModel_ToastActivator = { { 0x9F4C2855, 0x9F79, 0x4B39, { 0xA8, 0xD0, 0xE1, 0xD4, 0x2D, 0xE1, 0xD5, 0xF3 } }, 26 };
 
-#ifdef OS_WIN_STORE
-const WCHAR AppUserModelIdBase[] = L"Telegram.TelegramDesktop.Store";
-#else // OS_WIN_STORE
 const WCHAR AppUserModelIdBase[] = L"Telegram.TelegramDesktop";
-#endif // OS_WIN_STORE
 
 [[nodiscard]] QString PinnedIconsPath() {
 	WCHAR wstrPath[kMaxFileLen] = {};
@@ -473,9 +469,6 @@ const std::wstring &Id() {
 		return BaseId;
 	}
 	static const auto Installed = [] {
-#ifdef OS_WIN_STORE
-		return true;
-#else // OS_WIN_STORE
 		CheckingInstalled = true;
 		const auto guard = gsl::finally([] {
 			CheckingInstalled = false;
@@ -487,7 +480,6 @@ const std::wstring &Id() {
 			CoUninitialize();
 		});
 		return checkInstalled();
-#endif
 	}();
 	if (Installed) {
 		return BaseId;

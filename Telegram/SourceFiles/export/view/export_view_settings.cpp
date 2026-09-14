@@ -305,7 +305,6 @@ void SettingsWidget::setupPathAndFormat(
 
 void SettingsWidget::addLocationLabel(
 		not_null<Ui::VerticalLayout*> container) {
-#ifndef OS_MAC_STORE
 	auto pathLink = value() | rpl::map([](const Settings &data) {
 		return data.path;
 	}) | rpl::distinct_until_changed(
@@ -331,7 +330,6 @@ void SettingsWidget::addLocationLabel(
 	label->overrideLinkClickHandler([=] {
 		chooseFolder();
 	});
-#endif // OS_MAC_STORE
 }
 
 void SettingsWidget::chooseFormat() {
@@ -354,7 +352,6 @@ void SettingsWidget::chooseFormat() {
 
 void SettingsWidget::addFormatAndLocationLabel(
 		not_null<Ui::VerticalLayout*> container) {
-#ifndef OS_MAC_STORE
 	auto pathLink = value() | rpl::map([](const Settings &data) {
 		return data.path;
 	}) | rpl::distinct_until_changed(
@@ -399,7 +396,6 @@ void SettingsWidget::addFormatAndLocationLabel(
 			Unexpected("Click handler URL in export limits edit.");
 		}
 	});
-#endif // OS_MAC_STORE
 }
 
 void SettingsWidget::addLimitsLabel(

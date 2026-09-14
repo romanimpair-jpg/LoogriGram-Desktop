@@ -327,9 +327,6 @@ LastCrashedWindow::LastCrashedWindow(
 	if (_sendingState != SendingNoReport) {
 		qint64 dumpsize = 0;
 		QString dumpspath = cWorkingDir() + u"tdata/dumps"_q;
-#if defined Q_OS_MAC && !defined MAC_USE_BREAKPAD
-		dumpspath += u"/completed"_q;
-#endif
 		QString possibleDump = getReportField(qstr("minidump"), qstr("Minidump:"));
 		if (!possibleDump.isEmpty()) {
 			if (!possibleDump.startsWith('/')) {
