@@ -14,6 +14,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/text/text.h"
 #include "ui/widgets/fields/input_field.h"
 
+// LoogriGram: style::InputField is only forward declared by input_field.h,
+// and HasEnoughLinesForExpand reads field->st().style. The file this code
+// came from got the definition by accident, through style_chat_helpers.h;
+// this is the header that actually declares it.
+#include "styles/style_widgets.h"
+
 namespace Ui {
 namespace {
 
