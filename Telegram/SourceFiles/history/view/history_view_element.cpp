@@ -9,6 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "apiwrap.h"
 #include "api/api_transcribes.h"
+#include "core/loogrigram_hidden_content.h"
 #include "history/view/history_view_service_message.h"
 #include "history/view/history_view_message.h"
 #include "history/view/media/history_view_community_added.h"
@@ -1535,7 +1536,11 @@ bool Element::isHiddenByGroup() const {
 }
 
 bool Element::isHidden() const {
-	return isHiddenByGroup();
+	// LoogriGram: a hidden element collapses to nothing - Message's
+	// resizeContentGetHeight returns only its margins and Service's
+	// marginTop returns zero - while the item itself stays in history so the
+	// read position still advances past it. See core/loogrigram_hidden_content.
+	return isHiddenByGroup() || LoogriGram::HiddenContent(data());
 }
 
 void Element::overrideMedia(std::unique_ptr<Media> media) {

@@ -13,6 +13,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "dialogs/dialogs_indexed_list.h"
 #include "history/history_inner_widget.h"
 #include "history/history_item.h"
+#include "core/loogrigram_hidden_content.h"
 #include "history/history_item_components.h"
 #include "history/history_item_helpers.h"
 #include "history/history_streamed_drafts.h"
@@ -3145,6 +3146,30 @@ auto History::computeChatListMessageFromLast() const
 -> std::optional<HistoryItem*> {
 	if (!_lastMessage) {
 		return _lastMessage;
+	}
+
+	// LoogriGram: a gift, giveaway or paid post shows nothing in the chat, so
+	// it must not be what the chat list shows either - otherwise the row
+	// advertises something that is not there when you open it. Walk back to
+	// the newest message we do display, exactly as the migration case below
+	// does, and take its time with it so the chat does not jump to the top
+	// for a message we are ignoring.
+	//
+	// Falling back to std::nullopt asks the server for a chat list message,
+	// which is upstream's own answer to "we cannot see far enough back".
+	if (LoogriGram::HiddenContent(*_lastMessage)) {
+		if (!loadedAtBottom()) {
+			return std::nullopt;
+		}
+		for (const auto &block : ranges::views::reverse(blocks)) {
+			for (const auto &view : ranges::views::reverse(block->messages)) {
+				const auto item = view->data();
+				if (!LoogriGram::HiddenContent(item)) {
+					return item;
+				}
+			}
+		}
+		return loadedAtTop() ? _lastMessage : std::optional<HistoryItem*>();
 	}
 
 	// In migrated groups we want to skip essential message

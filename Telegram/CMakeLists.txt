@@ -574,6 +574,8 @@ PRIVATE
     core/loogrigram_build_tag.h
     core/loogrigram_lang.cpp
     core/loogrigram_lang.h
+    core/loogrigram_hidden_content.cpp
+    core/loogrigram_hidden_content.h
     core/loogrigram_update.cpp
     core/loogrigram_update.h
     core/phone_click_handler.cpp

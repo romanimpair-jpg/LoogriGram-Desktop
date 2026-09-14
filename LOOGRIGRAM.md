@@ -763,6 +763,50 @@ like a received gift. Four stages in rough order: chat list strip, the
 Doing so also removes part of ghost mode - the story-view suppression and its
 two traps - and the known limit about story rings reappearing unread.
 
+## Gifts, giveaways and paid posts are hidden, not refused
+
+We take no part in any of it, so none of it is shown: not a gift someone
+sent, not a giveaway a channel is running, not a post we would have to pay to
+read, and no notification for any of them.
+
+**Hidden at the view. The item is still created.** This is the load-bearing
+part. Telegram tracks what we have read by message id, and the read position
+only advances past messages we have. Refuse one at parse time and nothing
+ever marks it read, so the chat keeps an unread badge that scrolling cannot
+clear - the same coupling that made read-receipt suppression get reverted,
+arriving from the other direction. So the item lives in history exactly as
+before and every view asks `LoogriGram::HiddenContent()` instead.
+
+The machinery is upstream's, built for photo albums: a hidden `Element`
+already collapses to nothing, because `Message::marginTop`/`marginBottom` and
+`Service::marginTop` all return zero when `isHidden()`, and
+`Message::resizeContentGetHeight` returns only its margins. No gap, no
+placeholder.
+
+Three places ask, and all three are needed:
+
+- `Element::isHidden()` - the message itself.
+- `History::computeChatListMessageFromLast` - otherwise the chat list row
+  advertises a gift that is not in the chat when you open it. It walks back
+  to the newest message we do display, the same way upstream skips the group
+  migration message, so the chat does not even rise to the top.
+- `System::skipNotification` - a toast for a message that is not there is
+  worse than no toast.
+
+Recognition is by media, which works because every gift arrives as
+`MediaGiftBox` whichever action delivered it. Service messages that are only
+a line of text - "X boosted this channel", a refund, a price change - carry no
+media, so those six actions are routed to `PrepareEmptyText` instead, which is
+upstream's own way of saying an action displays nothing.
+
+`PeerGiftsCountValue` returns zero, which removes the gift row, the gift tab
+and the request behind them at once. That one is a forced getter on purpose
+and temporarily: the tab machinery belongs to the gifts subsystem and goes
+with it.
+
+**Known and accepted:** paid posts in channels vanish without trace. There is
+no sign a post existed.
+
 ## Branding
 
 Four files carry it on Windows, and all four are ours now:

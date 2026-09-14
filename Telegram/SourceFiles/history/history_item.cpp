@@ -6088,22 +6088,6 @@ void HistoryItem::setServiceMessageByAction(const MTPmessageAction &action) {
 		Unexpected("PhoneCall type in setServiceMessageFromMtp.");
 	};
 
-	auto preparePaymentSent = [&](const MTPDmessageActionPaymentSent &) {
-		return preparePaymentSentText();
-	};
-
-	auto preparePaymentSentMe = [&](const MTPDmessageActionPaymentSentMe &data) {
-		auto result = PreparedServiceText();
-		result.text = (data.is_recurring_used()
-			? tr::lng_action_payment_bot_recurring
-			: tr::lng_action_payment_bot_done)(
-				tr::now,
-				lt_amount,
-				AmountAndStarCurrency(data.vtotal_amount().v, qs(data.vcurrency())),
-				tr::marked);
-		return result;
-	};
-
 	auto prepareScreenshotTaken = [this](const MTPDmessageActionScreenshotTaken &) {
 		auto result = PreparedServiceText();
 		if (out()) {
@@ -6840,50 +6824,6 @@ void HistoryItem::setServiceMessageByAction(const MTPmessageAction &action) {
 		return result;
 	};
 
-	auto prepareBoostApply = [&](const MTPDmessageActionBoostApply &action) {
-		auto result = PreparedServiceText();
-		const auto boosts = action.vboosts().v;
-		const auto isSelf = (_from->id == _from->session().userPeerId());
-		result.links.push_back(fromLink());
-		result.text = isSelf
-			? tr::lng_action_boost_apply_me(tr::now, tr::marked)
-			: tr::lng_action_boost_apply(
-				tr::now,
-				lt_count,
-				boosts,
-				lt_from,
-				fromLinkText(), // Link 1.
-				tr::marked);
-		const auto channel = _history->peer->asChannel();
-		setCustomServiceLink(std::make_shared<LambdaClickHandler>([=](
-				ClickContext context) {
-			const auto my = context.other.value<ClickHandlerContext>();
-			const auto weak = my.sessionWindow;
-			if (const auto strong = channel ? weak.get() : nullptr) {
-				strong->resolveBoostState(channel);
-			}
-		}));
-		return result;
-	};
-	auto preparePaymentRefunded = [&](const MTPDmessageActionPaymentRefunded &action) {
-		auto result = PreparedServiceText();
-		const auto refund = Get<HistoryServicePaymentRefund>();
-		Assert(refund != nullptr);
-		Assert(refund->peer != nullptr);
-
-		const auto amount = refund->amount;
-		const auto currency = refund->currency;
-		result.links.push_back(refund->peer->createOpenLink());
-		result.text = tr::lng_action_payment_refunded(
-			tr::now,
-			lt_peer,
-			tr::link(refund->peer->name(), 1), // Link 1.
-			lt_amount,
-			AmountAndStarCurrency(amount, currency),
-			tr::marked);
-		return result;
-	};
-
 	auto prepareGiftStars = [&](
 			const MTPDmessageActionGiftStars &action) {
 		auto result = PreparedServiceText();
@@ -7306,66 +7246,6 @@ void HistoryItem::setServiceMessageByAction(const MTPmessageAction &action) {
 		return result;
 	};
 
-	auto preparePaidMessagesRefunded = [&](const MTPDmessageActionPaidMessagesRefunded &action) {
-		auto result = PreparedServiceText();
-		const auto sublist = _history->amMonoforumAdmin()
-			? savedSublist()
-			: nullptr;
-		const auto recipient = sublist
-			? sublist->sublistPeer().get()
-			: _history->peer.get();
-		if (_from->isSelf() || sublist) {
-			result.links.push_back(recipient->createOpenLink());
-			result.text = tr::lng_action_paid_message_refund_self(
-				tr::now,
-				lt_count,
-				action.vstars().v,
-				lt_name,
-				tr::link(recipient->shortName(), 1),
-				tr::marked);
-		} else {
-			result.links.push_back(_from->createOpenLink());
-			result.text = tr::lng_action_paid_message_refund(
-				tr::now,
-				lt_count,
-				action.vstars().v,
-				lt_from,
-				tr::link(_from->shortName(), 1),
-				tr::marked);
-		}
-		return result;
-	};
-
-	auto preparePaidMessagesPrice = [&](const MTPDmessageActionPaidMessagesPrice &action) {
-		const auto stars = action.vstars().v;
-		const auto broadcastAllowed = action.is_broadcast_messages_allowed();
-		auto result = PreparedServiceText();
-		result.text = _history->peer->isBroadcast()
-			? (stars > 0
-				? tr::lng_action_direct_messages_paid(
-					tr::now,
-					lt_count,
-					stars,
-					tr::marked)
-				: broadcastAllowed
-				? tr::lng_action_direct_messages_enabled(
-					tr::now,
-					tr::marked)
-				: tr::lng_action_direct_messages_disabled(
-					tr::now,
-					tr::marked))
-			: stars
-			? tr::lng_action_message_price_paid(
-				tr::now,
-				lt_count,
-				stars,
-				tr::marked)
-			: tr::lng_action_message_price_free(
-				tr::now,
-				tr::marked);
-		return result;
-	};
-
 	auto prepareTodoCompletions = [&](const MTPDmessageActionTodoCompletions &) {
 		return prepareTodoCompletionsText();
 	};
@@ -7699,14 +7579,14 @@ void HistoryItem::setServiceMessageByAction(const MTPmessageAction &action) {
 		preparePinMessage,
 		prepareGameScore,
 		preparePhoneCall,
-		preparePaymentSent,
+		PrepareEmptyText<MTPDmessageActionPaymentSent>,
 		prepareScreenshotTaken,
 		prepareCustomAction,
 		prepareBotAllowed,
 		prepareSecureValuesSent,
 		prepareContactSignUp,
 		prepareProximityReached,
-		preparePaymentSentMe,
+		PrepareEmptyText<MTPDmessageActionPaymentSentMe>,
 		PrepareErrorText<MTPDmessageActionSecureValuesSentMe>,
 		prepareGroupCall,
 		prepareInviteToGroupCall,
@@ -7726,15 +7606,15 @@ void HistoryItem::setServiceMessageByAction(const MTPmessageAction &action) {
 		prepareGiftCode,
 		prepareGiveawayLaunch,
 		prepareGiveawayResults,
-		prepareBoostApply,
-		preparePaymentRefunded,
+		PrepareEmptyText<MTPDmessageActionBoostApply>,
+		PrepareEmptyText<MTPDmessageActionPaymentRefunded>,
 		prepareGiftStars,
 		prepareGiftTon,
 		prepareGiftPrize,
 		prepareStarGift,
 		prepareStarGiftUnique,
-		preparePaidMessagesRefunded,
-		preparePaidMessagesPrice,
+		PrepareEmptyText<MTPDmessageActionPaidMessagesRefunded>,
+		PrepareEmptyText<MTPDmessageActionPaidMessagesPrice>,
 		prepareConferenceCall,
 		prepareTodoCompletions,
 		prepareTodoAppendTasks,

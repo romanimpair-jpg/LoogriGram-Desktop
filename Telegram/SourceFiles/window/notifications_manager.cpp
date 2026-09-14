@@ -15,6 +15,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "media/audio/media_audio_track.h"
 #include "media/audio/media_audio.h"
 #include "mtproto/mtproto_config.h"
+#include "core/loogrigram_hidden_content.h"
 #include "history/history.h"
 #include "history/history_item_components.h"
 #include "history/history_item_helpers.h"
@@ -313,6 +314,10 @@ System::SkipState System::skipNotification(
 	const auto thread = item->maybeNotificationThread();
 	if (!thread
 		|| !thread->currentNotification()
+		// LoogriGram: nothing is drawn for a gift, giveaway or paid post, so
+		// nothing should be announced for one either - a toast for a message
+		// that is not in the chat is worse than no toast at all.
+		|| LoogriGram::HiddenContent(item)
 		|| (messageType && item->skipNotification())
 		|| (type == Data::ItemNotificationType::Reaction
 			&& skipSentNotification(item, _sentReactionNotifications))
