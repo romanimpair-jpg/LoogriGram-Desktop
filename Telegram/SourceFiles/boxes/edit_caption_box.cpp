@@ -12,7 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "base/event_filter.h"
 #include "boxes/premium_limits_box.h"
-#include "boxes/premium_preview_box.h"
 #include "boxes/send_files_box.h"
 #include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/field_autocomplete.h"
@@ -1055,13 +1054,11 @@ void EditCaptionBox::setupEmojiPanel() {
 	_emojiPanel->selector()->customEmojiChosen(
 	) | rpl::on_next([=](ChatHelpers::FileChosen data) {
 		const auto info = data.document->sticker();
-		if (info
-			&& info->setType == Data::StickersType::Emoji
-			&& !_controller->session().premium()) {
-			ShowPremiumPreviewBox(
-				_controller,
-				PremiumFeature::AnimatedEmoji);
-		} else {
+		// LoogriGram: as in send_files_box - a premium custom emoji is not
+		// inserted, and no longer answers with the subscription pitch.
+		if (!info
+			|| info->setType != Data::StickersType::Emoji
+			|| _controller->session().premium()) {
 			Data::InsertCustomEmoji(_field.get(), data.document);
 		}
 	}, lifetime());

@@ -18,10 +18,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "ui/text/text_utilities.h"
 #include "boxes/sticker_set_box.h"
-#include "boxes/premium_preview_box.h"
 #include "lottie/lottie_single_player.h"
 #include "window/window_session_controller.h"
-#include "settings/sections/settings_premium.h"
 #include "apiwrap.h"
 #include "styles/style_chat.h"
 
@@ -233,21 +231,16 @@ void StickerToast::showWithTitle(const QString &title) {
 			hideToast();
 			return;
 		} else if (_section == Section::TopicIcon) {
-			if (const auto window = _show->resolveWindow()) {
-				Settings::ShowPremium(window, u"forum_topic_icon"_q);
-			}
+			// LoogriGram: a custom topic icon is subscriber-only, and this
+			// toast's button opened the page selling it.
 			return;
 		}
+		// LoogriGram: an already-installed premium emoji set used to answer
+		// with the animated-emoji pitch instead of opening the set, which is
+		// why the installed sets were looked up here at all. Opening it is
+		// the useful half and is what happens in both cases now.
 		const auto id = _for->sticker()->set;
-		const auto &sets = _for->owner().stickers().sets();
-		const auto i = sets.find(id.id);
-		if (isEmoji
-			&& (i != end(sets))
-			&& (i->second->flags & Data::StickersSetFlag::Installed)) {
-			ShowPremiumPreviewBox(_show, PremiumFeature::AnimatedEmoji);
-		} else {
-			_show->show(Box<StickerSetBox>(_show, id, setType));
-		}
+		_show->show(Box<StickerSetBox>(_show, id, setType));
 		hideToast();
 	});
 }

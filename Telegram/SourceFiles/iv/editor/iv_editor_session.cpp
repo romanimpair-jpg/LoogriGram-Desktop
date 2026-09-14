@@ -23,7 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/timer.h"
 #include "base/weak_qptr.h"
 #include "base/weak_ptr.h"
-#include "boxes/premium_preview_box.h"
 #include "chat_helpers/compose/compose_show.h"
 #include "core/application.h"
 #include "core/core_settings.h"
@@ -65,7 +64,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mainwidget.h"
 #include "mainwindow.h"
 #include "menu/menu_send.h"
-#include "settings/sections/settings_premium.h"
 #include "storage/file_upload.h"
 #include "storage/localimageloader.h"
 #include "storage/storage_account.h"
@@ -1095,7 +1093,7 @@ private:
 		if (!CanUseRichMessages(_session)) {
 			const auto page = _state->richPage();
 			if (!RichPageIsFlattenSafe(page)) {
-				ShowRichMessagesPremiumToast(resolveShow());
+				ShowRichMessagesUnavailableToast(resolveShow());
 				return false;
 			}
 			OfferRichMessagePremiumChoice(
@@ -4742,40 +4740,19 @@ std::shared_ptr<ChatHelpers::Show> ActiveWindowShow(
 	return ArticleSession::ActiveShow(session);
 }
 
-void ShowRichMessagesPremiumToast(std::shared_ptr<ChatHelpers::Show> show) {
+// LoogriGram: this was ShowRichMessagesPremiumToast, and it read "Subscribe
+// to Telegram Premium to be able to send rich articles" over a premium star,
+// with the whole toast a link into the page selling it. Every one of its
+// four callers reaches it when a rich message cannot be sent and cannot even
+// be flattened to plain text, so the useful part is saying the send failed -
+// which it now does, in the words this client already uses for a refused
+// action. Renamed because the old name described the advertisement.
+void ShowRichMessagesUnavailableToast(
+		std::shared_ptr<ChatHelpers::Show> show) {
 	if (!show) {
 		return;
 	}
-	const auto session = &show->session();
-	show->showToast({
-		.text = tr::lng_article_premium_required(
-			tr::now,
-			lt_link,
-			tr::link(tr::bold(
-				tr::lng_article_premium_required_link(tr::now))),
-			tr::marked),
-		.filter = [=](
-				const ClickHandlerPtr &handler,
-				Qt::MouseButton button) {
-			if (button != Qt::LeftButton) {
-				return false;
-			}
-			if (show && show->valid()) {
-				ShowPremiumPreviewToBuy(
-					show,
-					PremiumFeature::RichFormatting);
-			} else if (const auto window
-					= session->tryResolveWindow(nullptr)) {
-				ShowPremiumPreviewToBuy(
-					window,
-					PremiumFeature::RichFormatting);
-			}
-			return true;
-		},
-		.icon = &st::settingsToastStarIcon,
-		.adaptive = true,
-		.duration = Ui::Toast::kDefaultDuration * 2,
-	});
+	show->showToast(tr::lng_cant_do_this(tr::now));
 }
 
 void SetupSendLockBadge(
@@ -4828,7 +4805,7 @@ void OfferRichMessagePremiumChoice(
 		&& !flattened.text.isEmpty()
 		&& (int(flattened.text.size()) <= lengthLimit);
 	if (!sendable) {
-		ShowRichMessagesPremiumToast(std::move(show));
+		ShowRichMessagesUnavailableToast(std::move(show));
 		return;
 	}
 	show->showBox(Box([=](not_null<Ui::GenericBox*> box) {
@@ -4879,20 +4856,12 @@ void OfferRichMessagePremiumChoice(
 			st::boxRowPadding,
 			style::al_top);
 
+		// LoogriGram: a "Subscribe" button stood above these two and opened
+		// the page selling rich formatting. The box still explains that the
+		// formatting will be dropped and still offers to send the message
+		// without it, which is the choice actually available.
 		Ui::AddSkip(box->verticalLayout());
 		Ui::AddSkip(box->verticalLayout());
-		Ui::AddSkip(box->verticalLayout());
-		const auto subscribe = box->addRow(
-			object_ptr<Ui::RoundButton>(
-				box,
-				tr::lng_posts_subscribe(),
-				st::defaultActiveButton),
-			st::boxRowPadding,
-			style::al_justify);
-		subscribe->setClickedCallback([=] {
-			box->closeBox();
-			Settings::ShowPremium(session, u"rich_message"_q);
-		});
 		Ui::AddSkip(box->verticalLayout());
 		const auto plain = box->addRow(
 			object_ptr<Ui::RoundButton>(
@@ -4920,7 +4889,7 @@ void OfferRichMessagePremiumChoice(
 		cancel->setClickedCallback([=] {
 			box->closeBox();
 		});
-		for (const auto &button : { subscribe, plain, cancel }) {
+		for (const auto &button : { plain, cancel }) {
 			button->setFullRadius(true);
 		}
 		Ui::AddSkip(

@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "dialogs/dialogs_search_tags.h"
 
 #include "base/qt/qt_key_modifiers.h"
-#include "boxes/premium_preview_box.h"
 #include "core/click_handler_types.h"
 #include "core/ui_integration.h"
 #include "data/stickers/data_custom_emoji.h"
@@ -41,33 +40,12 @@ namespace {
 	return TextUtilities::SingleLine(result);
 }
 
-[[nodiscard]] ClickHandlerPtr MakePromoLink() {
-	return std::make_shared<LambdaClickHandler>([=](ClickContext context) {
-		const auto my = context.other.value<ClickHandlerContext>();
-		if (const auto controller = my.sessionWindow.get()) {
-			ShowPremiumPreviewBox(
-				controller,
-				PremiumFeature::TagsForMessages);
-		}
-	});
-}
-
-[[nodiscard]] Ui::Text::String FillAdditionalText(int width) {
-	auto emoji = Ui::Text::IconEmoji(&st::dialogsSearchTagArrow);
-	auto result = Ui::Text::String();
-	const auto attempt = [&](const auto &phrase) {
-		result.setMarkedText(
-			st::dialogsSearchTagPromo,
-			phrase(tr::now, lt_arrow, emoji, tr::marked),
-			kMarkupTextOptions);
-		return result.maxWidth() < width;
-	};
-	if (attempt(tr::lng_add_tag_phrase_long)
-		|| attempt(tr::lng_add_tag_phrase)) {
-		return result;
-	}
-	return {};
-}
+// LoogriGram: a non-subscriber saw one pill here reading "Unlock Tags",
+// with a line of explanation beside it, and both opened the subscription
+// pitch for tags. Tagging saved messages is subscriber-only, so the pill is
+// not shown at all rather than shown inert - which takes the whole promo
+// styling with it: its own background, its padlock, its text colour and the
+// hit area that reached across the explanation.
 
 } // namespace
 
@@ -80,7 +58,6 @@ struct SearchTags::Tag {
 	QRect geometry;
 	ClickHandlerPtr link;
 	bool selected = false;
-	bool promo = false;
 };
 
 SearchTags::SearchTags(
@@ -124,7 +101,6 @@ void SearchTags::fill(
 		return std::make_shared<GenericClickHandler>(crl::guard(this, [=](
 				ClickContext context) {
 			if (!premium) {
-				MakePromoLink()->onClick(context);
 				return;
 			} else if (context.button == Qt::RightButton) {
 				_menuRequests.fire_copy(id);
@@ -160,18 +136,6 @@ void SearchTags::fill(
 			_owner->reactions().preloadReactionImageFor(id);
 		}
 	};
-	if (!premium) {
-		const auto text = (list.empty() && _added.empty())
-			? tr::lng_add_tag_button(tr::now)
-			: tr::lng_unlock_tags(tr::now);
-		_tags.push_back({
-			.id = Data::ReactionId(),
-			.text = text,
-			.textWidth = st::reactionInlineTagFont->width(text),
-			.link = MakePromoLink(),
-			.promo = true,
-		});
-	}
 	for (const auto &reaction : list) {
 		if (reaction.count > 0
 			|| ranges::contains(_added, reaction.id)
@@ -194,11 +158,10 @@ void SearchTags::layout() {
 	Expects(_width > 0);
 
 	if (_tags.empty()) {
-		_additionalText = {};
 		_height = 0;
 		return;
 	}
-	const auto &bg = validateBg(false, false);
+	const auto &bg = validateBg(false);
 	const auto skip = st::dialogsSearchTagSkip;
 	const auto size = bg.size() / bg.devicePixelRatio();
 	const auto xbase = size.width();
@@ -206,9 +169,7 @@ void SearchTags::layout() {
 	auto x = 0;
 	auto y = 0;
 	for (auto &tag : _tags) {
-		const auto width = xbase + (tag.promo
-			? std::max(0, tag.textWidth - st::dialogsSearchTagPromoLeft - st::dialogsSearchTagPromoRight)
-			: tag.textWidth);
+		const auto width = xbase + tag.textWidth;
 		if (x > 0 && x + width > _width) {
 			x = 0;
 			y += ybase + skip.y();
@@ -217,13 +178,6 @@ void SearchTags::layout() {
 		x += width + skip.x();
 	}
 	_height = y + ybase + st::dialogsSearchTagBottom;
-	if (_tags.size() == 1 && _tags.front().promo) {
-		_additionalLeft = x - skip.x() + st::dialogsSearchTagPromoSkip;
-		const auto additionalWidth = _width - _additionalLeft;
-		_additionalText = FillAdditionalText(additionalWidth);
-	} else {
-		_additionalText = {};
-	}
 }
 
 void SearchTags::resizeToWidth(int width) {
@@ -249,14 +203,6 @@ rpl::producer<> SearchTags::repaintRequests() const {
 ClickHandlerPtr SearchTags::lookupHandler(QPoint point) const {
 	for (const auto &tag : _tags) {
 		if (tag.geometry.contains(point.x(), point.y())) {
-			return tag.link;
-		} else if (tag.promo
-			&& !_additionalText.isEmpty()
-			&& tag.geometry.united(QRect(
-				_additionalLeft,
-				tag.geometry.y(),
-				_additionalText.maxWidth(),
-				tag.geometry.height())).contains(point.x(), point.y())) {
 			return tag.link;
 		}
 	}
@@ -323,20 +269,14 @@ void SearchTags::paint(
 		const auto geometry = tag.geometry.translated(position);
 		paintBackground(p, geometry, tag);
 		paintText(p, geometry, tag);
-		if (!tag.custom && !tag.promo && tag.image.isNull()) {
+		if (!tag.custom && tag.image.isNull()) {
 			tag.image = _owner->reactions().resolveReactionImageFor(tag.id);
 		}
 		const auto inner = geometry.marginsRemoved(padding);
 		const auto image = QRect(
 			inner.topLeft() + QPoint(skip, skip),
 			QSize(st::reactionInlineImage, st::reactionInlineImage));
-		if (tag.promo) {
-			st::dialogsSearchTagLocked.paintInCenter(p, QRect(
-				inner.x(),
-				inner.y() + skip,
-				size - st::dialogsSearchTagPromoLeft,
-				st::reactionInlineImage));
-		} else if (const auto custom = tag.custom.get()) {
+		if (const auto custom = tag.custom.get()) {
 			const auto textFg = tag.selected
 				? st::dialogsNameFgActive->c
 				: st::dialogsNameFgOver->c;
@@ -351,26 +291,13 @@ void SearchTags::paint(
 			p.drawImage(image.topLeft(), tag.image);
 		}
 	}
-	paintAdditionalText(p, position);
-}
-
-void SearchTags::paintAdditionalText(Painter &p, QPoint position) const {
-	if (_additionalText.isEmpty()) {
-		return;
-	}
-	const auto x = position.x() + _additionalLeft;
-	const auto tag = _tags.front().geometry;
-	const auto height = st::dialogsSearchTagPromo.font->height;
-	const auto y = position.y() + tag.y() + (tag.height() - height) / 2;
-	p.setPen(st::windowSubTextFg);
-	_additionalText.drawLeft(p, x, y, _width - _additionalLeft, _width);
 }
 
 void SearchTags::paintBackground(
 		QPainter &p,
 		QRect geometry,
 		const Tag &tag) const {
-	const auto &image = validateBg(tag.selected, tag.promo);
+	const auto &image = validateBg(tag.selected);
 	const auto ratio = int(image.devicePixelRatio());
 	const auto size = image.size() / ratio;
 	if (const auto fill = geometry.width() - size.width(); fill > 0) {
@@ -384,7 +311,7 @@ void SearchTags::paintBackground(
 			QRect(QPoint(), QSize(left, size.height()) * ratio));
 		p.fillRect(
 			QRect(x + left, y, fill, size.height()),
-			bgColor(tag.selected, tag.promo));
+			bgColor(tag.selected));
 		p.drawImage(
 			QRect(x + left + fill, y, right, size.height()),
 			image,
@@ -403,33 +330,27 @@ void SearchTags::paintText(
 	if (tag.text.isEmpty()) {
 		return;
 	}
-	p.setPen(tag.promo
-		? st::lightButtonFgOver
-		: tag.selected
+	p.setPen(tag.selected
 		? st::dialogsTextFgActive
 		: st::windowSubTextFg);
 	p.setFont(st::reactionInlineTagFont);
-	const auto position = tag.promo
-		? st::reactionInlineTagPromoPosition
-		: st::reactionInlineTagNamePosition;
+	const auto position = st::reactionInlineTagNamePosition;
 	const auto x = geometry.x() + position.x();
 	const auto y = geometry.y() + position.y();
 	p.drawText(x, y + st::reactionInlineTagFont->ascent, tag.text);
 }
 
-QColor SearchTags::bgColor(bool selected, bool promo) const {
-	return promo
-		? st::lightButtonBgOver->c
-		: selected
+QColor SearchTags::bgColor(bool selected) const {
+	return selected
 		? st::dialogsBgActive->c
 		: st::dialogsBgOver->c;
 }
 
-const QImage &SearchTags::validateBg(bool selected, bool promo) const {
+const QImage &SearchTags::validateBg(bool selected) const {
 	using namespace HistoryView::Reactions;
-	auto &image = promo ? _promoBg : selected ? _selectedBg : _normalBg;
+	auto &image = selected ? _selectedBg : _normalBg;
 	if (image.isNull()) {
-		const auto tagBg = bgColor(selected, promo);
+		const auto tagBg = bgColor(selected);
 		const auto dotBg = st::transparent->c;
 		image = InlineList::PrepareTagBg(tagBg, dotBg);
 	}

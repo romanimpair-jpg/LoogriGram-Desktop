@@ -21,7 +21,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/text/format_values.h"
 #include "ui/ui_utility.h"
 #include "base/unixtime.h"
-#include "boxes/premium_preview_box.h"
 #include "window/window_session_controller.h"
 #include "window/window_controller.h"
 #include "main/main_session.h"
@@ -322,7 +321,8 @@ bool EmojiStatusPanel::filter(
 	if (_chooseFilter) {
 		return _chooseFilter(chosenId);
 	} else if (chosenId && !controller->session().premium()) {
-		ShowPremiumPreviewBox(controller, PremiumFeature::EmojiStatus);
+		// LoogriGram: the status is still refused - the server only accepts
+		// one from a subscriber - without the pitch that used to follow.
 		return false;
 	}
 	return true;

@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "base/timer_rpl.h"
 #include "base/unixtime.h"
-#include "boxes/premium_preview_box.h"
 #include "chat_helpers/compose/compose_show.h"
 #include "data/data_peer_values.h"
 #include "data/data_session.h"
@@ -17,7 +16,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/profile/info_profile_icon.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
-#include "settings/sections/settings_premium.h"
 #include "ui/controls/feature_list.h"
 #include "ui/layers/generic_box.h"
 #include "ui/text/text_utilities.h"
@@ -332,12 +330,10 @@ struct State {
 			if (now.mode.enabledTill > now.now) {
 				show->showToast(ToastActivated());
 				box->closeBox();
-			} else if (!now.premium) {
-				data->requested = false;
-				if (const auto window = show->resolveWindow()) {
-					ShowPremiumPreviewBox(window, PremiumFeature::Stories);
-					window->window().activate();
-				}
+			// LoogriGram: a !premium branch here opened the stories pitch.
+			// Both ways into this box - the stories menu item and the
+			// viewer's own control - already require premiumPossible(),
+			// which is premium() here, so it could not be reached.
 			} else if (now.mode.cooldownTill > now.now) {
 				show->showToast(ToastCooldown());
 				box->closeBox();

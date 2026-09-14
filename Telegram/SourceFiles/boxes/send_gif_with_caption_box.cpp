@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "api/api_editing.h"
 #include "base/event_filter.h"
-#include "boxes/premium_preview_box.h"
 #include "chat_helpers/compose/compose_show.h"
 #include "chat_helpers/field_autocomplete.h"
 #include "chat_helpers/message_field.h"
@@ -69,8 +68,7 @@ void SetupCaptionFieldInBox(
 		not_null<Window::SessionController*> controller,
 		not_null<Ui::InputField*> field,
 		PeerData *panelPeer,
-		Fn<bool(not_null<DocumentData*>)> allowWithoutPremium,
-		PremiumFeature premiumFeature) {
+		Fn<bool(not_null<DocumentData*>)> allowWithoutPremium) {
 	using Limit = HistoryView::Controls::CharactersLimitLabel;
 	struct State final {
 		base::unique_qptr<ChatHelpers::TabbedPanel> emojiPanel;
@@ -102,12 +100,13 @@ void SetupCaptionFieldInBox(
 	emojiPanel->selector()->customEmojiChosen(
 	) | rpl::on_next([=](ChatHelpers::FileChosen data) {
 		const auto info = data.document->sticker();
-		if (info
-			&& info->setType == Data::StickersType::Emoji
-			&& !allowWithoutPremium(data.document)
-			&& !controller->session().premium()) {
-			ShowPremiumPreviewBox(controller, premiumFeature);
-		} else {
+		// LoogriGram: a premium custom emoji is not inserted, and no longer
+		// answers with the subscription pitch - which is what the
+		// premiumFeature parameter existed to choose, so it is gone too.
+		if (!info
+			|| info->setType != Data::StickersType::Emoji
+			|| allowWithoutPremium(data.document)
+			|| controller->session().premium()) {
 			Data::InsertCustomEmoji(field, data.document);
 		}
 	}, field->lifetime());
@@ -491,8 +490,7 @@ struct State final {
 		controller->session().user(),
 		[](not_null<DocumentData*>) {
 			return false;
-		},
-		PremiumFeature::AnimatedEmoji);
+		});
 
 	return input;
 }

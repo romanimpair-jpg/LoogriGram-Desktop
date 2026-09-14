@@ -148,7 +148,6 @@ public:
 
 	[[nodiscard]] rpl::producer<EmojiChosen> chosen() const;
 	[[nodiscard]] rpl::producer<FileChosen> customChosen() const;
-	[[nodiscard]] rpl::producer<> jumpedToPremium() const;
 	[[nodiscard]] rpl::producer<> escapes() const;
 
 	void provideRecent(const std::vector<EmojiStatusId> &customRecentList);
@@ -607,7 +606,6 @@ private:
 
 	rpl::event_stream<EmojiChosen> _chosen;
 	rpl::event_stream<FileChosen> _customChosen;
-	rpl::event_stream<> _jumpedToPremium;
 
 };
 

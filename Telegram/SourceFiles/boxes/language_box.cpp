@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "base/platform/base_platform_info.h"
 #include "boxes/abstract_box.h"
-#include "boxes/premium_preview_box.h"
 #include "boxes/translate_box.h"
 #include "core/application.h"
 #include "data/data_peer_values.h"
@@ -1629,10 +1628,10 @@ void LanguageBox::setupTop(not_null<Ui::VerticalLayout*> container) {
 	translateChat->toggledValue(
 	) | rpl::filter([=](bool checked) {
 		const auto premium = _controller->session().premium();
+		// LoogriGram: the toggle stays locked and still snaps back - chat
+		// translation is subscriber-only on the server - without the pitch
+		// that used to open alongside.
 		if (checked && !premium) {
-			ShowPremiumPreviewToBuy(
-				_controller,
-				PremiumFeature::RealTimeTranslation);
 			_translateChatTurnOff.fire(false);
 		}
 		return premium

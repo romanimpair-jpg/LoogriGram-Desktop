@@ -63,27 +63,23 @@ private:
 		const QColor &textColor) const;
 	void layout();
 	[[nodiscard]] std::vector<Data::ReactionId> collectSelected() const;
-	[[nodiscard]] QColor bgColor(bool selected, bool promo) const;
-	[[nodiscard]] const QImage &validateBg(bool selected, bool promo) const;
-	void paintAdditionalText(Painter &p, QPoint position) const;
+	[[nodiscard]] QColor bgColor(bool selected) const;
+	[[nodiscard]] const QImage &validateBg(bool selected) const;
 	void paintBackground(QPainter &p, QRect geometry, const Tag &tag) const;
 	void paintText(QPainter &p, QRect geometry, const Tag &tag) const;
 
 	const not_null<Data::Session*> _owner;
 	std::vector<Data::ReactionId> _added;
 	std::vector<Tag> _tags;
-	Ui::Text::String _additionalText;
 	rpl::event_stream<> _selectedChanges;
 	rpl::event_stream<> _repaintRequests;
 	rpl::event_stream<Data::ReactionId> _menuRequests;
 	mutable QImage _normalBg;
 	mutable QImage _selectedBg;
-	mutable QImage _promoBg;
 	mutable QImage _customCache;
 	mutable int _customSkip = 0;
 	rpl::variable<int> _height;
 	int _width = 0;
-	int _additionalLeft = 0;
 
 	rpl::lifetime _lifetime;
 

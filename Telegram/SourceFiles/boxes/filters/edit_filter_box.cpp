@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/filters/edit_filter_chats_preview.h"
 #include "boxes/filters/edit_filter_links.h"
 #include "boxes/premium_limits_box.h"
-#include "boxes/premium_preview_box.h"
 #include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/message_field.h"
 #include "chat_helpers/tabbed_panel.h"
@@ -674,13 +673,11 @@ void EditFilterBox(
 	state->emojiPanel->selector()->customEmojiChosen(
 	) | rpl::on_next([=](ChatHelpers::FileChosen data) {
 		const auto info = data.document->sticker();
-		if (info
-			&& info->setType == Data::StickersType::Emoji
-			&& !window->session().premium()) {
-			ShowPremiumPreviewBox(
-				window,
-				PremiumFeature::AnimatedEmoji);
-		} else {
+		// LoogriGram: a premium custom emoji is not inserted, and no
+		// longer answers with the subscription pitch.
+		if (!info
+			|| info->setType != Data::StickersType::Emoji
+			|| window->session().premium()) {
 			Data::InsertCustomEmoji(name, data.document);
 		}
 	}, name->lifetime());
@@ -939,10 +936,12 @@ void EditFilterBox(
 				}
 				state->colorIndex = now;
 			});
+			// LoogriGram: for a non-subscriber these colour buttons had
+			// their handler replaced by one that opened the folder-tags
+			// pitch. Choosing a colour is subscriber-only, so they simply
+			// do not respond.
 			if (!session->premium()) {
-				button->setClickedCallback([w = window] {
-					ShowPremiumPreviewToBuy(w, PremiumFeature::FilterTags);
-				});
+				button->setClickedCallback(nullptr);
 			}
 		}
 		line->sizeValue() | rpl::on_next([=](const QSize &size) {

@@ -43,8 +43,7 @@ void SetupCaptionFieldInBox(
 	not_null<Window::SessionController*> controller,
 	not_null<Ui::InputField*> field,
 	PeerData *panelPeer,
-	Fn<bool(not_null<DocumentData*>)> allowWithoutPremium,
-	PremiumFeature premiumFeature);
+	Fn<bool(not_null<DocumentData*>)> allowWithoutPremium);
 
 void EditCaptionBox(
 	not_null<Ui::GenericBox*> box,

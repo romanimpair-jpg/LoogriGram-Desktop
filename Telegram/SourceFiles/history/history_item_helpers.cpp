@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "api/api_reactions_notify_settings.h"
 #include "api/api_text_entities.h"
-#include "boxes/premium_preview_box.h"
 #include "calls/calls_instance.h"
 #include "data/components/ephemeral_messages.h"
 #include "data/stickers/data_custom_emoji.h"
@@ -1393,13 +1392,10 @@ void ShowTrialTranscribesToast(int left, TimeId until) {
 	if (!window) {
 		return;
 	}
-	const auto filter = [=](const auto &...) {
-		if (const auto controller = window->sessionController()) {
-			ShowPremiumPreviewBox(controller, PremiumFeature::VoiceToText);
-			window->activate();
-		}
-		return false;
-	};
+	// LoogriGram: how many free transcriptions are left, and when they come
+	// back, is worth knowing and stays. Tapping it opened the voice-to-text
+	// pitch and raised the main window to do it; that is gone, so the toast
+	// needs no click filter.
 	const auto date = langDateTime(base::unixtime::parse(until));
 	constexpr auto kToastDuration = crl::time(4000);
 	const auto text = left

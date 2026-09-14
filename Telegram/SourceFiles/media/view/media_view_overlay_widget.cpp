@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/qt/qt_common_adapters.h"
 #include "base/timer_rpl.h"
 #include "lang/lang_keys.h"
-#include "boxes/premium_preview_box.h"
 #include "calls/calls_instance.h"
 #include "core/application.h"
 #include "core/click_handler_types.h"
@@ -206,7 +205,6 @@ constexpr auto kIdsPreloadAfter = 28;
 constexpr auto kLeftSiblingTextureIndex = 1;
 constexpr auto kRightSiblingTextureIndex = 2;
 constexpr auto kStoriesControlsOpacity = 1.;
-constexpr auto kStorySavePromoDuration = 3 * crl::time(1000);
 
 class PipDelegate final : public Pip::Delegate {
 public:
@@ -1588,27 +1586,11 @@ void OverlayWidget::checkForSaveLoaded() {
 	}
 }
 
-void OverlayWidget::showPremiumDownloadPromo() {
-	const auto filter = [=](const auto &...) {
-		if (const auto window = uiShow()->resolveWindow()) {
-			ShowPremiumPreviewBox(window, PremiumFeature::Stories);
-			window->window().activate();
-		}
-		return false;
-	};
-	uiShow()->showToast({
-		.text = tr::lng_stories_save_promo(
-			tr::now,
-			lt_link,
-			tr::link(
-				tr::bold(
-					tr::lng_send_as_premium_required_link(tr::now))),
-			tr::marked),
-		.filter = filter,
-		.adaptive = true,
-		.duration = kStorySavePromoDuration,
-	});
-}
+// LoogriGram: showPremiumDownloadPromo said "Subscribe to Telegram Premium
+// to save other people's stories" and opened the subscription page when
+// tapped - an advertisement with no informative half to keep. Both callers
+// now say the story cannot be saved, which is what the sibling branch of
+// showCopyMediaRestriction already says for a story protected outright.
 
 void OverlayWidget::updateControls() {
 	if (_document && documentBubbleShown()) {
@@ -3133,7 +3115,7 @@ void OverlayWidget::saveAs() {
 		return;
 	} else if (hasCopyMediaRestriction()) {
 		Assert(_stories != nullptr);
-		showPremiumDownloadPromo();
+		uiShow()->showToast(tr::lng_error_nocopy_story(tr::now));
 		return;
 	}
 	QString file;
@@ -3303,7 +3285,7 @@ void OverlayWidget::downloadMedia() {
 		return saveAs();
 	} else if (hasCopyMediaRestriction()) {
 		if (_stories && !hasCopyMediaRestriction(true)) {
-			showPremiumDownloadPromo();
+			uiShow()->showToast(tr::lng_error_nocopy_story(tr::now));
 		}
 		return;
 	}

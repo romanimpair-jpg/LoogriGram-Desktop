@@ -25,7 +25,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/edit_caption_box.h"
 #include "boxes/moderate_messages_box.h"
 #include "boxes/premium_limits_box.h"
-#include "boxes/premium_preview_box.h"
 #include "boxes/star_gift_box.h"
 #include "boxes/peers/edit_peer_permissions_box.h" // ShowAboutGigagroup.
 #include "boxes/peers/edit_peer_requests_box.h"
@@ -1887,10 +1886,11 @@ void HistoryWidget::initFieldAutocomplete() {
 		const auto shortcutId = messages->lookupShortcutId(shortcut);
 		if (shortcut.isEmpty()) {
 			controller()->showSettings(Settings::QuickRepliesId());
+		// LoogriGram: a shortcut typed by someone who cannot use quick
+		// replies used to open the pitch for them. Nothing is sent and
+		// nothing is offered.
 		} else if (!_peer->session().premium()) {
-			ShowPremiumPreviewToBuy(
-				controller(),
-				PremiumFeature::QuickReplies);
+			return;
 		} else if (shortcutId) {
 			session().api().sendShortcutMessages(_peer, shortcutId);
 			session().api().finishForwarding(prepareSendAction({}));
@@ -5515,7 +5515,7 @@ void HistoryWidget::sendRichDraft(
 					}
 				});
 		} else {
-			Iv::Editor::ShowRichMessagesPremiumToast(
+			Iv::Editor::ShowRichMessagesUnavailableToast(
 				controller()->uiShow());
 		}
 		return;

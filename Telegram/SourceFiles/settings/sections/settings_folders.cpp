@@ -11,7 +11,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "boxes/filters/edit_filter_box.h"
 #include "boxes/premium_limits_box.h"
-#include "boxes/premium_preview_box.h"
 #include "core/application.h"
 #include "core/ui_integration.h"
 #include "data/data_chat_filters.h"
@@ -25,7 +24,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lottie/lottie_icon.h"
 #include "main/main_session.h"
 #include "settings/sections/settings_main.h"
-#include "settings/sections/settings_premium.h"
 #include "settings/settings_builder.h"
 #include "settings/settings_common_session.h"
 #include "ui/boxes/confirm_box.h"
@@ -1045,8 +1043,9 @@ void BuildTagsSection(SectionBuilder &builder, not_null<FoldersState*> state) {
 		tagsButton->toggledValue(
 		) | rpl::filter([=](bool checked) {
 			const auto premium = session->premium();
+			// LoogriGram: the toggle still snaps back - folder tags are
+			// subscriber-only - without opening the pitch alongside.
 			if (checked && !premium) {
-				ShowPremiumPreviewToBuy(controller, PremiumFeature::FilterTags);
 				tagsState->tagsTurnOff.fire(false);
 			}
 			if (!premium) {
@@ -1087,22 +1086,14 @@ void BuildTagsSection(SectionBuilder &builder, not_null<FoldersState*> state) {
 	builder.addSkip();
 
 	builder.add([=](const WidgetContext &ctx) {
-		auto premium = Data::AmPremiumValue(session);
-		const auto about = Ui::AddDividerText(
+		// LoogriGram: for a non-subscriber this line read "Subscribe to
+		// Telegram Premium to display folder names..." and was a link into
+		// the page selling it. Everyone gets the plain description of what
+		// the setting does; the toggle above stays locked, which is what
+		// says it cannot be turned on.
+		Ui::AddDividerText(
 			ctx.container,
-			rpl::conditional(
-				rpl::duplicate(premium),
-				tr::lng_filters_enable_tags_about(tr::rich),
-				tr::lng_filters_enable_tags_about_premium(
-					lt_link,
-					tr::lng_effect_premium_link() | rpl::map([](QString t) {
-						return tr::link(std::move(t), u"internal:"_q);
-					}),
-					tr::rich)));
-		about->setClickHandlerFilter([=](const auto &...) {
-			Settings::ShowPremium(ctx.controller, u"folder_tags"_q);
-			return true;
-		});
+			tr::lng_filters_enable_tags_about(tr::rich));
 		return SectionBuilder::WidgetToAdd{};
 	});
 }

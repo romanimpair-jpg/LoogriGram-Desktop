@@ -21,7 +21,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peers/choose_peer_box.h"
 #include "boxes/peers/create_managed_bot_box.h"
 #include "boxes/peer_list_controllers.h"
-#include "boxes/premium_preview_box.h"
 #include "boxes/report_messages_box.h"
 #include "boxes/share_box.h"
 #include "chat_helpers/stickers_lottie.h"
@@ -64,7 +63,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mainwidget.h"
 #include "payments/payments_checkout_process.h"
 #include "payments/payments_non_panel_process.h"
-#include "settings/sections/settings_premium.h"
+#include "settings/sections/settings_premium.h" // MakeEmojiStatusPreview.
 #include "storage/storage_account.h"
 #include "storage/storage_domain.h"
 #include "ui/basic_click_handlers.h"
@@ -523,17 +522,11 @@ std::unique_ptr<Ui::RpWidget> MakeEmojiSetStatusPreview(
 	return result;
 }
 
+// LoogriGram: a bot asking to set our emoji status used to be refused by
+// opening the subscription pitch and raising the main window over whatever
+// the bot was doing. The refusal stands; the advertisement does not.
 bool CheckEmojiStatusPremium(not_null<UserData*> bot) {
-	if (bot->session().premium()) {
-		return true;
-	}
-	const auto window = ChatHelpers::ResolveWindowDefault()(
-		&bot->session());
-	if (window) {
-		ShowPremiumPreviewBox(window, PremiumFeature::EmojiStatus);
-		window->window().activate();
-	}
-	return false;
+	return bot->session().premium();
 }
 
 void ConfirmEmojiStatusAccessBox(

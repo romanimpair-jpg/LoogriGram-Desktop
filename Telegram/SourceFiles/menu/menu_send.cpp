@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/event_filter.h"
 #include "base/unixtime.h"
 #include "boxes/abstract_box.h"
-#include "boxes/premium_preview_box.h"
 #include "calls/group/calls_group_stars_box.h"
 #include "chat_helpers/compose/compose_show.h"
 #include "chat_helpers/stickers_emoji_pack.h"
@@ -52,7 +51,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_session.h"
 #include "main/main_session.h"
 #include "apiwrap.h"
-#include "settings/sections/settings_premium.h"
 #include "window/themes/window_theme.h"
 #include "window/section_widget.h"
 #include "styles/style_chat.h"
@@ -104,7 +102,6 @@ private:
 	void paintEvent(QPaintEvent *e) override;
 	void mousePressEvent(QMouseEvent *e) override;
 
-	[[nodiscard]] bool canSend() const;
 
 	void setupGeometry(QPoint position);
 	void setupBackground();
@@ -132,7 +129,6 @@ private:
 	const AdminLog::OwnedItem _replyTo;
 	const AdminLog::OwnedItem _item;
 	const std::unique_ptr<Ui::FlatButton> _send;
-	const std::unique_ptr<Ui::PaddingWrap<Ui::FlatLabel>> _premiumPromoLabel;
 	const not_null<Ui::RpWidget*> _bottom;
 	const Fn<void()> _close;
 	const Fn<void(Action, Details)> _actionWithEffect;
@@ -267,25 +263,11 @@ EffectPreview::EffectPreview(
 	_replyTo->data()->fullId(),
 	tr::lng_settings_chat_message_reply(tr::now),
 	Data::Reactions::kFakeEffectId))
-, _send(canSend()
-	? std::make_unique<BottomRounded>(
-		this,
-		tr::lng_effect_send(tr::now),
-		st::effectPreviewSend)
-	: nullptr)
-, _premiumPromoLabel(canSend()
-	? nullptr
-	: std::make_unique<Ui::PaddingWrap<Ui::FlatLabel>>(
-		this,
-		object_ptr<Ui::FlatLabel>(
-			this,
-			tr::lng_effect_premium(
-				lt_link,
-				tr::lng_effect_premium_link(tr::link),
-				tr::marked),
-			st::effectPreviewPromoLabel),
-		st::effectPreviewPromoPadding))
-, _bottom(_send ? ((Ui::RpWidget*)_send.get()) : _premiumPromoLabel.get())
+, _send(std::make_unique<BottomRounded>(
+	this,
+	tr::lng_effect_send(tr::now),
+	st::effectPreviewSend))
+, _bottom(_send.get())
 , _close(done)
 , _actionWithEffect(ComposeActionWithEffect(action, _effectId, done))
 , _boxShadow(st::previewMenu.animation.shadow) {
@@ -512,31 +494,20 @@ void EffectPreview::createLottie() {
 	}, raw->lifetime());
 }
 
-bool EffectPreview::canSend() const {
-	return !_effect.premium || _show->session().premium();
-}
-
+// LoogriGram: a premium effect used to replace the Send button with a line
+// reading "Subscribe to Telegram Premium to add this animated effect". It
+// could never appear: LookupPossibleEffects filters the list by
+// premiumPossible(), which is premium() here, so a non-subscriber is never
+// shown a premium effect to preview in the first place. canSend() said the
+// same thing twice and is gone with it.
 void EffectPreview::setupSend(Details details) {
-	if (_send) {
-		_send->setClickedCallback([=] {
-			_actionWithEffect({}, details);
-		});
-		const auto type = details.type;
-		SetupMenuAndShortcuts(_send.get(), _show, [=] {
-			return Details{ .type = type };
-		}, _actionWithEffect);
-	} else {
-		_premiumPromoLabel->entity()->setClickHandlerFilter([=](auto&&...) {
-			const auto window = _show->resolveWindow();
-			if (window) {
-				if (const auto onstack = _close) {
-					onstack();
-				}
-				ShowPremiumPreviewBox(window, PremiumFeature::Effects);
-			}
-			return false;
-		});
-	}
+	_send->setClickedCallback([=] {
+		_actionWithEffect({}, details);
+	});
+	const auto type = details.type;
+	SetupMenuAndShortcuts(_send.get(), _show, [=] {
+		return Details{ .type = type };
+	}, _actionWithEffect);
 }
 
 bool EffectPreview::checkIconBecameLoaded() {

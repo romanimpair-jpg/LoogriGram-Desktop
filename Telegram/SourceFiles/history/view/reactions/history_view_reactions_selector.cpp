@@ -33,7 +33,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/stickers_list_footer.h"
 #include "chat_helpers/stickers_list_widget.h"
 #include "window/window_session_controller.h"
-#include "boxes/premium_preview_box.h"
 #include "mainwidget.h"
 #include "apiwrap.h"
 #include "base/call_delayed.h"
@@ -274,7 +273,6 @@ Selector::Selector(
 , _listMode(mode)
 , _paused(std::move(paused))
 , _mediaPreviewParent(mediaPreviewParent)
-, _jumpedToPremium([=] { close(false); })
 , _cachedRound(
 	QSize(2 * st::reactStripSkip + st::reactStripSize, st::reactStripHeight),
 	st::reactionCornerShadow,
@@ -1165,9 +1163,6 @@ void Selector::createList() {
 			.globalGeometry = data.messageSendingFrom.globalStartGeometry,
 		});
 	}, _list->lifetime());
-
-	_list->jumpedToPremium(
-	) | rpl::on_next(_jumpedToPremium, _list->lifetime());
 
 	const auto inner = rect().marginsRemoved(marginsForShadow());
 	const auto footer = _reactions.customAllowed

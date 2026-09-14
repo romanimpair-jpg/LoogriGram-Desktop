@@ -68,7 +68,8 @@ struct ComposeBoxOptions {
 
 [[nodiscard]] std::shared_ptr<ChatHelpers::Show> ActiveWindowShow(
 	not_null<Main::Session*> session);
-void ShowRichMessagesPremiumToast(std::shared_ptr<ChatHelpers::Show> show);
+void ShowRichMessagesUnavailableToast(
+	std::shared_ptr<ChatHelpers::Show> show);
 [[nodiscard]] bool CanAuthorRichMessages(not_null<Main::Session*> session);
 [[nodiscard]] bool SessionPremium(not_null<Main::Session*> session);
 [[nodiscard]] rpl::producer<bool> AmPremiumValue(

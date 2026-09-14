@@ -87,7 +87,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_session_controller.h"
 #include "window/window_controller.h"
 #include "settings/sections/settings_advanced.h"
-#include "settings/sections/settings_premium.h"
 #include "settings/settings_common.h"
 #include "support/support_helper.h"
 #include "info/info_controller.h"
@@ -125,7 +124,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peers/edit_participants_box.h"
 #include "boxes/peers/edit_peer_info_box.h"
 #include "boxes/peers/manage_community_box.h"
-#include "boxes/premium_preview_box.h"
 #include "styles/style_chat.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_credits.h"
@@ -1527,26 +1525,15 @@ void ShowDisableSharingBox(
 				st::boxRowPadding);
 		}
 
-		const auto button = box->addButton(rpl::single(QString()), [=] {
-			if (peer->session().premium()) {
-				toggleNoForwards(true);
-				box->closeBox();
-			} else {
-				ShowPremiumPreviewBox(controller, PremiumFeature::NoForwards);
-			}
+		// LoogriGram: this button wore a padlock and sold a subscription for
+		// anyone who could not use it. addToggleNoForwards no longer offers
+		// the menu item to them at all, so only the acting half is left.
+		box->addButton(rpl::single(TextWithEntities{
+			tr::lng_disable_sharing_button(tr::now)
+		}), [=] {
+			toggleNoForwards(true);
+			box->closeBox();
 		});
-		button->setText(
-			Data::AmPremiumValue(&peer->session())
-			| rpl::map([](bool premium) {
-				if (premium) {
-					return TextWithEntities{
-						tr::lng_disable_sharing_button(tr::now) };
-				}
-				return Ui::Text::IconEmoji(
-					&st::disableSharingButtonLock
-				).append(
-					' ' + tr::lng_disable_sharing_unlock(tr::now));
-			}));
 
 		box->setShowFinishedCallback([animate = std::move(icon.animate)] {
 			animate(anim::repeat::once);
@@ -1586,6 +1573,13 @@ void Filler::addToggleNoForwards() {
 		}).send();
 	};
 	const auto disabledNow = !user->allowsForwarding();
+	// LoogriGram: turning sharing off is subscriber-only on the server, so
+	// the item is offered only when it can act - always to turn it back on,
+	// and to turn it off only for a subscriber. Upstream offered it to
+	// everyone and answered with the pitch.
+	if (!disabledNow && !peer->session().premium()) {
+		return;
+	}
 	_addAction(disabledNow
 		? tr::lng_enable_sharing(tr::now)
 		: tr::lng_disable_sharing(tr::now), [=] {
@@ -1621,11 +1615,7 @@ void Filler::addToggleNoForwards() {
 			settings.resetDisableSharingBoxShown();
 			peer->session().saveSettingsDelayed();
 #endif
-			if (peer->session().premium()) {
-				toggleNoForwards(true);
-			} else {
-				ShowPremiumPreviewBox(controller, PremiumFeature::NoForwards);
-			}
+			toggleNoForwards(true);
 			return;
 		}
 		settings.incrementDisableSharingBoxShown();
@@ -2488,15 +2478,11 @@ void PeerMenuTodoWantsPremium(TodoWantsPremium type) {
 	if (!window) {
 		return;
 	}
-	const auto filter = [=](const auto &...) {
-		if (const auto controller = window->sessionController()) {
-			ShowPremiumPreviewBox(controller, PremiumFeature::TodoLists);
-			window->activate();
-		}
-		return false;
-	};
-	const auto link = tr::link(
-		tr::semibold(tr::lng_todo_premium_link(tr::now)));
+	// LoogriGram: "Only subscribers of Telegram Premium can create
+	// Checklists" is true either way and stays; the name of the
+	// subscription is plain semibold text rather than a link into the page
+	// that sells it, so the toast needs no click filter.
+	const auto link = tr::semibold(tr::lng_todo_premium_link(tr::now));
 	const auto text = [&] {
 		switch (type) {
 		case TodoWantsPremium::Create: return tr::lng_todo_create_premium;
@@ -2512,7 +2498,6 @@ void PeerMenuTodoWantsPremium(TodoWantsPremium type) {
 			lt_link,
 			link,
 			tr::marked),
-		.filter = filter,
 		.duration = kToastDuration,
 	});
 }

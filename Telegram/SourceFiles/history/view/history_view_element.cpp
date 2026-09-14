@@ -35,7 +35,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "iv/iv_cached_media.h"
 #include "iv/iv_rich_page.h"
 #include "base/unixtime.h"
-#include "boxes/premium_preview_box.h"
 #include "core/application.h"
 #include "core/core_settings.h"
 #include "core/click_handler_types.h"
@@ -2835,14 +2834,14 @@ void Element::refreshReactions() {
 				const auto wasChosen = ranges::contains(
 					item->chosenReactions(),
 					id);
+				// LoogriGram: clicking a tag searches for it, and used to
+				// answer a non-subscriber with the tags pitch instead.
+				// Searching by tag is subscriber-only, so the click simply
+				// does nothing for everyone else.
 				if (item->reactionsAreTags()) {
 					if (item->history()->session().premium()) {
 						const auto tag = Data::SearchTagToQuery(id);
 						HashtagClickHandler(tag).onClick(context);
-					} else if (controller) {
-						ShowPremiumPreviewBox(
-							controller,
-							PremiumFeature::TagsForMessages);
 					}
 					return;
 				}

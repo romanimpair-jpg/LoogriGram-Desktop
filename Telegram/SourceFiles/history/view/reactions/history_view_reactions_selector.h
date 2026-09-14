@@ -200,7 +200,6 @@ private:
 	const ChatHelpers::EmojiListMode _listMode;
 	const Fn<bool()> _paused;
 	QWidget *_mediaPreviewParent = nullptr;
-	Fn<void()> _jumpedToPremium;
 	Ui::RoundAreaWithShadow _cachedRound;
 	std::unique_ptr<Strip> _strip;
 	std::unique_ptr<Ui::FlatLabel> _about;

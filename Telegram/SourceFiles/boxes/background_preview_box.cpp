@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "base/unixtime.h"
 #include "boxes/peers/edit_peer_color_box.h"
-#include "boxes/premium_preview_box.h"
 #include "lang/lang_keys.h"
 #include "mainwidget.h"
 #include "window/themes/window_theme.h"
@@ -41,7 +40,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_file_origin.h"
 #include "data/data_peer_values.h"
 #include "data/data_premium_limits.h"
-#include "settings/sections/settings_premium.h"
 #include "storage/file_upload.h"
 #include "storage/localimageloader.h"
 #include "window/window_session_controller.h"
@@ -763,22 +761,20 @@ void BackgroundPreviewBox::applyForPeer() {
 	forMe->setClickedCallback([=] {
 		applyForPeer(false);
 	});
-	using namespace rpl::mappers;
-	const auto forBoth = ::Settings::CreateLockedButton(
+	// LoogriGram: this was a padlocked button that answered a non-subscriber
+	// with the wallpaper pitch. It could not be reached by one: the overlay
+	// it sits in is only built when premiumPossible(), which is premium()
+	// here, so the lock was never engaged and the pitch never shown. Plain
+	// button, one thing it does.
+	const auto forBoth = CreateChild<RoundButton>(
 		overlay,
 		tr::lng_background_apply_both(
+			tr::now,
 			lt_user,
-			rpl::single(_forPeer->shortName())),
-		st::backgroundConfirm,
-		Data::AmPremiumValue(&_forPeer->session()) | rpl::map(!_1));
+			_forPeer->shortName()),
+		st::backgroundConfirm);
 	forBoth->setClickedCallback([=] {
-		if (_forPeer->session().premium()) {
-			applyForPeer(true);
-		} else {
-			ShowPremiumPreviewBox(
-				_controller->uiShow(),
-				PremiumFeature::Wallpapers);
-		}
+		applyForPeer(true);
 	});
 	const auto cancel = CreateChild<RoundButton>(
 		overlay,

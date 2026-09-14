@@ -12,7 +12,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/ui_utility.h"
 #include "ui/chat/chat_theme.h"
 #include "ui/painter.h"
-#include "boxes/premium_preview_box.h"
+#include "boxes/premium_preview_box.h" // ShowStickerPreviewBox.
 #include "data/data_peer.h"
 #include "data/data_user.h"
 #include "data/data_document.h"
@@ -27,7 +27,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "menu/menu_send.h"
-#include "settings/sections/settings_premium.h"
 #include "ui/text/text_custom_emoji.h"
 #include "ui/toast/toast.h"
 #include "window/section_memento.h"
@@ -618,12 +617,16 @@ bool ShowReactPremiumError(
 		not_null<SessionController*> controller,
 		not_null<HistoryItem*> item,
 		const Data::ReactionId &id) {
+	// LoogriGram: both premium branches of this function answered with the
+	// subscription pitch for the feature in question - tags for Saved
+	// Messages, and custom-emoji reactions. They still refuse the reaction,
+	// which is right because the server would, but they refuse it quietly.
+	// Neither is normally reachable: PossibleItemReactions filters custom
+	// emoji out of every picker for a non-subscriber and sets customAllowed
+	// from the same predicate, so these are the fallback for a favourite
+	// reaction left over from a subscription that has since lapsed.
 	if (item->reactionsAreTags()) {
-		if (controller->session().premium()) {
-			return false;
-		}
-		ShowPremiumPreviewBox(controller, PremiumFeature::TagsForMessages);
-		return true;
+		return !controller->session().premium();
 	} else if (!item->canReact()) {
 		ShowReactRestrictionToast(controller);
 		return true;
@@ -634,11 +637,8 @@ bool ShowReactPremiumError(
 			&Data::MessageReaction::id)
 		|| item->history()->peer->isBroadcast()) {
 		return false;
-	} else if (!id.custom()) {
-		return false;
 	}
-	ShowPremiumPreviewBox(controller, PremiumFeature::InfiniteReactions);
-	return true;
+	return id.custom();
 }
 
 } // namespace Window

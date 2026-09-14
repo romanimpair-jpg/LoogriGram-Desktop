@@ -56,7 +56,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mainwidget.h"
 #include "core/core_settings.h"
 #include "core/application.h"
-#include "settings/sections/settings_premium.h"
 #include "window/window_session_controller.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_menu_icons.h"
@@ -1548,10 +1547,6 @@ rpl::producer<FileChosen> EmojiListWidget::customChosen() const {
 	return _customChosen.events();
 }
 
-rpl::producer<> EmojiListWidget::jumpedToPremium() const {
-	return _jumpedToPremium.events();
-}
-
 rpl::producer<> EmojiListWidget::escapes() const {
 	return _search ? _search->escapes() : rpl::never<>();
 }
@@ -2984,30 +2979,14 @@ void EmojiListWidget::mouseReleaseEvent(QMouseEvent *e) {
 			removeSet(id);
 		} else if (hasAddButton(button->section)) {
 			_localSetsManager->install(id);
-		} else if (const auto resolved = _show->resolveWindow()) {
-			_jumpedToPremium.fire({});
-			switch (_mode) {
-			case Mode::Full:
-			case Mode::UserpicBuilder:
-			case Mode::CustomOnly:
-				Settings::ShowPremium(resolved, u"animated_emoji"_q);
-				break;
-			case Mode::FullReactions:
-			case Mode::RecentReactions:
-				Settings::ShowPremium(resolved, u"infinite_reactions"_q);
-				break;
-			case Mode::EmojiStatus:
-			case Mode::ChannelStatus:
-				Settings::ShowPremium(resolved, u"emoji_status"_q);
-				break;
-			case Mode::TopicIcon:
-				Settings::ShowPremium(resolved, u"forum_topic_icon"_q);
-				break;
-			case Mode::BackgroundEmoji:
-				Settings::ShowPremium(resolved, u"name_color"_q);
-				break;
-			}
 		}
+		// LoogriGram: the remaining case is a set marked premiumRequired,
+		// which wears a padlock. The padlock stays - it says the set cannot
+		// be used, which is true - but pressing it opened one of five
+		// subscription pages chosen by which picker was open, and now does
+		// nothing. _jumpedToPremium, which told the reactions selector to
+		// close because it was about to be covered by that page, went with
+		// them; nothing else listened.
 	}
 }
 

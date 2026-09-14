@@ -620,17 +620,14 @@ void Set(
 	}
 }
 
+// LoogriGram: this reported "the colour cannot be applied" by opening the
+// subscription pitch for name colours, and said so only if it could resolve
+// a window - so refusing depended on having somewhere to advertise. It
+// refuses on its own terms now, and quietly.
 bool ShowPremiumPreview(
 		std::shared_ptr<ChatHelpers::Show> show,
 		not_null<PeerData*> peer) {
-	if (!peer->isSelf() || show->session().premium()) {
-		return false;
-	}
-	if (const auto controller = show->resolveWindow()) {
-		ShowPremiumPreviewBox(controller, PremiumFeature::PeerColors);
-		return true;
-	}
-	return false;
+	return peer->isSelf() && !show->session().premium();
 }
 
 void Apply(

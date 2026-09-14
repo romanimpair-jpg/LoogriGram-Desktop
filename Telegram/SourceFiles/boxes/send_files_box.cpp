@@ -35,7 +35,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/event_filter.h"
 #include "base/call_delayed.h"
 #include "boxes/premium_limits_box.h"
-#include "boxes/premium_preview_box.h"
 #include "boxes/send_gif_with_caption_box.h"
 #include "boxes/send_credits_box.h"
 #include "boxes/send_files_box_reply_header.h"
@@ -230,8 +229,7 @@ void EditFileCaptionBox(
 			controller,
 			field,
 			captionToPeer,
-			allow,
-			PremiumFeature::EmojiStatus);
+			allow);
 		if (controller) {
 			// LoogriGram: the returned chat style only fed the AI caption
 			// button, which is gone. The call still installs the field's
@@ -2190,12 +2188,15 @@ void SendFilesBox::setupEmojiPanel() {
 	_emojiPanel->selector()->customEmojiChosen(
 	) | rpl::on_next([=](ChatHelpers::FileChosen data) {
 		const auto info = data.document->sticker();
-		if (info
-			&& info->setType == Data::StickersType::Emoji
-			&& !_show->session().premium()
-			&& !Data::AllowEmojiWithoutPremium(_toPeer, data.document)) {
-			ShowPremiumPreviewBox(_show, PremiumFeature::AnimatedEmoji);
-		} else {
+		// LoogriGram: a premium custom emoji used to answer with the
+		// subscription pitch instead of being inserted. It still is not
+		// inserted - the server refuses to send it - but the panel already
+		// draws these with a padlock, so a locked emoji doing nothing when
+		// clicked is the whole of the message.
+		if (!info
+			|| info->setType != Data::StickersType::Emoji
+			|| _show->session().premium()
+			|| Data::AllowEmojiWithoutPremium(_toPeer, data.document)) {
 			Data::InsertCustomEmoji(_caption.data(), data.document);
 		}
 	}, lifetime());

@@ -47,7 +47,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mainwindow.h"
 #include "main/main_session.h"
 #include "settings/settings_common.h"
-#include "settings/sections/settings_premium.h"
 #include "styles/style_layers.h"
 #include "styles/style_boxes.h"
 #include "styles/style_chat.h"
@@ -1374,9 +1373,9 @@ std::unique_ptr<Ui::RpWidget> PremiumRequiredSendRestriction(
 			user->shortName()),
 		st::historySendPremiumRequired);
 	label->setAttribute(Qt::WA_TransparentForMouseEvents);
-	const auto link = CreateChild<Ui::LinkButton>(
-		result.get(),
-		tr::lng_restricted_send_non_premium_more(tr::now));
+	// LoogriGram: a "learn more" link under this label opened the page
+	// selling a subscription. The label itself explains the restriction and
+	// stays; the link is gone, so nothing below it is laid out.
 	raw->paintRequest() | rpl::on_next([=](QRect clip) {
 		QPainter(raw).fillRect(clip, st::windowBg);
 	}, raw->lifetime());
@@ -1386,16 +1385,9 @@ std::unique_ptr<Ui::RpWidget> PremiumRequiredSendRestriction(
 		const auto margins = (st.textMargins + st.placeholderMargins);
 		const auto available = width - margins.left() - margins.right();
 		label->resizeToWidth(available);
-		const auto height = label->height() + link->height();
-		const auto top = (raw->height() - height) / 2;
+		const auto top = (raw->height() - label->height()) / 2;
 		label->moveToLeft(margins.left(), top, width);
-		link->move(
-			(width - link->width()) / 2,
-			label->y() + label->height());
 	}, label->lifetime());
-	link->setClickedCallback([=] {
-		Settings::ShowPremium(controller, u"require_premium"_q);
-	});
 	return result;
 }
 

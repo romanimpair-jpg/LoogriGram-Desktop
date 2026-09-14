@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_transcribe_button.h"
 
 #include "base/unixtime.h"
-#include "boxes/premium_preview_box.h"
 #include "core/click_handler_types.h" // ClickHandlerContext
 #include "history/history.h"
 #include "history/history_item.h"
@@ -16,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_session.h"
 #include "main/main_session.h"
 #include "lang/lang_keys.h"
-#include "settings/sections/settings_premium.h"
 #include "ui/chat/chat_style.h"
 #include "ui/effects/radial_animation.h"
 #include "ui/effects/ripple_animation.h"
@@ -385,17 +383,11 @@ ClickHandlerPtr TranscribeButton::link() {
 				: transcribes.toggle(item);
 		}
 		const auto my = context.other.value<ClickHandlerContext>();
-		if (hasLock()) {
-			if (const auto controller = my.sessionWindow.get()) {
-				if (summarize) {
-					Settings::ShowPremium(controller, u"summary"_q);
-				} else {
-					ShowPremiumPreviewBox(
-						controller,
-						PremiumFeature::VoiceToText);
-				}
-			}
-		} else {
+		// LoogriGram: the padlock stays - out of free trials, or asking for
+		// a summary, the transcription genuinely cannot be had - but it no
+		// longer opens the pitch for voice-to-text or for summaries, so a
+		// locked button simply does nothing.
+		if (!hasLock()) {
 			const auto max = session->api().transcribes().trialsMaxLengthMs();
 			const auto doc = _item->media()
 				? _item->media()->document()

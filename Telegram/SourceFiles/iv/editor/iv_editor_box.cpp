@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/qt/qt_key_modifiers.h"
 #include "base/unique_qptr.h"
 #include "base/weak_qptr.h"
-#include "boxes/premium_preview_box.h"
 #include "chat_helpers/compose/compose_show.h"
 #include "data/data_file_origin.h"
 #include "data/data_msg_id.h"
@@ -1988,14 +1987,13 @@ void WindowHost::Impl::setupEmojiColumn(const ShowWindowDescriptor &descriptor) 
 		if (!IsEmojiDocument(document)) {
 			return;
 		}
-		if (PremiumEmojiForbidden(
+		// LoogriGram: a premium custom emoji is not inserted, and no longer
+		// answers with the subscription pitch.
+		if (_editor
+			&& !PremiumEmojiForbidden(
 				descriptor.session,
 				descriptor.peer,
 				document)) {
-			ShowPremiumPreviewBox(
-				_show,
-				PremiumFeature::AnimatedEmoji);
-		} else if (_editor) {
 			_editor->insertCustomEmoji(document);
 		}
 	}, _lifetime);

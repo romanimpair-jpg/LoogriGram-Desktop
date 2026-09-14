@@ -7,7 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "chat_helpers/rich_paste_toast.h"
 
-#include "boxes/premium_preview_box.h"
 #include "chat_helpers/message_field.h"
 #include "iv/editor/iv_editor_clipboard_import.h"
 #include "iv/editor/iv_editor_session.h"
@@ -108,39 +107,24 @@ void ShowRichPasteToast(RichPasteToastArgs &&args) {
 		: field
 		? tr::lng_rich_paste_toast_apply(tr::now)
 		: tr::lng_rich_paste_toast_open(tr::now);
+	// LoogriGram: when the paste was stripped because the account is not
+	// a subscriber, a second line read "Subscribe to Premium to preserve
+	// formatting when pasting" and the whole toast was a link into the
+	// page selling it. There is no informative half to keep - the first
+	// line already says the paste arrived as plain text - so the locked
+	// toast is that line alone, without the second, the link, or the
+	// premium star beside it.
 	auto text = tr::bold(undo
 		? tr::lng_rich_paste_toast_markdown(tr::now)
-		: tr::lng_rich_paste_toast(tr::now)
-	).append('\n').append(locked
-		? tr::lng_rich_paste_toast_premium(
-			tr::now,
-			lt_link,
-			tr::link(tr::bold(
-				tr::lng_rich_paste_toast_premium_link(tr::now))),
-			tr::marked)
-		: undo
-		? tr::lng_rich_paste_toast_plain(tr::now, tr::rich)
-		: field
-		? tr::lng_rich_paste_toast_field(tr::now, tr::rich)
-		: markdown
-		? tr::lng_rich_paste_toast_editor_markdown(tr::now, tr::rich)
-		: tr::lng_rich_paste_toast_editor(tr::now, tr::rich));
-	auto filter = Ui::Toast::ClickHandlerFilter();
-	if (locked) {
-		filter = [=](const ClickHandlerPtr &handler, Qt::MouseButton mouse) {
-			if (mouse != Qt::LeftButton) {
-				return false;
-			} else if (auto show = Iv::Editor::ActiveWindowShow(session)) {
-				ShowPremiumPreviewToBuy(
-					std::move(show),
-					PremiumFeature::RichFormatting);
-			} else if (const auto window = session->tryResolveWindow()) {
-				ShowPremiumPreviewToBuy(
-					window,
-					PremiumFeature::RichFormatting);
-			}
-			return true;
-		};
+		: tr::lng_rich_paste_toast(tr::now));
+	if (!locked) {
+		text.append('\n').append(undo
+			? tr::lng_rich_paste_toast_plain(tr::now, tr::rich)
+			: field
+			? tr::lng_rich_paste_toast_field(tr::now, tr::rich)
+			: markdown
+			? tr::lng_rich_paste_toast_editor_markdown(tr::now, tr::rich)
+			: tr::lng_rich_paste_toast_editor(tr::now, tr::rich));
 	}
 	const auto st = std::make_shared<style::Toast>(st::historyPremiumToast);
 	if (!button.isEmpty()) {
@@ -150,10 +134,7 @@ void ShowRichPasteToast(RichPasteToastArgs &&args) {
 	}
 	const auto weak = Ui::Toast::Show(args.parent, Ui::Toast::Config{
 		.text = std::move(text),
-		.filter = std::move(filter),
 		.similarLines = true,
-		.iconLottie = (locked ? u"toast/star_premium_2"_q : QString()),
-		.iconLottieSize = st::toastLottieIconSize,
 		.st = st.get(),
 		.attach = RectPart::Bottom,
 		.addToAttachSide = std::move(args.bottomOffset),

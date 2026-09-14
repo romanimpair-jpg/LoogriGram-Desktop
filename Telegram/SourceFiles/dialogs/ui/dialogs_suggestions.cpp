@@ -43,7 +43,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "settings/settings_common.h"
 #include "settings/settings_credits_graphics.h"
-#include "settings/sections/settings_premium.h"
 #include "storage/storage_shared_media.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/controls/swipe_handler.h"
@@ -2038,10 +2037,11 @@ void Suggestions::setupPostsIntro(const PostsSearchIntroState &intro) {
 
 	_postsSearchIntro->searchWithStars(
 	) | rpl::on_next([=](int stars) {
+		// LoogriGram: searching posts for stars is a purchase, and this
+		// branch answered a non-subscriber by opening the page that sells
+		// the subscription. It does nothing now.
 		if (!_controller->session().premium()) {
-			Settings::ShowPremium(
-				_controller,
-				u"posts_search"_q);
+			return;
 		} else if (!stars) {
 			_postsSearch->setAllowedStars(0);
 		} else {

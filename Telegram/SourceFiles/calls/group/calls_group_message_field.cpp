@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/group/calls_group_message_field.h"
 
 #include "base/event_filter.h"
-#include "boxes/premium_preview_box.h"
 #include "calls/group/calls_group_messages.h"
 #include "chat_helpers/compose/compose_show.h"
 #include "chat_helpers/emoji_suggestions_widget.h"
@@ -204,11 +203,9 @@ void ReactionPanel::create() {
 
 	_selector->chosen(
 	) | rpl::on_next([=](Chosen reaction) {
-		if (reaction.id.custom() && !_show->session().premium()) {
-			ShowPremiumPreviewBox(
-				_show,
-				PremiumFeature::AnimatedEmoji);
-		} else {
+		// LoogriGram: a custom-emoji reaction is still refused - the server
+		// only accepts one from a subscriber - without the pitch.
+		if (!reaction.id.custom() || _show->session().premium()) {
 			hide();
 			// Fire last: a consumer may synchronously destroy the
 			// MessageField that owns this ReactionPanel.
@@ -462,13 +459,11 @@ void MessageField::createControls(PeerData *peer) {
 	panel->selector()->customEmojiChosen(
 	) | rpl::on_next([=](ChatHelpers::FileChosen data) {
 		const auto info = data.document->sticker();
-		if (info
-			&& info->setType == Data::StickersType::Emoji
-			&& !_show->session().premium()) {
-			ShowPremiumPreviewBox(
-				_show,
-				PremiumFeature::AnimatedEmoji);
-		} else {
+		// LoogriGram: a premium custom emoji is not inserted, and no longer
+		// answers with the subscription pitch.
+		if (!info
+			|| info->setType != Data::StickersType::Emoji
+			|| _show->session().premium()) {
 			Data::InsertCustomEmoji(_field, data.document);
 		}
 	}, lifetime());

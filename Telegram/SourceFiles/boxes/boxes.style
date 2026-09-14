@@ -565,10 +565,8 @@ localAutomationBox: Box(defaultBox) {
 }
 
 disableSharingIconPadding: margins(12px, 12px, 12px, 8px);
-disableSharingButtonLock: IconEmoji {
-	icon: icon {{ "emoji/premium_lock", activeButtonFg }};
-	padding: margins(-2px, 1px, 0px, 0px);
-}
+// LoogriGram: disableSharingButtonLock was the padlock on the "Disable
+// sharing" button, which is no longer offered to anyone who cannot use it.
 
 managedBotIconEmoji: IconEmoji {
 	icon: icon {{ "chat/code_tags", windowSubTextFg }};

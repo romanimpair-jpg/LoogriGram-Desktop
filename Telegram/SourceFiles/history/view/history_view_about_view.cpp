@@ -14,7 +14,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/random.h"
 #include "base/unixtime.h"
 #include "ui/effects/premium_stars.h"
-#include "boxes/premium_preview_box.h"
 #include "chat_helpers/stickers_lottie.h"
 #include "core/click_handler_types.h"
 #include "core/ui_integration.h"
@@ -41,7 +40,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "settings/business/settings_chat_intro.h"
 #include "settings/sections/settings_credits.h" // BuyStarsHandler
-#include "settings/sections/settings_premium.h"
 #include "ui/chat/chat_style.h"
 #include "ui/image/image_location_factory.h"
 #include "ui/text/custom_emoji_instance.h"
@@ -544,10 +542,8 @@ int EmptyChatLockedBox::buttonSkip() {
 }
 
 rpl::producer<QString> EmptyChatLockedBox::button() {
-	return (_type == Type::FreeDirect)
+	return (_type == Type::FreeDirect || _type == Type::PremiumRequired)
 		? nullptr
-		: (_type == Type::PremiumRequired)
-		? tr::lng_send_non_premium_go()
 		: tr::lng_send_charges_stars_go();
 }
 
@@ -564,10 +560,12 @@ ClickHandlerPtr EmptyChatLockedBox::createViewLink() {
 	_buyStarsLoading = _buyStars.loadingValue();
 	const auto handler = [=](ClickContext context) {
 		const auto my = context.other.value<ClickHandlerContext>();
+		// LoogriGram: for PremiumRequired this button opened the page
+		// selling a subscription. buttonText() below now returns nothing
+		// for that case, so there is no button to press.
 		if (const auto controller = my.sessionWindow.get()) {
-			if (_type == Type::PremiumRequired) {
-				Settings::ShowPremium(controller, u"require_premium"_q);
-			} else if (!_buyStarsLoading.current()) {
+			if (_type != Type::PremiumRequired
+				&& !_buyStarsLoading.current()) {
 				_buyStars.handler(controller->uiShow())();
 			}
 		}
@@ -857,13 +855,11 @@ void AboutView::make(Data::ChatIntro data, bool preview) {
 	};
 	const auto handler = [=](ClickContext context) {
 		const auto my = context.other.value<ClickHandlerContext>();
+		// LoogriGram: setting a chat intro is subscriber-only, and the
+		// other half of this used to open the pitch for it.
 		if (const auto controller = my.sessionWindow.get()) {
 			if (controller->session().premium()) {
 				controller->showSettings(Settings::ChatIntroId());
-			} else {
-				ShowPremiumPreviewBox(
-					controller->uiShow(),
-					PremiumFeature::ChatIntro);
 			}
 		}
 	};

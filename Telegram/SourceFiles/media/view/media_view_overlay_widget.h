@@ -348,7 +348,6 @@ private:
 
 	[[nodiscard]] bool computeSaveButtonVisible() const;
 	void checkForSaveLoaded();
-	void showPremiumDownloadPromo();
 
 	[[nodiscard]] std::optional<InstantViewItem> instantViewMediaKey() const;
 	[[nodiscard]] Entity entityForUserPhotos(int index) const;

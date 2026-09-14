@@ -64,7 +64,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_editing.h"
 #include "api/api_sending.h"
 #include "apiwrap.h"
-#include "boxes/premium_preview_box.h"
 #include "data/business/data_shortcut_messages.h"
 #include "settings/business/settings_quick_replies.h"
 #include "ui/boxes/confirm_box.h"
@@ -439,10 +438,10 @@ ChatWidget::ChatWidget(
 			const auto shortcutId = messages->lookupShortcutId(shortcut);
 			if (shortcut.isEmpty()) {
 				controller->showSettings(Settings::QuickRepliesId());
+			// LoogriGram: as in history_widget - a quick-reply shortcut
+			// typed by someone who cannot use them offers nothing.
 			} else if (!_peer->session().premium()) {
-				ShowPremiumPreviewToBuy(
-					controller,
-					PremiumFeature::QuickReplies);
+				return;
 			} else if (shortcutId) {
 				session().api().sendShortcutMessages(_peer, shortcutId);
 				session().api().finishForwarding(prepareSendAction({}));
@@ -2477,7 +2476,7 @@ void ChatWidget::sendRichDraft(
 					}
 				});
 		} else {
-			Iv::Editor::ShowRichMessagesPremiumToast(
+			Iv::Editor::ShowRichMessagesUnavailableToast(
 				controller()->uiShow());
 		}
 		return;
