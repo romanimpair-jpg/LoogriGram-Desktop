@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "lang/lang_instance.h"
 
+#include "core/loogrigram_lang.h"
+
 #include "core/application.h"
 #include "storage/serialize_common.h"
 #include "storage/localstorage.h"
@@ -729,6 +731,15 @@ QString Instance::getNonDefaultValue(const QByteArray &key) const {
 }
 
 void Instance::applyValue(const QByteArray &key, const QByteArray &value) {
+	// LoogriGram: the cached cloud pack is replayed over the compiled defaults
+	// at every startup - about eleven thousand keys of Telegram's own English -
+	// and this function is what overwrites them. Editing lang.strings therefore
+	// changed only what the source said, never what the app showed: the tray
+	// still read "Quit Telegram". Keys that name this program keep their
+	// compiled text; everything else still follows Telegram's pack.
+	if (LoogriGram::Lang::KeepCompiledString(key)) {
+		return;
+	}
 	_nonDefaultValues[key] = value;
 	ParseKeyValue(key, value, [&](ushort key, QString &&value) {
 		_nonDefaultSet[key] = 1;

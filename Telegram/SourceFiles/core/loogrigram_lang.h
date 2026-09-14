@@ -31,4 +31,18 @@ namespace LoogriGram::Lang {
 [[nodiscard]] rpl::producer<QString> GhostMode();
 [[nodiscard]] rpl::producer<QString> CheckUpdates();
 
+// Keys whose compiled text must survive the cloud language pack.
+//
+// Editing lang.strings changes only the compiled default. On startup the
+// cached cloud pack is replayed over it - ten thousand keys of Telegram's own
+// English - and Lang::Instance::applyValue overwrites every value it carries.
+// So renaming the app inside lang.strings looks right in the source and has no
+// effect at all at runtime: the tray still said "Quit Telegram".
+//
+// These are the keys that name this program. Their cloud value is ignored so
+// the compiled one stands. Everything else still follows Telegram's pack,
+// including strings that mention Telegram the service, which are not ours to
+// rewrite.
+[[nodiscard]] bool KeepCompiledString(const QByteArray &key);
+
 } // namespace LoogriGram::Lang
