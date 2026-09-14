@@ -1628,6 +1628,14 @@ void Element::refreshMedia(Element *replacing) {
 	if (!item->computeUnavailableReason().isEmpty()) {
 		_media = nullptr;
 		return;
+	} else if (LoogriGram::HiddenContent(item)) {
+		// LoogriGram: nothing is drawn for it, so nothing is built for it
+		// either. Without this the gift and giveaway views are still
+		// constructed on every one of these messages and then never painted,
+		// and - worse for the goal - they would still have a caller, so they
+		// could not be deleted.
+		_media = nullptr;
+		return;
 	}
 	if (const auto media = item->media()) {
 		if (media->canBeGrouped()) {

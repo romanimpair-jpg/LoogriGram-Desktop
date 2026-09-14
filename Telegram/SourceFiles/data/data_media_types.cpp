@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_location_manager.h"
 #include "history/view/history_view_element.h"
 #include "history/view/history_view_item_preview.h"
-#include "history/view/media/history_view_birthday_suggestion.h"
 #include "history/view/media/history_view_photo.h"
 #include "history/view/media/history_view_sticker.h"
 #include "history/view/media/history_view_gif.h"
@@ -23,7 +22,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/media/history_view_contact.h"
 #include "history/view/media/history_view_location.h"
 #include "history/view/media/history_view_game.h"
-#include "history/view/media/history_view_giveaway.h"
 #include "history/view/media/history_view_invoice.h"
 #include "history/view/media/history_view_media_generic.h"
 #include "history/view/media/history_view_media_grouped.h"
@@ -36,8 +34,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/media/history_view_dice.h"
 #include "history/view/media/history_view_service_box.h"
 #include "history/view/media/history_view_story_mention.h"
-#include "history/view/media/history_view_premium_gift.h"
-#include "history/view/media/history_view_unique_gift.h"
 #include "history/view/media/history_view_userpic_suggestion.h"
 #include "dialogs/ui/dialogs_message_view.h"
 #include "ui/boxes/emoji_stake_box.h"
@@ -2368,6 +2364,21 @@ bool MediaInvoice::updateInlineResultMedia(const MTPMessageMedia &media) {
 	return true;
 }
 
+std::unique_ptr<HistoryView::Media> MediaInvoice::createView(
+		not_null<HistoryView::Element*> message,
+		not_null<HistoryItem*> realParent,
+		HistoryView::Element *replacing) {
+	// LoogriGram: an invoice is a request to pay for something, and
+	// paying is the one thing this fork never does.
+	//
+	// Element::refreshMedia already stops before asking, so this is the
+	// second half of the same statement rather than a live branch - kept
+	// because Media::createView is pure virtual. It is what lets every view
+	// this used to build be deleted: with no caller, nothing is left to keep
+	// them alive.
+	return nullptr;
+}
+
 bool MediaInvoice::updateSentMedia(const MTPMessageMedia &media) {
 	return true;
 }
@@ -2378,23 +2389,6 @@ bool MediaInvoice::updateExtendedMedia(
 	Expects(item == parent());
 
 	return UpdateExtendedMedia(_invoice, item, media);
-}
-
-std::unique_ptr<HistoryView::Media> MediaInvoice::createView(
-		not_null<HistoryView::Element*> message,
-		not_null<HistoryItem*> realParent,
-		HistoryView::Element *replacing) {
-	if (_invoice.extendedMedia.size() == 1) {
-		return _invoice.extendedMedia.front()->createView(
-			message,
-			realParent,
-			replacing);
-	} else if (!_invoice.extendedMedia.empty()) {
-		return std::make_unique<HistoryView::GroupedMedia>(
-			message,
-			_invoice.extendedMedia);
-	}
-	return std::make_unique<HistoryView::Invoice>(message, &_invoice);
 }
 
 MediaPoll::MediaPoll(
@@ -2835,49 +2829,15 @@ std::unique_ptr<HistoryView::Media> MediaGiftBox::createView(
 		not_null<HistoryView::Element*> message,
 		not_null<HistoryItem*> realParent,
 		HistoryView::Element *replacing) {
-	if (_data.type == GiftType::BirthdaySuggest) {
-		return std::make_unique<HistoryView::MediaGeneric>(
-			message,
-			HistoryView::GenerateSuggetsBirthdayMedia(
-				message,
-				replacing,
-				Data::Birthday::FromSerialized(_data.count)),
-			HistoryView::MediaGenericDescriptor{
-				.maxWidth = st::birthdaySuggestStickerWidth,
-				.service = true,
-				.hideServiceText = true,
-			});
-	} else if (_data.type == GiftType::ChatTheme
-		|| _data.type == GiftType::GiftOffer) {
-		return std::make_unique<HistoryView::ServiceBox>(
-			message,
-			std::make_unique<HistoryView::GiftServiceBox>(message, this));
-	} else if (const auto &unique = _data.unique) {
-		return std::make_unique<HistoryView::MediaGeneric>(
-			message,
-			HistoryView::GenerateUniqueGiftMedia(message, replacing, {
-				.gift = unique,
-				.message = (_data.messageFromUniqueAction
-					? _data.message
-					: tr::marked()),
-				.messageAuthor = (_data.anonymous
-					? nullptr
-					: _data.messageAuthor),
-				.upgrade = _data.upgrade,
-			}),
-			HistoryView::MediaGenericDescriptor{
-				.maxWidth = st::chatUniqueGiftMaxWidth,
-				.minWidth = st::msgServiceGiftBoxSize.width(),
-				.paintBgFactory = [=] {
-					return HistoryView::UniqueGiftBg(message, unique);
-				},
-				.fitToContent = true,
-				.service = true,
-			});
-	}
-	return std::make_unique<HistoryView::ServiceBox>(
-		message,
-		std::make_unique<HistoryView::PremiumGift>(message, this));
+	// LoogriGram: a gift someone sent us is not shown. We take no part
+	// in any of it, so there is nothing to draw and nothing to click.
+	//
+	// Element::refreshMedia already stops before asking, so this is the
+	// second half of the same statement rather than a live branch - kept
+	// because Media::createView is pure virtual. It is what lets every view
+	// this used to build be deleted: with no caller, nothing is left to keep
+	// them alive.
+	return nullptr;
 }
 
 MediaWallPaper::MediaWallPaper(
@@ -3161,9 +3121,14 @@ std::unique_ptr<HistoryView::Media> MediaGiveawayStart::createView(
 		not_null<HistoryView::Element*> message,
 		not_null<HistoryItem*> realParent,
 		HistoryView::Element *replacing) {
-	return std::make_unique<HistoryView::MediaGeneric>(
-		message,
-		HistoryView::GenerateGiveawayStart(message, &_data));
+	// LoogriGram: a giveaway we cannot enter is not shown.
+	//
+	// Element::refreshMedia already stops before asking, so this is the
+	// second half of the same statement rather than a live branch - kept
+	// because Media::createView is pure virtual. It is what lets every view
+	// this used to build be deleted: with no caller, nothing is left to keep
+	// them alive.
+	return nullptr;
 }
 
 MediaGiveawayResults::MediaGiveawayResults(
@@ -3221,9 +3186,15 @@ std::unique_ptr<HistoryView::Media> MediaGiveawayResults::createView(
 		not_null<HistoryView::Element*> message,
 		not_null<HistoryItem*> realParent,
 		HistoryView::Element *replacing) {
-	return std::make_unique<HistoryView::MediaGeneric>(
-		message,
-		HistoryView::GenerateGiveawayResults(message, &_data));
+	// LoogriGram: the results of a giveaway we never entered are not
+	// shown either.
+	//
+	// Element::refreshMedia already stops before asking, so this is the
+	// second half of the same statement rather than a live branch - kept
+	// because Media::createView is pure virtual. It is what lets every view
+	// this used to build be deleted: with no caller, nothing is left to keep
+	// them alive.
+	return nullptr;
 }
 
 } // namespace Data
