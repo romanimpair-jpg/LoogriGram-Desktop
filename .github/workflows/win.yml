@@ -104,7 +104,13 @@ jobs:
       # objects compiled against Qt 6 headers; ninja decides by timestamp and
       # would reuse every one of them. That is the silently wrong binary this
       # salt exists to prevent, so it is not optional here.
-      OUT_CACHE_SALT: "3"
+      #
+      # LoogriGram: raised to 4 with the %at -> %ct fix in "Normalize source
+      # timestamps". The trees cached under salt 3 were written at wall-clock
+      # times later than the committer dates that step now stamps, so they
+      # would keep shadowing the corrected timestamps and keep serving the
+      # stale resource object that put upstream's artwork in g2533f37.
+      OUT_CACHE_SALT: "4"
 
     defaults:
       run:
@@ -246,7 +252,18 @@ jobs:
                           pass
 
           # Main repo: date each tracked file by its last commit.
-          log = run(['git', 'log', '--pretty=format:%at', '--name-only',
+          #
+          # LoogriGram: %ct (committer date), not %at (author date). Author
+          # date survives rebase, cherry-pick and amend, all of which this
+          # branch does routinely, so it can be hours or days older than the
+          # moment the content entered the branch - and that is precisely the
+          # moment this comparison is asking about. It has already cost one
+          # build: 84f7a18880 changed the app artwork with an author date of
+          # 2026-09-13T21:48Z and a committer date of 2026-09-14T13:34Z, the
+          # restored out/ tree carried a qrc object from 14:00Z, AUTORCC saw
+          # its input as six hours older than its output and reused it, and
+          # the shipped binary kept upstream's icons.
+          log = run(['git', 'log', '--pretty=format:%ct', '--name-only',
                      '--no-renames'], root)
           seen, ts = {}, None
           for line in log.splitlines():
