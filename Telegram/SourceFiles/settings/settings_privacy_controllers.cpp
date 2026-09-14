@@ -828,10 +828,11 @@ auto GroupsInvitePrivacyController::exceptionsDescription() const
 	return tr::lng_edit_privacy_groups_exceptions();
 }
 
-bool GroupsInvitePrivacyController::allowPremiumsToggle(
-		Exception exception) const {
-	return (exception == Exception::Always);
-}
+// LoogriGram: no "Premium users" row when picking privacy exceptions. This
+// was the only controller that opted in - the base returns false - so
+// dropping the override removes the row from the exception picker, stops
+// EditPrivacyBox pre-selecting Premiums when leaving Everyone, and stops
+// SpecialRowType::Premiums ever being requested.
 
 UserPrivacy::Key CallsPrivacyController::key() const {
 	return Key::Calls;

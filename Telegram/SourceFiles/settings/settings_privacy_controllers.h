@@ -153,7 +153,6 @@ public:
 	rpl::producer<QString> exceptionBoxTitle(
 		Exception exception) const override;
 	rpl::producer<QString> exceptionsDescription() const override;
-	bool allowPremiumsToggle(Exception exception) const override;
 
 };
 
