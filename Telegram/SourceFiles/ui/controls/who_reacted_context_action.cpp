@@ -135,12 +135,19 @@ private:
 
 };
 
+// LoogriGram: this row used to carry a "Show" pill whenever our own read
+// marks were hidden, which opened a box offering to reveal our read time in
+// exchange for seeing theirs, or to subscribe instead. Hiding the read date
+// is half of ghost mode and is applied on every account here, so that state
+// is the normal one and the offer was neither wanted nor purchasable. The
+// row now just says the read time is hidden. isEnabled() reported exactly
+// that state and nothing else, and it is pure virtual on ItemBase, so it
+// stays and answers false: the row is never selectable or clickable.
 class WhenAction final : public Menu::ItemBase {
 public:
 	WhenAction(
 		not_null<PopupMenu*> parentMenu,
-		rpl::producer<WhoReadContent> content,
-		Fn<void()> showOrPremium);
+		rpl::producer<WhoReadContent> content);
 
 	bool isEnabled() const override;
 	not_null<QAction*> action() const override;
@@ -161,12 +168,9 @@ private:
 
 	const not_null<PopupMenu*> _parentMenu;
 	const not_null<QAction*> _dummyAction;
-	const Fn<void()> _showOrPremium;
 	const style::Menu &_st;
 
 	Text::String _text;
-	Text::String _show;
-	QRect _showRect;
 	int _textWidth = 0;
 	const int _height = 0;
 
@@ -614,12 +618,10 @@ void Action::handleKeyPress(not_null<QKeyEvent*> e) {
 
 WhenAction::WhenAction(
 	not_null<PopupMenu*> parentMenu,
-	rpl::producer<WhoReadContent> content,
-	Fn<void()> showOrPremium)
+	rpl::producer<WhoReadContent> content)
 : ItemBase(parentMenu->menu(), parentMenu->menu()->st())
 , _parentMenu(parentMenu)
 , _dummyAction(CreateChild<QAction>(parentMenu->menu().get()))
-, _showOrPremium(std::move(showOrPremium))
 , _st(parentMenu->menu()->st())
 , _height(st::whenReadPadding.top()
 		+ st::whenReadStyle.font->height
@@ -650,15 +652,6 @@ WhenAction::WhenAction(
 		paint(p);
 	}, lifetime());
 
-	clicks(
-	) | rpl::on_next([=] {
-		if (_content.state == WhoReadState::MyHidden) {
-			if (const auto onstack = _showOrPremium) {
-				onstack();
-			}
-		}
-	}, lifetime());
-
 	enableMouseSelecting();
 }
 
@@ -675,9 +668,7 @@ void WhenAction::resolveMinWidth() {
 		QLocale::ShortFormat);
 	const auto maxTextWidth = added + std::max({
 		width(tr::lng_contacts_loading(tr::now)),
-		(width(tr::lng_context_read_hidden(tr::now))
-			+ st::whenReadSkip
-			+ width(tr::lng_context_read_show(tr::now))),
+		width(tr::lng_context_read_hidden(tr::now)),
 		width(tr::lng_mediaview_today(tr::now, lt_time, sampleTime)),
 		width(tr::lng_mediaview_yesterday(tr::now, lt_time, sampleTime)),
 		width(tr::lng_mediaview_date_time(
@@ -723,22 +714,6 @@ void WhenAction::paint(Painter &p) {
 		st::whenReadPadding.top(),
 		_textWidth,
 		width());
-	if (!_show.isEmpty()) {
-		auto hq = PainterHighQualityEnabler(p);
-		p.setPen(Qt::NoPen);
-		p.setBrush(_st.itemBgOver);
-		const auto radius = _showRect.height() / 2.;
-		p.drawRoundedRect(_showRect, radius, radius);
-		paintRipple(p, 0, 0);
-		const auto inner = _showRect.marginsRemoved(st::whenReadShowPadding);
-		p.setPen(_st.itemFgOver);
-		_show.drawLeftElided(
-			p,
-			inner.x(),
-			inner.y(),
-			inner.width(),
-			width());
-	}
 }
 
 void WhenAction::refreshText() {
@@ -750,14 +725,6 @@ void WhenAction::refreshText() {
 			? tr::lng_context_read_hidden(tr::now)
 			: _content.participants.front().date) },
 		MenuTextOptions);
-	if (_content.state == WhoReadState::MyHidden) {
-		_show.setMarkedText(
-			st::whenReadStyle,
-			{ tr::lng_context_read_show(tr::now) },
-			MenuTextOptions);
-	} else {
-		_show = Text::String();
-	}
 }
 
 void WhenAction::resizeEvent(QResizeEvent *e) {
@@ -770,39 +737,19 @@ void WhenAction::refreshDimensions() {
 		return;
 	}
 	const auto textWidth = _text.maxWidth();
-	const auto showWidth = _show.isEmpty() ? 0 : _show.maxWidth();
 	const auto &padding = st::whenReadPadding;
 
-	const auto goodWidth = padding.left()
-		+ textWidth
-		+ (showWidth
-			? (st::whenReadSkip
-				+ st::whenReadShowPadding.left()
-				+ showWidth
-				+ st::whenReadShowPadding.right())
-			: 0)
-		+ padding.right();
+	const auto goodWidth = padding.left() + textWidth + padding.right();
 
 	const auto w = std::clamp(
 		goodWidth,
 		_st.widthMin,
 		std::max(width(), _st.widthMin));
 	_textWidth = std::min(w - (goodWidth - textWidth), textWidth);
-	if (showWidth) {
-		_showRect = QRect(
-			padding.left() + _textWidth + st::whenReadSkip,
-			padding.top() - st::whenReadShowPadding.top(),
-			(st::whenReadShowPadding.left()
-				+ showWidth
-				+ st::whenReadShowPadding.right()),
-			(st::whenReadShowPadding.top()
-				+ st::whenReadStyle.font->height
-				+ st::whenReadShowPadding.bottom()));
-	}
 }
 
 bool WhenAction::isEnabled() const {
-	return (_content.state == WhoReadState::MyHidden);
+	return false;
 }
 
 not_null<QAction*> WhenAction::action() const {
@@ -810,16 +757,11 @@ not_null<QAction*> WhenAction::action() const {
 }
 
 QPoint WhenAction::prepareRippleStartPosition() const {
-	const auto result = mapFromGlobal(QCursor::pos());
-	return _showRect.contains(result)
-		? result
-		: Ui::RippleButton::DisabledRippleStartPosition();
+	return Ui::RippleButton::DisabledRippleStartPosition();
 }
 
 QImage WhenAction::prepareRippleMask() const {
-	return Ui::RippleAnimation::MaskByDrawer(size(), false, [&](QPainter &p) {
-		const auto radius = _showRect.height() / 2.;
-		p.drawRoundedRect(_showRect, radius, radius);
+	return Ui::RippleAnimation::MaskByDrawer(size(), false, [](QPainter &p) {
 	});
 }
 
@@ -1303,12 +1245,8 @@ base::unique_qptr<Menu::ItemBase> WhoReactedContextAction(
 
 base::unique_qptr<Menu::ItemBase> WhenReadContextAction(
 		not_null<PopupMenu*> menu,
-		rpl::producer<WhoReadContent> content,
-		Fn<void()> showOrPremium) {
-	return base::make_unique_q<WhenAction>(
-		menu,
-		std::move(content),
-		std::move(showOrPremium));
+		rpl::producer<WhoReadContent> content) {
+	return base::make_unique_q<WhenAction>(menu, std::move(content));
 }
 
 WhoReactedListMenu::WhoReactedListMenu(

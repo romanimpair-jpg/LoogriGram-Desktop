@@ -70,8 +70,7 @@ struct WhoReadContent {
 
 [[nodiscard]] base::unique_qptr<Menu::ItemBase> WhenReadContextAction(
 	not_null<PopupMenu*> menu,
-	rpl::producer<WhoReadContent> content,
-	Fn<void()> showOrPremium = nullptr);
+	rpl::producer<WhoReadContent> content);
 
 enum class WhoReactedType : uchar {
 	Viewed,

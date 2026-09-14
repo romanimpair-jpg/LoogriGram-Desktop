@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "api/api_attached_stickers.h"
 #include "api/api_editing.h"
-#include "api/api_global_privacy.h"
 #include "api/api_polls.h"
 #include "api/api_report.h"
 #include "api/api_ringtones.h"
@@ -67,7 +66,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "menu/menu_timecode_action.h"
 #include "menu/menu_send.h"
 #include "ui/boxes/confirm_box.h"
-#include "ui/boxes/show_or_premium_box.h"
 #include "ui/widgets/fields/input_field.h"
 #include "ui/power_saving.h"
 #include "boxes/delete_messages_box.h"
@@ -99,7 +97,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/click_handler_types.h"
 #include "base/platform/base_platform_info.h"
 #include "base/call_delayed.h"
-#include "settings/sections/settings_premium.h"
 #include "window/window_peer_menu.h"
 #include "window/window_controller.h"
 #include "window/window_session_controller.h"
@@ -2490,20 +2487,12 @@ void AddWhoReactedAction(
 	const auto whoReadIds = std::make_shared<Api::WhoReadList>();
 	const auto weak = base::make_weak(menu.get());
 	const auto user = item->history()->peer;
-	const auto showOrPremium = [=] {
-		if (const auto strong = weak.get()) {
-			strong->hideMenu();
-		}
-		const auto type = Ui::ShowOrPremium::ReadTime;
-		const auto name = user->shortName();
-		auto box = Box(Ui::ShowOrPremiumBox, type, name, [=] {
-			const auto api = &controller->session().api();
-			api->globalPrivacy().updateHideReadTime({});
-		}, [=] {
-			Settings::ShowPremium(controller, u"revtime_hidden"_q);
-		});
-		controller->show(std::move(box));
-	};
+	// LoogriGram: the "read time hidden" row used to be clickable, opening a
+	// box that offered to clear hide_read_marks so other people's read times
+	// became visible again, or to subscribe instead. Ghost mode sets that
+	// flag deliberately and never reverses it, so the first option undoes
+	// the fork's own setting and the second cannot be bought. The row states
+	// the fact and stops there.
 	const auto itemId = item->fullId();
 	const auto participantChosen = [=](Ui::WhoReadParticipant who) {
 		if (const auto strong = weak.get()) {
@@ -2552,8 +2541,7 @@ void AddWhoReactedAction(
 			false);
 		menu->addAction(Ui::WhenReadContextAction(
 			menu.get(),
-			Api::WhoReacted(item, context, st::defaultWhoRead, whoReadIds),
-			showOrPremium));
+			Api::WhoReacted(item, context, st::defaultWhoRead, whoReadIds)));
 	} else {
 		menu->addAction(Ui::WhoReactedContextAction(
 			menu.get(),
