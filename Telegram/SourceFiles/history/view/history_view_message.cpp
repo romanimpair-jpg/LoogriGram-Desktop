@@ -5485,17 +5485,12 @@ void Message::validateFromNameText(PeerData *from) const {
 			from->name(),
 			Ui::NameTextOptions());
 	}
-	if (from->isPremium()
-		|| (from->isChannel()
-			&& from->emojiStatusId()
-			&& from != history()->peer)) {
-		if (!_fromNameStatus) {
-			_fromNameStatus = std::make_unique<FromNameStatus>();
-			const auto size = st::emojiSize;
-			const auto emoji = Ui::Text::AdjustCustomEmojiSize(size);
-			_fromNameStatus->skip = (size - emoji) / 2;
-		}
-	} else if (_fromNameStatus) {
+	// LoogriGram: no status beside the author's name in a group. This is the
+	// last place a premium emoji status still reached the screen: it is
+	// painted from _fromNameStatus, which is the message's own slot and never
+	// passed through premiumBadgesShown(), so gating that getter left this
+	// one alive. The same slot carries the gold premium star, so both go.
+	if (_fromNameStatus) {
 		_fromNameStatus = nullptr;
 	}
 }
