@@ -21,7 +21,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_web_page.h"
 #include "history/view/media/history_view_media_common.h"
 #include "history/view/media/history_view_media_generic.h"
-#include "history/view/media/history_view_unique_gift.h"
 #include "history/view/history_view_cursor_state.h"
 #include "history/view/history_view_message.h"
 #include "history/view/history_view_reply.h"
@@ -495,45 +494,11 @@ QSize WebPage::countOptimalSize() {
 	}
 
 	// init attach
-	if (!_attach && _data->uniqueGift) {
-		_attach = std::make_unique<MediaGeneric>(
-			_parent,
-			GenerateUniqueGiftPreview(
-				_parent,
-				nullptr,
-				_data->uniqueGift),
-				MediaGenericDescriptor{
-					.maxWidth = st::msgServiceGiftPreview,
-					.paintBgFactory = [=] {
-						return UniqueGiftBg(_parent, _data->uniqueGift);
-					},
-					.expandCurrentWidth = true,
-				});
-	} else if (!_attach && _data->auction) {
-		const auto &gift = _data->auction->auctionGift;
-		const auto backdrop = gift->background
-			? gift->background->backdrop()
-			: Data::UniqueGiftBackdrop();
-		_attach = std::make_unique<MediaGeneric>(
-			_parent,
-			GenerateAuctionPreview(
-				_parent,
-				nullptr,
-				gift,
-				backdrop),
-			MediaGenericDescriptor{
-				.maxWidth = st::msgServiceGiftPreview,
-				.paintBgFactory = [=] {
-					return AuctionBg(
-						_parent,
-						backdrop,
-						gift,
-						_data->auction->auctionGift->auctionStartDate,
-						_data->auction->endDate);
-				},
-				.expandCurrentWidth = true,
-			});
-	} else if (!_attach
+	//
+	// LoogriGram: a collectible gift link and a gift auction link used to
+	// render their own card here. They fall through to the ordinary link
+	// preview below now, like any other link.
+	if (!_attach
 		&& !_asArticle
 		&& (!isLogEntryOriginal()
 			|| (_data->document && !_hasLogEntryPreview))) {

@@ -317,11 +317,6 @@ private:
 
 	bool updateBottomInfo();
 
-	void initPaidInformation();
-	void refreshSuggestedInfo(
-		not_null<HistoryItem*> item,
-		not_null<const HistoryMessageSuggestion*> suggest,
-		const HistoryMessageReply *reply);
 	void initLogEntryOriginal();
 	void initPsa();
 	void fromNameUpdated(int width) const;

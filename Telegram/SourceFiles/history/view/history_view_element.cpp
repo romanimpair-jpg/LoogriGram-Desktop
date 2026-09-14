@@ -20,7 +20,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/media/history_view_sticker.h"
 #include "history/view/media/history_view_custom_emoji.h"
 #include "history/view/media/history_view_no_forwards_request.h"
-#include "history/view/media/history_view_suggest_decision.h"
 #include "history/view/media/history_view_unsupported_notice.h"
 #include "history/view/reactions/history_view_reactions_button.h"
 #include "history/view/history_view_reply_button.h"
@@ -1669,16 +1668,6 @@ void Element::refreshMedia(Element *replacing) {
 			GenerateNoForwardsRequestMedia(this, nfr),
 			MediaGenericDescriptor{
 				.maxWidth = st::chatSuggestInfoWidth,
-				.service = true,
-				.hideServiceText = true,
-			});
-	} else if (const auto decision = item->Get<HistoryServiceSuggestDecision>()) {
-		_media = std::make_unique<MediaGeneric>(
-			this,
-			GenerateSuggestDecisionMedia(this, decision),
-			MediaGenericDescriptor{
-				.maxWidth = st::chatSuggestInfoWidth,
-				.fullAreaLink = decision->lnk,
 				.service = true,
 				.hideServiceText = true,
 			});

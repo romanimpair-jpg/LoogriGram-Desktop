@@ -978,8 +978,6 @@ PRIVATE
     history/view/media/history_view_poll.h
     history/view/media/menu/history_view_poll_menu.cpp
     history/view/media/menu/history_view_poll_menu.h
-    history/view/media/history_view_premium_gift.cpp
-    history/view/media/history_view_premium_gift.h
     history/view/media/history_view_save_document_action.cpp
     history/view/media/history_view_save_document_action.h
     history/view/media/history_view_service_box.cpp
@@ -995,14 +993,10 @@ PRIVATE
     history/view/media/history_view_sticker_player_abstract.h
     history/view/media/history_view_story_mention.cpp
     history/view/media/history_view_story_mention.h
-    history/view/media/history_view_suggest_decision.cpp
-    history/view/media/history_view_suggest_decision.h
     history/view/media/history_view_theme_document.cpp
     history/view/media/history_view_theme_document.h
     history/view/media/history_view_todo_list.cpp
     history/view/media/history_view_todo_list.h
-    history/view/media/history_view_unique_gift.cpp
-    history/view/media/history_view_unique_gift.h
     history/view/media/history_view_unsupported_notice.cpp
     history/view/media/history_view_unsupported_notice.h
     history/view/media/history_view_userpic_suggestion.cpp

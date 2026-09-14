@@ -21,7 +21,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_helpers.h"
 #include "history/view/media/history_view_media_generic.h"
 #include "history/view/media/history_view_web_page.h"
-#include "history/view/media/history_view_suggest_decision.h"
 #include "history/view/reactions/history_view_reactions.h"
 #include "history/view/reactions/history_view_reactions_button.h"
 #include "history/view/history_view_reply_button.h"
@@ -537,8 +536,6 @@ Message::Message(
 	if (animation) {
 		_bottomInfo.continueEffectAnimation(std::move(animation));
 	}
-	initPaidInformation();
-
 	if (data->textAppearing()) {
 		AddComponents(TextAppearing::Bit());
 		const auto appearing = Get<TextAppearing>();
@@ -917,80 +914,6 @@ void Message::activateRichPageMedia(
 	}
 }
 
-void Message::refreshSuggestedInfo(
-		not_null<HistoryItem*> item,
-		not_null<const HistoryMessageSuggestion*> suggest,
-		const HistoryMessageReply *replyData) {
-	const auto link = (replyData && replyData->resolvedMessage)
-		? JumpToMessageClickHandler(
-			replyData->resolvedMessage.get(),
-			item->fullId())
-		: ClickHandlerPtr();
-	setServicePreMessage({}, link, std::make_unique<MediaGeneric>(
-		this,
-		GenerateSuggestRequestMedia(this, suggest),
-		MediaGenericDescriptor{
-			.maxWidth = st::chatSuggestWidth,
-			.fullAreaLink = link,
-			.service = true,
-			.hideServiceText = true,
-		}));
-}
-
-void Message::initPaidInformation() {
-	const auto item = data();
-	if (item->history()->peer->isMonoforum()) {
-		if (const auto suggest = item->Get<HistoryMessageSuggestion>()) {
-			const auto replyData = item->Get<HistoryMessageReply>();
-			refreshSuggestedInfo(item, suggest, replyData);
-		}
-		return;
-	} else if (!item->history()->peer->isUser()) {
-		return;
-	}
-	const auto media = this->media();
-	const auto mine = PaidInformation{
-		.messages = 1,
-		.stars = item->starsPaid(),
-	};
-	auto info = media ? media->paidInformation().value_or(mine) : mine;
-	if (!info) {
-		return;
-	}
-	const auto action = [&] {
-		return (info.messages == 1)
-			? tr::lng_action_paid_message_one(
-				tr::now,
-				tr::marked)
-			: tr::lng_action_paid_message_some(
-				tr::now,
-				lt_count,
-				info.messages,
-				tr::marked);
-	};
-	auto text = PreparedServiceText{
-		.text = item->out()
-			? tr::lng_action_paid_message_sent(
-				tr::now,
-				lt_count,
-				info.stars,
-				lt_action,
-				action(),
-				tr::marked)
-			: tr::lng_action_paid_message_got(
-				tr::now,
-				lt_count,
-				info.stars,
-				lt_name,
-				tr::link(item->from()->shortName(), 1),
-				tr::marked),
-	};
-	if (!item->out()) {
-		text.links.push_back(item ->from()->createOpenLink());
-	}
-	setServicePreMessage(std::move(text));
-}
-
 void Message::refreshRightBadge() {
 	if (const auto badge = Get<RightBadge>(); badge && badge->overridden) {
 		return;
@@ -1305,21 +1228,6 @@ QSize Message::performCountOptimalSize() {
 		RemoveComponents(SummaryHeader::Bit());
 	}
 
-	if (item->history()->peer->isMonoforum()) {
-		if (const auto suggest = item->Get<HistoryMessageSuggestion>()) {
-			if (const auto service = Get<ServicePreMessage>()) {
-				// Ok, we didn't have the message, but now we have.
-				// That means this is not a plain post suggestion,
-				// but a suggestion of changes to previous suggestion.
-				if (service->media
-					&& !service->handler
-					&& replyData
-					&& replyData->resolvedMessage) {
-					refreshSuggestedInfo(item, suggest, replyData);
-				}
-			}
-		}
-	}
 
 	if (const auto postSender = item->discussionPostOriginalSender()) {
 		if (!postSender->isFullLoaded()) {

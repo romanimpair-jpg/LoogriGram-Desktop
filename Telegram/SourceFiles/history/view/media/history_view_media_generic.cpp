@@ -30,6 +30,183 @@ namespace {
 
 constexpr auto kAdditionalPrizesWithLineOpacity = 0.6;
 
+class ButtonPart final : public MediaGenericPart {
+public:
+	ButtonPart(
+		const QString &text,
+		QMargins margins,
+		Fn<void()> repaint,
+		ClickHandlerPtr link,
+		QColor bg = QColor(0, 0, 0, 0));
+
+	void draw(
+		Painter &p,
+		not_null<const MediaGeneric*> owner,
+		const PaintContext &context,
+		int outerWidth) const override;
+	TextState textState(
+		QPoint point,
+		StateRequest request,
+		int outerWidth) const override;
+
+	void clickHandlerPressedChanged(
+		const ClickHandlerPtr &p,
+		bool pressed) override;
+
+	QSize countOptimalSize() override;
+	QSize countCurrentSize(int newWidth) override;
+
+private:
+	Ui::Text::String _text;
+	QMargins _margins;
+	QColor _bg;
+	QSize _size;
+
+	ClickHandlerPtr _link;
+	std::unique_ptr<Ui::RippleAnimation> _ripple;
+	mutable Ui::Premium::ColoredMiniStars _stars;
+	mutable std::optional<QColor> _starsLastColor;
+	Fn<void()> _repaint;
+
+	mutable QPoint _lastPoint;
+
+};
+
+ButtonPart::ButtonPart(
+	const QString &text,
+	QMargins margins,
+	Fn<void()> repaint,
+	ClickHandlerPtr link,
+	QColor bg)
+: _text(st::semiboldTextStyle, text)
+, _margins(margins)
+, _bg(bg)
+, _size(
+	(_text.maxWidth()
+		+ st::msgServiceGiftBoxButtonHeight
+		+ st::msgServiceGiftBoxButtonPadding.left()
+		+ st::msgServiceGiftBoxButtonPadding.right()),
+	st::msgServiceGiftBoxButtonHeight)
+, _link(std::move(link))
+, _stars([=](const QRect &) {
+	repaint();
+}, Ui::Premium::MiniStarsType::SlowStars)
+, _repaint(std::move(repaint)) {
+}
+
+void ButtonPart::draw(
+		Painter &p,
+		not_null<const MediaGeneric*> owner,
+		const PaintContext &context,
+		int outerWidth) const {
+	PainterHighQualityEnabler hq(p);
+
+	const auto customColors = (_bg.alpha() > 0);
+
+	const auto position = QPoint(
+		(outerWidth - width()) / 2 + _margins.left(),
+		_margins.top());
+	p.translate(position);
+
+	p.setPen(Qt::NoPen);
+	p.setBrush(customColors ? QBrush(_bg) : context.st->msgServiceBg());
+	const auto radius = _size.height() / 2.;
+	const auto r = Rect(_size);
+	p.drawRoundedRect(r, radius, radius);
+
+	auto white = QColor(255, 255, 255);
+	const auto fg = customColors ? white : context.st->msgServiceFg()->c;
+	if (!_starsLastColor || *_starsLastColor != fg) {
+		_starsLastColor = fg;
+		_stars.setColorOverride(QGradientStops{
+			{ 0., anim::with_alpha(fg, .3) },
+			{ 1., fg },
+		});
+		const auto padding = _size.height() / 2;
+		_stars.setCenter(
+			Rect(_size) - QMargins(padding, 0, padding, 0));
+	}
+
+	auto clipPath = QPainterPath();
+	clipPath.addRoundedRect(r, radius, radius);
+	p.setClipPath(clipPath);
+	_stars.setPaused(context.paused);
+	_stars.paint(p);
+	p.setClipping(false);
+
+	if (_ripple) {
+		const auto opacity = p.opacity();
+		const auto ripple = customColors
+			? anim::with_alpha(fg, .3)
+			: context.messageStyle()->msgWaveformInactive->c;
+		p.setOpacity(st::historyPollRippleOpacity);
+		_ripple->paint(
+			p,
+			0,
+			0,
+			width(),
+			&ripple);
+		p.setOpacity(opacity);
+	}
+
+	p.setPen(fg);
+	_text.draw(
+		p,
+		0,
+		(_size.height() - _text.minHeight()) / 2,
+		_size.width(),
+		style::al_top);
+
+	p.translate(-position);
+}
+
+TextState ButtonPart::textState(
+		QPoint point,
+		StateRequest request,
+		int outerWidth) const {
+	point -= QPoint{
+		(outerWidth - width()) / 2 + _margins.left(),
+		_margins.top()
+	};
+	if (QRect(QPoint(), _size).contains(point)) {
+		auto result = TextState();
+		result.link = _link;
+		_lastPoint = point;
+		return result;
+	}
+	return {};
+}
+
+void ButtonPart::clickHandlerPressedChanged(
+		const ClickHandlerPtr &p,
+		bool pressed) {
+	if (p != _link) {
+		return;
+	} else if (pressed) {
+		if (!_ripple) {
+			const auto radius = _size.height() / 2;
+			_ripple = std::make_unique<Ui::RippleAnimation>(
+				st::defaultRippleAnimation,
+				Ui::RippleAnimation::RoundRectMask(_size, radius),
+				_repaint);
+		}
+		_ripple->add(_lastPoint);
+	} else if (_ripple) {
+		_ripple->lastStop();
+	}
+}
+
+QSize ButtonPart::countOptimalSize() {
+	return {
+		_margins.left() + _size.width() + _margins.right(),
+		_margins.top() + _size.height() + _margins.bottom(),
+	};
+}
+
+QSize ButtonPart::countCurrentSize(int newWidth) {
+	return optimalSize();
+}
+
 } // namespace
 
 TextState MediaGenericPart::textState(
@@ -1104,4 +1281,145 @@ QSize PeerBubbleListPart::countCurrentSize(int newWidth) {
 	return { newWidth, channelsBottom };
 }
 
+std::unique_ptr<MediaGenericPart> MakeGenericButtonPart(
+		const QString &text,
+		QMargins margins,
+		Fn<void()> repaint,
+		ClickHandlerPtr link,
+		QColor bg) {
+	return std::make_unique<ButtonPart>(text, margins, repaint, link, bg);
+}
+
+TextPartColored::TextPartColored(
+	TextWithEntities text,
+	QMargins margins,
+	Fn<QColor(const PaintContext &)> color,
+	const style::TextStyle &st,
+	const base::flat_map<uint16, ClickHandlerPtr> &links,
+	const Ui::Text::MarkedContext &context)
+: MediaGenericTextPart(text, margins, st, links, context)
+, _color(std::move(color)) {
+}
+
+void TextPartColored::setupPen(
+		Painter &p,
+		not_null<const MediaGeneric*> owner,
+		const PaintContext &context) const {
+	p.setPen(_color(context));
+}
+
+AttributeTable::AttributeTable(
+	std::vector<Entry> entries,
+	QMargins margins,
+	Fn<QColor(const PaintContext &)> labelColor,
+	Fn<QColor(const PaintContext &)> valueColor,
+	const Ui::Text::MarkedContext &context)
+: _margins(margins)
+, _labelColor(std::move(labelColor))
+, _valueColor(std::move(valueColor)) {
+	for (const auto &entry : entries) {
+		_parts.emplace_back();
+		auto &part = _parts.back();
+		part.label.setText(st::chatUniqueTextStyle, entry.label);
+		part.value.setMarkedText(
+			st::chatUniqueTextStyle,
+			entry.value,
+			kMarkupTextOptions,
+			context);
+	}
+}
+
+void AttributeTable::draw(
+		Painter &p,
+		not_null<const MediaGeneric*> owner,
+		const PaintContext &context,
+		int outerWidth) const {
+	const auto labelRight = _valueLeft - st::chatUniqueTableSkip;
+	const auto palette = &context.st->serviceTextPalette();
+	auto top = _margins.top();
+	const auto paint = [&](
+			const Ui::Text::String &text,
+			int left,
+			int availableWidth,
+			style::align align) {
+		text.draw(p, {
+			.position = { left, top },
+			.outerWidth = outerWidth,
+			.availableWidth = availableWidth,
+			.align = align,
+			.palette = palette,
+			.spoiler = Ui::Text::DefaultSpoilerCache(),
+			.now = context.now,
+			.pausedEmoji = context.paused || On(PowerSaving::kEmojiChat),
+			.pausedSpoiler = context.paused || On(PowerSaving::kChatSpoiler),
+			.elisionLines = 1,
+		});
+	};
+	const auto forLabel = labelRight - _margins.left();
+	const auto forValue = width() - _valueLeft - _margins.right();
+	for (const auto &part : _parts) {
+		p.setPen(_labelColor(context));
+		paint(part.label, _margins.left(), forLabel, style::al_topright);
+		p.setPen(_valueColor(context));
+		paint(part.value, _valueLeft, forValue, style::al_topleft);
+		top += st::normalFont->height + st::chatUniqueRowSkip;
+	}
+}
+
+TextState AttributeTable::textState(
+		QPoint point,
+		StateRequest request,
+		int outerWidth) const {
+	auto top = _margins.top();
+	for (const auto &part : _parts) {
+		const auto height = st::normalFont->height + st::chatUniqueRowSkip;
+		if (point.y() >= top && point.y() < top + height) {
+			point -= QPoint((outerWidth - width()) / 2 + _valueLeft, top);
+			auto result = TextState();
+			auto forText = request.forText();
+			forText.align = style::al_topleft;
+			result.link = part.value.getState(point, width(), forText).link;
+			return result;
+		}
+		top += height;
+	}
+	return {};
+}
+
+QSize AttributeTable::countOptimalSize() {
+	auto maxLabel = 0;
+	auto maxValue = 0;
+	for (const auto &part : _parts) {
+		maxLabel = std::max(maxLabel, part.label.maxWidth());
+		maxValue = std::max(maxValue, part.value.maxWidth());
+	}
+	const auto skip = st::chatUniqueTableSkip;
+	const auto row = st::normalFont->height + st::chatUniqueRowSkip;
+	const auto height = int(_parts.size()) * row - st::chatUniqueRowSkip;
+	return {
+		_margins.left() + maxLabel + skip + maxValue + _margins.right(),
+		_margins.top() + height + _margins.bottom(),
+	};
+}
+
+QSize AttributeTable::countCurrentSize(int newWidth) {
+	const auto skip = st::chatUniqueTableSkip;
+	const auto width = newWidth - _margins.left() - _margins.right() - skip;
+	auto maxLabel = 0;
+	auto maxValue = 0;
+	for (const auto &part : _parts) {
+		maxLabel = std::max(maxLabel, part.label.maxWidth());
+		maxValue = std::max(maxValue, part.value.maxWidth());
+	}
+	if (width <= 0 || !maxLabel) {
+		_valueLeft = _margins.left();
+	} else if (!maxValue) {
+		_valueLeft = newWidth - _margins.right();
+	} else {
+		_valueLeft = _margins.left()
+			+ int((int64(maxLabel) * width) / (maxLabel + maxValue))
+			+ skip;
+	}
+	return { newWidth, minHeight() };
+}
 } // namespace HistoryView

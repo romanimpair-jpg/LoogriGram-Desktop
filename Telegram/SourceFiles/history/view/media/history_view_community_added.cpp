@@ -14,7 +14,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item.h"
 #include "history/view/history_view_element.h"
 #include "history/view/media/history_view_media_generic.h"
-#include "history/view/media/history_view_unique_gift.h" // MakeGenericButtonPart
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "ui/dynamic_image.h"
