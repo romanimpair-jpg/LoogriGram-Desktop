@@ -28,8 +28,6 @@ settingsPremiumIconEffects: icon {{ "settings/premium/effects", settingsIconFg }
 settingsPremiumIconChecklist: icon {{ "settings/premium/checklist", settingsIconFg }};
 settingsPremiumIconPeerColors: icon {{ "settings/premium/peer_colors-24x24", settingsIconFg }};
 settingsPremiumIconNoForwards: icon {{ "menu/share_off-24x24", settingsIconFg }};
-	{ "chat/ai_star2-20x20", settingsIconFg, point(2px, 2px) },
-};
 settingsPremiumIconRich: icon {{ "settings/premium/rich", settingsIconFg }};
 settingsPremiumUserHeight: 205px;
 settingsPremiumUserTitlePadding: margins(0px, 16px, 0px, 6px);
