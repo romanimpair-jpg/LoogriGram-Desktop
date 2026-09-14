@@ -27,6 +27,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "payments/payments_non_panel_process.h"
 #include "boxes/peers/edit_peer_info_box.h"
 #include "boxes/share_box.h"
+// LoogriGram: still needed for Ui::ShowGiftErrorToast in
+// ResolveAndShowUniqueGift, which stories and the premium
+// section still call. It goes with the gift subsystem.
+#include "boxes/star_gift_box.h"
 #include "boxes/connection_box.h"
 #include "boxes/edit_privacy_box.h"
 #include "boxes/sticker_set_box.h"
