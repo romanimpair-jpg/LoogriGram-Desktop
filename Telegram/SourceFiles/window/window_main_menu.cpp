@@ -52,6 +52,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/chat/chat_theme.h"
 #include "ui/controls/swipe_handler.h"
 #include "ui/controls/userpic_button.h"
+#include "ui/effects/radial_animation.h"
 #include "ui/effects/snowflakes.h"
 #include "ui/effects/toggle_arrow.h"
 #include "ui/painter.h"
@@ -117,6 +118,115 @@ constexpr auto kPlayStatusLimit = 2;
 			? tr::lng_menu_change_status
 			: tr::lng_menu_set_status)(makeLink);
 	}) | rpl::flatten_latest();
+}
+
+// LoogriGram: the label of the main menu's update row, following our updater.
+[[nodiscard]] rpl::producer<QString> UpdateRowText() {
+	using State = Core::LoogriGram::UpdateState;
+	return Core::LoogriGram::UpdateStateValue(
+	) | rpl::map([](State state) -> rpl::producer<QString> {
+		switch (state) {
+		case State::Checking:
+			return LoogriGram::Lang::CheckingUpdates();
+		case State::Downloading:
+			return LoogriGram::Lang::DownloadingUpdate(
+				Core::LoogriGram::UpdateProgressValue(
+				) | rpl::map([](Core::LoogriGram::UpdateProgress progress) {
+					// Negative means "no total yet", which the label turns
+					// into a plain "Downloading Update" rather than 0%.
+					return progress.total
+						? int((progress.ready * 100) / progress.total)
+						: -1;
+				}));
+		case State::Ready:
+			return LoogriGram::Lang::RestartToUpdate();
+		case State::None:
+			break;
+		}
+		return LoogriGram::Lang::CheckUpdates();
+	}) | rpl::flatten_latest();
+}
+
+// LoogriGram: a ring around the update row's icon while the updater works.
+//
+// It is drawn over the icon rather than replacing it, which keeps the row
+// looking exactly as it did when nothing is happening - the widget is hidden
+// then and costs nothing.
+void SetupUpdateRing(not_null<Ui::RpWidget*> row) {
+	using State = Core::LoogriGram::UpdateState;
+
+	struct Ring {
+		explicit Ring(QWidget *parent)
+		: widget(parent)
+		, radial([this](crl::time now) {
+			// RadialAnimation animates towards the value it is handed and
+			// does not drive itself, so the fraction goes back in on every
+			// frame. That is also what advances the arc's rotation, which is
+			// the only motion there is while the total size is unknown.
+			const auto updated = radial.update(fraction, false, now);
+			if (updated || !anim::Disabled()) {
+				widget.update();
+			}
+		}) {
+		}
+
+		Ui::RpWidget widget;
+		float64 fraction = 0.;
+		Ui::RadialAnimation radial;
+	};
+	const auto ring = row->lifetime().make_state<Ring>(row.get());
+	ring->widget.setAttribute(Qt::WA_TransparentForMouseEvents);
+	ring->widget.resize(
+		st::mainMenuUpdateRingSize,
+		st::mainMenuUpdateRingSize);
+	ring->widget.hide();
+
+	// Centred on the icon, which sits at iconLeft and is vertically centred
+	// in the row - the same placement AddButtonIcon computes for the icon
+	// itself, offset by half the difference in size.
+	const auto skip = (st::mainMenuUpdateRingSize
+		- st::menuIconDownload.width()) / 2;
+	row->sizeValue(
+	) | rpl::on_next([=](QSize size) {
+		ring->widget.moveToLeft(
+			st::mainMenuButton.iconLeft - skip,
+			(size.height() - ring->widget.height()) / 2,
+			size.width());
+	}, ring->widget.lifetime());
+
+	ring->widget.paintRequest(
+	) | rpl::on_next([=] {
+		auto p = QPainter(&ring->widget);
+		const auto line = st::mainMenuUpdateRingThickness;
+		const auto inner = QRect(
+			QPoint(),
+			ring->widget.size()
+		).marginsRemoved({ line, line, line, line });
+		ring->radial.draw(p, inner, line, st::windowBgActive);
+	}, ring->widget.lifetime());
+
+	Core::LoogriGram::UpdateProgressValue(
+	) | rpl::on_next([=](Core::LoogriGram::UpdateProgress progress) {
+		// An unknown total leaves the fraction at zero, which RadialAnimation
+		// still draws as a short rotating arc - the right thing to show when
+		// there is no length to measure against.
+		ring->fraction = progress.total
+			? (progress.ready / float64(progress.total))
+			: 0.;
+	}, ring->widget.lifetime());
+
+	Core::LoogriGram::UpdateStateValue(
+	) | rpl::map([](State state) {
+		return (state == State::Checking) || (state == State::Downloading);
+	}) | rpl::distinct_until_changed(
+	) | rpl::on_next([=](bool working) {
+		ring->widget.setVisible(working);
+		if (working) {
+			ring->radial.start(ring->fraction);
+		} else {
+			ring->radial.stop();
+		}
+	}, ring->widget.lifetime());
 }
 
 } // namespace
@@ -772,11 +882,31 @@ void MainMenu::setupMenu() {
 	// LoogriGram: our updater checks once at launch and otherwise says
 	// nothing, which leaves no way to ask it to look now - needed at minimum
 	// to test it without restarting. Reports the outcome either way.
-	addAction(
-		LoogriGram::Lang::CheckUpdates(),
-		{ &st::menuIconDownload }
-	)->setClickedCallback([] {
-		Core::LoogriGram::CheckForUpdatesNow();
+	//
+	// The row is also where the updater shows its work. The asset is over
+	// 200MB, so a download runs for minutes, and a row that went on reading
+	// "Check for Updates" the whole time looked like nothing had happened -
+	// the only sign was a toast that had long since faded. The label follows
+	// the state and a ring fills around the icon.
+	const auto updates = addAction(
+		UpdateRowText(),
+		{ &st::menuIconDownload });
+	SetupUpdateRing(updates);
+
+	// Once a build is downloaded and swapped in there is nothing left to
+	// check for, so the row offers the restart instead.
+	const auto updateState = updates->lifetime().make_state<
+		Core::LoogriGram::UpdateState>();
+	Core::LoogriGram::UpdateStateValue(
+	) | rpl::on_next([=](Core::LoogriGram::UpdateState state) {
+		*updateState = state;
+	}, updates->lifetime());
+	updates->setClickedCallback([=] {
+		if (*updateState == Core::LoogriGram::UpdateState::Ready) {
+			Core::RestartAfterUpdate();
+		} else {
+			Core::LoogriGram::CheckForUpdatesNow();
+		}
 	});
 
 	_nightThemeToggle = addAction(

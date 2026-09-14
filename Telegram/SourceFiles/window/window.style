@@ -119,6 +119,11 @@ mainMenuAddAccountButton: SettingsButton(mainMenuButton) {
 	iconLeft: 23px;
 }
 
+// LoogriGram: the ring the update row draws around its icon while our updater
+// is checking or downloading. Sized to clear the 24px menu icon it encircles.
+mainMenuUpdateRingSize: 32px;
+mainMenuUpdateRingThickness: 2px;
+
 mainMenuAccountSize: 26px;
 mainMenuAccountLine: 2px;
 mainMenuBadgeFont: font(11px bold);

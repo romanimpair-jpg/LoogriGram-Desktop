@@ -29,7 +29,18 @@ namespace LoogriGram::Lang {
 // way tr:: strings do.
 
 [[nodiscard]] rpl::producer<QString> GhostMode();
+
+// The four faces of the main menu's update row, one per updater state.
 [[nodiscard]] rpl::producer<QString> CheckUpdates();
+[[nodiscard]] rpl::producer<QString> CheckingUpdates();
+[[nodiscard]] rpl::producer<QString> RestartToUpdate();
+
+// Reads "Downloading Update 42%", or drops the number for as long as the
+// download has no known total to measure itself against - which is why this
+// takes the percentage as a producer rather than a value, and why a negative
+// one is the way to say "not yet known" instead of pretending it is 0%.
+[[nodiscard]] rpl::producer<QString> DownloadingUpdate(
+	rpl::producer<int> percent);
 
 // Keys whose compiled text must survive the cloud language pack.
 //

@@ -26,6 +26,12 @@ struct Entry {
 
 constexpr auto kGhostMode = Entry{ .en = "Ghost Mode" };
 constexpr auto kCheckUpdates = Entry{ .en = "Check for Updates" };
+constexpr auto kCheckingUpdates = Entry{ .en = "Checking for Updates..." };
+constexpr auto kDownloadingUpdate = Entry{ .en = "Downloading Update" };
+constexpr auto kDownloadingUpdatePercent = Entry{
+	.en = "Downloading Update %1%",
+};
+constexpr auto kRestartToUpdate = Entry{ .en = "Restart to Update" };
 
 [[nodiscard]] QString Pick(const Entry &entry, const QString &languageId) {
 	// Nothing is translated yet, so the id is unused. When a locale is added,
@@ -56,6 +62,27 @@ rpl::producer<QString> GhostMode() {
 
 rpl::producer<QString> CheckUpdates() {
 	return Value(kCheckUpdates);
+}
+
+rpl::producer<QString> CheckingUpdates() {
+	return Value(kCheckingUpdates);
+}
+
+rpl::producer<QString> RestartToUpdate() {
+	return Value(kRestartToUpdate);
+}
+
+rpl::producer<QString> DownloadingUpdate(rpl::producer<int> percent) {
+	return rpl::combine(
+		Value(kDownloadingUpdate),
+		Value(kDownloadingUpdatePercent),
+		std::move(percent)
+	) | rpl::map([](
+			const QString &plain,
+			const QString &counted,
+			int percent) {
+		return (percent < 0) ? plain : counted.arg(percent);
+	});
 }
 
 bool KeepCompiledString(const QByteArray &key) {

@@ -87,7 +87,21 @@ struct State final : QObject {
 
 	QNetworkAccessManager manager;
 	base::Timer timer;
+
+	// Watched by the main menu row. Kept here rather than in namespace-scope
+	// statics so they die with qApp along with the network manager they
+	// describe, instead of outliving it at shutdown.
+	rpl::variable<UpdateState> state = UpdateState::None;
+	rpl::variable<UpdateProgress> progress;
 };
+
+[[nodiscard]] State *EnsureState() {
+	static auto instance = QPointer<State>();
+	if (!instance) {
+		instance = Ui::CreateChild<State>(qApp);
+	}
+	return instance.data();
+}
 
 [[nodiscard]] QNetworkRequest PrepareRequest(const QString &url) {
 	auto request = QNetworkRequest(QUrl(url));
@@ -239,54 +253,91 @@ void ShowRestartBox() {
 	return true;
 }
 
+// Back to idle, and say why. Anything that ends a check without leaving a new
+// build on disk goes through here, so the row cannot be left spinning.
+void GiveUp(not_null<State*> state, bool manual, const QString &text) {
+	state->progress = UpdateProgress();
+	state->state = UpdateState::None;
+	Report(manual, text);
+}
+
 void DownloadAndApply(
 		not_null<State*> state,
 		const QString &url,
 		bool manual) {
+	state->progress = UpdateProgress();
+	state->state = UpdateState::Downloading;
+
 	const auto reply = state->manager.get(PrepareRequest(url));
+	QObject::connect(
+		reply,
+		&QNetworkReply::downloadProgress,
+		reply,
+		[=](qint64 ready, qint64 total) {
+			// total is -1 while the length is unknown, and the asset is
+			// served through a redirect that may not carry one at all. The
+			// row shows a spinner without a percentage in that case, so
+			// normalise it to 0 rather than letting it reach the division.
+			state->progress = UpdateProgress{
+				.ready = ready,
+				.total = std::max(total, qint64()),
+			};
+		});
 	QObject::connect(reply, &QNetworkReply::finished, reply, [=] {
 		reply->deleteLater();
 		if (reply->error() != QNetworkReply::NoError) {
 			LOG(("Update Error: download failed, %1."
 				).arg(reply->errorString()));
-			Report(manual, u"Could not download the update."_q);
+			GiveUp(state, manual, u"Could not download the update."_q);
 			return;
 		}
 		const auto unpacked = Ungzip(reply->readAll());
 		if (unpacked.isEmpty()) {
-			Report(manual, u"The downloaded update was unreadable."_q);
+			GiveUp(state, manual, u"The downloaded update was unreadable."_q);
 		} else if (!ApplyUpdate(unpacked)) {
-			Report(manual, u"Could not install the update."_q);
+			GiveUp(state, manual, u"Could not install the update."_q);
 		} else {
+			// Stays at Ready for the rest of the launch: the new build is
+			// already in place and the only thing left is the restart, which
+			// the row now offers.
+			state->state = UpdateState::Ready;
 			ShowRestartBox();
 		}
 	});
 }
 
 void CheckLatestRelease(not_null<State*> state, bool manual) {
+	state->state = UpdateState::Checking;
+
 	const auto reply = state->manager.get(PrepareRequest(kLatestReleaseUrl));
 	QObject::connect(reply, &QNetworkReply::finished, reply, [=] {
 		reply->deleteLater();
 		if (reply->error() != QNetworkReply::NoError) {
 			LOG(("Update Info: check failed, %1.").arg(reply->errorString()));
-			Report(manual, u"Could not reach GitHub to check for updates."_q);
+			GiveUp(
+				state,
+				manual,
+				u"Could not reach GitHub to check for updates."_q);
 			return;
 		}
 		const auto json = QJsonDocument::fromJson(reply->readAll());
 		if (!json.isObject()) {
 			LOG(("Update Error: malformed reply from GitHub."));
-			Report(manual, u"GitHub returned something unexpected."_q);
+			GiveUp(state, manual, u"GitHub returned something unexpected."_q);
 			return;
 		}
 		const auto root = json.object();
 		const auto tag = root.value(u"tag_name"_q).toString();
 		if (tag.isEmpty()) {
 			LOG(("Update Error: release carries no tag."));
-			Report(manual, u"The newest release has no version tag."_q);
+			GiveUp(state, manual, u"The newest release has no version tag."_q);
 			return;
 		} else if (tag == QString::fromLatin1(LOOGRIGRAM_BUILD_TAG)) {
 			LOG(("Update Info: already on %1.").arg(tag));
-			Report(manual, u"Already on the newest build (%1)."_q.arg(tag));
+			GiveUp(
+				state,
+				manual,
+				u"Already on the newest build (%1)."_q.arg(tag));
 			return;
 		}
 		const auto assets = root.value(u"assets"_q).toArray();
@@ -308,17 +359,11 @@ void CheckLatestRelease(not_null<State*> state, bool manual) {
 		}
 		LOG(("Update Error: release %1 has no %2."
 			).arg(tag, QString::fromLatin1(kAssetName)));
-		Report(manual, u"Release %1 has no download for this platform."_q
-			.arg(tag));
+		GiveUp(
+			state,
+			manual,
+			u"Release %1 has no download for this platform."_q.arg(tag));
 	});
-}
-
-[[nodiscard]] State *EnsureState() {
-	static auto instance = QPointer<State>();
-	if (!instance) {
-		instance = Ui::CreateChild<State>(qApp);
-	}
-	return instance.data();
 }
 
 [[nodiscard]] bool UpdatesPossible(bool manual) {
@@ -347,18 +392,43 @@ void StartUpdateCheck() {
 
 void CheckForUpdatesNow() {
 #ifdef Q_OS_WIN
+	const auto state = EnsureState();
+	switch (state->state.current()) {
+	case UpdateState::Checking:
+	case UpdateState::Downloading:
+		// Already working. Saying so is better than starting a second
+		// download of the same 220MB asset over the top of the first.
+		Ui::Toast::Show({ .text = { u"Already looking for an update."_q } });
+		return;
+	case UpdateState::Ready:
+		Ui::Toast::Show({
+			.text = { u"An update is installed and waiting for a restart."_q },
+		});
+		return;
+	case UpdateState::None:
+		break;
+	}
+
 	// Deliberately ignores the once-per-launch guard and the start delay: the
 	// point of the button is to ask again, now.
 	if (!UpdatesPossible(true)) {
 		return;
 	}
 	Started = true;
-	CheckLatestRelease(EnsureState(), true);
+	CheckLatestRelease(state, true);
 #else // Q_OS_WIN
 	Ui::Toast::Show({
 		.text = { u"Updates are only wired up on Windows."_q },
 	});
 #endif // Q_OS_WIN
+}
+
+rpl::producer<UpdateState> UpdateStateValue() {
+	return EnsureState()->state.value();
+}
+
+rpl::producer<UpdateProgress> UpdateProgressValue() {
+	return EnsureState()->progress.value();
 }
 
 } // namespace Core::LoogriGram
