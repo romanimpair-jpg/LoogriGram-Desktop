@@ -15,62 +15,80 @@ what is specific to the fork.
 | Part | State |
 |---|---|
 | Desktop features | Implemented, built, installed and in daily use |
-| Desktop CI | Green. Dependencies cached, warm incremental compile ~25m |
-| Ads | **Deleted**, not gated. See "Finish the removals properly" |
-| Updater | Ours, live. Checks our releases once per launch |
-| **Android** | **Not started.** See "Android" below |
+| Desktop CI | Green. Builds **Qt 5**, not Qt 6 — see below, this matters |
+| Ads, AI, large emoji, paid reactions | **Deleted**, not gated |
+| Updater | Ours, live, and its restart path is fixed and verified |
+| **Android** | **Built, signed, installed and in use since 2026-09-10.** The "Android" section at the bottom of this file is stale history — read `loogrigram-android/LOOGRIGRAM.md` instead |
 
-Verified working in the installed build: no sponsored messages, no premium
-badges or purchase surfaces, ghost mode toggle in the main menu, Last Seen and
-read date hidden server-side, no hover reactions, no suggestion popups, no
-Telegram help rows.
+Verified in the installed build (`g2533f37`): no sponsored messages, no premium
+badges anywhere including group author names, ghost mode toggle, Last Seen and
+read date hidden server-side, no suggestion popups, no AI compose button, no
+large emoji, no paid reactions, no stories reachable from profiles, no rating
+bar, no "Premium users" privacy row, and the tray menu says LoogriGram.
 
 ### Where to pick up
 
-**Build `34754096133` (commit `336228e`) was dispatched at the end of the last
-session — a full ~2h rebuild.** Install it by hand rather than letting the
-updater carry you: the build it would update *from* is the broken one.
+One thing is known broken, and one large job is half-finished.
 
-Then, in order:
+**Broken: the new icons are not reaching the binary.** `g2533f37` contains the
+*old* Telegram artwork - verified by searching the exe for the bytes of both
+the old and new `logo_256.png`; the old ones are present, the new ones are
+not. This is **not** a Windows icon cache. The likely cause is that changing a
+file *listed in* a `.qrc` does not invalidate the generated resource object
+when the `.qrc` itself is unchanged, so the warm `out/` tree reused a stale
+one; `icon256.ico` reaches the exe through `Telegram.rc`, which has the same
+shape of problem. First thing to try is a cold tree: bump `OUT_CACHE_SALT`.
 
-1. **Open the main menu.** It must not crash. If it does, the lang rework did
-   not take and everything below is moot.
-2. **Open an image. It will still flash white — that is expected, not a
-   regression.** Do not relaunch afterwards; `log.txt` is overwritten on every
-   start. Read the `Viewer Trace:` lines first.
+**Half-finished: the premium backlog.** See "Finish the removals properly".
 
-Those traces are the whole point of that build. They print what the show path
-was about to show, when the window was shown, and what the first four frames
-rendered and painted. **The question they answer is ordering:** does a frame
-carrying the media exist *before* `Viewer Trace: window shown.`, or only after?
-Timestamps are second-resolution, so read the order of lines, not the times.
+### The white flash is fixed, and the cause was the build, not the code
 
-### The white flash — what is established, and what is not
+Three sessions went into this on the assumption it was our drawing. It was
+not. **We were building Qt 6 and the official client ships Qt 5**, and the two
+use different renderers:
 
-Reproduces as: **white on the first media opened after a fresh start, then the
-clear colour on every open after that.**
+```
+Qt 6  ->  no ANGLE  ->  QRhi/D3D11  ->  media_view_overlay_rhi.cpp   -> flashes
+Qt 5  ->  ANGLE     ->  OpenGL      ->  media_view_overlay_opengl.cpp -> does not
+```
 
-Established:
+`DESKTOP_APP_USE_ANGLE` is defined only for `QT_VERSION < 6` (lib_ui,
+`ui/gl/gl_detection.h`), so the Qt version silently decides which of two
+viewer implementations you run. Upstream builds x64 twice - `qt: ["", qt6]` -
+and the empty variant is Qt 5 and is what ships. Our workflow had been trimmed
+to a single matrix entry and kept the wrong one. Nobody decided that.
 
-- **The surface contents at hide time are what the window shows when it is next
-  mapped.** Proven by clearing to opaque black: every reopen then flashed black.
-- **Therefore the first-open white is the surface before anything has cleared
-  it** — the hide path has not run yet at that point.
-- **It is not the `_hideWorkaround` pass.** Black proved that pass works, and
-  the first open was still white.
-- Upstream `025c6aae` ("[qrhi] Fixed media viewer blink with last content on
-  reopen") is already taken; it fixes the *stale frame*, not this.
+**The lesson is bigger than the flash.** The official client is a fact you can
+check in ten minutes: install the portable build, run it, read its `log.txt`.
+It prints `Renderer: [OpenGL] (Window)` and `Using DirectX compiler` - that
+second line only compiles when ANGLE is on, which only happens under Qt 5. All
+three earlier sessions theorised instead. `branding/original/` and the
+portable zip are kept for exactly this kind of comparison.
 
-Not established, and **do not assume**:
+The earlier white-flash investigation notes are deleted rather than kept: the
+premise was wrong, so the conclusions were about a renderer we no longer use.
 
-- Why a transparent clear composites as white here rather than see-through.
-- Whether painting before the window is presented fixes it. `showAndActivate()`
-  calls `_widget->update()`, which only queues a repaint; forcing a synchronous
-  one was tried in a previous session and reverted unverified. Upstream still
-  has the plain `update()` and has not addressed this.
+### Editing `lang.strings` alone changes nothing at runtime
 
-On Windows x64 there is no escaping the RHI renderer: `use-qt-rhi`'s `.scope`
-excludes that platform, so it is forced wherever Qt is 6.7 or newer.
+This cost a build to discover. The tray still read "Quit Telegram" in a binary
+whose `lang.strings` said "Quit LoogriGram", and the rename was not wrong - it
+was **irrelevant**.
+
+`lang.strings` supplies only the *compiled defaults*. At startup the cached
+cloud pack is replayed over them - about eleven thousand keys of Telegram's own
+English - and `Lang::Instance::applyValue` overwrites every value it carries.
+The log has been saying so all along: `Lang Info: Loaded cached, keys: 10993`.
+
+So renaming anything in `lang.strings` needs a second half:
+`LoogriGram::Lang::KeepCompiledString` in `core/loogrigram_lang.cpp` lists the
+keys whose cloud value `applyValue` ignores. **Add the key there or the change
+is cosmetic.** The list is sorted for binary search because it is consulted
+once per key at every launch. It also covers a custom `.strings` file, which
+reaches the same function.
+
+Only strings that name *this program* belong in that list. References to
+Telegram the service stay as they are - they are still true, and we do not run
+the servers. `lng_terms_delete_warning` shows the split inside one string.
 
 ### Never add or remove keys in `lang.strings`
 
@@ -91,6 +109,51 @@ renumbers. If you ever must, **bump `OUT_CACHE_SALT`** in the same commit.
 The wider hazard is unresolved: that build showed a generated-header change not
 propagating to its dependents at all. It is sidestepped for our strings, not
 fixed, and could bite on any future codegen change.
+
+### Deleting a file: four lists, not one
+
+Five builds in a row died before compiling a single object, every one of them
+because something still named a file that had been deleted. Each failure was
+the same mistake wearing different clothes, so check all four every time:
+
+| Where | How it names the file |
+|---|---|
+| `Telegram/CMakeLists.txt` | path relative to `SourceFiles` |
+| `Telegram/cmake/*.cmake` | **a separate list** - `td_ui.cmake` holds the UI sources |
+| `*.qrc` | path relative to the qrc |
+| `*.style` | **bare icon name**, no extension, and **no platform guard** |
+
+That last one is the nastiest. The style codegen parses every `.style` file in
+full on every platform, so deleting a macOS-only icon breaks the *Windows*
+build - there is no `#if` in a style file. And the fix is to delete the style
+entry, not to restore the asset; this fork ships Windows only and mac code is
+not compiled, so it does not need to work.
+
+`Telegram/cmake/generate_models.cmake` bakes every `*.obj` under
+`Resources/art` into `.binobj` at build time, so a `.obj` with no apparent
+reader is a build input, not an orphan.
+
+Two checks worth re-running after any deletion, both cheap:
+
+- resolve every source path in all four lists against the filesystem;
+- resolve every icon name used in any `.style` against `Resources/icons`,
+  stripping `-WxH` and `-flip_*` suffixes, which are codegen directives rather
+  than part of the filename.
+
+### Scripted range edits are the single biggest source of self-inflicted damage
+
+`sed '/marker/,+3d'` assumes it knows how long a block is. One such edit cut a
+six-line composed icon in half and left its last layer glued to the line
+above; another took `setScreenIsLocked` out with the function beside it; a
+third stranded `: nullptr)` in a constructor initialiser list.
+
+Prefer exact-text edits. When a range delete is unavoidable, **read the seam
+back afterwards** - both sides of it, not just that the target is gone. The
+method-definition diff below catches this for `.cpp`; nothing catches it for
+`.style`, so brace-balance those by hand.
+
+`python3` exists on the dev machine; plain `python` does not and will hang on
+stdin, taking the rest of the shell command with it.
 
 ### Editing lessons, learned expensively
 
@@ -382,6 +445,26 @@ nothing about the account — an unauthenticated GET of a public endpoint.
   `.new` into place. `Core::Restart()` then relaunches `cExeDir() + cExeName()`
   — the same path, now holding the new build. `JustRelaunch` does not touch
   `Updater.exe`, so it works with upstream's updater disabled.
+- **`Core::Restart()` is the wrong call after an update — use
+  `Core::RestartAfterUpdate()`.** Verified working. `Restart()` is built for a
+  restart the user asked for from a settings row, so it always sets
+  `RestartingToSettings` and the new instance opens Settings on top of the chat
+  list. It also inherits how *this* process was launched, and there are **two**
+  independent ways that hides the new window: `-startintray`, and `-autostart`,
+  which `MainWindow::firstShow` turns into a hidden window whenever the stored
+  `StartMinimized` is on. Clearing `StartMinimized` is the wrong lever - it is a
+  stored preference, so you would either overwrite the user's choice or change a
+  value the new process re-reads from disk. `RestartAfterUpdate` sets
+  `RestartingAfterUpdate`, and `launcher_win.cpp` drops both arguments when it
+  sees it.
+- **Testing the updater needs two builds and a commit held back.** The fix lives
+  in the build *doing* the restarting, so it can only be proven by installing a
+  build that has it and then updating *from* that one. Keep one commit unbuilt,
+  install the baseline by hand, then push the held-back commit. Make it a change
+  you can see - the icons were chosen for that - so you can tell an applied
+  update from a mere restart. CI builds `--ref patches` and a side branch cannot
+  see the dependency caches, so the branch tip has to *be* the commit you want
+  built.
 - **A locally built binary never updates itself.** The committed tag is `"dev"`,
   which matches no release; the updater refuses to run unless the tag looks
   real, otherwise every local build would immediately overwrite itself with CI's.
@@ -535,9 +618,38 @@ Still sitting at the "forced getter" stage:
   `channels.restrictSponsoredMessages`, `account.toggleSponsoredMessages`, and
   ad revenue in `api_earn` / `info_channel_earn_list`. Those belong with the
   premium and monetisation removal — and the Business one is wanted gone.
+- ~~**AI compose.**~~ **Done** — ~8,000 lines. Rewrite, translate, tone
+  presets, the article-editor pill, the caption button, the shortcut, the
+  experimental toggle, the `addstyle/` deep link. Three things in the way were
+  *not* AI and were extracted rather than deleted: the paste-as-file helpers
+  (now `ui/controls/compose_text_helpers.cpp`), `ComposeTooltipManager` (now
+  `history_view_compose_tooltip.cpp`, and the send-as-file tooltip uses it),
+  and `st::historyAiComposeButton`, which was the base style for three
+  unrelated buttons and is now `historyComposeInnerButton`.
+- ~~**Large emoji.**~~ **Done.** Took a whole subsystem with it:
+  `EmojiPack::image` was the only caller of `EmojiImageLoader::prepare`, so
+  the loader, its clear timer and `Ui::Emoji::SourceImages` are all gone.
+  `st::largeEmojiSize`/`Outline` survive - `data_custom_emoji.cpp` sizes
+  `SizeTag::Isolated` from them.
+- ~~**Paid reactions.**~~ **Done.** `Data::Parse` drops the server's
+  `paid_reactions_available`, which covers sending, the button and the admin
+  toggle at once; display is separate, so `InlineListDataFromMessage` also
+  drops any paid reaction a message arrives carrying.
+- ~~**Stories on profiles, rating, profile backgrounds.**~~ **Done.** The
+  userpic click opened stories from four places, all removed, with the rings.
+  `Ui::StarsRating` deleted outright. The gradient/solid/pattern profile
+  background is off at its three inputs.
 - **Premium.** `premiumBadgesShown()` and `premiumCanBuy()` are two lines that
   neutralise the badge painters, the settings block and every limit box. What
-  they neutralise is all still compiled.
+  they neutralise is all still compiled. **Note:** `premiumBadgesShown()` never
+  covered the badge beside a group message author's name - that is painted from
+  `Message::_fromNameStatus`, the message's own slot, and needed its own fix.
+  Assume other painters have their own slots too.
+- **The premium 3D effect renderers.** `premium_coin_renderer`,
+  `premium_3d_mesh` and five siblings still compile, which is why
+  `Resources/art/premium/` cannot be deleted yet - `flecks.png`,
+  `star_texture.svg`, `coin_border.png` and `coin_logo.obj` are still
+  referenced. This is the next obvious removal.
 - **Suggestion popups.** `suggestEmoji()`, `suggestStickersByEmoji()` and
   `suggestAnimatedEmoji()` return false at the getter, with the setters and
   stored fields deliberately kept so the settings rows and serialization still
@@ -553,13 +665,60 @@ which is the work rather than a reason to stop: `updateOnline` also drives
 `checkAutoLock`, `saveCurrentDraftToCloud` and `quitPreventFinished()`, and the
 suggestion getters are read by the settings UI.
 
+### Stories: scoped down deliberately, not forgotten
+
+Full removal was measured and rejected as too large for now: **50 files are
+purely stories and ~160 reference them**, with `dialogs_widget.cpp` alone
+carrying 157 references. What was done instead is the part that actually
+annoyed - stories no longer open from a profile, a chat list row, a peer list
+row or the info top bar, and the rings are gone.
+
+The viewer, the chat list strip and story deep links still exist. If the rest
+is ever taken, the boundary to hold is the one gifts already set: `MediaStory`
+and `FullStoryId` are inbound message content and must keep rendering, exactly
+like a received gift. Four stages in rough order: chat list strip, the
+`info/stories` section and profile tab, `media/stories/` and its hooks in
+`media_view_overlay_widget.cpp`, then the data layer.
+
+Doing so also removes part of ghost mode - the story-view suppression and its
+two traps - and the known limit about story rings reappearing unread.
+
+## Branding
+
+Four files carry it on Windows, and all four are ours now:
+
+| File | Used for |
+|---|---|
+| `Resources/art/icon256.ico` | exe, taskbar, Alt-Tab — via `Telegram.rc` |
+| `Resources/art/logo_256.png` | tray and window icon — `Window::Logo()` |
+| `Resources/art/logo_256_no_margin.png` | small tray sizes, **and the Saved Messages avatar** |
+| `Resources/icons/tray_monochrome.svg` | dark-mode monochrome tray — the only vector |
+
+The `.ico` is hand-packed by a stdlib-only script (Pillow is not installed):
+eight entries, 16/20/24/32/48/64 as 32bpp BMP and 128/256 as PNG, downscaled by
+area-averaging on *premultiplied* alpha so edges do not darken. Upstream shipped
+only 16/24/32/48/256, which is why it softened in Alt-Tab. The monochrome SVG is
+traced from the raster mark - it is drawn as a mask, so only the silhouette
+matters.
+
+Sixty-eight unused icon files were deleted: the UWP store assets, the Linux
+hicolor PNGs, the macOS set and the `icon_green` alpha variants. `mac_tray_icon`
+had to stay deleted *and* have its `window.style` entry removed - see the four
+lists above.
+
+Originals are kept in `branding/original/` alongside the official portable zip,
+outside the checkout, for comparison.
+
+**Open:** the new artwork is not reaching the binary. See "Where to pick up".
+
 ## Constraints and known limits
 
 - **API ToS §3.3** requires third-party clients to support sponsored messages. Ad
   removal knowingly violates it. Exposure is the registered `api_id`, which
   Telegram can revoke; mitigation is re-registration. Accepted, personal use.
 - §2.3/§2.4 bar "Telegram" in the app title and use of its logo — "LoogriGram"
-  complies, hence also the publisher-metadata change.
+  complies, hence also the publisher-metadata change. The artwork closes the
+  logo half of that.
 - Sending a message is inherently visible; none of this hides anything from
   Telegram's own servers.
 - Last-seen concealment is reciprocal: only vague "recently" for everyone else.
@@ -573,66 +732,19 @@ suggestion getters are read by the settings UI.
 
 ---
 
-## Android — not started
+## Android
 
-The original approved plan, including the full Android section, is at
-`C:\Users\Loogris\.claude\plans\glittery-watching-nest.md`. Read it first.
+**Started, finished, shipped.** It was built, signed with our own key and
+installed on 2026-09-10, and has been in use since.
 
-Decisions already made: fork **official `DrKLO/Telegram`** (verified official via
-telegram.org/apps), not a third-party fork; build on GitHub Actions; fully
-Google-free because the phone runs GrapheneOS without sandboxed Play Services;
-strip location *sending* entirely while keeping received locations viewable via a
-`geo:` intent.
+Everything below this line used to be the plan for starting it - mapped call
+sites, CI requirements, decisions taken. It is history now and several of its
+guesses about file layout were wrong by the time the work happened, so it is
+removed rather than left to mislead.
 
-Mapped call sites, all in `TMessagesProj/src/main/java/org/telegram/`:
-
-- **Ads**: `messenger/MessagesController.getSponsoredMessages()` → `return null`.
-  `ui/ChatActivity.addSponsoredMessages` then hits its own `res == null` guard, so
-  the `viewSponsoredMessage` impression beacon never fires either. ~2 lines.
-- **Typing**: the 5-arg `MessagesController.sendTyping()` → `return false`. `false`
-  is already a routine return; covers secret chats, which share the method.
-- **Presence**: force `MessagesController.ignoreSetOnline = true` (already
-  `public volatile`) and neutralise its reset. Control then falls to the
-  `offline = true` branch, which latches `offlineSent`.
-- **Read receipts**: `MessagesController.completeReadTask`. **Given the desktop
-  finding above, do not suppress these.** If ever revisited, keep
-  `readEncryptedHistory` regardless — suppressing it breaks secret-chat TTL.
-- **Emoji status**: two parallel accessors with *different* null sentinels —
-  `DialogObject.getEmojiStatusDocumentId` (returns `0`) and
-  `UserObject.getEmojiStatusDocumentId` (returns `null`). Patch both, then kill the
-  `isPremiumUser` star fallback in `DialogCell`, `ProfileSearchCell`, `UserCell`
-  and `ChatAvatarContainer` — otherwise premium users keep a static star and a
-  reserved-width layout gap.
-- **Premium upsell**: intercept the single `LimitReachedBottomSheet` constructor
-  (58 call sites untouched) and show a plain dialog. **Do not just delete it** —
-  `AlertsCreator` uses that sheet as the only surfacing of a server
-  `CHANNELS_TOO_MUCH` error, so removing it swallows real failures.
-- **Stars/TON**: hide entry points only (`SettingsActivity` MyTON row, two
-  `ProfileActivity` presenters). Deleting `ui/Stars/` breaks `MessageObject`, which
-  calls `StarsIntroActivity.replaceStars()` during message text rendering, and
-  `SendMessagesHelper`, which imports `TONIntroActivity`.
-- **Degoogling**: delete `GcmPushListenerService`, keep
-  `PushListenerController.processRemoteMessage` (the transport-independent payload
-  decryptor), skip `initPushServices()`, and promote `NotificationsService` to a
-  foreground service with an `AlarmManager` watchdog. Android 8+ then *requires* a
-  permanently visible notification. Remove the `google-services` plugin from both
-  modules plus the root classpath, and every gms/firebase/mlkit/vision/wallet/
-  safetynet/recaptcha/billing dependency. For billing, force
-  `BuildVars.useInvoiceBilling() → true` — the path `isStandaloneBuild()` already
-  exercises, which resolves most of the 11 affected files.
-- **`BuildVars`**: own `APP_ID`/`APP_HASH`, `CHECK_UPDATES = false` (this is the
-  no-auto-update requirement), `SUPPORTS_PASSKEYS = false`.
-
-Android CI requirements: `ubuntu-latest`, JDK 17, Gradle wrapper 8.11.1,
-`submodules: recursive` **and** shallow (10 submodules, one from
-`chromium.googlesource.com`; a missing one is a *configuration*-time failure), NDK
-`27.2.12479018` and CMake `3.22.1` hard-pinned, SDK 36. Cut `abiFilters` to
-`arm64-v8a` — the 4-ABI native build is 30-60+ min and the largest single cost.
-Task: `:TMessagesProj_App:assembleAfatRelease`. Generate an own signing keystore;
-the committed one is a dummy with public passwords. **Back the keystore up** —
-Android refuses updates signed with a different key.
-
-Gotcha: the `google-services` plugin validates its JSON's `package_name` against
-`applicationId`, so renaming the package *forces* the degoogling edit. Do them in
-one commit. Keep `IS_PRIVATE=false` (the `checkVisibility` task throws otherwise)
-and keep `buildSrc/`.
+Read **`loogrigram-android/LOOGRIGRAM.md`** instead. It carries the real state,
+the three-mode CI and its measured costs, the traps that each cost real time,
+and what still needs doing. Several lessons are shared with this file - the
+dependency that drags an unrelated one out with it, answering requests rather
+than dropping them, and reading scripted edits back - and the read-receipt
+finding in this file is one the Android side depends on.
