@@ -445,8 +445,6 @@ void SettingsBox(
 				call->applyGlobalShortcutChanges();
 				Core::App().saveSettingsDelayed();
 			};
-			const auto showPrivacyRequest = [=] {
-			};
 			const auto ensureManager = [=] {
 				if (state->manager) {
 					return true;
@@ -455,7 +453,8 @@ void SettingsBox(
 					tryFillFromManager();
 					return true;
 				}
-				showPrivacyRequest();
+				// Only macOS had a permission to ask for here; Windows
+				// grants global shortcuts without one.
 				return false;
 			};
 			const auto stopRecording = [=] {

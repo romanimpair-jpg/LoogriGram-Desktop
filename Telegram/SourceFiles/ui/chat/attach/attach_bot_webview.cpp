@@ -1142,8 +1142,6 @@ Panel::Panel(Args &&args)
 	}, _widget->lifetime());
 
 	setTitle(std::move(args.title));
-	_bottomText.value() | rpl::on_next([=](const QString &text) {
-	}, _widget->lifetime());
 	_widget->setTitleBadge(std::move(args.titleBadge));
 
 	if (!showWebview(std::move(args), params)) {

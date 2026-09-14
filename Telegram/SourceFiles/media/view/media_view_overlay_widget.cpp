@@ -4615,14 +4615,10 @@ void OverlayWidget::displayDocument(
 					setStaticContent(PrepareStaticImage({
 						.path = location.name(),
 					}));
-					if (!_staticContent.isNull()) {
-					}
 				} else {
 					setStaticContent(PrepareStaticImage({
 						.content = _documentMedia->bytes(),
 					}));
-					if (!_staticContent.isNull()) {
-					}
 				}
 				location.accessDisable();
 			}
