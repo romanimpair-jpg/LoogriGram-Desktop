@@ -7,16 +7,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/unread_badge.h"
 
-#include "data/data_emoji_statuses.h"
 #include "data/data_peer.h"
-#include "data/data_user.h"
-#include "data/data_session.h"
 #include "data/stickers/data_custom_emoji.h"
-#include "main/main_session.h"
 #include "lang/lang_keys.h"
 #include "ui/painter.h"
-#include "ui/rect.h"
-#include "ui/power_saving.h"
 #include "ui/text/text_custom_emoji.h"
 #include "ui/unread_badge_paint.h"
 #include "styles/style_dialogs.h"
@@ -24,7 +18,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace Ui {
 namespace {
 
-constexpr auto kPlayStatusLimit = 2;
 constexpr auto kBotVerifiedScale = 0.88;
 
 class ScaledBotVerifiedEmoji final : public Ui::Text::CustomEmoji {
@@ -112,15 +105,6 @@ bool ScaledBotVerifiedEmoji::readyInDefaultState() {
 }
 
 } // namespace
-
-struct PeerBadge::EmojiStatus {
-	EmojiStatusId id;
-	std::unique_ptr<Ui::Text::CustomEmoji> emoji;
-	QPoint lastPosition;
-	QColor lastColor;
-	int skip = 0;
-	bool painted = false;
-};
 
 struct PeerBadge::BotVerifiedData {
 	QImage cache;
@@ -235,56 +219,17 @@ PeerBadge::PeerBadge() = default;
 
 PeerBadge::~PeerBadge() = default;
 
+// LoogriGram: the scam / fake / direct badge and the verified check. The
+// premium emoji status and the gold premium star used to share this slot and
+// are gone, which is what leaves this as two branches instead of a priority
+// puzzle between four.
 int PeerBadge::drawGetWidth(Painter &p, Descriptor &&descriptor) {
-	Expects(descriptor.customEmojiRepaint != nullptr);
-
 	const auto peer = descriptor.peer;
 	if ((descriptor.scam && (peer->isScam() || peer->isFake()))
 		|| (descriptor.direct && peer->isMonoforum())) {
-		if (_emojiStatus) {
-			_emojiStatus->painted = false;
-		}
 		return drawTextBadge(p, descriptor);
-	}
-	const auto verifyCheck = descriptor.verified && peer->isVerified();
-	const auto premiumMark = descriptor.premium
-		&& peer->session().premiumBadgesShown();
-	const auto emojiStatus = premiumMark
-		&& peer->emojiStatusId()
-		&& (peer->isPremium() || peer->isChannel());
-	const auto premiumStar = premiumMark
-		&& !emojiStatus
-		&& peer->isPremium();
-
-	const auto paintVerify = verifyCheck
-		&& (descriptor.prioritizeVerification
-			|| descriptor.bothVerifyAndStatus
-			|| !emojiStatus);
-	const auto paintEmoji = emojiStatus
-		&& (!paintVerify || descriptor.bothVerifyAndStatus);
-	const auto paintStar = premiumStar && !paintVerify;
-
-	auto result = 0;
-	if (paintEmoji) {
-		auto &rectForName = descriptor.rectForName;
-		const auto verifyWidth = descriptor.verified->width();
-		if (paintVerify) {
-			rectForName.setWidth(rectForName.width() - verifyWidth);
-		}
-		result += drawPremiumEmojiStatus(p, descriptor);
-		if (!paintVerify) {
-			return result;
-		}
-		rectForName.setWidth(rectForName.width() + verifyWidth);
-		descriptor.nameWidth += result;
-	} else if (_emojiStatus) {
-		_emojiStatus->painted = false;
-	}
-	if (paintVerify) {
-		result += drawVerifyCheck(p, descriptor);
-		return result;
-	} else if (paintStar) {
-		return drawPremiumStar(p, descriptor);
+	} else if (descriptor.verified && peer->isVerified()) {
+		return drawVerifyCheck(p, descriptor);
 	}
 	return 0;
 }
@@ -337,99 +282,6 @@ int PeerBadge::drawVerifyCheck(Painter &p, const Descriptor &descriptor) {
 		rectForName.y(),
 		descriptor.outerWidth);
 	return iconw;
-}
-
-int PeerBadge::drawPremiumEmojiStatus(
-		Painter &p,
-		const Descriptor &descriptor) {
-	const auto peer = descriptor.peer;
-	const auto id = peer->emojiStatusId();
-	const auto rectForName = descriptor.rectForName;
-	const auto iconw = descriptor.premium->width();
-	const auto iconx = rectForName.x()
-		+ qMin(descriptor.nameWidth, rectForName.width() - iconw);
-	const auto icony = rectForName.y();
-	if (!_emojiStatus) {
-		_emojiStatus = std::make_unique<EmojiStatus>();
-		const auto size = st::emojiSize;
-		const auto emoji = Ui::Text::AdjustCustomEmojiSize(size);
-		_emojiStatus->skip = (size - emoji) / 2;
-	}
-	if (_emojiStatus->id != id) {
-		using namespace Ui::Text;
-		auto &manager = peer->session().data().customEmojiManager();
-		_emojiStatus->id = id;
-		_emojiStatus->emoji = MakeWrappedEmoji<LimitedLoopsEmoji>(
-			manager.create(
-				Data::EmojiStatusCustomId(id),
-				descriptor.customEmojiRepaint),
-			kPlayStatusLimit);
-	}
-	if (!_emojiStatus->emoji) {
-		return 0;
-	}
-	_emojiStatus->lastPosition = QPoint(
-		iconx - 2 * _emojiStatus->skip,
-		icony + _emojiStatus->skip);
-	_emojiStatus->lastColor = (*descriptor.premiumFg)->c;
-	_emojiStatus->painted = true;
-	_emojiStatus->emoji->paint(p, {
-		.textColor = _emojiStatus->lastColor,
-		.now = descriptor.now,
-		.position = _emojiStatus->lastPosition,
-		.paused = descriptor.paused || On(PowerSaving::kEmojiStatus),
-	});
-	return iconw - 4 * _emojiStatus->skip;
-}
-
-int PeerBadge::drawPremiumStar(Painter &p, const Descriptor &descriptor) {
-	const auto rectForName = descriptor.rectForName;
-	const auto iconw = descriptor.premium->width();
-	const auto iconx = rectForName.x()
-		+ qMin(descriptor.nameWidth, rectForName.width() - iconw);
-	const auto icony = rectForName.y();
-	_emojiStatus = nullptr;
-	descriptor.premium->paint(p, iconx, icony, descriptor.outerWidth);
-	return iconw;
-}
-
-QRect PeerBadge::emojiStatusRect() const {
-	if (!_emojiStatus || !_emojiStatus->emoji || !_emojiStatus->painted) {
-		return QRect();
-	}
-	return QRect(
-		_emojiStatus->lastPosition,
-		Size(st::emojiSize - 2 * _emojiStatus->skip));
-}
-
-void PeerBadge::paintEmojiStatusFrame(
-		QPainter &p,
-		crl::time now,
-		bool paused) {
-	if (!_emojiStatus || !_emojiStatus->emoji || !_emojiStatus->painted) {
-		return;
-	}
-	paintEmojiStatusFrame(p, now, paused, _emojiStatus->lastPosition);
-}
-
-void PeerBadge::paintEmojiStatusFrame(
-		QPainter &p,
-		crl::time now,
-		bool paused,
-		QPoint position) {
-	if (!_emojiStatus || !_emojiStatus->emoji || !_emojiStatus->painted) {
-		return;
-	}
-	_emojiStatus->emoji->paint(p, {
-		.textColor = _emojiStatus->lastColor,
-		.now = now,
-		.position = position,
-		.paused = paused || On(PowerSaving::kEmojiStatus),
-	});
-}
-
-void PeerBadge::unload() {
-	_emojiStatus = nullptr;
 }
 
 bool PeerBadge::ready(const BotVerifyDetails *details) const {

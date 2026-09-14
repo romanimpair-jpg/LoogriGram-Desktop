@@ -906,15 +906,12 @@ void PeerListRow::invalidatePixmapsCache() {
 
 int PeerListRow::paintNameIconGetWidth(
 		Painter &p,
-		Fn<void()> repaint,
-		crl::time now,
 		int nameLeft,
 		int nameTop,
 		int nameWidth,
 		int availableWidth,
 		int outerWidth,
 		bool selected) {
-	_statusIconRect = QRect();
 	if (_skipPeerBadge
 		|| special()
 		|| !_savedMessagesStatus.isEmpty()
@@ -922,7 +919,7 @@ int PeerListRow::paintNameIconGetWidth(
 		|| _isVerifyCodesChat) {
 		return 0;
 	}
-	const auto width = _badge.drawGetWidth(p, {
+	return _badge.drawGetWidth(p, {
 		.peer = peer(),
 		.rectForName = QRect(
 			nameLeft,
@@ -934,22 +931,11 @@ int PeerListRow::paintNameIconGetWidth(
 		.verified = &(selected
 			? st::dialogsVerifiedIconOver
 			: st::dialogsVerifiedIcon),
-		.premium = &(selected
-			? st::dialogsPremiumIcon.over
-			: st::dialogsPremiumIcon.icon),
 		.scam = &(selected ? st::dialogsScamFgOver : st::dialogsScamFg),
 		.direct = &(selected
 			? st::windowSubTextFgOver
 			: st::windowSubTextFg),
-		.premiumFg = &(selected
-			? st::dialogsVerifiedIconBgOver
-			: st::dialogsVerifiedIconBg),
-		.customEmojiRepaint = repaint,
-		.now = now,
-		.paused = false,
 	});
-	_statusIconRect = _badge.emojiStatusRect();
-	return width;
 }
 
 int PeerListRow::paintNameIconGetLeadingWidth(
@@ -986,10 +972,6 @@ int PeerListRow::paintNameIconGetLeadingWidth(
 		QPoint(nameLeft, nameTop),
 		st);
 	return skip;// ? skip + st::dialogsChatTypeSkip) : 0;
-}
-
-void PeerListRow::paintStatusIcon(Painter &p, crl::time now, bool paused) {
-	_badge.paintEmojiStatusFrame(p, now, paused);
 }
 
 void PeerListRow::paintStatusText(
@@ -2073,14 +2055,7 @@ crl::time PeerListContent::paintRow(
 			[&](QImage &image) {
 				auto q = Painter(&image);
 				paintRowContent(q, now, index, false, 0);
-				const auto statusRect = row->statusIconRect();
-				if (!statusRect.isEmpty()) {
-					q.fillRect(statusRect, st.button.textBg);
-				}
 			});
-		if (!row->statusIconRect().isEmpty()) {
-			row->paintStatusIcon(p, now, false);
-		}
 		return refreshStatusIn;
 	}
 	paintRowContent(p, now, index, selected, activeElement);
@@ -2166,8 +2141,6 @@ void PeerListContent::paintRowContent(
 	namew -= leading;
 	namew -= row->paintNameIconGetWidth(
 		p,
-		[=] { updateRowStatus(row); },
-		now,
 		namex + leading,
 		namey,
 		name.maxWidth(),
@@ -2790,19 +2763,6 @@ void PeerListContent::updateRow(RowIndex index) {
 		}
 	}
 	update(0, getRowTop(index), width(), _rowHeight);
-}
-
-void PeerListContent::updateRowStatus(not_null<PeerListRow*> row) {
-	const auto index = findRowIndex(row);
-	if (index.value < 0) {
-		return;
-	}
-	const auto rect = row->statusIconRect();
-	if (_rowsScrollCache.scrolling() && !rect.isEmpty()) {
-		update(rect.translated(0, getRowTop(index)));
-	} else {
-		updateRow(index);
-	}
 }
 
 template <typename Callback>

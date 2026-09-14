@@ -120,10 +120,13 @@ public:
 	void clearCustomStatus();
 
 	// Box interface.
+	//
+	// LoogriGram: the repaint callback and the frame time went with the
+	// premium emoji status - the badges left here are static icons and text,
+	// so there is no animation to drive and nothing to repaint between
+	// frames.
 	virtual int paintNameIconGetWidth(
 		Painter &p,
-		Fn<void()> repaint,
-		crl::time now,
 		int nameLeft,
 		int nameTop,
 		int nameWidth,
@@ -139,11 +142,6 @@ public:
 		int nameTop,
 		int outerWidth,
 		bool selected);
-
-	[[nodiscard]] QRect statusIconRect() const {
-		return _statusIconRect;
-	}
-	void paintStatusIcon(Painter &p, crl::time now, bool paused);
 
 	void rememberUserpicKey();
 	[[nodiscard]] bool userpicKeyChanged();
@@ -338,7 +336,6 @@ private:
 	Ui::Text::String _name;
 	Ui::Text::String _status;
 	Ui::PeerBadge _badge;
-	QRect _statusIconRect;
 	StatusType _statusType = StatusType::Online;
 	crl::time _statusValidTill = 0;
 	base::flat_set<QChar> _nameFirstLetters;
@@ -878,7 +875,6 @@ private:
 
 	void updateRow(not_null<PeerListRow*> row, RowIndex hint);
 	void updateRow(RowIndex row);
-	void updateRowStatus(not_null<PeerListRow*> row);
 	int getRowTop(RowIndex row) const;
 	PeerListRow *getRow(RowIndex element);
 	RowIndex findRowIndex(

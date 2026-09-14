@@ -365,16 +365,6 @@ bool Session::premiumPossible() const {
 	return premium() || premiumCanBuy();
 }
 
-// LoogriGram: no premium emoji status and no gold premium star, for anyone.
-// Both painters gate on this - Ui::PeerBadge::drawGetWidth derives its
-// emojiStatus and premiumStar flags from it, and Info::Profile::Badge
-// downgrades BadgeType::Premium to None - so one gate covers the dialog list,
-// the chat top bar, profiles and every peer list. Nulling emojiStatusId()
-// instead would not work: it only promotes premium users to the static star.
-bool Session::premiumBadgesShown() const {
-	return false;
-}
-
 rpl::producer<bool> Session::premiumPossibleValue() const {
 	auto premium = _user->flagsValue(
 	) | rpl::filter([=](UserData::Flags::Change change) {

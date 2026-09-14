@@ -128,7 +128,6 @@ public:
 	[[nodiscard]] bool premium() const;
 	[[nodiscard]] bool premiumPossible() const;
 	[[nodiscard]] rpl::producer<bool> premiumPossibleValue() const;
-	[[nodiscard]] bool premiumBadgesShown() const;
 	[[nodiscard]] bool premiumCanBuy() const;
 
 	// LoogriGram: sets Last Seen to Nobody. Suppressing presence client side

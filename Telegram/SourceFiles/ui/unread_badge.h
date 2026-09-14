@@ -50,31 +50,21 @@ public:
 	PeerBadge();
 	~PeerBadge();
 
+	// LoogriGram: no premium emoji status and no gold premium star. The
+	// descriptor lost the fields that fed them - the icon, its colour, the
+	// custom emoji repaint callback, the frame time and the two flags that
+	// only ever decided whether a status could share the slot with the
+	// verified check.
 	struct Descriptor {
 		not_null<PeerData*> peer;
 		QRect rectForName;
 		int nameWidth = 0;
 		int outerWidth = 0;
 		const style::icon *verified = nullptr;
-		const style::icon *premium = nullptr;
 		const style::color *scam = nullptr;
 		const style::color *direct = nullptr;
-		const style::color *premiumFg = nullptr;
-		Fn<void()> customEmojiRepaint;
-		crl::time now = 0;
-		bool prioritizeVerification = false;
-		bool bothVerifyAndStatus = false;
-		bool paused = false;
 	};
 	int drawGetWidth(Painter &p, Descriptor &&descriptor);
-	[[nodiscard]] QRect emojiStatusRect() const;
-	void paintEmojiStatusFrame(QPainter &p, crl::time now, bool paused);
-	void paintEmojiStatusFrame(
-		QPainter &p,
-		crl::time now,
-		bool paused,
-		QPoint position);
-	void unload();
 
 	[[nodiscard]] bool ready(const BotVerifyDetails *details) const;
 	void set(
@@ -89,15 +79,11 @@ public:
 		const style::VerifiedBadge &st);
 
 private:
-	struct EmojiStatus;
 	struct BotVerifiedData;
 
 	int drawTextBadge(Painter &p, const Descriptor &descriptor);
 	int drawVerifyCheck(Painter &p, const Descriptor &descriptor);
-	int drawPremiumEmojiStatus(Painter &p, const Descriptor &descriptor);
-	int drawPremiumStar(Painter &p, const Descriptor &descriptor);
 
-	std::unique_ptr<EmojiStatus> _emojiStatus;
 	mutable std::unique_ptr<BotVerifiedData> _botVerifiedData;
 
 };

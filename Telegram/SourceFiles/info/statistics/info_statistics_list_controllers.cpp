@@ -452,8 +452,6 @@ public:
 
 	int paintNameIconGetWidth(
 		Painter &p,
-		Fn<void()> repaint,
-		crl::time now,
 		int nameLeft,
 		int nameTop,
 		int nameWidth,
@@ -648,8 +646,6 @@ void BoostRow::rightActionPaint(
 
 int BoostRow::paintNameIconGetWidth(
 		Painter &p,
-		Fn<void()> repaint,
-		crl::time now,
 		int nameLeft,
 		int nameTop,
 		int nameWidth,

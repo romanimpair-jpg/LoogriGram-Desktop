@@ -82,7 +82,6 @@ base::options::toggle UnlimitedMessageWidth({
 	.restartRequired = true,
 });
 
-constexpr auto kPlayStatusLimit = 2;
 constexpr auto kMaxWidth = (1 << 16) - 1;
 constexpr auto kMaxNiceToReadLines = 6;
 const auto kPsaTooltipPrefix = "cloud_lng_tooltip_psa_";
@@ -484,13 +483,6 @@ struct Message::CommentsButton {
 	int rippleShift = 0;
 };
 
-struct Message::FromNameStatus {
-	EmojiStatusId id;
-	std::unique_ptr<Ui::Text::CustomEmoji> custom;
-	ClickHandlerPtr link;
-	int skip = 0;
-};
-
 struct Message::RightAction {
 	std::unique_ptr<Ui::RippleAnimation> ripple;
 	ClickHandlerPtr link;
@@ -570,9 +562,8 @@ Message::Message(
 }
 
 Message::~Message() {
-	if (_comments || (_fromNameStatus && _fromNameStatus->custom)) {
+	if (_comments) {
 		_comments = nullptr;
-		_fromNameStatus = nullptr;
 		checkHeavyPart();
 	}
 }
@@ -1514,13 +1505,9 @@ QSize Message::performCountOptimalSize() {
 					: item->displayHiddenSenderInfo()->nameText();
 				auto namew = st::msgPadding.left()
 					+ name.maxWidth()
-					+ (_fromNameStatus
-						? st::dialogsPremiumIcon.icon.width()
-						: 0)
 					+ st::msgPadding.right();
 				if (via && !displayForwardedFrom()) {
-					namew += st::msgServiceFont->spacew + via->maxWidth
-						+ (_fromNameStatus ? st::msgServiceFont->spacew : 0);
+					namew += st::msgServiceFont->spacew + via->maxWidth;
 				}
 				if (const auto guestChat = item->Get<HistoryMessageGuestChat>()) {
 					namew += st::msgServiceFont->spacew + guestChat->maxWidth;
@@ -2517,56 +2504,14 @@ void Message::paintFromName(
 		}
 		return &info->nameText();
 	}();
-	const auto statusWidth = _fromNameStatus
-		? st::dialogsPremiumIcon.icon.width()
-		: 0;
 	const auto via = item->Get<HistoryMessageVia>();
 	const auto viaShown = via && !displayForwardedFrom() && via->width;
 	const auto viaSkipWidth = viaShown
 		? (via->width + st::msgServiceFont->spacew)
 		: 0;
 	const auto nameAvailableWidth = std::max(
-		((statusWidth && availableWidth > statusWidth)
-			? (availableWidth - statusWidth)
-			: availableWidth) - viaSkipWidth,
+		availableWidth - viaSkipWidth,
 		0);
-	if (statusWidth && availableWidth > statusWidth) {
-		const auto x = availableLeft
-			+ std::min(nameAvailableWidth, nameText->maxWidth());
-		const auto y = trect.top();
-		auto color = nameFg;
-		color.setAlpha(115);
-		const auto id = from ? from->emojiStatusId() : EmojiStatusId();
-		if (_fromNameStatus->id != id) {
-			const auto that = const_cast<Message*>(this);
-			_fromNameStatus->custom = id
-				? MakeWrappedEmoji<Ui::Text::LimitedLoopsEmoji>(
-					history()->owner().customEmojiManager().create(
-						Data::EmojiStatusCustomId(id),
-						[=] { that->customEmojiRepaint(); }),
-					kPlayStatusLimit)
-				: nullptr;
-			if (id && !_fromNameStatus->id) {
-				history()->owner().registerHeavyViewPart(that);
-			} else if (!id && _fromNameStatus->id) {
-				that->checkHeavyPart();
-			}
-			_fromNameStatus->id = id;
-		}
-		if (_fromNameStatus->custom) {
-			clearCustomEmojiRepaint();
-			_fromNameStatus->custom->paint(p, {
-				.textColor = color,
-				.now = context.now,
-				.position = QPoint(
-					x - 2 * _fromNameStatus->skip,
-					y + _fromNameStatus->skip),
-				.paused = context.paused || On(PowerSaving::kEmojiStatus),
-			});
-		} else {
-			st::dialogsPremiumIcon.icon.paint(p, x, y, width(), color);
-		}
-	}
 	p.setFont(st::msgNameFont);
 	p.setPen(nameFg);
 	const auto nameLinkHandler = fromLink();
@@ -2592,12 +2537,7 @@ void Message::paintFromName(
 		.availableWidth = nameAvailableWidth,
 		.elisionLines = 1,
 	});
-	const auto skipWidth = nameWidth
-		+ (_fromNameStatus
-			? (st::dialogsPremiumIcon.icon.width()
-				+ st::msgServiceFont->spacew)
-			: 0)
-		+ st::msgServiceFont->spacew;
+	const auto skipWidth = nameWidth + st::msgServiceFont->spacew;
 	availableLeft += skipWidth;
 	availableWidth -= skipWidth;
 
@@ -3805,18 +3745,12 @@ void Message::createTopicButtonRipple() {
 }
 
 bool Message::hasHeavyPart() const {
-	return _comments
-		|| (_fromNameStatus && _fromNameStatus->custom)
-		|| Element::hasHeavyPart();
+	return _comments || Element::hasHeavyPart();
 }
 
 void Message::unloadHeavyPart() {
 	Element::unloadHeavyPart();
 	_comments = nullptr;
-	if (_fromNameStatus) {
-		_fromNameStatus->custom = nullptr;
-		_fromNameStatus->id = EmojiStatusId();
-	}
 	if (const auto summaryHeader = Get<SummaryHeader>()) {
 		summaryHeader->unloadHeavyPart();
 	}
@@ -4228,35 +4162,17 @@ bool Message::getStateFromName(
 			}
 		}();
 
-		const auto statusWidth = (from && _fromNameStatus)
-			? st::dialogsPremiumIcon.icon.width()
-			: 0;
 		const auto via = item->Get<HistoryMessageVia>();
 		const auto viaShown = via && !displayForwardedFrom() && via->width;
 		const auto viaSkipWidth = viaShown
 			? (via->width + st::msgServiceFont->spacew)
 			: 0;
 		const auto nameAvailableWidth = std::max(
-			((statusWidth && availableWidth > statusWidth)
-				? (availableWidth - statusWidth)
-				: availableWidth) - viaSkipWidth,
+			availableWidth - viaSkipWidth,
 			0);
 		const auto nameWidth = std::min(
 			nameText->maxWidth(),
 			nameAvailableWidth);
-		if (statusWidth && availableWidth > statusWidth) {
-			const auto x = availableLeft
-				+ nameWidth
-				- (_fromNameStatus->custom ? (2 * _fromNameStatus->skip) : 0);
-			const auto checkWidth = _fromNameStatus->custom
-				? (st::emojiSize - 2 * _fromNameStatus->skip)
-				: statusWidth;
-			if (point.x() >= x && point.x() < x + checkWidth) {
-				ensureFromNameStatusLink(from);
-				outResult->link = _fromNameStatus->link;
-				return true;
-			}
-		}
 		if (point.x() >= availableLeft
 			&& point.x() < availableLeft + availableWidth
 			&& point.x() < availableLeft + nameWidth) {
@@ -4266,12 +4182,7 @@ bool Message::getStateFromName(
 			return true;
 		}
 
-		const auto skipWidth = nameWidth
-			+ (_fromNameStatus
-				? (st::dialogsPremiumIcon.icon.width()
-					+ st::msgServiceFont->spacew)
-				: 0)
-			+ st::msgServiceFont->spacew;
+		const auto skipWidth = nameWidth + st::msgServiceFont->spacew;
 		availableLeft += skipWidth;
 		availableWidth -= skipWidth;
 
@@ -4386,21 +4297,6 @@ bool Message::getStateFromName(
 	}
 	trect.setTop(trect.top() + st::msgNameFont->height);
 	return false;
-}
-
-void Message::ensureFromNameStatusLink(not_null<PeerData*> peer) const {
-	Expects(_fromNameStatus != nullptr);
-
-	if (_fromNameStatus->link) {
-		return;
-	}
-	_fromNameStatus->link = std::make_shared<LambdaClickHandler>([=](
-			ClickContext context) {
-		const auto controller = ExtractController(context);
-		if (controller) {
-			Settings::ShowEmojiStatusPremium(controller, peer);
-		}
-	});
 }
 
 bool Message::getStateTopicButton(
@@ -5470,11 +5366,13 @@ bool Message::embedReactionsInBubble() const {
 	return usesMessageInfoLayout();
 }
 
+// LoogriGram: no status beside the author's name in a group. It was painted
+// from _fromNameStatus, the message's own slot, which never passed through
+// premiumBadgesShown() - so gating that getter left this one alive and it had
+// to be cut here. The slot itself, its click handler, its heavy-part
+// bookkeeping and the width it reserved are all gone now.
 void Message::validateFromNameText(PeerData *from) const {
 	if (!from) {
-		if (_fromNameStatus) {
-			_fromNameStatus = nullptr;
-		}
 		return;
 	}
 	const auto version = from->nameVersion();
@@ -5484,14 +5382,6 @@ void Message::validateFromNameText(PeerData *from) const {
 			st::msgNameStyle,
 			from->name(),
 			Ui::NameTextOptions());
-	}
-	// LoogriGram: no status beside the author's name in a group. This is the
-	// last place a premium emoji status still reached the screen: it is
-	// painted from _fromNameStatus, which is the message's own slot and never
-	// passed through premiumBadgesShown(), so gating that getter left this
-	// one alive. The same slot carries the gold premium star, so both go.
-	if (_fromNameStatus) {
-		_fromNameStatus = nullptr;
 	}
 }
 
@@ -6335,11 +6225,7 @@ void Message::fromNameUpdated(int width) const {
 	}
 	const auto available = width
 		- st::msgPadding.left()
-		- st::msgPadding.right()
-		- (_fromNameStatus
-			? (st::dialogsPremiumIcon.icon.width()
-				+ st::msgServiceFont->spacew)
-			: 0);
+		- st::msgPadding.right();
 	auto viaWidth = 0;
 	if (via && !displayForwardedFrom()) {
 		via->resize(available - st::msgServiceFont->spacew);

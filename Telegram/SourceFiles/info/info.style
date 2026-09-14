@@ -1228,12 +1228,6 @@ infoSharedMediaScroll: ScrollArea(defaultScrollArea) {
 	deltax: 2px;
 }
 
-infoGiftTooltip: ImportantTooltip(defaultImportantTooltip) {
-	margin: margins(4px, 4px, 4px, 4px);
-	padding: margins(8px, 2px, 8px, 3px);
-}
-infoGiftTooltipFont: font(11px semibold);
-
 topicsLayoutButtonLabel: FlatLabel(defaultFlatLabel) {
 	style: semiboldTextStyle;
 	margin: margins(10px, 4px, 10px, 4px);

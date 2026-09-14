@@ -1503,14 +1503,9 @@ void AddStarGiftTable(
 	const auto giftToChannel = entry.giftChannelSavedId
 		&& peerIsChannel(PeerId(entry.bareEntryOwnerId));
 
-	const auto tooltip = std::make_shared<TableRowTooltipData>(
-		TableRowTooltipData{ .parent = container });
-	const auto showTooltip = [=](
-			not_null<Ui::RpWidget*> widget,
-			rpl::producer<TextWithEntities> text) {
-		ShowTableRowTooltip(tooltip, widget, std::move(text), kTooltipDuration);
-	};
-
+	// LoogriGram: the tooltip here only ever announced someone starting or
+	// stopping wearing a collectible as their emoji status, which no longer
+	// shows anywhere, so there is nothing left for it to announce.
 	if (unique && entry.bareGiftResaleRecipientId) {
 		AddTableRow(
 			table,
@@ -1522,33 +1517,10 @@ void AddStarGiftTable(
 			st::giveawayGiftCodePeerMargin);
 	} else if (unique && entry.bareGiftOwnerId) {
 		const auto ownerId = PeerId(entry.bareGiftOwnerId);
-		const auto was = std::make_shared<std::optional<CollectibleId>>();
-		const auto handleChange = [=](
-				not_null<Ui::RpWidget*> badge,
-				EmojiStatusId emojiStatusId) {
-			const auto id = emojiStatusId.collectible
-				? emojiStatusId.collectible->id
-				: 0;
-			const auto show = [&](const auto &phrase) {
-				showTooltip(badge, phrase(
-					lt_name,
-					rpl::single(tr::bold(UniqueGiftName(*unique))),
-					tr::marked));
-			};
-			if (!*was || *was == id) {
-				*was = id;
-				return;
-			} else if (*was == unique->id) {
-				show(tr::lng_gift_wear_end_toast);
-			} else if (id == unique->id) {
-				show(tr::lng_gift_wear_start_toast);
-			}
-			*was = id;
-		};
 		AddTableRow(
 			table,
 			tr::lng_gift_unique_owner(),
-			MakePeerWithStatusValue(table, show, ownerId, handleChange),
+			MakePeerTableValue(table, show, ownerId),
 			st::giveawayGiftCodePeerMargin);
 	} else if (unique) {
 		if (!unique->ownerName.isEmpty()) {
@@ -1575,33 +1547,10 @@ void AddStarGiftTable(
 		}
 
 		if (const auto hostId = PeerId(entry.bareGiftHostId)) {
-			const auto was = std::make_shared<std::optional<CollectibleId>>();
-			const auto handleChange = [=](
-					not_null<Ui::RpWidget*> badge,
-					EmojiStatusId emojiStatusId) {
-				const auto id = emojiStatusId.collectible
-					? emojiStatusId.collectible->id
-					: 0;
-				const auto show = [&](const auto &phrase) {
-					showTooltip(badge, phrase(
-						lt_name,
-						rpl::single(tr::bold(UniqueGiftName(*unique))),
-						tr::marked));
-				};
-				if (!*was || *was == id) {
-					*was = id;
-					return;
-				} else if (*was == unique->id) {
-					show(tr::lng_gift_wear_end_toast);
-				} else if (id == unique->id) {
-					show(tr::lng_gift_wear_start_toast);
-				}
-				*was = id;
-			};
 			AddTableRow(
 				table,
 				tr::lng_gift_unique_telegram(),
-				MakePeerWithStatusValue(table, show, hostId, handleChange),
+				MakePeerTableValue(table, show, hostId),
 				st::giveawayGiftCodePeerMargin);
 		}
 

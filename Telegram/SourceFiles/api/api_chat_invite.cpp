@@ -535,7 +535,6 @@ void ConfirmInviteBox(
 			st::infoPeerBadge,
 			session,
 			rpl::single(Info::Profile::Badge::Content{ badgeType }),
-			nullptr,
 			[] { return false; });
 		title->geometryValue(
 		) | rpl::on_next([=](const QRect &r) {

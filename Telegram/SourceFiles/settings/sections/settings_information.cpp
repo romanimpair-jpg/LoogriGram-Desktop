@@ -47,7 +47,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_channel.h"
 #include "data/data_premium_limits.h"
 #include "info/profile/info_profile_values.h"
-#include "info/profile/info_profile_badge.h"
 #include "info/profile/info_profile_phone_menu.h"
 #include "lang/lang_keys.h"
 #include "menu/menu_mark_as_read.h"
@@ -95,7 +94,6 @@ struct InformationHighlightTargets {
 };
 
 constexpr auto kSaveBioTimeout = 1000;
-constexpr auto kPlayStatusLimit = 2;
 
 class ComposedBadge final : public Ui::RpWidget {
 public:
@@ -104,16 +102,13 @@ public:
 		not_null<Ui::SettingsButton*> button,
 		not_null<::Main::Session*> session,
 		rpl::producer<QString> &&text,
-		bool hasUnread,
-		Fn<bool()> animationPaused);
+		bool hasUnread);
 
 private:
 	rpl::variable<QString> _text;
 	rpl::event_stream<int> _unreadWidth;
-	rpl::event_stream<int> _premiumWidth;
 
 	QPointer<Ui::RpWidget> _unread;
-	Info::Profile::Badge _badge;
 
 };
 
@@ -122,19 +117,9 @@ ComposedBadge::ComposedBadge(
 	not_null<Ui::SettingsButton*> button,
 	not_null<::Main::Session*> session,
 	rpl::producer<QString> &&text,
-	bool hasUnread,
-	Fn<bool()> animationPaused)
+	bool hasUnread)
 : Ui::RpWidget(parent)
-, _text(std::move(text))
-, _badge(
-		this,
-		st::settingsInfoPeerBadge,
-		session,
-		Info::Profile::BadgeContentForPeer(session->user()),
-		nullptr,
-		std::move(animationPaused),
-		kPlayStatusLimit,
-		Info::Profile::BadgeType::Premium) {
+, _text(std::move(text)) {
 	if (hasUnread) {
 		_unread = Badge::CreateUnread(this, rpl::single(
 			rpl::empty
@@ -155,29 +140,15 @@ ComposedBadge::ComposedBadge(
 		}) | rpl::start_to_stream(_unreadWidth, _unread->lifetime());
 	}
 
-	_badge.updated(
-	) | rpl::on_next([=] {
-		if (const auto button = _badge.widget()) {
-			button->widthValue(
-			) | rpl::start_to_stream(_premiumWidth, button->lifetime());
-		} else {
-			_premiumWidth.fire(0);
-		}
-	}, lifetime());
-
 	auto textWidth = _text.value() | rpl::map([=] {
 		return button->fullTextWidth();
 	});
 	rpl::combine(
 		_unreadWidth.events_starting_with(_unread ? _unread->width() : 0),
-		_premiumWidth.events_starting_with(_badge.widget()
-			? _badge.widget()->width()
-			: 0),
 		std::move(textWidth),
 		button->sizeValue()
 	) | rpl::on_next([=](
 			int unreadWidth,
-			int premiumWidth,
 			int textWidth,
 			const QSize &buttonSize) {
 		const auto &st = button->st();
@@ -185,7 +156,7 @@ ComposedBadge::ComposedBadge(
 		const auto textRightPosition = st.padding.left()
 			+ textWidth
 			+ skip;
-		const auto minWidth = unreadWidth + premiumWidth + skip;
+		const auto minWidth = unreadWidth + skip;
 		const auto maxTextWidth = buttonSize.width()
 			- minWidth
 			- st.padding.right();
@@ -196,10 +167,6 @@ ComposedBadge::ComposedBadge(
 			buttonSize.width() - st.padding.right() - finalTextRight,
 			buttonSize.height());
 
-		_badge.move(
-			0,
-			st.padding.top(),
-			buttonSize.height() - st.padding.top());
 		if (_unread) {
 			_unread->moveToRight(
 				0,
@@ -854,9 +821,7 @@ void SetupAccountsWrap(
 			raw,
 			session,
 			std::move(text),
-			!active,
-			[=] { return window->isGifPausedAtLeastFor(
-				Window::GifPauseReason::Layer); });
+			!active);
 		composedBadge->sizeValue(
 		) | rpl::on_next([=](const QSize &s) {
 			container->resize(s);

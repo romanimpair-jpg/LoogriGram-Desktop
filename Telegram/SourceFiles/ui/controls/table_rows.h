@@ -61,11 +61,6 @@ struct ValueWithSmallButton {
 	PeerId id,
 	rpl::producer<QString> button = nullptr,
 	Fn<void()> handler = nullptr);
-[[nodiscard]] object_ptr<RpWidget> MakePeerWithStatusValue(
-	not_null<TableLayout*> table,
-	std::shared_ptr<ChatHelpers::Show> show,
-	PeerId id,
-	Fn<void(not_null<RpWidget*>, EmojiStatusId)> pushStatusId);
 [[nodiscard]] object_ptr<RpWidget> MakeHiddenPeerTableValue(
 	not_null<TableLayout*> table);
 

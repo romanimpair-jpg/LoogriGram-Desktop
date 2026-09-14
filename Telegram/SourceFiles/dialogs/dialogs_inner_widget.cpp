@@ -1174,7 +1174,6 @@ void InnerWidget::paintEvent(QPaintEvent *e) {
 			const auto view = thread
 				? &thread->lastItemDialogsView()
 				: nullptr;
-			const auto &badge = row->entry()->chatListPeerBadge();
 			_rowsScrollCache.paintRow(
 				p,
 				cacheKey,
@@ -1188,7 +1187,6 @@ void InnerWidget::paintEvent(QPaintEvent *e) {
 					q.setInactive(p.inactive());
 					Ui::RowPainter::Paint(q, row, nullptr, context);
 					auto cached = CachedRow();
-					cached.badge = badge.emojiStatusRect();
 					cached.preview = (view && view->hasAnimatedContent())
 						? view->lastPaintGeometry()
 						: QRect();
@@ -1197,9 +1195,6 @@ void InnerWidget::paintEvent(QPaintEvent *e) {
 						? history->peer->userpicUniqueKey(
 							row->userpicView())
 						: std::pair<uint64, uint64>();
-					if (!cached.badge.isEmpty()) {
-						q.fillRect(cached.badge, st::dialogsBg);
-					}
 					_cachedRows[cacheKey] = std::move(cached);
 				});
 			paintCachedRowOverlays(p, row, cacheKey, context);
@@ -1872,10 +1867,6 @@ void InnerWidget::paintPeerSearchResult(
 			: context.selected
 			? &st::dialogsVerifiedIconOver
 			: &st::dialogsVerifiedIcon),
-		.premium = &ThreeStateIcon(
-			st::dialogsPremiumIcon,
-			context.active,
-			context.selected),
 		.scam = (context.active
 			? &st::dialogsScamFgActive
 			: context.selected
@@ -1886,15 +1877,6 @@ void InnerWidget::paintPeerSearchResult(
 			: context.selected
 			? &st::windowSubTextFgOver
 			: &st::windowSubTextFg),
-		.premiumFg = (context.active
-			? &st::dialogsVerifiedIconBgActive
-			: context.selected
-			? &st::dialogsVerifiedIconBgOver
-			: &st::dialogsVerifiedIconBg),
-		.customEmojiRepaint = [=] { updateSearchResult(peer); },
-		.now = context.now,
-		.prioritizeVerification = true,
-		.paused = context.paused,
 	});
 	rectForName.setWidth(rectForName.width() - badgeWidth);
 
@@ -3549,9 +3531,7 @@ bool InnerWidget::animatedPreviewCached(not_null<Row*> row) {
 	}
 	const auto i = _cachedRows.find(RowsCacheKey(row->entry()));
 	if (i == end(_cachedRows)
-		|| (i->second.preview.isEmpty()
-			&& i->second.badge.isEmpty()
-			&& !i->second.video)) {
+		|| (i->second.preview.isEmpty() && !i->second.video)) {
 		return false;
 	}
 	const auto thread = row->thread();
@@ -3630,13 +3610,6 @@ void InnerWidget::paintCachedRowOverlays(
 				context,
 				false);
 		}
-	}
-	if (!i->second.badge.isEmpty()) {
-		row->entry()->chatListPeerBadge().paintEmojiStatusFrame(
-			p,
-			context.now,
-			context.paused,
-			i->second.badge.topLeft());
 	}
 	if (!i->second.preview.isEmpty()) {
 		if (const auto thread = row->thread()) {

@@ -714,14 +714,14 @@ rpl::producer<bool> CanViewParticipantsValue(
 	) | rpl::distinct_until_changed();
 }
 
+// LoogriGram: premium no longer earns a badge, so this no longer needs to
+// watch for it - the combine with PeerPremiumValue went with the branch.
 template <typename Flag, typename Peer>
 rpl::producer<BadgeType> BadgeValueFromFlags(Peer peer) {
-	return rpl::combine(
-		Data::PeerFlagsValue(
-			peer,
-			Flag::Verified | Flag::Scam | Flag::Fake),
-		Data::PeerPremiumValue(peer)
-	) | rpl::map([=](base::flags<Flag> value, bool premium) {
+	return Data::PeerFlagsValue(
+		peer,
+		Flag::Verified | Flag::Scam | Flag::Fake
+	) | rpl::map([=](base::flags<Flag> value) {
 		return (value & Flag::Scam)
 			? BadgeType::Scam
 			: (value & Flag::Fake)
@@ -730,8 +730,6 @@ rpl::producer<BadgeType> BadgeValueFromFlags(Peer peer) {
 			? BadgeType::Direct
 			: (value & Flag::Verified)
 			? BadgeType::Verified
-			: premium
-			? BadgeType::Premium
 			: BadgeType::None;
 	});
 }

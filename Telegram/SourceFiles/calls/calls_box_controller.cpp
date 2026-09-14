@@ -68,8 +68,6 @@ public:
 
 	int paintNameIconGetWidth(
 			Painter &p,
-			Fn<void()> repaint,
-			crl::time now,
 			int nameLeft,
 			int nameTop,
 			int nameWidth,
@@ -331,8 +329,6 @@ public:
 
 	int paintNameIconGetWidth(
 			Painter &p,
-			Fn<void()> repaint,
-			crl::time now,
 			int nameLeft,
 			int nameTop,
 			int nameWidth,

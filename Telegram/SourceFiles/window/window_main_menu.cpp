@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/about_box.h"
 #include "core/update_channel.h"
 #include "boxes/peer_list_controllers.h"
-#include "boxes/premium_preview_box.h"
 #include "calls/group/calls_group_common.h"
 #include "calls/calls_box_controller.h"
 #include "calls/calls_instance.h"
@@ -29,9 +28,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_stories.h"
 #include "data/data_user.h"
 #include "info/info_memento.h"
-#include "info/profile/info_profile_badge.h"
 #include "settings/settings_common.h"
-#include "info/profile/info_profile_emoji_status_panel.h"
 #include "info/profile/info_profile_icon.h"
 #include "info/stories/info_stories_widget.h"
 #include "lang/lang_keys.h"
@@ -86,8 +83,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace Window {
 namespace {
 
-constexpr auto kPlayStatusLimit = 2;
-
 [[nodiscard]] bool CanCheckSpecialEvent() {
 	static const auto result = [] {
 		const auto now = QDate::currentDate();
@@ -100,24 +95,6 @@ constexpr auto kPlayStatusLimit = 2;
 	const auto now = QDate::currentDate();
 	return (now.month() == 12 && now.day() >= 24)
 		|| (now.month() == 1 && now.day() == 1);
-}
-
-[[nodiscard]] rpl::producer<TextWithEntities> SetStatusLabel(
-		not_null<Main::Session*> session) {
-	const auto self = session->user();
-	return session->changes().peerFlagsValue(
-		self,
-		Data::PeerUpdate::Flag::EmojiStatus
-	) | rpl::map([=] {
-		return !!self->emojiStatusId();
-	}) | rpl::distinct_until_changed() | rpl::map([](bool has) {
-		const auto makeLink = [](const QString &text) {
-			return tr::link(text);
-		};
-		return (has
-			? tr::lng_menu_change_status
-			: tr::lng_menu_set_status)(makeLink);
-	}) | rpl::flatten_latest();
 }
 
 // LoogriGram: the label of the main menu's update row, following our updater.
@@ -425,17 +402,6 @@ MainMenu::MainMenu(
 	_controller->session().user(),
 	st::mainMenuUserpic)
 , _toggleAccounts(this, &controller->session().account())
-, _setEmojiStatus(this, SetStatusLabel(&controller->session()))
-, _emojiStatusPanel(std::make_unique<Info::Profile::EmojiStatusPanel>())
-, _badge(std::make_unique<Info::Profile::Badge>(
-	this,
-	st::settingsInfoPeerBadge,
-	&controller->session(),
-	Info::Profile::BadgeContentForPeer(controller->session().user()),
-	_emojiStatusPanel.get(),
-	[=] { return controller->isGifPausedAtLeastFor(GifPauseReason::Layer); },
-	kPlayStatusLimit,
-	Info::Profile::BadgeType::Premium))
 , _scroll(this, st::defaultSolidScroll)
 , _inner(_scroll->setOwnedWidget(
 	object_ptr<Ui::VerticalLayout>(_scroll.data())))
@@ -458,7 +424,6 @@ MainMenu::MainMenu(
 
 	setupUserpicButton();
 	setupAccountsToggle();
-	setupSetEmojiStatus();
 	setupAccounts();
 	setupArchive();
 	setupMenu();
@@ -525,16 +490,6 @@ MainMenu::MainMenu(
 			controller->show(Box(AboutBox));
 		}));
 
-	rpl::combine(
-		_toggleAccounts->rightSkipValue(),
-		rpl::single(rpl::empty) | rpl::then(_badge->updated())
-	) | rpl::on_next([=] {
-		moveBadge();
-	}, lifetime());
-	_badge->setPremiumClickCallback([=] {
-		chooseEmojiStatus();
-	});
-
 	_controller->session().downloaderTaskFinished(
 	) | rpl::on_next([=] {
 		update();
@@ -582,22 +537,6 @@ MainMenu::MainMenu(
 }
 
 MainMenu::~MainMenu() = default;
-
-void MainMenu::moveBadge() {
-	if (!_badge->widget()) {
-		return;
-	}
-	const auto available = width()
-		- st::mainMenuCoverNameLeft
-		- _toggleAccounts->rightSkip()
-		- _badge->widget()->width();
-	const auto left = st::mainMenuCoverNameLeft
-		+ std::min(_name.maxWidth() + st::semiboldFont->spacew, available);
-	_badge->move(
-		left,
-		st::mainMenuCoverNameTop,
-		st::mainMenuCoverNameTop + st::semiboldFont->height);
-}
 
 void MainMenu::setupArchive() {
 	using namespace Settings;
@@ -742,12 +681,6 @@ void MainMenu::setupAccountsToggle() {
 	});
 }
 
-void MainMenu::setupSetEmojiStatus() {
-	_setEmojiStatus->overrideLinkClickHandler([=] {
-		chooseEmojiStatus();
-	});
-}
-
 void MainMenu::parentResized() {
 	resize(st::mainMenuWidth, parentWidget()->height());
 }
@@ -755,10 +688,6 @@ void MainMenu::parentResized() {
 void MainMenu::showFinished() {
 	_showFinished = true;
 
-	_controller->checkHighlightControl(
-		u"main-menu/emoji-status"_q,
-		_setEmojiStatus,
-		Settings::SubsectionTitleHighlight());
 	_controller->checkHighlightControl(
 		u"main-menu/night-mode"_q,
 		_nightThemeToggle);
@@ -961,10 +890,6 @@ void MainMenu::updateControlsGeometry() {
 	if (_resetScaleButton) {
 		_resetScaleButton->moveToRight(0, 0);
 	}
-	_setEmojiStatus->moveToLeft(
-		st::mainMenuCoverStatusLeft,
-		st::mainMenuCoverStatusTop,
-		width());
 	_toggleAccounts->setGeometry(
 		0,
 		st::mainMenuCoverNameTop,
@@ -990,34 +915,6 @@ void MainMenu::updateInnerControlsGeometry() {
 	}
 }
 
-void MainMenu::chooseEmojiStatus() {
-	if (_controller->showFrozenError()) {
-		return;
-	} else if (const auto widget = _badge->widget()) {
-		setupEmojiStatusDismiss();
-		_emojiStatusPanel->show(_controller, widget, _badge->sizeTag());
-	} else {
-		ShowPremiumPreviewBox(_controller, PremiumFeature::EmojiStatus);
-	}
-}
-
-void MainMenu::setupEmojiStatusDismiss() {
-	if (_emojiStatusDismissSetup) {
-		return;
-	}
-	_emojiStatusDismissSetup = true;
-
-	base::install_event_filter(this, parentWidget(), [=](
-			not_null<QEvent*> e) {
-		if (e->type() != QEvent::MouseButtonPress
-			|| !_emojiStatusPanel->shown()) {
-			return base::EventFilterResult::Continue;
-		}
-		_emojiStatusPanel->hideAnimated();
-		return base::EventFilterResult::Cancel;
-	});
-}
-
 bool MainMenu::eventHook(QEvent *event) {
 	const auto type = event->type();
 	if (type == QEvent::TouchBegin
@@ -1027,10 +924,6 @@ bool MainMenu::eventHook(QEvent *event) {
 		QGuiApplication::sendEvent(_inner, event);
 	}
 	return RpWidget::eventHook(event);
-}
-
-void MainMenu::hideEvent(QHideEvent *e) {
-	_emojiStatusPanel->hideFast();
 }
 
 void MainMenu::paintEvent(QPaintEvent *e) {
@@ -1056,7 +949,6 @@ void MainMenu::drawName(Painter &p) {
 			st::semiboldTextStyle,
 			user->name(),
 			Ui::NameTextOptions());
-		moveBadge();
 	}
 	p.setFont(st::semiboldFont);
 	p.setPen(st::windowBoldFg);
@@ -1064,10 +956,7 @@ void MainMenu::drawName(Painter &p) {
 		p,
 		st::mainMenuCoverNameLeft,
 		st::mainMenuCoverNameTop,
-		(widthText
-			- (_badge->widget()
-				? (st::semiboldFont->spacew + _badge->widget()->width())
-				: 0)),
+		widthText,
 		width());
 }
 
@@ -1193,9 +1082,6 @@ void MainMenu::setupSwipe() {
 
 	auto init = [=](Ui::Controls::SwipeHandlerInitData data) {
 		if (data.fingerDirection() != Qt::LeftToRight) {
-			return Ui::Controls::SwipeHandlerFinishData();
-		}
-		if (_emojiStatusPanel && _emojiStatusPanel->hasFocus()) {
 			return Ui::Controls::SwipeHandlerFinishData();
 		}
 		return Ui::Controls::DefaultSwipeBackHandlerFinishData([=] {

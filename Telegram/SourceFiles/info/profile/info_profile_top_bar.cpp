@@ -49,7 +49,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "editor/video/video_editor_layer.h"
 #include "history/history.h"
 #include "info/info_memento.h"
-#include "info/profile/info_profile_badge_tooltip.h"
 #include "info/profile/info_profile_badge.h"
 #include "info/profile/info_profile_birthday_effect.h"
 #include "info/profile/info_profile_cover.h" // LargeCustomEmojiMargins
@@ -148,8 +147,6 @@ private:
 
 };
 
-constexpr auto kWaitBeforeGiftBadge = crl::time(1000);
-constexpr auto kGiftBadgeGlares = 3;
 constexpr auto kMinPatternRadius = 8;
 constexpr auto kStoryOutlineFadeEnd = 0.4;
 constexpr auto kStoryOutlineFadeRange = 1. - kStoryOutlineFadeEnd;
@@ -343,14 +340,11 @@ TopBar::TopBar(
 , _st(st::infoTopBar)
 , _source(descriptor.source)
 , _savedMessages(_key.savedMessages() != nullptr)
-, _badgeTooltipHide(
-	std::make_unique<base::Timer>([=] { hideBadgeTooltip(); }))
 , _botVerify(std::make_unique<Badge>(
 	this,
 	st::infoBotVerifyBadge,
 	&_peer->session(),
 	BotVerifyBadgeForPeer(_peer),
-	nullptr,
 	Fn<bool()>([=, controller = descriptor.controller] {
 		return controller->isGifPausedAtLeastFor(
 			Window::GifPauseReason::Layer);
@@ -366,14 +360,12 @@ TopBar::TopBar(
 	st::infoPeerBadge,
 	&_peer->session(),
 	_badgeContent.value(),
-	nullptr,
 	_gifPausedChecker))
 , _verified(std::make_unique<Badge>(
 	this,
 	st::infoPeerBadge,
 	&_peer->session(),
 	VerifiedContentForPeer(_peer),
-	nullptr,
 	_gifPausedChecker))
 , _hasActions(!_savedMessages
 	&& descriptor.source != Source::Stories
@@ -481,10 +473,6 @@ TopBar::TopBar(
 		badgeUpdates = rpl::merge(
 			std::move(badgeUpdates),
 			_badge->updated());
-
-		_badge->setPremiumClickCallback([controller, peer = _peer] {
-			::Settings::ShowEmojiStatusPremium(controller, peer);
-		});
 	}
 	if (_verified) {
 		badgeUpdates = rpl::merge(
@@ -507,7 +495,6 @@ TopBar::TopBar(
 		updateLabelsPosition();
 	}, _title->lifetime());
 
-	setupUniqueBadgeTooltip();
 	setupButtons(controller, descriptor.source);
 	setupSwipeBack(controller);
 	setupUserpicButton(controller);
@@ -1626,69 +1613,10 @@ void TopBar::startUploadOverlay() {
 		});
 }
 
-void TopBar::setupUniqueBadgeTooltip() {
-	if (!_badge || _source == Source::Preview) {
-		return;
-	}
-	base::timer_once(kWaitBeforeGiftBadge) | rpl::then(
-		_badge->updated()
-	) | rpl::on_next([=] {
-		const auto widget = _badge->widget();
-		const auto &content = _badgeContent.current();
-		const auto &collectible = content.emojiStatusId.collectible;
-		const auto premium = (content.badge == BadgeType::Premium);
-		const auto id = (collectible && widget && premium)
-			? collectible->id
-			: uint64();
-		if (_badgeCollectibleId == id) {
-			return;
-		}
-		hideBadgeTooltip();
-		if (!collectible || _localCollectible) {
-			return;
-		}
-		_badgeTooltip = std::make_unique<BadgeTooltip>(
-			this,
-			collectible,
-			widget);
-		const auto raw = _badgeTooltip.get();
-		raw->fade(true);
-		_badgeTooltipHide->callOnce(kGiftBadgeGlares * raw->glarePeriod()
-			- st::infoGiftTooltip.duration * 1.5);
-		raw->setOpacity(_progress.current());
-	}, lifetime());
-
-	if (const auto raw = _badgeTooltip.get()) {
-		raw->finishAnimating();
-	}
-}
-
-void TopBar::hideBadgeTooltip() {
-	_badgeTooltipHide->cancel();
-	if (auto old = base::take(_badgeTooltip)) {
-		const auto raw = old.get();
-		_badgeOldTooltips.push_back(std::move(old));
-
-		raw->fade(false);
-		raw->shownValue(
-		) | rpl::filter(
-			!rpl::mappers::_1
-		) | rpl::on_next([=] {
-			const auto i = ranges::find(
-				_badgeOldTooltips,
-				raw,
-				&std::unique_ptr<BadgeTooltip>::get);
-			if (i != end(_badgeOldTooltips)) {
-				_badgeOldTooltips.erase(i);
-			}
-		}, raw->lifetime());
-	}
-}
-
-TopBar::~TopBar() {
-	base::take(_badgeTooltip);
-	base::take(_badgeOldTooltips);
-}
+// LoogriGram: the collectible tooltip pointed at the premium emoji status
+// badge to announce that someone was wearing a gift. There is no such badge
+// any more, so the tooltip, its hide timer and BadgeTooltip itself are gone.
+TopBar::~TopBar() = default;
 
 rpl::producer<> TopBar::backRequest() const {
 	return _backClicks.events();
@@ -1774,9 +1702,10 @@ void TopBar::setPatternEmojiId(std::optional<DocumentId> patternEmojiId) {
 	updateCollectibleStatus();
 }
 
+// LoogriGram: only the background preview is left - the badge this also used
+// to fill in is gone, so there is nothing to show the chosen status on.
 void TopBar::setLocalEmojiStatusId(EmojiStatusId emojiStatusId) {
 	_localCollectible = emojiStatusId.collectible;
-	_badgeContent = Badge::Content{ BadgeType::Premium, emojiStatusId };
 	updateCollectibleStatus();
 }
 
@@ -1884,10 +1813,6 @@ void TopBar::updateLabelsPosition() {
 
 	updateTitlePosition(progressCurrent);
 	updateStatusPosition(progressCurrent);
-
-	if (_badgeTooltip) {
-		_badgeTooltip->setOpacity(progressCurrent);
-	}
 
 	{
 		const auto userpicRect = userpicGeometry();

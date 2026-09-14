@@ -33,8 +33,6 @@ public:
 
 	int paintNameIconGetWidth(
 		Painter &p,
-		Fn<void()> repaint,
-		crl::time now,
 		int nameLeft,
 		int nameTop,
 		int nameWidth,
@@ -75,8 +73,6 @@ Row::Row(const Main::SendAsPeer &sendAsPeer)
 
 int Row::paintNameIconGetWidth(
 		Painter &p,
-		Fn<void()> repaint,
-		crl::time now,
 		int nameLeft,
 		int nameTop,
 		int nameWidth,
@@ -92,8 +88,6 @@ int Row::paintNameIconGetWidth(
 	}
 	return PeerListRow::paintNameIconGetWidth(
 		p,
-		std::move(repaint),
-		now,
 		nameLeft,
 		nameTop,
 		nameWidth,

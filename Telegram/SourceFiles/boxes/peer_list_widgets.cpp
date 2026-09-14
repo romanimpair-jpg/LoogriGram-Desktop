@@ -102,8 +102,6 @@ crl::time PeerListWidgets::paintRow(
 	namew -= leading;
 	namew -= row->paintNameIconGetWidth(
 		p,
-		[=] { updateRow(row); },
-		now,
 		namex + leading,
 		namey,
 		name.maxWidth(),

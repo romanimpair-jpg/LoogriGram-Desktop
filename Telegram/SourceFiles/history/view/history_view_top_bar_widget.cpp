@@ -682,15 +682,8 @@ void TopBarWidget::paintTopBar(Painter &p) {
 			.nameWidth = _title.maxWidth(),
 			.outerWidth = width(),
 			.verified = &st::dialogsVerifiedIcon,
-			.premium = &st::dialogsPremiumIcon.icon,
 			.scam = &st::attentionButtonFg,
 			.direct = &st::windowSubTextFg,
-			.premiumFg = &st::dialogsVerifiedIconBg,
-			.customEmojiRepaint = [=] { update(); },
-			.now = now,
-			.bothVerifyAndStatus = true,
-			.paused = _controller->isGifPausedAtLeastFor(
-				Window::GifPauseReason::Any),
 		});
 		namewidth -= badgeWidth;
 
@@ -894,7 +887,6 @@ void TopBarWidget::setActiveChat(
 	update();
 
 	if (peerChanged || topicChanged) {
-		_titleBadge.unload();
 		_titleNameVersion = 0;
 		_emojiInteractionSeen = nullptr;
 		_activeChatLifetime.destroy();

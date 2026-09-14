@@ -310,7 +310,6 @@ public:
 private:
 	struct CommentsButton;
 	struct LinkRipple;
-	struct FromNameStatus;
 	struct RightAction;
 
 	void refreshDataIdHook() override;
@@ -525,7 +524,6 @@ private:
 	void refreshRightBadge();
 	[[nodiscard]] int rightBadgeWidth() const;
 	void validateFromNameText(PeerData *from) const;
-	void ensureFromNameStatusLink(not_null<PeerData*> peer) const;
 
 	mutable std::unique_ptr<RightAction> _rightAction;
 	mutable ClickHandlerPtr _fastReplyLink;
@@ -537,7 +535,6 @@ private:
 	mutable std::unique_ptr<TranscribeButton> _summarize;
 
 	mutable Ui::Text::String _fromName;
-	mutable std::unique_ptr<FromNameStatus> _fromNameStatus;
 	mutable std::unique_ptr<Ui::RoundCheckbox> _selectionRoundCheckbox;
 	mutable uint32 _fromNameVersion : 16 = 0;
 	uint32 _nonTextMaxWidth : 16 = 0;

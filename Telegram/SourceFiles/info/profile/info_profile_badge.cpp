@@ -14,7 +14,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_user.h"
 #include "data/stickers/data_custom_emoji.h"
 #include "info/profile/info_profile_values.h"
-#include "info/profile/info_profile_emoji_status_panel.h"
 #include "lang/lang_keys.h"
 #include "ui/widgets/buttons.h"
 #include "ui/painter.h"
@@ -26,11 +25,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace Info::Profile {
 namespace {
 
-[[nodiscard]] bool HasPremiumClick(const Badge::Content &content) {
-	return content.badge == BadgeType::Premium
-		|| (content.badge == BadgeType::Verified && content.emojiStatusId);
-}
-
 } // namespace
 
 Badge::Badge(
@@ -38,15 +32,11 @@ Badge::Badge(
 	const style::InfoPeerBadge &st,
 	not_null<Main::Session*> session,
 	rpl::producer<Content> content,
-	EmojiStatusPanel *emojiStatusPanel,
 	Fn<bool()> animationPaused,
-	int customStatusLoopsLimit,
 	base::flags<BadgeType> allowed)
 : _parent(parent)
 , _st(st)
 , _session(session)
-, _emojiStatusPanel(emojiStatusPanel)
-, _customStatusLoopsLimit(customStatusLoopsLimit)
 , _allowed(allowed)
 , _animationPaused(std::move(animationPaused)) {
 	std::move(
@@ -62,12 +52,10 @@ Ui::RpWidget *Badge::widget() const {
 	return _view.data();
 }
 
+// LoogriGram: no BadgeType::Premium - the premium emoji status and the gold
+// star it fell back to are both gone, so this paints the verified check, the
+// bot verification icon and the scam / fake / direct text badges.
 void Badge::setContent(Content content) {
-	if (!(_allowed & content.badge)
-		|| (!_session->premiumBadgesShown()
-			&& content.badge == BadgeType::Premium)) {
-		content.badge = BadgeType::None;
-	}
 	if (!(_allowed & content.badge)) {
 		content.badge = BadgeType::None;
 	}
@@ -88,11 +76,6 @@ void Badge::setContent(Content content) {
 			return tr::lng_sr_verified_badge(tr::now);
 		case BadgeType::BotVerified:
 			return tr::lng_sr_bot_verified_badge(tr::now);
-		case BadgeType::Premium:
-			if (_content.emojiStatusId) {
-				return tr::lng_profile_bot_emoji_status_access(tr::now);
-			}
-			return tr::lng_premium_summary_title(tr::now);
 		case BadgeType::Scam:
 			return tr::lng_scam_badge(tr::now);
 		case BadgeType::Fake:
@@ -105,35 +88,24 @@ void Badge::setContent(Content content) {
 	_view->show();
 	switch (_content.badge) {
 	case BadgeType::Verified:
-	case BadgeType::BotVerified:
-	case BadgeType::Premium: {
+	case BadgeType::BotVerified: {
+		// Only BotVerified carries an id now, and it is the verifying bot's
+		// icon rather than a status the peer chose for itself.
 		const auto id = _content.emojiStatusId;
 		const auto emoji = id
 			? (Data::FrameSizeFromTag(sizeTag())
 				/ style::DevicePixelRatio())
 			: 0;
 		const auto &style = st();
-		const auto icon = (_content.badge == BadgeType::Verified)
-			? &style.verified
-			: id
-			? nullptr
-			: &style.premium;
-		const auto iconForeground = (_content.badge == BadgeType::Verified)
-			? &style.verifiedCheck
-			: nullptr;
+		const auto verified = (_content.badge == BadgeType::Verified);
+		const auto icon = verified ? &style.verified : nullptr;
+		const auto iconForeground = verified ? &style.verifiedCheck : nullptr;
 		if (id) {
-			_emojiStatus = _session->data().customEmojiManager().create(
-				Data::EmojiStatusCustomId(id),
-				[raw = _view.data()] { raw->update(); },
-				sizeTag());
-			if (_content.badge == BadgeType::BotVerified) {
-				_emojiStatus = MakeWrappedEmoji<Ui::Text::FirstFrameEmoji>(
-					std::move(_emojiStatus));
-			} else if (_customStatusLoopsLimit > 0) {
-				_emojiStatus = MakeWrappedEmoji<Ui::Text::LimitedLoopsEmoji>(
-					std::move(_emojiStatus),
-					_customStatusLoopsLimit);
-			}
+			_emojiStatus = MakeWrappedEmoji<Ui::Text::FirstFrameEmoji>(
+				_session->data().customEmojiManager().create(
+					Data::EmojiStatusCustomId(id),
+					[raw = _view.data()] { raw->update(); },
+					sizeTag()));
 		}
 		const auto width = emoji + (icon ? icon->width() : 0);
 		const auto height = std::max(emoji, icon ? icon->height() : 0);
@@ -147,11 +119,8 @@ void Badge::setContent(Content content) {
 					.paused = ((_animationPaused && _animationPaused())
 						|| On(PowerSaving::kEmojiStatus)),
 				};
-				if (!_emojiStatusPanel
-					|| !_emojiStatusPanel->paintBadgeFrame(check)) {
-					Painter p(check);
-					_emojiStatus->paint(p, args);
-				}
+				Painter p(check);
+				_emojiStatus->paint(p, args);
 			}
 			if (icon) {
 				auto p = Painter(check);
@@ -210,25 +179,11 @@ void Badge::setContent(Content content) {
 	} break;
 	}
 
-	if (!HasPremiumClick(_content) || !_premiumClickCallback) {
-		_view->setAttribute(Qt::WA_TransparentForMouseEvents);
-	} else {
-		_view->setClickedCallback(_premiumClickCallback);
-	}
+	// Nothing here is clickable any more: the one badge that opened
+	// something was the premium status, which opened the status picker.
+	_view->setAttribute(Qt::WA_TransparentForMouseEvents);
 
 	_updated.fire({});
-}
-
-void Badge::setPremiumClickCallback(Fn<void()> callback) {
-	_premiumClickCallback = std::move(callback);
-	if (_view && HasPremiumClick(_content)) {
-		if (!_premiumClickCallback) {
-			_view->setAttribute(Qt::WA_TransparentForMouseEvents);
-		} else {
-			_view->setAttribute(Qt::WA_TransparentForMouseEvents, false);
-			_view->setClickedCallback(_premiumClickCallback);
-		}
-	}
 }
 
 void Badge::setOverrideStyle(const style::InfoPeerBadge *st) {
@@ -248,8 +203,7 @@ void Badge::move(int left, int top, int bottom) {
 	}
 	const auto &style = st();
 	const auto star = !_emojiStatus
-		&& (_content.badge == BadgeType::Premium
-			|| _content.badge == BadgeType::Verified);
+		&& (_content.badge == BadgeType::Verified);
 	const auto fake = !_emojiStatus && !star;
 	const auto skip = fake ? 0 : style.position.x();
 	const auto badgeLeft = left + skip;
@@ -274,24 +228,15 @@ Data::CustomEmojiSizeTag Badge::sizeTag() const {
 		: SizeTag::Normal;
 }
 
+// LoogriGram: the emoji status is gone, so this is only the scam / fake /
+// direct badge now. Verified still resolves to None here because the verified
+// check has its own producer and its own widget - see VerifiedContentForPeer.
 rpl::producer<Badge::Content> BadgeContentForPeer(not_null<PeerData*> peer) {
-	const auto statusOnlyForPremium = peer->isUser();
-	return rpl::combine(
-		BadgeValue(peer),
-		EmojiStatusIdValue(peer)
-	) | rpl::map([=](BadgeType badge, EmojiStatusId emojiStatusId) {
-		if (emojiStatusId.collectible && (badge == BadgeType::Verified)) {
-			return Badge::Content{ BadgeType::Premium, emojiStatusId };
-		}
+	return BadgeValue(peer) | rpl::map([=](BadgeType badge) {
 		if (badge == BadgeType::Verified) {
 			badge = BadgeType::None;
 		}
-		if (statusOnlyForPremium && badge != BadgeType::Premium) {
-			emojiStatusId = EmojiStatusId();
-		} else if (emojiStatusId && badge == BadgeType::None) {
-			badge = BadgeType::Premium;
-		}
-		return Badge::Content{ badge, emojiStatusId };
+		return Badge::Content{ badge };
 	});
 }
 

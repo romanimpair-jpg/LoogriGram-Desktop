@@ -873,10 +873,6 @@ void PaintRow(
 				: context.selected
 				? &st::dialogsVerifiedIconOver
 				: &st::dialogsVerifiedIcon),
-			.premium = &ThreeStateIcon(
-				st::dialogsPremiumIcon,
-				context.active,
-				context.selected),
 			.scam = (context.active
 				? &st::dialogsScamFgActive
 				: context.selected
@@ -887,14 +883,6 @@ void PaintRow(
 				: context.selected
 				? &st::windowSubTextFgOver
 				: &st::windowSubTextFg),
-			.premiumFg = (context.active
-				? &st::dialogsVerifiedIconBgActive
-				: context.selected
-				? &st::dialogsVerifiedIconBgOver
-				: &st::dialogsVerifiedIconBg),
-			.customEmojiRepaint = customEmojiRepaint,
-			.now = context.now,
-			.paused = context.paused,
 		});
 		rectForName.setWidth(rectForName.width() - badgeWidth);
 	};

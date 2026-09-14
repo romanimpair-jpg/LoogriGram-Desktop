@@ -29,8 +29,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_cloud_themes.h"
 #include "data/data_session.h"
 #include "data/data_user.h"
-#include "info/profile/info_profile_badge.h"
-#include "info/profile/info_profile_emoji_status_panel.h"
 #include "info/profile/info_profile_phone_menu.h"
 #include "info/profile/info_profile_values.h"
 #include "lang/lang_cloud_manager.h"
@@ -120,8 +118,6 @@ private:
 
 	const not_null<Window::SessionController*> _controller;
 	const not_null<UserData*> _user;
-	Info::Profile::EmojiStatusPanel _emojiStatusPanel;
-	Info::Profile::Badge _badge;
 
 	object_ptr<Ui::UserpicButton> _userpic;
 	object_ptr<Ui::FlatLabel> _name = { nullptr };
@@ -143,18 +139,6 @@ Cover::Cover(
 		+ st::settingsPhotoBottom)
 , _controller(controller)
 , _user(user)
-, _badge(
-	this,
-	st::settingsCoverBadge,
-	&user->session(),
-	Info::Profile::BadgeContentForPeer(user),
-	&_emojiStatusPanel,
-	[=] {
-		return controller->isGifPausedAtLeastFor(
-			Window::GifPauseReason::Layer);
-	},
-	0, // customStatusLoopsLimit
-	Info::Profile::BadgeType::Premium)
 , _userpic(
 	this,
 	controller,
@@ -210,16 +194,6 @@ Cover::Cover(
 			_userpic->showUploadProgress();
 		}
 	});
-
-	_badge.setPremiumClickCallback([=] {
-		_emojiStatusPanel.show(
-			_controller,
-			_badge.widget(),
-			_badge.sizeTag());
-	});
-	_badge.updated() | rpl::on_next([=] {
-		refreshNameGeometry(width());
-	}, _name->lifetime());
 
 	_qrButton.create(this, st::infoProfileLabeledButtonQr);
 	_qrButton->setAccessibleName(tr::lng_group_invite_context_qr(tr::now));
@@ -306,19 +280,12 @@ void Cover::refreshNameGeometry(int newWidth) {
 	const auto qrButtonWidth = (_qrButton && !_qrButton->isHidden())
 		? (_qrButton->width() + st::infoProfileCover.rightSkip)
 		: 0;
-	auto nameWidth = newWidth
+	const auto nameWidth = newWidth
 		- nameLeft
 		- st::infoProfileCover.rightSkip
 		- qrButtonWidth;
-	if (const auto width = _badge.widget() ? _badge.widget()->width() : 0) {
-		nameWidth -= st::infoVerifiedCheckPosition.x() + width;
-	}
 	_name->resizeToNaturalWidth(nameWidth);
 	_name->moveToLeft(nameLeft, nameTop, newWidth);
-	const auto badgeLeft = nameLeft + _name->width();
-	const auto badgeTop = nameTop;
-	const auto badgeBottom = nameTop + _name->height();
-	_badge.move(badgeLeft, badgeTop, badgeBottom);
 }
 
 void Cover::updatePhoneText() {
