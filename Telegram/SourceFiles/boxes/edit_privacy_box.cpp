@@ -20,7 +20,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_app_config.h"
 #include "main/main_session.h"
 #include "settings/settings_common.h"
-#include "settings/sections/settings_premium.h"
 #include "settings/settings_privacy_controllers.h"
 #include "settings/sections/settings_privacy_security.h"
 #include "ui/boxes/peer_qr_box.h"
@@ -1104,33 +1103,17 @@ void EditMessagesPrivacyBox(
 		chargeWrap->toggleOn(group->value() | rpl::map(_1 == kOptionCharge));
 		chargeWrap->finishAnimating();
 	}
-	using WeakToast = base::weak_ptr<Ui::Toast::Instance>;
-	const auto toast = std::make_shared<WeakToast>();
+	// LoogriGram: the toast still says why these two options are locked - the
+	// restriction is the server's and applies either way - but "Telegram
+	// Premium" in it is plain semibold text now rather than a link into the
+	// subscription page. The sentence reads the same without it.
 	const auto showToast = [=] {
-		auto link = tr::link(
-			tr::semibold(
-				tr::lng_messages_privacy_premium_link(tr::now)));
-		(*toast) = controller->showToast({
+		controller->showToast({
 			.text = tr::lng_messages_privacy_premium(
 				tr::now,
 				lt_link,
-				link,
+				tr::semibold(tr::lng_messages_privacy_premium_link(tr::now)),
 				tr::marked),
-			.filter = crl::guard(&controller->session(), [=](
-					const ClickHandlerPtr &,
-					Qt::MouseButton button) {
-				if (button == Qt::LeftButton) {
-					if (const auto strong = toast->get()) {
-						strong->hideAnimated();
-						(*toast) = nullptr;
-						Settings::ShowPremium(
-							controller,
-							u"noncontact_peers_require_premium"_q);
-						return true;
-					}
-				}
-				return false;
-			}),
 		});
 	};
 
@@ -1147,19 +1130,10 @@ void EditMessagesPrivacyBox(
 			}
 		});
 
-		Ui::AddSkip(inner);
-		Settings::AddButtonWithIcon(
-			inner,
-			tr::lng_messages_privacy_premium_button(),
-			st::messagePrivacySubscribe,
-			{ .icon = &st::menuBlueIconPremium }
-		)->setClickedCallback([=] {
-			Settings::ShowPremium(
-				controller,
-				u"noncontact_peers_require_premium"_q);
-		});
-		Ui::AddSkip(inner);
-		Ui::AddDividerText(inner, tr::lng_messages_privacy_premium_about());
+		// LoogriGram: a "Subscribe to Telegram Premium" button and the pitch
+		// under it used to fill the rest of this box. The locked rows and
+		// the toast above stay - they explain a restriction that is real -
+		// and the offer to lift it does not.
 		box->addButton(tr::lng_about_done(), [=] {
 			box->closeBox();
 		});

@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_session.h"
 #include "data/data_user.h"
 #include "main/main_session.h"
-#include "settings/sections/settings_premium.h" // Settings::ShowPremium.
 
 namespace Api {
 namespace {
@@ -280,10 +279,11 @@ void UserPrivacy::save(
 			apply(keyTypeId, data.vrules(), true);
 		});
 	}).fail([=](const MTP::Error &error) {
-		const auto message = error.type();
-		if (message == u"PREMIUM_ACCOUNT_REQUIRED"_q) {
-			Settings::ShowPremium(_session, QString());
-		}
+		// LoogriGram: a PREMIUM_ACCOUNT_REQUIRED rejection used to open the
+		// subscription page from here. The box that offered the setting
+		// already says it is subscriber-only and locks the row, so the
+		// rejection needs no second telling, and this failure is now handled
+		// the way every other one on this request is.
 		_privacySaveRequests.remove(keyTypeId);
 	}).send();
 

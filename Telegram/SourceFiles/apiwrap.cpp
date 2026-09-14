@@ -100,7 +100,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/chat/attach/attach_prepare.h"
 #include "ui/toast/toast.h"
 #include "support/support_helper.h"
-#include "settings/sections/settings_premium.h"
 #include "storage/localimageloader.h"
 #include "storage/download_manager_mtproto.h"
 #include "storage/file_upload.h"
@@ -571,7 +570,13 @@ void ApiWrap::sendMessageFail(
 			? tr::lng_error_noforwards_user(tr::now)
 			: tr::lng_error_noforwards_group(tr::now), kJoinErrorDuration);
 	} else if (error == u"PREMIUM_ACCOUNT_REQUIRED"_q) {
-		Settings::ShowPremium(&session(), "premium_stickers");
+		// LoogriGram: the send was refused because the account is not a
+		// subscriber, and upstream answered by opening the subscription
+		// page. Say the send failed instead - leaving it silent would drop a
+		// message with no explanation at all.
+		if (show) {
+			show->showToast(tr::lng_cant_do_this(tr::now));
+		}
 	} else if (error == u"SCHEDULE_TOO_MUCH"_q) {
 		auto &scheduled = _session->scheduledMessages();
 		if (const auto item = scheduled.lookupItem(peer->id, itemId.msg)) {

@@ -34,7 +34,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_message.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
-#include "settings/sections/settings_premium.h"
 #include "settings/sections/settings_privacy_security.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/chat/chat_style.h"
@@ -712,20 +711,11 @@ object_ptr<Ui::RpWidget> LastSeenPrivacyController::setupBelowWidget(
 	Ui::AddDividerText(
 		content,
 		tr::lng_edit_lastseen_hide_read_time_about());
-	if (!controller->session().premium()) {
-		Ui::AddSkip(content);
-		content->add(object_ptr<Ui::SettingsButton>(
-			content,
-			tr::lng_edit_lastseen_subscribe(),
-			st::settingsButtonLightNoIcon
-		))->setClickedCallback([=] {
-			Settings::ShowPremium(controller, u"lastseen"_q);
-		});
-		Ui::AddSkip(content);
-		Ui::AddDividerText(
-			content,
-			tr::lng_edit_lastseen_subscribe_about());
-	}
+	// LoogriGram: below this sat a "Subscribe to Telegram Premium" row and a
+	// paragraph explaining that subscribers see other people's last seen and
+	// read time even while hiding their own. The hide-read-time toggle above
+	// is ghost mode's own setting and stays; the way to buy an exemption
+	// from its cost does not.
 
 	result->toggleOn(rpl::combine(
 		_option.value(),
@@ -1440,74 +1430,30 @@ auto VoicesPrivacyController::exceptionsDescription() const
 	return tr::lng_edit_privacy_voices_exceptions();
 }
 
-object_ptr<Ui::RpWidget> VoicesPrivacyController::setupBelowWidget(
-		not_null<Window::SessionController*> controller,
-		not_null<QWidget*> parent,
-		rpl::producer<Option> option) {
-	using namespace rpl::mappers;
-
-	auto result = object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-		parent,
-		object_ptr<Ui::VerticalLayout>(parent));
-	result->toggleOn(
-		Data::AmPremiumValue(&controller->session()) | rpl::map(!_1),
-		anim::type::instant);
-
-	const auto content = result->entity();
-
-	Ui::AddSkip(content);
-	Settings::AddButtonWithIcon(
-		content,
-		tr::lng_messages_privacy_premium_button(),
-		st::messagePrivacySubscribe,
-		{ .icon = &st::menuBlueIconPremium }
-	)->setClickedCallback([=] {
-		Settings::ShowPremium(
-			controller,
-			u"voice_restrictions_require_premium"_q);
-	});
-	Ui::AddSkip(content);
-	Ui::AddDividerText(content, tr::lng_messages_privacy_premium_about());
-
-	return result;
-}
-
+// LoogriGram: setupBelowWidget here built nothing but a subscribe button and
+// its pitch, shown to exactly the people who cannot buy it, so the override
+// is gone and the base class's empty one stands.
+//
+// The lock on the restricted options stays, because the restriction is the
+// server's and would reject the save either way, and so does the toast that
+// explains it. Only the link out of that toast is gone; "Telegram Premium"
+// reads the same as plain semibold text, and the sentence is still true.
 Fn<void()> VoicesPrivacyController::premiumClickedCallback(
 		Option option,
 		not_null<Window::SessionController*> controller) {
 	if (option == Option::Everyone) {
 		return nullptr;
 	}
-	const auto showToast = [=] {
-		auto link = tr::link(
-			tr::semibold(
-				tr::lng_settings_privacy_premium_link(tr::now)));
-		_toastInstance = controller->showToast({
+	return [=] {
+		controller->showToast({
 			.text = tr::lng_settings_privacy_premium(
 				tr::now,
 				lt_link,
-				link,
+				tr::semibold(tr::lng_settings_privacy_premium_link(tr::now)),
 				tr::marked),
-			.filter = crl::guard(&controller->session(), [=](
-					const ClickHandlerPtr &,
-					Qt::MouseButton button) {
-				if (button == Qt::LeftButton) {
-					if (const auto strong = _toastInstance.get()) {
-						strong->hideAnimated();
-						_toastInstance = nullptr;
-						Settings::ShowPremium(
-							controller,
-							u"voice_restrictions_require_premium"_q);
-						return true;
-					}
-				}
-				return false;
-			}),
 			.duration = Ui::Toast::kDefaultDuration * 2,
 		});
 	};
-
-	return showToast;
 }
 
 UserPrivacy::Key AboutPrivacyController::key() const {
@@ -1679,18 +1625,19 @@ void GiftsAutoSavePrivacyController::ensureAdditionalState(
 
 	_state = on.make_state<AdditionalState>();
 	_state->disallowed = globalPrivacy->disallowedGiftTypesCurrent();
+	// LoogriGram: these toggles revert for anyone who is not a subscriber,
+	// which is the server's rule, so saying so is still the honest thing.
+	// The name of the subscription is plain bold text now instead of a link
+	// into the page that sells it.
 	_state->promo = [=] {
 		_state->disables.fire({});
-		const auto link = tr::bold(
-			tr::lng_settings_generic_subscribe_link(tr::now));
-		Settings::ShowPremiumPromoToast(
-			controller->uiShow(),
-			tr::lng_settings_generic_subscribe(
+		controller->showToast({
+			.text = tr::lng_settings_generic_subscribe(
 				tr::now,
 				lt_link,
-				tr::link(link),
+				tr::bold(tr::lng_settings_generic_subscribe_link(tr::now)),
 				tr::marked),
-			u"gifts_privacy"_q);
+		});
 	};
 	_state->save = [=] {
 		const auto now = _state->disallowed;
