@@ -22,6 +22,18 @@ bool HiddenContent(not_null<const HistoryItem*> item) {
 	// prepare*Gift* handlers in history_item.cpp all build one - so this
 	// single check covers premium gifts, star gifts, unique gifts, gift codes
 	// and gifted TON alike.
+	//
+	// MediaGiftBox is a container rather than a purchase marker, and two of
+	// the things filed under it are not purchases. Both are hidden anyway,
+	// deliberately - do not "fix" this by narrowing the check:
+	//
+	//   BirthdaySuggest  "{user} suggests you add your date of birth", from a
+	//                    contact who already has it saved. Nothing is bought;
+	//                    it only borrows the same service card.
+	//   ChatTheme        "X changed the chat theme", where the theme is a
+	//                    collectible. Note the asymmetry this leaves: a theme
+	//                    change to a non-collectible attaches no media, so it
+	//                    is not hidden and still shows.
 	return media->gift()
 		|| media->giveawayStart()
 		|| media->giveawayResults()
