@@ -8,10 +8,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_chat_invite.h"
 
 #include "apiwrap.h"
-#include "api/api_credits.h"
 #include "boxes/premium_limits_box.h"
 #include "core/application.h"
-#include "data/components/credits.h"
 #include "data/data_channel.h"
 #include "data/data_file_origin.h"
 #include "data/data_forum.h"
@@ -24,10 +22,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "inline_bots/bot_attach_web_view.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
-#include "settings/settings_credits_graphics.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/controls/userpic_button.h"
-#include "ui/effects/credits_graphics.h"
 #include "ui/effects/premium_graphics.h"
 #include "ui/effects/premium_stars_colored.h"
 #include "ui/empty_userpic.h"
@@ -41,7 +37,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_api_chat_invite.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_color_indices.h"
-#include "styles/style_credits.h"
 #include "styles/style_info.h"
 #include "styles/style_layers.h"
 
@@ -192,245 +187,9 @@ void SubmitChatInvite(
 	}).send();
 }
 
-void ConfirmSubscriptionBox(
-		not_null<Ui::GenericBox*> box,
-		not_null<Main::Session*> session,
-		const QString &hash,
-		const MTPDchatInvite *data) {
-	box->setWidth(st::boxWideWidth);
-	const auto amount = data->vsubscription_pricing()->data().vamount().v;
-	const auto formId = data->vsubscription_form_id()->v;
-	const auto name = qs(data->vtitle());
-	const auto maybePhoto = session->data().processPhoto(data->vphoto());
-	const auto photo = maybePhoto->isNull() ? nullptr : maybePhoto.get();
-
-	struct State final {
-		std::shared_ptr<Data::PhotoMedia> photoMedia;
-		std::unique_ptr<Ui::EmptyUserpic> photoEmpty;
-		QImage frame;
-
-		std::optional<MTP::Sender> api;
-		Ui::RpWidget* saveButton = nullptr;
-		rpl::variable<bool> loading;
-	};
-	const auto state = box->lifetime().make_state<State>();
-
-	const auto content = box->verticalLayout();
-
-	Ui::AddSkip(content, st::confirmInvitePhotoTop);
-	const auto userpic = content->add(
-		object_ptr<Ui::RpWidget>(content),
-		style::al_top);
-	const auto photoSize = st::confirmInvitePhotoSize;
-	userpic->resize(Size(photoSize));
-	userpic->setNaturalWidth(photoSize);
-	const auto creditsIconSize = photoSize / 3;
-	const auto creditsIconCallback =
-		Ui::PaintOutlinedColoredCreditsIconCallback(
-			creditsIconSize,
-			1.5);
-	state->frame = QImage(
-		Size(photoSize * style::DevicePixelRatio()),
-		QImage::Format_ARGB32_Premultiplied);
-	state->frame.setDevicePixelRatio(style::DevicePixelRatio());
-	const auto options = Images::Option::RoundCircle;
-	userpic->paintRequest(
-	) | rpl::on_next([=, small = Data::PhotoSize::Small] {
-		state->frame.fill(Qt::transparent);
-		{
-			auto p = QPainter(&state->frame);
-			if (state->photoMedia) {
-				if (const auto image = state->photoMedia->image(small)) {
-					p.drawPixmap(
-						0,
-						0,
-						image->pix(Size(photoSize), { .options = options }));
-				}
-			} else if (state->photoEmpty) {
-				state->photoEmpty->paintCircle(
-					p,
-					0,
-					0,
-					userpic->width(),
-					photoSize);
-			}
-			if (creditsIconCallback) {
-				p.translate(
-					photoSize - creditsIconSize,
-					photoSize - creditsIconSize);
-				creditsIconCallback(p);
-			}
-		}
-		auto p = QPainter(userpic);
-		p.drawImage(0, 0, state->frame);
-	}, userpic->lifetime());
-	userpic->setAttribute(Qt::WA_TransparentForMouseEvents);
-	if (photo) {
-		state->photoMedia = photo->createMediaView();
-		state->photoMedia->wanted(Data::PhotoSize::Small, Data::FileOrigin());
-		if (!state->photoMedia->image(Data::PhotoSize::Small)) {
-			session->downloaderTaskFinished(
-			) | rpl::on_next([=] {
-				userpic->update();
-			}, userpic->lifetime());
-		}
-	} else {
-		state->photoEmpty = std::make_unique<Ui::EmptyUserpic>(
-			Ui::EmptyUserpic::UserpicColor(st::colorIndexRed),
-			name);
-	}
-	Ui::AddSkip(content);
-	Ui::AddSkip(content);
-
-	Settings::AddMiniStars(
-		content,
-		Ui::CreateChild<Ui::RpWidget>(content),
-		photoSize,
-		box->width(),
-		2.);
-
-	box->addRow(
-		object_ptr<Ui::FlatLabel>(
-			box,
-			tr::lng_channel_invite_subscription_title(),
-			st::inviteLinkSubscribeBoxTitle),
-		style::al_top);
-	box->addRow(
-		object_ptr<Ui::FlatLabel>(
-			box,
-			tr::lng_channel_invite_subscription_about(
-				lt_channel,
-				rpl::single(tr::bold(name)),
-				lt_price,
-				tr::lng_credits_summary_options_credits(
-					lt_count,
-					rpl::single(amount) | tr::to_count(),
-					tr::bold),
-				tr::marked),
-			st::inviteLinkSubscribeBoxAbout),
-		style::al_top);
-	Ui::AddSkip(content);
-	box->addRow(
-		object_ptr<Ui::FlatLabel>(
-			box,
-			tr::lng_channel_invite_subscription_terms(
-				lt_link,
-				rpl::combine(
-					tr::lng_paid_react_agree_link(),
-					tr::lng_group_invite_subscription_about_url()
-				) | rpl::map([](const QString &text, const QString &url) {
-					return tr::link(text, url);
-				}),
-				tr::rich),
-			st::inviteLinkSubscribeBoxTerms),
-		style::al_top);
-
-	{
-		const auto balance = Settings::AddBalanceWidget(
-			content,
-			session,
-			session->credits().balanceValue(),
-			true);
-		session->credits().load(true);
-
-		rpl::combine(
-			balance->sizeValue(),
-			content->sizeValue()
-		) | rpl::on_next([=](const QSize &, const QSize &) {
-			balance->moveToRight(
-				st::creditsHistoryRightSkip * 2,
-				st::creditsHistoryRightSkip);
-			balance->update();
-		}, balance->lifetime());
-	}
-
-	const auto sendCredits = [=, weak = base::make_weak(box)] {
-		const auto show = box->uiShow();
-		const auto buttonWidth = state->saveButton
-			? state->saveButton->width()
-			: 0;
-		const auto finish = [=] {
-			state->api = std::nullopt;
-			state->loading.force_assign(false);
-			if (const auto strong = weak.get()) {
-				strong->closeBox();
-			}
-		};
-		state->api->request(
-			MTPpayments_SendStarsForm(
-				MTP_long(formId),
-				MTP_inputInvoiceChatInviteSubscription(MTP_string(hash)))
-		).done([=](const MTPpayments_PaymentResult &result) {
-			result.match([&](const MTPDpayments_paymentResult &data) {
-				session->api().applyUpdates(data.vupdates());
-			}, [](const MTPDpayments_paymentVerificationNeeded &data) {
-			});
-			const auto refill = session->data().activeCreditsSubsRebuilder();
-			const auto strong = weak.get();
-			if (!strong) {
-				return;
-			}
-			if (!refill) {
-				return finish();
-			}
-			const auto api
-				= strong->lifetime().make_state<Api::CreditsHistory>(
-					session->user(),
-					true,
-					true);
-			api->requestSubscriptions({}, [=](Data::CreditsStatusSlice d) {
-				refill->fire(std::move(d));
-				finish();
-			});
-		}).fail([=](const MTP::Error &error) {
-			const auto id = error.type();
-			if (weak) {
-				state->api = std::nullopt;
-			}
-			show->showToast(id);
-			state->loading.force_assign(false);
-		}).send();
-		if (state->saveButton) {
-			state->saveButton->resizeToWidth(buttonWidth);
-		}
-	};
-
-	auto confirmText = tr::lng_channel_invite_subscription_button();
-	state->saveButton = box->addButton(std::move(confirmText), [=] {
-		if (state->api) {
-			return;
-		}
-		state->api.emplace(&session->mtp());
-		state->loading.force_assign(true);
-
-		const auto done = [=](Settings::SmallBalanceResult result) {
-			if (result == Settings::SmallBalanceResult::Success
-				|| result == Settings::SmallBalanceResult::Already) {
-				sendCredits();
-			} else {
-				state->api = std::nullopt;
-				state->loading.force_assign(false);
-			}
-		};
-		Settings::MaybeRequestBalanceIncrease(
-			Main::MakeSessionShow(box->uiShow(), session),
-			amount,
-			Settings::SmallBalanceSubscription{ .name = name },
-			done);
-	});
-
-	if (const auto saveButton = state->saveButton) {
-		using namespace Info::Statistics;
-		const auto loadingAnimation = InfiniteRadialAnimationWidget(
-			saveButton,
-			saveButton->height() / 2,
-			&st::editStickerSetNameLoading);
-		AddChildToWidgetCenter(saveButton, loadingAnimation);
-		loadingAnimation->showOn(
-			state->loading.value() | rpl::map(rpl::mappers::_1));
-	}
-	box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
-}
+// LoogriGram: an invite link could carry a monthly price in stars, and
+// this box took the payment before letting you in. Paying to be in a
+// channel is a purchase; a link that asks for one is refused instead.
 
 void ConfirmInviteBox(
 		not_null<Ui::GenericBox*> box,
@@ -690,27 +449,18 @@ void CheckChatInvite(
 		};
 		result.match([=](const MTPDchatInvite &data) {
 			const auto isGroup = !data.is_broadcast();
-			const auto hasPricing = !!data.vsubscription_pricing();
 			const auto canRefulfill = data.is_can_refulfill_subscription();
-			if (hasPricing
-				&& !canRefulfill
-				&& !data.vsubscription_form_id()) {
+			if (data.vsubscription_pricing() && !canRefulfill) {
 				strong->uiShow()->showToast(
 					tr::lng_confirm_phone_link_invalid(tr::now));
 				return;
 			}
-			const auto box = (hasPricing && !canRefulfill)
-				? strong->show(Box(
-					ConfirmSubscriptionBox,
-					session,
-					hash,
-					&data))
-				: strong->show(Box(
-					ConfirmInviteBox,
-					session,
-					&data,
-					invitePeekChannel,
-					[=] { SubmitChatInvite(weak, session, hash, isGroup); }));
+			const auto box = strong->show(Box(
+				ConfirmInviteBox,
+				session,
+				&data,
+				invitePeekChannel,
+				[=] { SubmitChatInvite(weak, session, hash, isGroup); }));
 			if (invitePeekChannel) {
 				box->boxClosing(
 				) | rpl::filter([=] {
