@@ -422,10 +422,6 @@ bool PreparedList::canMoveCaption(bool sendingAlbum, bool compress) const {
 	return true;
 }
 
-bool PreparedList::canChangePrice(bool sendingAlbum, bool compress) const {
-	return canMoveCaption(sendingAlbum, compress);
-}
-
 bool PreparedList::hasGroupOption(bool slowmode) const {
 	if (slowmode || files.size() < 2) {
 		return false;

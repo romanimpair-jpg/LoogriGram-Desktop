@@ -746,10 +746,6 @@ bool ChannelData::canAccessMonoforum() const {
 	return amCreator() || (adminRights() & AdminRight::ManageDirect);
 }
 
-bool ChannelData::canPostPaidMedia() const {
-	return canPostMessages() && (flags() & Flag::PaidMediaAllowed);
-}
-
 bool ChannelData::anyoneCanAddMembers() const {
 	return !(defaultRestrictions() & Restriction::AddParticipants);
 }
@@ -1341,7 +1337,6 @@ void ApplyChannelUpdate(
 		| Flag::CanGetStatistics
 		| Flag::ViewAsMessages
 		| Flag::CanViewRevenue
-		| Flag::PaidMediaAllowed
 		| Flag::CanViewCreditsRevenue
 		| Flag::StargiftsAvailable
 		| Flag::HasWelcomeMessages;
@@ -1361,7 +1356,6 @@ void ApplyChannelUpdate(
 		| (update.is_view_forum_as_messages()
 			? Flag::ViewAsMessages
 			: Flag())
-		| (update.is_paid_media_allowed() ? Flag::PaidMediaAllowed : Flag())
 		| (update.is_can_view_revenue() ? Flag::CanViewRevenue : Flag())
 		| (update.is_can_view_stars_revenue()
 			? Flag::CanViewCreditsRevenue

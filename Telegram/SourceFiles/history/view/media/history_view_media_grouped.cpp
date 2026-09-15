@@ -140,8 +140,6 @@ GroupedMedia::Mode GroupedMedia::DetectMode(not_null<Data::Media*> media) {
 }
 
 QSize GroupedMedia::countOptimalSize() {
-	_purchasedPriceTag = hasPurchasedTag();
-
 	std::vector<QSize> sizes;
 	const auto partsCount = _parts.size();
 	sizes.reserve(partsCount);
@@ -484,7 +482,7 @@ void GroupedMedia::draw(Painter &p, const PaintContext &context) const {
 		if (!part.cache.isNull()) {
 			nowCache = true;
 		}
-		if (tagged || _purchasedPriceTag) {
+		if (tagged) {
 			fullRect = fullRect.united(part.geometry);
 		}
 	}
@@ -496,8 +494,6 @@ void GroupedMedia::draw(Painter &p, const PaintContext &context) const {
 		tagged->drawSpoilerTag(p, fullRect, context, [&] {
 			return generateSpoilerTagBackground(fullRect);
 		});
-	} else if (_purchasedPriceTag) {
-		drawPurchasedTag(p, fullRect, context);
 	}
 
 	// date

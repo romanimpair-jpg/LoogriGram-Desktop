@@ -1587,14 +1587,6 @@ void Element::overrideRightBadge(const QString &text, BadgeRole role) {
 	}
 }
 
-not_null<PurchasedTag*> Element::enforcePurchasedTag() {
-	if (const auto purchased = Get<PurchasedTag>()) {
-		return purchased;
-	}
-	AddComponents(PurchasedTag::Bit());
-	return Get<PurchasedTag>();
-}
-
 int Element::AdditionalSpaceForSelectionCheckbox(
 		not_null<const Element*> view,
 		QRect countedGeometry) {

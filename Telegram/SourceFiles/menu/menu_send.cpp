@@ -663,8 +663,7 @@ FillMenuResult FillSendMenu(
 		&& (details.spoiler == SpoilerState::None)
 		&& (details.caption == CaptionState::None)
 		&& (details.photoQuality == PhotoQualityState::None)
-		&& (details.cover == CoverState::None)
-		&& !details.price.has_value();
+		&& (details.cover == CoverState::None);
 	if (empty || !action) {
 		return FillMenuResult::Skipped;
 	}
@@ -699,8 +698,7 @@ FillMenuResult FillSendMenu(
 		&& ((details.spoiler != SpoilerState::None)
 			|| (details.caption != CaptionState::None)
 			|| (details.photoQuality != PhotoQualityState::None)
-			|| (details.cover != CoverState::None)
-			|| details.price.has_value())) {
+			|| (details.cover != CoverState::None))) {
 		menu->addSeparator(&st::expandedMenuSeparator);
 	}
 	if (details.photoQuality != PhotoQualityState::None) {
@@ -751,15 +749,6 @@ FillMenuResult FillSendMenu(
 				&icons.menuCoverRemove);
 		}
 	}
-	if (details.price) {
-		menu->addAction(
-			((*details.price > 0)
-				? tr::lng_context_change_price(tr::now)
-				: tr::lng_context_make_paid(tr::now)),
-			[=] { action({ .type = ActionType::ChangePrice }, details); },
-			&icons.menuPrice);
-	}
-
 	if (maybeShow) {
 		return AttachSendMenuEffect(
 			menu,

@@ -54,7 +54,6 @@ public:
 		return _orderUpdated.events();
 	}
 
-	[[nodiscard]] QImage generatePriceTagBackground() const;
 
 protected:
 	void paintEvent(QPaintEvent *e) override;

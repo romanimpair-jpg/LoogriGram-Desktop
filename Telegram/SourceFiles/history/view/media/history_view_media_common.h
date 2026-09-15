@@ -115,8 +115,6 @@ void ShowAgeVerificationRequired(
 	not_null<Main::Session*> session,
 	Fn<void()> reveal);
 
-[[nodiscard]] ClickHandlerPtr MakePaidMediaLink(
-	not_null<HistoryItem*> item);
 [[nodiscard]] ClickHandlerPtr MakeSensitiveMediaLink(
 	ClickHandlerPtr reveal,
 	not_null<HistoryItem*> item);

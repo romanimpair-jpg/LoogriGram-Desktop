@@ -58,7 +58,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace HistoryView {
 namespace {
 
-constexpr auto kMediaUnlockedTooltipDuration = 5 * crl::time(1000);
 const auto kVerifyAgeAboutPrefix = "cloud_lng_age_verify_about_";
 
 rpl::producer<TextWithEntities> AgeVerifyAbout(
@@ -341,79 +340,6 @@ QSize CountPhotoMediaSize(
 		? media
 		: NonEmptySize(
 			media.scaled(media.width(), newWidth, Qt::KeepAspectRatio));
-}
-
-void ShowPaidMediaUnlockedToast(
-		not_null<Window::SessionController*> controller,
-		not_null<HistoryItem*> item) {
-	const auto media = item->media();
-	const auto invoice = media ? media->invoice() : nullptr;
-	if (!invoice || !invoice->isPaidMedia) {
-		return;
-	}
-	const auto sender = item->originalSender();
-	const auto broadcast = (sender && sender->isBroadcast())
-		? sender
-		: item->history()->peer.get();
-	const auto user = item->viaBot()
-		? item->viaBot()
-		: item->originalSender()
-		? item->originalSender()->asUser()
-		: nullptr;
-	auto text = tr::lng_credits_media_done_title(
-		tr::now,
-		tr::bold
-	).append('\n').append(user
-		? tr::lng_credits_media_done_text_user(
-			tr::now,
-			lt_count,
-			invoice->amount,
-			lt_user,
-			tr::bold(user->shortName()),
-			tr::rich)
-		: tr::lng_credits_media_done_text(
-			tr::now,
-			lt_count,
-			invoice->amount,
-			lt_chat,
-			tr::bold(broadcast->name()),
-			tr::rich));
-	controller->showToast(std::move(text), kMediaUnlockedTooltipDuration);
-}
-
-ClickHandlerPtr MakePaidMediaLink(not_null<HistoryItem*> item) {
-	return std::make_shared<LambdaClickHandler>([=](ClickContext context) {
-		const auto my = context.other.value<ClickHandlerContext>();
-		const auto controller = my.sessionWindow.get();
-		const auto weak = my.sessionWindow;
-		const auto itemId = item->fullId();
-		const auto session = &item->history()->session();
-		using Result = Payments::CheckoutResult;
-		const auto done = crl::guard(session, [=](Result result) {
-			if (result != Result::Paid) {
-				return;
-			} else if (const auto item = session->data().message(itemId)) {
-				session->api().views().pollExtendedMedia(item, true);
-				if (const auto strong = weak.get()) {
-					ShowPaidMediaUnlockedToast(strong, item);
-				}
-			}
-		});
-		const auto reactivate = controller
-			? crl::guard(
-				controller,
-				[=](auto) { controller->widget()->activate(); })
-			: Fn<void(Payments::CheckoutResult)>();
-		const auto credits = Payments::IsCreditsInvoice(item);
-		const auto nonPanelPaymentFormProcess = (controller && credits)
-			? Payments::ProcessNonPanelPaymentFormFactory(controller, done)
-			: nullptr;
-		Payments::CheckoutProcess::Start(
-			item,
-			Payments::Mode::Payment,
-			reactivate,
-			nonPanelPaymentFormProcess);
-	});
 }
 
 void ShowAgeVerification(

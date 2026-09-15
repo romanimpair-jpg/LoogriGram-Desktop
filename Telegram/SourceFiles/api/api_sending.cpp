@@ -588,13 +588,7 @@ void SendMusicSelectionBatch(
 					MTP_flags(sendFlags),
 					peer->input(),
 					Data::Histories::ReplyToPlaceholder(),
-					(action.options.price
-						? MTPInputMedia(MTP_inputMediaPaidMedia(
-							MTP_flags(0),
-							MTP_long(action.options.price),
-							MTP_vector<MTPInputMedia>(1, inputMedia),
-							MTPstring()))
-						: inputMedia),
+					inputMedia,
 					MTP_string(item.caption.text),
 					MTP_long(item.randomId),
 					MTPReplyMarkup(),
@@ -724,8 +718,8 @@ void SendMusicSelection(
 			api->finishForwarding(state->action);
 			return;
 		}
-		const auto optionsRequireSingle = state->action.options.price
-			|| state->action.options.scheduleRepeatPeriod
+		const auto optionsRequireSingle
+			= state->action.options.scheduleRepeatPeriod
 			|| state->action.options.suggest;
 		const auto batchLimit = optionsRequireSingle
 			? 1

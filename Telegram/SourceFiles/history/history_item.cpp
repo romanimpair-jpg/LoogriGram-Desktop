@@ -3397,9 +3397,10 @@ Data::SendError HistoryItem::errorTextForForwardIgnoreRights(
 	} else if (_media
 		&& _media->invoice()
 		&& _media->invoice()->isPaidMedia
-		&& peer->isBroadcast()
-		&& peer->isFullLoaded()
-		&& !peer->asBroadcast()->canPostPaidMedia()) {
+		&& peer->isBroadcast()) {
+		// LoogriGram: upstream allowed this into a channel that was cleared
+		// to post paid media. Re-posting it anywhere is putting it up for
+		// sale, so it is refused everywhere.
 		return tr::lng_restricted_send_paid_media(tr::now);
 	}
 	return {};

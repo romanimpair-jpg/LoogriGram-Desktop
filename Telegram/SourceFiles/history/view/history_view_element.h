@@ -393,10 +393,6 @@ struct EphemeralBadge : RuntimeComponent<EphemeralBadge, Element> {
 	int height = 0;
 };
 
-struct PurchasedTag : RuntimeComponent<PurchasedTag, Element> {
-	Ui::Text::String text;
-};
-
 struct ViewAddedMargins : RuntimeComponent<ViewAddedMargins, Element> {
 	int top = 0;
 	int bottom = 0;
@@ -734,7 +730,6 @@ public:
 	void overrideMedia(std::unique_ptr<Media> media);
 	void overrideRightBadge(const QString &text, BadgeRole role);
 
-	[[nodiscard]] not_null<PurchasedTag*> enforcePurchasedTag();
 
 	[[nodiscard]] static int AdditionalSpaceForSelectionCheckbox(
 		not_null<const Element*> view,

@@ -23,7 +23,6 @@ inline constexpr auto kScheduledUntilOnlineTimestamp = TimeId(0x7FFFFFFE);
 [[nodiscard]] MTPSuggestedPost SuggestToMTP(SuggestOptions suggest);
 
 struct SendOptions {
-	uint64 price = 0;
 	PeerData *sendAs = nullptr;
 	TimeId scheduled = 0;
 	TimeId scheduleRepeatPeriod = 0;

@@ -26,13 +26,13 @@ struct MediaSpoiler {
 	bool revealed = false;
 };
 
+// LoogriGram: this tag covered a thumbnail with either "Sensitive content"
+// or the price to unlock it. Only the first is still drawn, so the price and
+// the star colour it needed are gone.
 struct MediaSpoilerTag {
-	uint64 price : 63 = 0;
-	uint64 sensitive : 1 = 0;
 	QImage cache;
 	QColor darken;
 	QColor fg;
-	QColor star;
 	ClickHandlerPtr link;
 };
 

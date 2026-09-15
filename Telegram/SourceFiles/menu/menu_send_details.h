@@ -21,7 +21,6 @@ enum class Type : uchar {
 	Scheduled,
 	ScheduledToUser, // For "Send when online".
 	Reminder,
-	EditCommentPrice,
 };
 
 enum class SpoilerState : uchar {
@@ -56,10 +55,6 @@ struct Details {
 	CaptionState caption = CaptionState::None;
 	PhotoQualityState photoQuality = PhotoQualityState::None;
 	CoverState cover = CoverState::None;
-	TextWithTags commentPreview;
-	QString commentStreamerName;
-	std::optional<uint64> price;
-	std::optional<uint64> commentPriceMin;
 	const style::EmojiPan *effectsPan = nullptr;
 	bool effectAllowed = false;
 };

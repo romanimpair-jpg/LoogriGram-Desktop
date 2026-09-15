@@ -5288,13 +5288,7 @@ void ApiWrap::sendMediaWithRandomId(
 			MTP_flags(flags),
 			peer->input(),
 			Data::Histories::ReplyToPlaceholder(),
-			(options.price
-				? MTPInputMedia(MTP_inputMediaPaidMedia(
-					MTP_flags(0),
-					MTP_long(options.price),
-					MTP_vector<MTPInputMedia>(1, media),
-					MTPstring()))
-				: media),
+			media,
 			MTP_string(caption.text),
 			MTP_long(randomId),
 			MTPReplyMarkup(),
@@ -5311,95 +5305,6 @@ void ApiWrap::sendMediaWithRandomId(
 		if (updateRecentStickers) {
 			requestRecentStickers(std::nullopt, true);
 		}
-	}, [=](const MTP::Error &error, const MTP::Response &response) {
-		if (done) done(false);
-		sendMessageFail(error, peer, randomId, itemId);
-	});
-}
-
-void ApiWrap::sendMultiPaidMedia(
-		not_null<HistoryItem*> item,
-		not_null<SendingAlbum*> album,
-		Fn<void(bool)> done) {
-	Expects(album->options.price > 0);
-
-	const auto groupId = album->groupId;
-	auto &options = album->options;
-	const auto randomId = album->items.front().randomId;
-	auto medias = album->items | ranges::view::transform([](
-			const SendingAlbum::Item &part) {
-		Assert(part.media.has_value());
-		return MTPInputMedia(part.media->data().vmedia());
-	}) | ranges::to<QVector<MTPInputMedia>>();
-
-	const auto history = item->history();
-	const auto replyTo = item->replyTo();
-	const auto peer = history->peer;
-
-	auto caption = item->originalText();
-	TextUtilities::Trim(caption);
-	auto sentEntities = Api::EntitiesToMTP(
-		_session,
-		caption.entities,
-		Api::ConvertOption::SkipLocal);
-
-	using Flag = MTPmessages_SendMedia::Flag;
-	const auto flags = Flag(0)
-		| (replyTo ? Flag::f_reply_to : Flag(0))
-		| (ShouldSendSilent(history->peer, options)
-			? Flag::f_silent
-			: Flag(0))
-		| (!sentEntities.v.isEmpty() ? Flag::f_entities : Flag(0))
-		| (options.scheduled ? Flag::f_schedule_date : Flag(0))
-		| (options.scheduleRepeatPeriod
-			? Flag::f_schedule_repeat_period
-			: Flag(0))
-		| (options.sendAs ? Flag::f_send_as : Flag(0))
-		| (options.shortcutId ? Flag::f_quick_reply_shortcut : Flag(0))
-		| (options.effectId ? Flag::f_effect : Flag(0))
-		| (options.suggest ? Flag::f_suggested_post : Flag(0))
-		| (options.invertCaption ? Flag::f_invert_media : Flag(0));
-
-	auto &histories = history->owner().histories();
-	const auto itemId = item->fullId();
-	album->sent = true;
-	histories.sendPreparedMessage(
-		history,
-		replyTo,
-		randomId,
-		Data::Histories::PrepareMessage<MTPmessages_SendMedia>(
-			MTP_flags(flags),
-			peer->input(),
-			Data::Histories::ReplyToPlaceholder(),
-			MTP_inputMediaPaidMedia(
-				MTP_flags(0),
-				MTP_long(options.price),
-				MTP_vector<MTPInputMedia>(std::move(medias)),
-				MTPstring()),
-			MTP_string(caption.text),
-			MTP_long(randomId),
-			MTPReplyMarkup(),
-			sentEntities,
-			MTP_int(options.scheduled),
-			MTP_int(options.scheduleRepeatPeriod),
-			(options.sendAs ? options.sendAs->input() : MTP_inputPeerEmpty()),
-			Data::ShortcutIdToMTP(_session, options.shortcutId),
-			MTP_long(options.effectId),
-			MTP_long(0),
-			Api::SuggestToMTP(options.suggest)
-		), [=](const MTPUpdates &result, const MTP::Response &response) {
-		if (const auto album = _sendingAlbums.take(groupId)) {
-			const auto copy = (*album)->items;
-			auto items = std::vector<not_null<HistoryItem*>>();
-			items.reserve(copy.size());
-			for (const auto &part : copy) {
-				if (const auto item = history->owner().message(part.msgId)) {
-					items.push_back(item);
-				}
-			}
-			history->owner().destroyMessagesWithCacheCleanup(items);
-		}
-		if (done) done(true);
 	}, [=](const MTP::Error &error, const MTP::Response &response) {
 		if (done) done(false);
 		sendMessageFail(error, peer, randomId, itemId);
@@ -5484,10 +5389,7 @@ void ApiWrap::sendAlbumIfReady(not_null<SendingAlbum*> album) {
 		}
 		return;
 	}
-	if (album->options.price > 0) {
-		sendMultiPaidMedia(sample, album);
-		return;
-	} else if (medias.size() < 2) {
+	if (medias.size() < 2) {
 		const auto &single = medias.front().data();
 		album->sent = true;
 		sendMediaWithRandomId(

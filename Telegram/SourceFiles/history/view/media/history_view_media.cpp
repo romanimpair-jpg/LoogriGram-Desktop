@@ -224,72 +224,6 @@ QSize Media::countCurrentSize(int newWidth) {
 	return QSize(qMin(newWidth, maxWidth()), minHeight());
 }
 
-bool Media::hasPurchasedTag() const {
-	if (const auto media = parent()->data()->media()) {
-		if (const auto invoice = media->invoice()) {
-			if (invoice->isPaidMedia && !invoice->extendedMedia.empty()) {
-				const auto photo = invoice->extendedMedia.front()->photo();
-				return !photo || !photo->extendedMediaPreview();
-			}
-		}
-	}
-	return false;
-}
-
-void Media::drawPurchasedTag(
-		Painter &p,
-		QRect outer,
-		const PaintContext &context) const {
-	const auto purchased = parent()->enforcePurchasedTag();
-	if (purchased->text.isEmpty()) {
-		const auto item = parent()->data();
-		const auto media = item->media();
-		const auto invoice = media ? media->invoice() : nullptr;
-		const auto amount = invoice ? invoice->amount : 0;
-		if (!amount) {
-			return;
-		}
-		auto text = Ui::Text::Colorized(Ui::Earn::CreditsEmojiSmall());
-		text.append(Lang::FormatCountDecimal(amount));
-		purchased->text.setMarkedText(
-			st::defaultTextStyle,
-			text,
-			kMarkupTextOptions);
-	}
-
-	const auto st = context.st;
-	const auto sti = context.imageStyle();
-	const auto &padding = st::purchasedTagPadding;
-	auto right = outer.x() + outer.width();
-	auto top = outer.y();
-	right -= st::msgDateImgDelta + padding.right();
-	top += st::msgDateImgDelta + padding.top();
-
-	const auto size = QSize(
-		purchased->text.maxWidth(),
-		st::normalFont->height);
-	const auto tagX = right - size.width();
-	const auto tagY = top;
-	const auto tagW = padding.left() + size.width() + padding.right();
-	const auto tagH = padding.top() + size.height() + padding.bottom();
-	Ui::FillRoundRect(
-		p,
-		tagX - padding.left(),
-		tagY - padding.top(),
-		tagW,
-		tagH,
-		sti->msgDateImgBg,
-		sti->msgDateImgBgCorners);
-
-	p.setPen(st->msgDateImgFg());
-	purchased->text.draw(p, {
-		.position = { tagX, tagY },
-		.outerWidth = width(),
-		.availableWidth = size.width(),
-		.palette = &st->priceTagTextPalette(),
-	});
-}
-
 void Media::fillImageShadow(
 		QPainter &p,
 		QRect rect,
@@ -389,11 +323,9 @@ void Media::drawSpoilerTag(
 	const auto st = context.st;
 	const auto darken = st->msgDateImgBg()->c;
 	const auto fg = st->msgDateImgFg()->c;
-	const auto star = st->creditsBg1()->c;
 	if (tag->cache.isNull()
 		|| tag->darken != darken
-		|| tag->fg != fg
-		|| tag->star != star) {
+		|| tag->fg != fg) {
 		const auto ratio = style::DevicePixelRatio();
 		auto bg = generateBackground();
 		if (bg.isNull()) {
@@ -402,24 +334,8 @@ void Media::drawSpoilerTag(
 		}
 
 		auto text = Ui::Text::String();
-		auto iconSkip = 0;
-		if (tag->sensitive) {
-			text.setText(
-				st::semiboldTextStyle,
-				tr::lng_sensitive_tag(tr::now));
-			iconSkip = st::mediaMenuIconStealth.width() * 1.4;
-		} else {
-			auto price = Ui::Text::Colorized(Ui::Earn::CreditsEmoji());
-			price.append(Lang::FormatCountDecimal(tag->price));
-			text.setMarkedText(
-				st::semiboldTextStyle,
-				tr::lng_paid_price(
-					tr::now,
-					lt_price,
-					price,
-					tr::marked),
-				kMarkupTextOptions);
-		}
+		text.setText(st::semiboldTextStyle, tr::lng_sensitive_tag(tr::now));
+		const auto iconSkip = int(st::mediaMenuIconStealth.width() * 1.4);
 		const auto width = iconSkip + text.maxWidth();
 		const auto inner = QRect(0, 0, width, text.minHeight());
 		const auto outer = inner.marginsAdded(st::paidTagPadding);
@@ -478,19 +394,8 @@ void Media::drawSpoilerTag(
 }
 
 void Media::setupSpoilerTag(std::unique_ptr<MediaSpoilerTag> &tag) const {
-	const auto item = parent()->data();
-	if (item->isMediaSensitive()) {
+	if (parent()->data()->isMediaSensitive()) {
 		tag = std::make_unique<MediaSpoilerTag>();
-		tag->sensitive = 1;
-		return;
-	}
-	const auto media = parent()->data()->media();
-	const auto invoice = media ? media->invoice() : nullptr;
-	if (const auto price = (invoice && invoice->isPaidMedia)
-		? invoice->amount
-		: 0) {
-		tag = std::make_unique<MediaSpoilerTag>();
-		tag->price = price;
 	}
 }
 
@@ -507,9 +412,7 @@ ClickHandlerPtr Media::spoilerTagLink(
 		}
 	}
 	if (!tag->link) {
-		tag->link = tag->sensitive
-			? MakeSensitiveMediaLink(spoiler->link, item)
-			: MakePaidMediaLink(item);
+		tag->link = MakeSensitiveMediaLink(spoiler->link, item);
 	}
 	return tag->link;
 }

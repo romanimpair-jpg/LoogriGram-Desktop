@@ -74,7 +74,6 @@ enum class ChannelDataFlag : uint64 {
 	ViewAsMessages = (1ULL << 30),
 	SimilarExpanded = (1ULL << 31),
 	CanViewRevenue = (1ULL << 32),
-	PaidMediaAllowed = (1ULL << 33),
 	CanViewCreditsRevenue = (1ULL << 34),
 	SignatureProfiles = (1ULL << 35),
 	StargiftsAvailable = (1ULL << 36),
@@ -417,7 +416,6 @@ public:
 	[[nodiscard]] bool canPostStories() const;
 	[[nodiscard]] bool canEditStories() const;
 	[[nodiscard]] bool canDeleteStories() const;
-	[[nodiscard]] bool canPostPaidMedia() const;
 	[[nodiscard]] bool canAccessMonoforum() const;
 	[[nodiscard]] bool hiddenPreHistory() const;
 	[[nodiscard]] bool canViewMembers() const;

@@ -101,10 +101,6 @@ bool AbstractSingleMediaPreview::canHaveSpoiler() const {
 	return supportsSpoilers();
 }
 
-QImage AbstractSingleMediaPreview::generatePriceTagBackground() const {
-	return (_previewBlurred.isNull() ? _preview : _previewBlurred).toImage();
-}
-
 void AbstractSingleMediaPreview::preparePreview(QImage preview) {
 	auto maxW = 0;
 	auto maxH = 0;

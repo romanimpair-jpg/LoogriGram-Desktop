@@ -268,83 +268,6 @@ void EditFileCaptionBox(
 	});
 }
 
-void EditPriceBox(
-		not_null<Ui::GenericBox*> box,
-		not_null<Main::Session*> session,
-		uint64 price,
-		Fn<void(uint64)> apply) {
-	box->setTitle(tr::lng_paid_title());
-	AddSubsectionTitle(
-		box->verticalLayout(),
-		tr::lng_paid_enter_cost(),
-		(st::boxRowPadding - QMargins(
-			st::defaultSubsectionTitlePadding.left(),
-			0,
-			st::defaultSubsectionTitlePadding.right(),
-			0)));
-	const auto limit = session->appConfig().get<int>(
-		u"stars_paid_post_amount_max"_q,
-		10'000);
-	const auto wrap = box->addRow(object_ptr<Ui::FixedHeightWidget>(
-		box,
-		st::editTagField.heightMin));
-	auto owned = object_ptr<Ui::NumberInput>(
-		wrap,
-		st::editTagField,
-		tr::lng_paid_cost_placeholder(),
-		price ? QString::number(price) : QString(),
-		limit);
-	const auto field = owned.data();
-	wrap->widthValue() | rpl::on_next([=](int width) {
-		field->move(0, 0);
-		field->resize(width, field->height());
-		wrap->resize(width, field->height());
-	}, wrap->lifetime());
-	field->paintRequest() | rpl::on_next([=](QRect clip) {
-		auto p = QPainter(field);
-		st::paidStarIcon.paint(p, 0, st::paidStarIconTop, field->width());
-	}, field->lifetime());
-	field->selectAll();
-	box->setFocusCallback([=] {
-		field->setFocusFast();
-	});
-	const auto about = box->addRow(
-		object_ptr<Ui::FlatLabel>(
-			box,
-			tr::lng_paid_about(
-				lt_link,
-				tr::lng_paid_about_link(tr::link),
-				tr::marked),
-			st::paidAmountAbout),
-		st::boxRowPadding + QMargins(0, st::sendMediaRowSkip, 0, 0));
-	about->setClickHandlerFilter([=](const auto &...) {
-		Core::App().iv().openWithIvPreferred(
-			session,
-			tr::lng_paid_about_link_url(tr::now));
-		return false;
-	});
-
-	const auto save = [=] {
-		const auto now = field->getLastText().toULongLong();
-		if (now > limit) {
-			field->showError();
-			return;
-		}
-		const auto weak = base::make_weak(box);
-		apply(now);
-		if (const auto strong = weak.get()) {
-			strong->closeBox();
-		}
-	};
-
-	QObject::connect(field, &Ui::NumberInput::submitted, box, save);
-
-	box->addButton(tr::lng_settings_save(), save);
-	box->addButton(tr::lng_cancel(), [=] {
-		box->closeBox();
-	});
-}
-
 [[nodiscard]] bool SkipCaption(
 		const Ui::PreparedFile &file,
 		const Ui::SendFilesWay &way) {
@@ -611,18 +534,6 @@ void SendFilesBox::Block::applyChanges() {
 	}
 }
 
-QImage SendFilesBox::Block::generatePriceTagBackground() const {
-	const auto preview = _preview.get();
-	if (_isAlbum) {
-		const auto album = static_cast<Ui::AlbumPreview*>(preview);
-		return album->generatePriceTagBackground();
-	} else if (_isSingleMedia) {
-		const auto media = static_cast<Ui::SingleMediaPreview*>(preview);
-		return media->generatePriceTagBackground();
-	}
-	return QImage();
-}
-
 bool SendFilesBox::Block::setSingleFileDisplayName(
 		const QString &displayName) {
 	if (_isAlbum || _isSingleMedia) {
@@ -782,9 +693,6 @@ Fn<SendMenu::Details()> SendFilesBox::prepareSendMenuDetails(
 			: way.sendLargePhotos()
 			? SendMenu::PhotoQualityState::High
 			: SendMenu::PhotoQualityState::Standard;
-		result.price = canChangePrice()
-			? _price.current()
-			: std::optional<uint64>();
 		return result;
 	});
 }
@@ -800,7 +708,6 @@ auto SendFilesBox::prepareSendMenuCallback()
 		case Type::PhotoQualityOff: setSendLargePhotos(false); break;
 		case Type::SpoilerOn: toggleSpoilers(true); break;
 		case Type::SpoilerOff: toggleSpoilers(false); break;
-		case Type::ChangePrice: changePrice(); break;
 		default:
 			SendMenu::DefaultCallback(
 				_show,
@@ -1033,13 +940,11 @@ bool SendFilesBox::hasSendMenu(const MenuDetails &details) const {
 	return (details.type != SendMenu::Type::Disabled)
 		|| (details.spoiler != SendMenu::SpoilerState::None)
 		|| (details.caption != SendMenu::CaptionState::None)
-		|| (details.photoQuality != SendMenu::PhotoQualityState::None)
-		|| details.price.has_value();
+		|| (details.photoQuality != SendMenu::PhotoQualityState::None);
 }
 
 bool SendFilesBox::hasSpoilerMenu() const {
-	return !hasPrice()
-		&& _list.hasSpoilerMenu(_sendWay.current().sendImagesAsPhotos());
+	return _list.hasSpoilerMenu(_sendWay.current().sendImagesAsPhotos());
 }
 
 bool SendFilesBox::hasSendLargePhotosOption() const {
@@ -1062,16 +967,6 @@ bool SendFilesBox::canMoveCaptionInCurrentSendWay() const {
 	};
 	return (count == 1 || way.groupFiles())
 		&& ranges::all_of(_list.files, isPhotoOrVideo);
-}
-
-bool SendFilesBox::canChangePrice() const {
-	const auto way = _sendWay.current();
-	const auto broadcast = _toPeer->asBroadcast();
-	return broadcast
-		&& broadcast->canPostPaidMedia()
-		&& _list.canChangePrice(
-			way.groupFiles() && way.sendImagesAsPhotos(),
-			way.sendImagesAsPhotos());
 }
 
 void SendFilesBox::applyBlockChanges() {
@@ -1101,116 +996,6 @@ void SendFilesBox::setSendLargePhotos(bool enabled) {
 	}
 	way.setSendLargePhotos(enabled);
 	_sendWay = way;
-}
-
-void SendFilesBox::changePrice() {
-	const auto weak = base::make_weak(this);
-	const auto session = &_show->session();
-	const auto now = _price.current();
-	_show->show(Box(EditPriceBox, session, now, [=](uint64 price) {
-		if (weak && price != now) {
-			_price = price;
-			refreshPriceTag();
-		}
-	}));
-}
-
-bool SendFilesBox::hasPrice() const {
-	return canChangePrice() && _price.current() > 0;
-}
-
-void SendFilesBox::refreshPriceTag() {
-	const auto resetSpoilers = hasPrice() || _priceTag;
-	if (resetSpoilers) {
-		for (auto &file : _list.files) {
-			file.spoiler = false;
-		}
-		for (auto &block : _blocks) {
-			block.toggleSpoilers(hasPrice());
-		}
-	}
-	if (!hasPrice()) {
-		_priceTag = nullptr;
-		_priceTagBg = QImage();
-	} else if (!_priceTag) {
-		_priceTag = std::make_unique<Ui::RpWidget>(_inner.data());
-		const auto raw = _priceTag.get();
-
-		raw->show();
-		raw->paintRequest() | rpl::on_next([=] {
-			if (_priceTagBg.isNull()) {
-				_priceTagBg = preparePriceTagBg(raw->size());
-			}
-			QPainter(raw).drawImage(0, 0, _priceTagBg);
-		}, raw->lifetime());
-
-		auto price = _price.value() | rpl::map([=](uint64 amount) {
-			auto result = Ui::Text::Colorized(Ui::Earn::CreditsEmoji());
-			result.append(Lang::FormatCountDecimal(amount));
-			return result;
-		});
-		auto text = tr::lng_paid_price(
-			lt_price,
-			std::move(price),
-			tr::marked);
-		const auto label = Ui::CreateChild<Ui::FlatLabel>(
-			raw,
-			QString(),
-			st::paidTagLabel);
-		std::move(
-			text
-		) | rpl::on_next([=](const TextWithEntities &text) {
-			label->setMarkedText(text);
-		}, label->lifetime());
-		label->show();
-		label->sizeValue() | rpl::on_next([=](QSize size) {
-			const auto inner = QRect(QPoint(), size);
-			const auto rect = inner.marginsAdded(st::paidTagPadding);
-			raw->resize(rect.size());
-			label->move(-rect.topLeft());
-		}, label->lifetime());
-		_inner->sizeValue() | rpl::on_next([=](QSize size) {
-			raw->move(
-				(size.width() - raw->width()) / 2,
-				(size.height() - raw->height()) / 2);
-		}, raw->lifetime());
-	} else {
-		_priceTag->raise();
-		_priceTag->update();
-		_priceTagBg = QImage();
-	}
-}
-
-QImage SendFilesBox::preparePriceTagBg(QSize size) const {
-	const auto ratio = style::DevicePixelRatio();
-	const auto outer = _blocks.empty()
-		? size
-		: _inner->widgetAt(0)->geometry().size();
-	auto bg = _blocks.empty()
-		? QImage()
-		: _blocks.front().generatePriceTagBackground();
-	if (bg.isNull()) {
-		bg = QImage(ratio, ratio, QImage::Format_ARGB32_Premultiplied);
-		bg.fill(Qt::black);
-	}
-
-	auto result = QImage(size * ratio, QImage::Format_ARGB32_Premultiplied);
-	result.setDevicePixelRatio(ratio);
-	result.fill(Qt::black);
-	auto p = QPainter(&result);
-	auto hq = PainterHighQualityEnabler(p);
-	p.drawImage(
-		QRect(
-			(size.width() - outer.width()) / 2,
-			(size.height() - outer.height()) / 2,
-			outer.width(),
-			outer.height()),
-		bg);
-	p.fillRect(QRect(QPoint(), size), st::msgDateImgBg);
-	p.end();
-
-	const auto radius = std::min(size.width(), size.height()) / 2;
-	return Images::Round(std::move(result), Images::CornersMask(radius));
 }
 
 void SendFilesBox::addMenuButton() {
@@ -1646,8 +1431,7 @@ void SendFilesBox::pushBlock(int from, int till) {
 				},
 					&st::menuIconCaptionShow);
 		}
-		const auto canToggleSpoiler = !hasPrice()
-			&& _sendWay.current().sendImagesAsPhotos()
+		const auto canToggleSpoiler = _sendWay.current().sendImagesAsPhotos()
 			&& (file.type == Ui::PreparedFile::Type::Photo
 				|| file.type == Ui::PreparedFile::Type::Video);
 		if (canToggleSpoiler) {
@@ -1667,8 +1451,7 @@ void SendFilesBox::pushBlock(int from, int till) {
 				spoilered);
 		}
 		const auto ttlUser = _toPeer->asUser();
-		const auto canSetTtl = !hasPrice()
-			&& (_sendType == Api::SendType::Normal)
+		const auto canSetTtl = (_sendType == Api::SendType::Normal)
 			&& _sendWay.current().sendImagesAsPhotos()
 			&& (file.type == Ui::PreparedFile::Type::Photo
 				|| file.type == Ui::PreparedFile::Type::Video)
@@ -1824,13 +1607,6 @@ void SendFilesBox::pushBlock(int from, int till) {
 		renameFile(index);
 	}, widget->lifetime());
 
-	block.orderUpdated() | rpl::on_next([=]{
-		if (_priceTag) {
-			_priceTagBg = QImage();
-			_priceTag->update();
-		}
-	}, widget->lifetime());
-
 	base::install_event_filter(widget, [=](
 			not_null<QEvent*> e) {
 		if (e->type() == QEvent::ContextMenu) {
@@ -1859,7 +1635,6 @@ void SendFilesBox::pushBlock(int from, int till) {
 
 void SendFilesBox::refreshControls(bool initial) {
 	refreshButtons();
-	refreshPriceTag();
 	refreshTitleText();
 	updateSendWayControls();
 	updateCaptionVisibility();
@@ -2542,7 +2317,6 @@ void SendFilesBox::send(
 		child.spoiler = SendMenu::SpoilerState::None;
 		child.caption = SendMenu::CaptionState::None;
 		child.photoQuality = SendMenu::PhotoQualityState::None;
-		child.price = std::nullopt;
 		return SendMenu::DefaultCallback(_show, sendCallback())(
 			{ .type = SendMenu::ActionType::Schedule },
 			child);
@@ -2588,12 +2362,6 @@ void SendFilesBox::send(
 		Storage::ApplyModifications(_list, true);
 		saveSendWaySettings(_wayRemember && _wayRemember->checked());
 		options.invertCaption = _invertCaption;
-		options.price = hasPrice() ? _price.current() : 0;
-		if (options.price > 0) {
-			for (auto &file : _list.files) {
-				file.spoiler = false;
-			}
-		}
 		for (auto &file : _list.files) {
 			if (SkipCaption(file, way)) {
 				file.caption = {};

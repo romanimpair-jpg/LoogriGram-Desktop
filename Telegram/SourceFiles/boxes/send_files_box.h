@@ -189,7 +189,6 @@ private:
 		void toggleSpoilers(bool enabled);
 		void applyChanges();
 
-		[[nodiscard]] QImage generatePriceTagBackground() const;
 		[[nodiscard]] bool setSingleFileDisplayName(
 			const QString &displayName);
 		[[nodiscard]] bool setSingleFileCaption(
@@ -222,14 +221,9 @@ private:
 	void applyBlockChanges();
 	void toggleSpoilers(bool enabled);
 	void setSendLargePhotos(bool enabled);
-	void changePrice();
 
-	[[nodiscard]] bool hasPrice() const;
 	[[nodiscard]] bool hasSendLargePhotosOption() const;
 	[[nodiscard]] bool canMoveCaptionInCurrentSendWay() const;
-	[[nodiscard]] bool canChangePrice() const;
-	void refreshPriceTag();
-	[[nodiscard]] QImage preparePriceTagBg(QSize size) const;
 
 	void refreshButtons();
 	void refreshControls(bool initial = false);
@@ -306,9 +300,6 @@ private:
 	SendFilesCheck _check;
 	SendFilesConfirmed _confirmedCallback;
 	Fn<void()> _cancelledCallback;
-	rpl::variable<uint64> _price = 0;
-	std::unique_ptr<Ui::RpWidget> _priceTag;
-	QImage _priceTagBg;
 	bool _confirmed = false;
 	bool _textTaken = false;
 	bool _invertCaption = false;

@@ -1366,9 +1366,6 @@ void ApplySendOptions(
 		Api::SendOptions &base,
 		const Api::SendOptions &options) {
 	const auto empty = Api::SendOptions();
-	if (options.price != empty.price) {
-		base.price = options.price;
-	}
 	if (options.sendAs != empty.sendAs) {
 		base.sendAs = options.sendAs;
 	}
@@ -1824,8 +1821,8 @@ void MusicAttachBox(
 			.topicRootId = action.replyTo.topicRootId,
 			.text = &text,
 			.messagesCount = [&] {
-				const auto optionsRequireSingle = action.options.price
-					|| action.options.scheduleRepeatPeriod
+				const auto optionsRequireSingle
+					= action.options.scheduleRepeatPeriod
 					|| action.options.suggest;
 				return optionsRequireSingle
 					? int(items.size())

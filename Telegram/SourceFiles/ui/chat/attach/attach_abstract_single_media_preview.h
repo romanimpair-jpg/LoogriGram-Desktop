@@ -45,7 +45,6 @@ public:
 	[[nodiscard]] bool hasSpoiler() const;
 	[[nodiscard]] bool canHaveSpoiler() const;
 
-	[[nodiscard]] QImage generatePriceTagBackground() const;
 
 protected:
 	virtual bool supportsSpoilers() const = 0;
