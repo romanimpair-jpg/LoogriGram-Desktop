@@ -177,29 +177,20 @@ void PanelBackground::renderPattern(const QRect &rect, DocumentId emojiId) {
 	_cachedEmojiId = emojiId;
 }
 
+// LoogriGram: a collectible emoji status used to paint the call panel from
+// its own palette and pattern - colours, edge colour and the background
+// emoji. The status is not drawn anywhere here any more, so all three now
+// come from the peer's own colour profile and background emoji, as they do
+// for everyone without one.
 void PanelBackground::updateColors() {
-	const auto collectible = _peer->emojiStatusId().collectible;
-	if (collectible && collectible->centerColor.isValid()) {
-		_colors = Data::ColorProfileSet{
-			.bg = { collectible->edgeColor, collectible->centerColor },
-		};
-	} else {
-		_colors = _peer->session().api().peerColors().colorProfileFor(_peer);
-	}
+	_colors = _peer->session().api().peerColors().colorProfileFor(_peer);
 }
 
 void PanelBackground::updateEmojiId() {
-	const auto collectible = _peer->emojiStatusId().collectible;
-	_currentEmojiId = (collectible && collectible->patternDocumentId)
-		? collectible->patternDocumentId
-		: _peer->profileBackgroundEmojiId();
+	_currentEmojiId = _peer->profileBackgroundEmojiId();
 }
 
 std::optional<QColor> PanelBackground::edgeColor() const {
-	const auto collectible = _peer->emojiStatusId().collectible;
-	if (collectible && collectible->edgeColor.isValid()) {
-		return collectible->edgeColor;
-	}
 	if (_colors && !_colors->bg.empty()) {
 		return _colors->bg.front();
 	}

@@ -111,15 +111,12 @@ private:
 	void setupReportHandler(not_null<PeerData*> peer);
 	void setupCloseHandler(not_null<PeerData*> peer);
 	void setupRequestInfoHandler(not_null<PeerData*> peer);
-	void setupEmojiStatusHandler(not_null<PeerData*> peer);
 	void setupSetBotPhotoHandler(not_null<UserData*> user);
 
 	static rpl::producer<State> PeerState(not_null<PeerData*> peer);
 
 	const not_null<Window::SessionController*> _controller;
 	State _state;
-	TextWithEntities _status;
-	Ui::Text::MarkedContext _context;
 	QPointer<Bar> _inner;
 	SlidingBar _bar;
 	bool _hiddenByForum = false;

@@ -34,7 +34,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "mainwindow.h"
 #include "media/clip/media_clip_reader.h"
-#include "menu/menu_emoji_status.h"
 #include "menu/menu_send.h"
 #include "mtproto/sender.h"
 #include "storage/storage_account.h"
@@ -1732,12 +1731,10 @@ void StickerSetBox::Inner::contextMenuEvent(QContextMenuEvent *e) {
 		this,
 		st::popupMenuWithIcons);
 	const auto details = _show->sendMenuDetails();
+	// LoogriGram: a "Set as status" item stood at the top of this menu. An
+	// emoji status is worn beside a name and nothing in this client draws
+	// one any more, so the item set something invisible.
 	if (setType() == Data::StickersType::Emoji) {
-		EmojiStatusMenu::AddSetAsStatusAction(
-			Ui::Menu::CreateAddActionCallback(_menu.get()),
-			_show,
-			chosenDocument,
-			&st::menuIconEmoji);
 		if (const auto t = PrepareTextFromEmoji(chosenDocument); !t.empty()) {
 			_menu->addAction(tr::lng_mediaview_copy(tr::now), [=] {
 				if (auto data = TextUtilities::MimeDataFromText(t)) {

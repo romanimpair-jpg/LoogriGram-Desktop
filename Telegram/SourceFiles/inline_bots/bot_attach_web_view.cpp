@@ -63,7 +63,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mainwidget.h"
 #include "payments/payments_checkout_process.h"
 #include "payments/payments_non_panel_process.h"
-#include "settings/sections/settings_premium.h" // MakeEmojiStatusPreview.
 #include "storage/storage_account.h"
 #include "storage/storage_domain.h"
 #include "ui/basic_click_handlers.h"
@@ -522,137 +521,13 @@ std::unique_ptr<Ui::RpWidget> MakeEmojiSetStatusPreview(
 	return result;
 }
 
-// LoogriGram: a bot asking to set our emoji status used to be refused by
-// opening the subscription pitch and raising the main window over whatever
-// the bot was doing. The refusal stands; the advertisement does not.
-bool CheckEmojiStatusPremium(not_null<UserData*> bot) {
-	return bot->session().premium();
-}
-
-void ConfirmEmojiStatusAccessBox(
-		not_null<Ui::GenericBox*> box,
-		not_null<UserData*> bot,
-		Fn<void(bool)> done) {
-	box->setNoContentMargin(true);
-
-	const auto set = box->lifetime().make_state<bool>();
-
-	box->addTopButton(st::boxTitleClose, [=] {
-		box->closeBox();
-	});
-
-	AddSkip(box->verticalLayout(), 4 * st::defaultVerticalListSkip);
-
-	const auto statusIcon = ChatHelpers::GenerateLocalTgsSticker(
-		&bot->session(),
-		u"hello_status"_q,
-		true);
-
-	auto ownedSet = MakeEmojiSetStatusPreview(
-		box,
-		bot->session().user(),
-		statusIcon);
-	box->addRow(
-		object_ptr<Ui::RpWidget>::fromRaw(ownedSet.release()));
-
-	AddSkip(box->verticalLayout(), 2 * st::defaultVerticalListSkip);
-
-	auto name = tr::bold(bot->name());
-	box->addRow(
-		object_ptr<Ui::FlatLabel>(
-			box,
-			tr::lng_bot_emoji_status_access_text(
-				lt_bot,
-				rpl::single(name),
-				lt_name,
-				rpl::single(name),
-				tr::rich),
-			st::botEmojiStatusText),
-		style::al_top);
-
-	box->addButton(tr::lng_bot_emoji_status_access_allow(), [=] {
-		if (!CheckEmojiStatusPremium(bot)) {
-			return;
-		}
-		*set = true;
-		box->closeBox();
-		done(true);
-	});
-	box->addButton(tr::lng_cancel(), [=] {
-		const auto was = *set;
-		box->closeBox();
-		if (!was) {
-			done(false);
-		}
-	});
-}
-
-void ConfirmEmojiStatusBox(
-		not_null<Ui::GenericBox*> box,
-		not_null<UserData*> bot,
-		not_null<DocumentData*> document,
-		TimeId duration,
-		Fn<void(bool)> done) {
-	box->setNoContentMargin(true);
-
-	auto owned = Settings::MakeEmojiStatusPreview(box, document);
-	const auto preview = box->addRow(
-		object_ptr<Ui::RpWidget>::fromRaw(owned.release()));
-	preview->resize(preview->width(), st::botEmojiStatusPreviewHeight);
-
-	const auto set = box->lifetime().make_state<bool>();
-
-	box->addTopButton(st::boxTitleClose, [=] {
-		box->closeBox();
-	});
-
-	box->addRow(
-		object_ptr<Ui::FlatLabel>(
-			box,
-			tr::lng_bot_emoji_status_title(),
-			st::botEmojiStatusTitle),
-		style::al_top);
-	AddSkip(box->verticalLayout());
-
-	box->addRow(
-		object_ptr<Ui::FlatLabel>(
-			box,
-			tr::lng_bot_emoji_status_text(
-				lt_bot,
-				rpl::single(tr::bold(bot->name())),
-				tr::rich),
-			st::botEmojiStatusText),
-		style::al_top);
-
-	AddSkip(box->verticalLayout(), 2 * st::defaultVerticalListSkip);
-
-	auto ownedSet = MakeEmojiSetStatusPreview(
-		box,
-		document->session().user(),
-		document);
-	box->addRow(
-		object_ptr<Ui::RpWidget>::fromRaw(ownedSet.release()));
-
-	box->addButton(tr::lng_bot_emoji_status_confirm(), [=] {
-		if (!CheckEmojiStatusPremium(bot)) {
-			return;
-		}
-		document->owner().emojiStatuses().set(
-			{ document->id },
-			duration ? (base::unixtime::now() + duration) : 0);
-		*set = true;
-		box->closeBox();
-		done(true);
-	});
-	box->addButton(tr::lng_cancel(), [=] {
-		box->closeBox();
-	});
-	box->boxClosing() | rpl::on_next([=] {
-		if (!*set) {
-			done(false);
-		}
-	}, box->lifetime());
-}
+// LoogriGram: a bot could ask to wear an emoji status on your behalf, and
+// two boxes stood here to confirm it - one for the permission, one for each
+// status - both gated on being a subscriber. Nothing in this client draws an
+// emoji status any more, so granting a bot the right to set one would buy
+// nothing and cost a permission. Both requests are refused instead, and
+// refused properly: each hands back an answer the web view already knows how
+// to read, because a bot request left unanswered strands the page waiting.
 
 class BotAction final : public Ui::Menu::ItemBase {
 public:
@@ -1872,29 +1747,10 @@ void WebViewInstance::botStorageClear() {
 
 void WebViewInstance::botRequestEmojiStatusAccess(
 		Fn<void(bool allowed)> callback) {
-	if (_bot->botInfo->canManageEmojiStatus) {
-		callback(true);
-	} else if (const auto panel = _panel.get()) {
-		const auto bot = _bot;
-		panel->showBox(Box(ConfirmEmojiStatusAccessBox, bot, [=](bool ok) {
-			if (!ok) {
-				callback(false);
-				return;
-			}
-			const auto session = &bot->session();
-			bot->botInfo->canManageEmojiStatus = true;
-			session->api().request(MTPbots_ToggleUserEmojiStatusPermission(
-				bot->inputUser(),
-				MTP_bool(true)
-			)).done([=] {
-				callback(true);
-			}).fail([=] {
-				callback(false);
-			}).send();
-		}));
-	} else {
-		callback(false);
-	}
+	// LoogriGram: permission is never newly granted - see above - but a bot
+	// that already holds it keeps it, because that is the server's state and
+	// not ours to misreport.
+	callback(_bot->botInfo->canManageEmojiStatus);
 }
 
 void WebViewInstance::botSharePhone(Fn<void(bool shared)> callback) {
@@ -2176,10 +2032,8 @@ void WebViewInstance::botRequestChat(
 
 void WebViewInstance::botSetEmojiStatus(
 		Ui::BotWebView::SetEmojiStatusRequest request) {
-	const auto bot = _bot;
 	const auto panel = _panel.get();
 	const auto callback = request.callback;
-	const auto duration = request.duration;
 	if (!panel) {
 		callback(u"UNKNOWN_ERROR"_q);
 		return;
@@ -2192,11 +2046,9 @@ void WebViewInstance::botSetEmojiStatus(
 			callback(u"SUGGESTED_EMOJI_INVALID"_q);
 			return;
 		}
-		const auto done = [=](bool success) {
-			callback(success ? QString() : u"USER_DECLINED"_q);
-		};
-		panel->showBox(
-			Box(ConfirmEmojiStatusBox, bot, document, duration, done));
+		// LoogriGram: the confirmation box is gone, so the answer is the
+		// one it gave when the user declined.
+		callback(u"USER_DECLINED"_q);
 	}, [=] { callback(u"SUGGESTED_EMOJI_INVALID"_q); }, panel->lifetime());
 }
 

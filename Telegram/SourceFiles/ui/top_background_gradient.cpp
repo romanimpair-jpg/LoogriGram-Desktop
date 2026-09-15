@@ -108,14 +108,11 @@ QImage CreateTopBgGradient(
 		QSize size,
 		not_null<PeerData*> peer,
 		QPoint offset) {
-	if (const auto collectible = peer->emojiStatusId().collectible) {
-		return CreateTopBgGradient(
-			size,
-			collectible->centerColor,
-			collectible->edgeColor,
-			false,
-			offset);
-	}
+	// LoogriGram: a collectible emoji status - one bought on Fragment and
+	// worn beside a name - used to recolour this from its own palette.
+	// The status itself is no longer drawn anywhere here, so having it
+	// still tint whole surfaces was the badge leaking out sideways. The
+	// peer's own colour profile is what decides now.
 	if (const auto color = peer->session().api().peerColors().colorProfileFor(
 			peer)) {
 		if (color->bg.size() > 1) {

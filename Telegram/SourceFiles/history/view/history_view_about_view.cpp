@@ -603,10 +603,10 @@ void EmptyChatLockedBox::unloadHeavyPart() {
 QImage GenerateManagedBotImage(not_null<UserData*> user) {
 	auto centerColor = QColor();
 	auto edgeColor = QColor();
-	if (const auto collectible = user->emojiStatusId().collectible) {
-		centerColor = collectible->centerColor;
-		edgeColor = collectible->edgeColor;
-	} else if (const auto color
+	// LoogriGram: a collectible emoji status used to colour this image.
+	// Nothing draws the status itself any more, so the peer's own colour
+	// profile decides, falling through to the default userpic colours.
+	if (const auto color
 		= user->session().api().peerColors().colorProfileFor(user)) {
 		if (color->bg.size() > 1) {
 			centerColor = color->bg[1];

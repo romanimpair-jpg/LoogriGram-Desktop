@@ -124,25 +124,11 @@ void FinalizeSetBotPhotoFirstOpenState(not_null<PeerData*> peer) {
 	}) | rpl::map_error_to_done();
 }
 
-[[nodiscard]] rpl::producer<TextWithEntities> PeerCustomStatus(
-		not_null<PeerData*> peer) {
-	if (peer->isChat()) {
-		return rpl::single(TextWithEntities());
-	}
-	const auto owner = &peer->owner();
-	return peer->session().changes().peerFlagsValue(
-		peer,
-		Data::PeerUpdate::Flag::EmojiStatus
-	) | rpl::map([=] {
-		const auto id = peer->emojiStatusId();
-		return id.collectible
-			? rpl::single(Ui::Text::SingleCustomEmoji(
-				Data::EmojiStatusCustomId(id)))
-			: id.documentId
-			? ResolveIsCustom(owner, id.documentId)
-			: rpl::single(TextWithEntities());
-	}) | rpl::flatten_latest() | rpl::distinct_until_changed();
-}
+// LoogriGram: PeerCustomStatus fed a line in the new-contact bar reading
+// "This account uses X as a custom status next to its name. Such emoji
+// statuses are available to all subscribers of Telegram Premium." The
+// first half describes a badge this client does not draw and the second
+// is an advertisement, so the line is gone and so is what fed it.
 
 [[nodiscard]] object_ptr<Ui::AbstractButton> MakeIconButton(
 		QWidget *parent,
@@ -231,10 +217,7 @@ public:
 		not_null<QWidget*> tooltipParent,
 		const QString &name);
 
-	void showState(
-		State state,
-		TextWithEntities status,
-		Ui::Text::MarkedContext context);
+	void showState(State state);
 
 	[[nodiscard]] rpl::producer<> unarchiveClicks() const;
 	[[nodiscard]] rpl::producer<> addClicks() const;
@@ -243,7 +226,6 @@ public:
 	[[nodiscard]] rpl::producer<> reportClicks() const;
 	[[nodiscard]] rpl::producer<> closeClicks() const;
 	[[nodiscard]] rpl::producer<> requestInfoClicks() const;
-	[[nodiscard]] rpl::producer<> emojiStatusClicks() const;
 	[[nodiscard]] rpl::producer<> setBotPhotoClicks() const;
 
 private:
@@ -252,7 +234,6 @@ private:
 	void refreshAddText(int newWidth);
 	void showAddTooltip();
 	void hideAddTooltip();
-	void emojiStatusRepaint();
 
 	const not_null<QWidget*> _tooltipParent;
 	QString _name;
@@ -266,16 +247,12 @@ private:
 	object_ptr<Ui::IconButton> _close;
 	object_ptr<BgButton> _requestChatBg;
 	object_ptr<Ui::FlatLabel> _requestChatInfo;
-	object_ptr<Ui::PaddingWrap<Ui::FlatLabel>> _emojiStatusInfo;
-	object_ptr<Ui::PlainShadow> _emojiStatusShadow;
 	object_ptr<Ui::RippleButton> _setBotPhoto;
 	base::unique_qptr<Ui::ImportantTooltip> _addTooltip;
 	base::Timer _addTooltipTimer;
-	bool _emojiStatusRepaintScheduled = false;
 	bool _addWithName = false;
 	bool _addElided = false;
 	bool _narrow = false;
-	rpl::event_stream<> _emojiStatusClicks;
 
 };
 
@@ -335,15 +312,6 @@ ContactStatus::Bar::Bar(
 	this,
 	QString(),
 	st::historyContactStatusLabel)
-, _emojiStatusInfo(
-	this,
-	object_ptr<Ui::FlatLabel>(this, u""_q, st::historyEmojiStatusInfoLabel),
-	QMargins(
-		st::historyContactStatusMinSkip,
-		st::topBarArrowPadding.top(),
-		st::historyContactStatusMinSkip,
-		st::topBarArrowPadding.top()))
-, _emojiStatusShadow(this)
 , _setBotPhoto(
 	SetupSetBotPhotoButton(
 		object_ptr<BgButton>(this, st::historyContactStatusButton))) {
@@ -366,17 +334,9 @@ ContactStatus::Bar::Bar(
 			hideAddTooltip();
 		}
 	}, _add->lifetime());
-	_emojiStatusInfo->paintRequest(
-	) | rpl::on_next([=, raw = _emojiStatusInfo.data()](QRect clip) {
-		_emojiStatusRepaintScheduled = false;
-		QPainter(raw).fillRect(clip, st::historyComposeButtonBg);
-	}, lifetime());
 }
 
-void ContactStatus::Bar::showState(
-		State state,
-		TextWithEntities status,
-		Ui::Text::MarkedContext context) {
+void ContactStatus::Bar::showState(State state) {
 	using Type = State::Type;
 	const auto type = state.type;
 	_add->setVisible(type == Type::AddOrBlock || type == Type::Add);
@@ -397,29 +357,6 @@ void ContactStatus::Bar::showState(
 	_requestChatInfo->setVisible(type == Type::RequestChatInfo);
 	_requestChatBg->setVisible(type == Type::RequestChatInfo);
 	_setBotPhoto->setVisible(type == Type::SetBotPhoto);
-	const auto has = !status.empty();
-	_emojiStatusShadow->setVisible(
-		has && (type == Type::AddOrBlock || type == Type::UnarchiveOrBlock));
-	if (has) {
-		context.repaint = [=] { emojiStatusRepaint(); };
-		_emojiStatusInfo->entity()->setMarkedText(
-			tr::lng_new_contact_about_status(
-				tr::now,
-				lt_emoji,
-				status,
-				lt_link,
-				tr::link(
-					tr::lng_new_contact_about_status_link(tr::now)),
-				tr::marked),
-			context);
-		_emojiStatusInfo->entity()->overrideLinkClickHandler([=] {
-			_emojiStatusClicks.fire({});
-		});
-		_emojiStatusInfo->entity()->setAnimationsPausedCallback([] {
-			return Ui::FlatLabel::WhichAnimationsPaused::CustomEmoji;
-		});
-	}
-	_emojiStatusInfo->setVisible(has);
 	_addWithName = (type == Type::Add);
 	_report->setText((type == Type::ReportSpam)
 		? tr::lng_report_spam_and_leave(tr::now).toUpper()
@@ -469,10 +406,6 @@ rpl::producer<> ContactStatus::Bar::closeClicks() const {
 
 rpl::producer<> ContactStatus::Bar::requestInfoClicks() const {
 	return _requestChatBg->clicks() | rpl::to_empty;
-}
-
-rpl::producer<> ContactStatus::Bar::emojiStatusClicks() const {
-	return _emojiStatusClicks.events();
 }
 
 rpl::producer<> ContactStatus::Bar::setBotPhotoClicks() const {
@@ -647,17 +580,7 @@ int ContactStatus::Bar::resizeGetHeight(int newWidth) {
 		placeOne(_report);
 	}
 	if (_requestChatInfo->isHidden()) {
-		_emojiStatusInfo->resizeToWidth(newWidth);
-		_emojiStatusInfo->move(0, _close->height());
-		_emojiStatusShadow->setGeometry(
-			0,
-			closeHeight,
-			newWidth,
-			st::lineWidth);
-		_emojiStatusShadow->move(0, _close->height());
-		return closeHeight + (_emojiStatusInfo->isHidden()
-			? 0
-			: _emojiStatusInfo->height());
+		return closeHeight;
 	}
 	const auto vskip = st::topBarArrowPadding.top();
 	_requestChatInfo->resizeToWidth(available - 2 * skip);
@@ -665,14 +588,6 @@ int ContactStatus::Bar::resizeGetHeight(int newWidth) {
 	const auto newHeight = _requestChatInfo->height() + 2 * vskip;
 	_requestChatBg->setGeometry(0, 0, newWidth, newHeight);
 	return newHeight;
-}
-
-void ContactStatus::Bar::emojiStatusRepaint() {
-	if (_emojiStatusRepaintScheduled) {
-		return;
-	}
-	_emojiStatusRepaintScheduled = true;
-	_emojiStatusInfo->entity()->update();
 }
 
 SlidingBar::SlidingBar(
@@ -850,26 +765,20 @@ void ContactStatus::setupState(not_null<PeerData*> peer, bool showInForum) {
 		peer->session().api().requestPeerSettings(peer);
 	}
 
-	_context = Core::TextContext({ .session = &peer->session() });
-	_inner->showState({}, {}, _context);
+	_inner->showState({});
 	const auto channel = peer->asChannel();
 	rpl::combine(
 		PeerState(peer),
-		PeerCustomStatus(peer),
 		((channel && !showInForum)
 			? Data::PeerFlagValue(channel, ChannelData::Flag::Forum)
 			: (rpl::single(false) | rpl::type_erased))
-	) | rpl::on_next([=](
-			State state,
-			TextWithEntities status,
-			bool hiddenByForum) {
+	) | rpl::on_next([=](State state, bool hiddenByForum) {
 		_state = state;
-		_status = status;
 		_hiddenByForum = hiddenByForum;
 		if (state.type == State::Type::None || hiddenByForum) {
 			_bar.toggleContent(false);
 		} else {
-			_inner->showState(state, std::move(status), _context);
+			_inner->showState(state);
 			_bar.toggleContent(true);
 		}
 	}, _bar.lifetime());
@@ -886,7 +795,6 @@ void ContactStatus::setupHandlers(not_null<PeerData*> peer) {
 	setupReportHandler(peer);
 	setupCloseHandler(peer);
 	setupRequestInfoHandler(peer);
-	setupEmojiStatusHandler(peer);
 }
 
 void ContactStatus::setupAddHandler(not_null<UserData*> user) {
@@ -1055,13 +963,6 @@ void ContactStatus::setupRequestInfoHandler(not_null<PeerData*> peer) {
 	}, _bar.lifetime());
 }
 
-void ContactStatus::setupEmojiStatusHandler(not_null<PeerData*> peer) {
-	_inner->emojiStatusClicks(
-	) | rpl::on_next([=] {
-		Settings::ShowEmojiStatusPremium(_controller, peer);
-	}, _bar.lifetime());
-}
-
 void ContactStatus::setupSetBotPhotoHandler(not_null<UserData*> user) {
 	_inner->setBotPhotoClicks(
 	) | rpl::on_next([=] {
@@ -1073,7 +974,7 @@ void ContactStatus::show() {
 	if (!_shown) {
 		_shown = true;
 		if (_state.type != State::Type::None && !_hiddenByForum) {
-			_inner->showState(_state, _status, _context);
+			_inner->showState(_state);
 			_bar.toggleContent(true);
 		}
 	}
