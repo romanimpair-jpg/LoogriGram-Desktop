@@ -1515,9 +1515,7 @@ void ShowDisableSharingBox(
 		// LoogriGram: this button wore a padlock and sold a subscription for
 		// anyone who could not use it. addToggleNoForwards no longer offers
 		// the menu item to them at all, so only the acting half is left.
-		box->addButton(rpl::single(TextWithEntities{
-			tr::lng_disable_sharing_button(tr::now)
-		}), [=] {
+		box->addButton(tr::lng_disable_sharing_button(), [=] {
 			toggleNoForwards(true);
 			box->closeBox();
 		});
