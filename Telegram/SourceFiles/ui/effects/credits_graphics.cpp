@@ -17,7 +17,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_photo_media.h"
 #include "data/data_session.h"
 #include "history/view/media/history_view_sticker_player.h"
-#include "info/bot/starref/info_bot_starref_common.h"
 #include "info/userpic/info_userpic_emoji_builder_preview.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
@@ -570,7 +569,7 @@ TextWithEntities GenerateEntryName(const Data::CreditsHistoryEntry &entry) {
 			tr::now,
 			lt_amount,
 			TextWithEntities{
-				Info::BotStarRef::FormatCommission(entry.starrefCommission)
+				QString::number(entry.starrefCommission / 10.) + '%'
 			},
 			TextWithEntities::Simple)
 		: entry.isLiveStoryReaction()

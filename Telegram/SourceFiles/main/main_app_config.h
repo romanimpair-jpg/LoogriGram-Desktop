@@ -73,11 +73,6 @@ public:
 	[[nodiscard]] int stargiftConvertPeriodMax() const;
 	[[nodiscard]] int noForwardsRequestExpirePeriod() const;
 
-	[[nodiscard]] const std::vector<QString> &startRefPrefixes();
-	[[nodiscard]] bool starrefSetupAllowed() const;
-	[[nodiscard]] bool starrefJoinAllowed() const;
-	[[nodiscard]] int starrefCommissionMin() const;
-	[[nodiscard]] int starrefCommissionMax() const;
 
 	[[nodiscard]] int starsWithdrawMax() const;
 	[[nodiscard]] float64 starsWithdrawRate() const;
@@ -194,7 +189,6 @@ private:
 	std::vector<QString> _ignoreRestrictionReasons;
 	rpl::event_stream<std::vector<QString>> _ignoreRestrictionChanges;
 
-	std::vector<QString> _startRefPrefixes;
 
 	mutable std::vector<StarsColoring> _groupCallColorings;
 

@@ -28,16 +28,9 @@ enum class DisallowedGiftType : uchar;
 using DisallowedGiftTypes = base::flags<DisallowedGiftType>;
 } // namespace Api
 
-struct StarRefProgram {
-	CreditsAmount revenuePerUser;
-	TimeId endDate = 0;
-	ushort commission = 0;
-	uint8 durationMonths = 0;
-
-	friend inline constexpr bool operator==(
-		StarRefProgram,
-		StarRefProgram) = default;
-};
+// LoogriGram: StarRefProgram stood here - a bot's affiliate commission,
+// paid in stars. The module that showed it is deleted, so the field, its
+// setter, its parser and its change flag went with it.
 
 struct BotVerifierSettings {
 	DocumentId iconId = 0;
@@ -90,7 +83,6 @@ struct BotInfo {
 	ChatAdminRights groupAdminRights;
 	ChatAdminRights channelAdminRights;
 
-	StarRefProgram starRefProgram;
 	std::unique_ptr<BotVerifierSettings> verifierSettings;
 
 	int version = 0;
@@ -296,8 +288,6 @@ public:
 	[[nodiscard]] const Data::BusinessDetails &businessDetails() const;
 	void setBusinessDetails(Data::BusinessDetails details);
 
-	void setStarRefProgram(StarRefProgram program);
-
 	[[nodiscard]] ChannelId personalChannelId() const;
 	[[nodiscard]] MsgId personalChannelMessageId() const;
 	void setPersonalChannel(ChannelId channelId, MsgId messageId);
@@ -370,9 +360,6 @@ private:
 namespace Data {
 
 void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update);
-
-[[nodiscard]] StarRefProgram ParseStarRefProgram(
-	const MTPStarRefProgram *program);
 
 [[nodiscard]] Ui::BotVerifyDetails ParseBotVerifyDetails(
 	const MTPBotVerification *info);

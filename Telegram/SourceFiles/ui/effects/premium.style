@@ -482,90 +482,14 @@ toastUndoDiameter: 20px;
 toastUndoSkip: 20px;
 toastUndoFont: font(12px bold);
 
-starrefCover: PremiumCover(userPremiumCover) {
-	bg: windowBgOver;
-	starTopSkip: 24px;
-	titlePadding: margins(0px, 12px, 0px, 11px);
-}
-starrefCoverHeight: 180px;
-starrefFooterButton: RoundButton(defaultActiveButton) {
-	height: 42px;
-	textTop: 12px;
-	style: semiboldTextStyle;
-}
-starrefFooterBox: Box(defaultBox) {
-	buttonPadding: margins(22px, 11px, 22px, 54px);
-	buttonHeight: 42px;
-	buttonWide: true;
-	button: starrefFooterButton;
-	shadowIgnoreTopSkip: true;
-}
-starrefCopyButton: RoundButton(starrefFooterButton) {
-	icon: icon {{ "info/edit/links_copy", activeButtonFg }};
-	iconOver: icon {{ "info/edit/links_copy", activeButtonFgOver }};
-	iconPosition: point(-1px, 5px);
-}
-
+// LoogriGram: affiliate programs are deleted and the rest of this block went
+// with them. These three outlived the module they were named for - a star
+// icon in the boost slot list, a title padding in the participant box and an
+// info icon position in the message field. The link thumb and counter moved
+// to calls.style, which is where their one remaining reader lives.
 starrefJoinIcon: icon{{ "payments/small_star", premiumButtonFg }};
-starrefJoinUserpicsPadding: margins(0px, 32px, 0px, 10px);
 starrefJoinTitlePadding: margins(0px, 0px, 0px, 12px);
-starrefCenteredText: FlatLabel(defaultFlatLabel) {
-	align: align(top);
-	minWidth: 40px;
-}
-starrefJoinFooter: FlatLabel(starrefCenteredText) {
-	textFg: windowSubTextFg;
-}
-starrefRevenueText: FlatLabel(starrefCenteredText) {
-	palette: TextPalette(defaultTextPalette) {
-		linkFg: creditsBg1;
-	}
-}
-
 starrefInfoIconPosition: point(16px, 8px);
-starrefBottomButton: RoundButton(defaultActiveButton) {
-	height: 44px;
-	textTop: 12px;
-	style: semiboldTextStyle;
-}
-starrefButtonMargin: margins(12px, 6px, 12px, 4px);
-starrefBottomButtonLabel: FlatLabel(defaultFlatLabel) {
-	textFg: windowFgActive;
-	style: semiboldTextStyle;
-	minWidth: 0px;
-}
-starrefBottomButtonSublabel: FlatLabel(starrefBottomButtonLabel) {
-	style: TextStyle(defaultTextStyle) {
-		font: font(11px semibold);
-	}
-}
-starrefBottomButtonLabelTop: 5px;
-starrefBottomButtonSublabelTop: 23px;
-starrefEndBulletSize: 6px;
-starrefEndBulletTop: 8px;
-starrefLinkThumbOuter: 64px;
-starrefLinkThumbInner: 48px;
-starrefLinkCountAdd: 6px;
-starrefLinkCountIcon: icon{{ "chat/mini_subscribers", historyPeerUserpicFg }};
-starrefLinkCountIconPosition: point(0px, 1px);
-starrefLinkCountFont: font(10px bold);
-starrefLinkCountPadding: margins(2px, 0px, 3px, 1px);
-starrefRecipientArrow: icon{{ "intro_country_dropdown", lightButtonFg }};
-starrefCommissionFont: font(10px semibold);
-starrefCommissionPadding: margins(3px, 0px, 3px, 0px);
-starrefLinkBadge: 16px;
-starrefLinkBadgeSkip: 1px;
-
-starrefAddForBotIcon: icon {{ "menu/bot_add", lightButtonFg }};
-starrefAddForBotIconPosition: point(23px, 2px);
-
-starrefPopupMenu: PopupMenu(defaultPopupMenu) {
-	maxHeight: 320px;
-	menu: Menu(defaultMenu) {
-		widthMin: 156px;
-		widthMax: 200px;
-	}
-}
 
 starSelectInfoPadding: margins(12px, 8px, 12px, 8px);
 starSelectInfoTitle: FlatLabel(defaultFlatLabel) {

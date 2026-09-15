@@ -98,7 +98,9 @@ struct PeerUpdate {
 		BusinessDetails     = (1ULL << 33),
 		Birthday            = (1ULL << 34),
 		PersonalChannel     = (1ULL << 35),
-		StarRefProgram      = (1ULL << 36),
+		// LoogriGram: bit 36 was StarRefProgram. The gap is deliberate -
+		// these are runtime notification bits, never serialized, so
+		// renumbering the rest would be churn for nothing.
 		PaysPerMessage      = (1ULL << 37),
 		GiftSettings        = (1ULL << 38),
 		StarsRating         = (1ULL << 39),

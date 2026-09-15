@@ -48,7 +48,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item.h"
 #include "history/history_item_helpers.h"
 #include "history/history_item_reply_markup.h"
-#include "info/bot/starref/info_bot_starref_common.h" // MakePeerBubbleButton
 #include "info/profile/info_profile_values.h"
 #include "inline_bots/inline_bot_result.h"
 #include "inline_bots/inline_bot_confirm_prepared.h"
@@ -491,34 +490,6 @@ void FillBotUsepic(
 	}
 
 	Ui::IconWithTitle(box->verticalLayout(), userpic, title, aboutLabel);
-}
-
-std::unique_ptr<Ui::RpWidget> MakeEmojiSetStatusPreview(
-		not_null<QWidget*> parent,
-		not_null<PeerData*> peer,
-		not_null<DocumentData*> document) {
-	const auto emoji = Ui::CreateChild<Ui::PaddingWrap<Ui::FlatLabel>>(
-		parent,
-		object_ptr<Ui::FlatLabel>(
-			parent,
-			rpl::single(
-				Ui::Text::SingleCustomEmoji(
-					Data::SerializeCustomEmojiId(document->id),
-					(document->sticker()
-						? document->sticker()->alt
-						: QString()))),
-			st::botEmojiStatusEmoji,
-			st::defaultPopupMenu,
-			Core::TextContext({ .session = &peer->session() })),
-		style::margins(st::normalFont->spacew, 0, 0, 0));
-	emoji->entity()->resizeToWidth(emoji->entity()->textMaxWidth());
-
-	auto result = Info::BotStarRef::MakePeerBubbleButton(
-		parent,
-		peer,
-		emoji);
-	result->setAttribute(Qt::WA_TransparentForMouseEvents);
-	return result;
 }
 
 // LoogriGram: a bot could ask to wear an emoji status on your behalf, and

@@ -72,30 +72,8 @@ int AppConfig::noForwardsRequestExpirePeriod() const {
 		_account->mtp().isTestMode() ? 300 : 86400);
 }
 
-const std::vector<QString> &AppConfig::startRefPrefixes() {
-	if (_startRefPrefixes.empty()) {
-		_startRefPrefixes = get<std::vector<QString>>(
-			u"starref_start_param_prefixes"_q,
-			std::vector<QString>());
-	}
-	return _startRefPrefixes;
-}
-
-bool AppConfig::starrefSetupAllowed() const {
-	return get<bool>(u"starref_program_allowed"_q, false);
-}
-
-bool AppConfig::starrefJoinAllowed() const {
-	return get<bool>(u"starref_connect_allowed"_q, false);
-}
-
-int AppConfig::starrefCommissionMin() const {
-	return get<int>(u"starref_min_commission_permille"_q, 1);
-}
-
-int AppConfig::starrefCommissionMax() const {
-	return get<int>(u"starref_max_commission_permille"_q, 900);
-}
+// LoogriGram: four affiliate-program server limits were read here. The
+// module that asked for them is deleted.
 
 int AppConfig::starsWithdrawMax() const {
 	return get<int>(u"stars_revenue_withdrawal_max"_q, 100);

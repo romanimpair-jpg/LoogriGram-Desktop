@@ -55,8 +55,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_welcome_messages_section.h"
 #include "history/history_item.h"
 #include "info/bot/earn/info_bot_earn_widget.h"
-#include "info/bot/starref/info_bot_starref_join_widget.h"
-#include "info/bot/starref/info_bot_starref_setup_widget.h"
 #include "info/channel_statistics/boosts/info_boosts_widget.h"
 #include "info/channel_statistics/earn/earn_format.h"
 #include "info/channel_statistics/earn/earn_icons.h"
@@ -527,7 +525,6 @@ private:
 	void fillBotUsernamesButton();
 	void fillBotCurrencyButton();
 	void fillBotCreditsButton();
-	void fillBotAffiliateProgram();
 	void fillBotEditIntroButton();
 	void fillBotEditCommandsButton();
 	void fillBotEditSettingsButton();
@@ -1505,7 +1502,6 @@ void Controller::fillManageSection() {
 		fillBotUsernamesButton();
 		fillBotCurrencyButton();
 		fillBotCreditsButton();
-		fillBotAffiliateProgram();
 		fillBotEditIntroButton();
 		fillBotEditCommandsButton();
 		fillBotEditSettingsButton();
@@ -1571,9 +1567,6 @@ void Controller::fillManageSection() {
 			: true);
 	const auto hasRecentActions = isChannel
 		&& (channel->hasAdminRights() || channel->amCreator());
-	const auto hasStarRef = Info::BotStarRef::Join::Allowed(_peer)
-		&& isChannel
-		&& channel->canPostMessages();
 	const auto canEditStickers = isChannel && channel->canEditStickers();
 	const auto canDeleteChannel = isChannel && channel->canDelete();
 	const auto canEditColorIndex = isChannel && channel->canEditEmoji();
@@ -1807,17 +1800,9 @@ void Controller::fillManageSection() {
 			std::move(callback),
 			{ &st::menuIconGroupLog });
 	}
-	if (hasStarRef) {
-		auto callback = [=] {
-			_navigation->showSection(Info::BotStarRef::Join::Make(_peer));
-		};
-		AddButtonWithCount(
-			_controls.buttonsLayout,
-			tr::lng_manage_peer_star_ref(),
-			rpl::single(QString()), // Empty count.
-			std::move(callback),
-			{ .icon = &st::menuIconStarRefShare });
-	}
+	// LoogriGram: "Affiliate Programs" stood here - a list of bots paying a
+	// commission in stars for referrals. Deleted with the rest of the
+	// affiliate module.
 
 	if (communityEligible) {
 		fillCommunitySection();
@@ -2185,35 +2170,6 @@ void Controller::fillBotCreditsButton() {
 		}, icon->lifetime());
 	}
 
-}
-
-void Controller::fillBotAffiliateProgram() {
-	Expects(_isBot);
-
-	if (!Info::BotStarRef::Setup::Allowed(_peer)) {
-		return;
-	}
-
-	const auto user = _peer->asUser();
-	auto label = user->session().changes().peerFlagsValue(
-		user,
-		Data::PeerUpdate::Flag::StarRefProgram
-	) | rpl::map([=] {
-		const auto commission = user->botInfo
-			? user->botInfo->starRefProgram.commission
-			: 0;
-		return commission
-			? Info::BotStarRef::FormatCommission(commission)
-			: tr::lng_manage_peer_bot_star_ref_off(tr::now);
-	});
-	AddButtonWithCount(
-		_controls.buttonsLayout,
-		tr::lng_manage_peer_bot_star_ref(),
-		std::move(label),
-		[controller = _navigation->parentController(), user] {
-			controller->showSection(Info::BotStarRef::Setup::Make(user));
-		},
-		{ .icon = &st::menuIconSharing });
 }
 
 void Controller::fillBotEditIntroButton() {

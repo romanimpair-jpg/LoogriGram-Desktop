@@ -66,9 +66,6 @@ Key::Key(Statistics::Tag statistics) : _value(statistics) {
 Key::Key(PeerGifts::Tag gifts) : _value(gifts) {
 }
 
-Key::Key(BotStarRef::Tag starref) : _value(starref) {
-}
-
 Key::Key(GlobalMedia::Tag global) : _value(global) {
 }
 
@@ -189,20 +186,6 @@ Statistics::Tag Key::statisticsTag() const {
 		return *tag;
 	}
 	return Statistics::Tag();
-}
-
-PeerData *Key::starrefPeer() const {
-	if (const auto tag = std::get_if<BotStarRef::Tag>(&_value)) {
-		return tag->peer;
-	}
-	return nullptr;
-}
-
-BotStarRef::Type Key::starrefType() const {
-	if (const auto tag = std::get_if<BotStarRef::Tag>(&_value)) {
-		return tag->type;
-	}
-	return BotStarRef::Type();
 }
 
 PollData *Key::poll() const {
@@ -440,9 +423,7 @@ bool Controller::validateMementoPeer(
 		&& memento->settingsSelf() == settingsSelf()
 		&& memento->storiesPeer() == storiesPeer()
 		&& memento->musicPeer() == musicPeer()
-		&& memento->statisticsTag().peer == statisticsTag().peer
-		&& memento->starrefPeer() == starrefPeer()
-		&& memento->starrefType() == starrefType();
+		&& memento->statisticsTag().peer == statisticsTag().peer;
 }
 
 void Controller::setSection(not_null<ContentMemento*> memento) {

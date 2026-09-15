@@ -23,8 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_session.h"
 #include "data/data_user.h"
 #include "info/bot/earn/info_bot_earn_widget.h"
-#include "info/bot/starref/info_bot_starref_common.h"
-#include "info/bot/starref/info_bot_starref_join_widget.h"
 #include "info/channel_statistics/boosts/giveaway/boost_badge.h"
 #include "info/channel_statistics/earn/earn_format.h"
 #include "info/channel_statistics/earn/earn_icons.h"
@@ -992,22 +990,8 @@ void BuildCreditsButtons(
 		}
 	}
 
-	if (!isCurrency && Info::BotStarRef::Join::Allowed(self)) {
-		const auto earn = builder.addButton({
-			.id = u"stars/earn"_q,
-			.title = tr::lng_credits_earn_button(),
-			.st = &st::settingsCreditsButton,
-			.icon = { &st::settingsButtonIconEarn },
-			.onClick = [controller, self] {
-				controller->parentController()->showSection(
-					Info::BotStarRef::Join::Make(self));
-			},
-			.keywords = { u"affiliate"_q, u"referral"_q },
-		});
-		if (earnButton) {
-			*earnButton = earn;
-		}
-	}
+	// LoogriGram: a link into the affiliate programs list stood here.
+	// That module is deleted.
 }
 
 void BuildCreditsSectionContent(

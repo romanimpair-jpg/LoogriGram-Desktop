@@ -593,19 +593,12 @@ bool ResolveUsernameOrPhone(
 		? ResolveType::Profile
 		: ResolveType::Default;
 	auto startToken = params.value(u"start"_q);
-	auto referral = params.value(u"ref"_q);
+	// LoogriGram: a ?ref= parameter, or a start token carrying one of the
+	// server's referral prefixes, credited an affiliate with a commission on
+	// everything the referred account later spent. That module is deleted, so
+	// the parameter is dropped and the link resolves as a plain username.
 	if (!startToken.isEmpty()) {
 		resolveType = ResolveType::BotStart;
-		if (referral.isEmpty()) {
-			const auto appConfig = &controller->session().appConfig();
-			const auto &prefixes = appConfig->startRefPrefixes();
-			for (const auto &prefix : prefixes) {
-				if (startToken.startsWith(prefix)) {
-					referral = startToken.mid(prefix.size());
-					break;
-				}
-			}
-		}
 	} else if (params.contains(u"startgroup"_q)) {
 		resolveType = ResolveType::AddToGroup;
 		startToken = params.value(u"startgroup"_q);
@@ -677,7 +670,6 @@ bool ResolveUsernameOrPhone(
 			}
 			: Window::RepliesByLinkInfo{ v::null },
 		.resolveType = resolveType,
-		.referral = referral,
 		.startToken = startToken,
 		.startAdminRights = adminRights,
 		.startAutoSubmit = myContext.botStartAutoSubmit,

@@ -1710,6 +1710,16 @@ confcallLinkShareButton: RoundButton(confcallLinkCopyButton) {
 	iconOver: icon {{ "info/edit/links_share", activeButtonFgOver }};
 }
 confcallLinkHeaderIconPadding: margins(0px, 32px, 0px, 10px);
+// LoogriGram: the link header icon and the link preview label were drawn by
+// the affiliate-programs module, which is deleted. They are the conference
+// link box's own widgets now, so their styles moved here from premium.style.
+confcallLinkThumbOuter: 64px;
+confcallLinkThumbInner: 48px;
+confcallLinkCountAdd: 6px;
+confcallLinkCountIcon: icon{{ "chat/mini_subscribers", historyPeerUserpicFg }};
+confcallLinkCountIconPosition: point(0px, 1px);
+confcallLinkCountFont: font(10px bold);
+confcallLinkCountPadding: margins(2px, 0px, 3px, 1px);
 confcallLinkTitlePadding: margins(0px, 0px, 0px, 12px);
 confcallLinkCenteredText: FlatLabel(defaultFlatLabel) {
 	align: align(top);

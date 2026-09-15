@@ -629,8 +629,6 @@ Key ContentMemento::key() const {
 		return Saved::MusicTag{ music };
 	} else if (statisticsTag().peer) {
 		return statisticsTag();
-	} else if (const auto starref = starrefPeer()) {
-		return BotStarRef::Tag(starref, starrefType());
 	} else if (const auto who = reactionsWhoReadIds()) {
 		return Key(who, _reactionsSelected, _pollReactionsContextId);
 	} else if (const auto another = globalMediaSelf()) {
@@ -691,11 +689,6 @@ ContentMemento::ContentMemento(PeerGifts::Tag gifts)
 
 ContentMemento::ContentMemento(Statistics::Tag statistics)
 : _statisticsTag(statistics) {
-}
-
-ContentMemento::ContentMemento(BotStarRef::Tag starref)
-: _starrefPeer(starref.peer)
-, _starrefType(starref.type) {
 }
 
 ContentMemento::ContentMemento(GlobalMedia::Tag global)

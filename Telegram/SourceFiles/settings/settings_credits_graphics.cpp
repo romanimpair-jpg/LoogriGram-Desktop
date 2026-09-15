@@ -43,7 +43,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "history/history_item.h"
 #include "history/history_item_components.h" // HistoryServicePaymentRefund.
-#include "info/bot/starref/info_bot_starref_common.h"
 #include "info/channel_statistics/boosts/giveaway/boost_badge.h" // InfiniteRadialAnimationWidget.
 #include "info/channel_statistics/earn/info_channel_earn_widget.h" // Info::ChannelEarn::Make.
 #include "info/channel_statistics/earn/earn_format.h"
@@ -1727,7 +1726,7 @@ void GenericCreditsEntryBody(
 					? tr::lng_credits_commission(
 						tr::now,
 						lt_amount,
-						Info::BotStarRef::FormatCommission(e.starrefCommission))
+						QString::number(e.starrefCommission / 10.) + '%')
 					: e.soldOutInfo
 					? tr::lng_credits_box_history_entry_gift_unavailable(tr::now)
 					: sentStarGift

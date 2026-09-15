@@ -65,11 +65,6 @@ namespace Info::Statistics {
 struct Tag;
 } // namespace Info::Statistics
 
-namespace Info::BotStarRef {
-enum class Type : uchar;
-struct Tag;
-} // namespace Info::BotStarRef
-
 namespace Info::GlobalMedia {
 struct Tag;
 } // namespace Info::GlobalMedia
@@ -280,7 +275,6 @@ public:
 	explicit ContentMemento(Stories::Tag stories);
 	explicit ContentMemento(Saved::MusicTag music);
 	explicit ContentMemento(Statistics::Tag statistics);
-	explicit ContentMemento(BotStarRef::Tag starref);
 	explicit ContentMemento(GlobalMedia::Tag global);
 	ContentMemento(not_null<PollData*> poll, FullMsgId contextId)
 	: _poll(poll)
@@ -335,12 +329,6 @@ public:
 	}
 	[[nodiscard]] Statistics::Tag statisticsTag() const {
 		return _statisticsTag;
-	}
-	[[nodiscard]] PeerData *starrefPeer() const {
-		return _starrefPeer;
-	}
-	[[nodiscard]] BotStarRef::Type starrefType() const {
-		return _starrefType;
 	}
 	[[nodiscard]] PollData *poll() const {
 		return _poll;
@@ -404,8 +392,6 @@ private:
 	PeerData * const _giftsPeer = nullptr;
 	int _giftsCollectionId = 0;
 	Statistics::Tag _statisticsTag;
-	PeerData * const _starrefPeer = nullptr;
-	BotStarRef::Type _starrefType = {};
 	PollData * const _poll = nullptr;
 	std::shared_ptr<Api::WhoReadList> _reactionsWhoReadIds;
 	Data::ReactionId _reactionsSelected;

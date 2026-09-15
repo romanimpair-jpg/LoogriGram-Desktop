@@ -38,7 +38,6 @@ class RpWidget;
 
 enum class UserpicsTransferType {
 	BoostReplace,
-	StarRefJoin,
 	AuctionRecipient,
 	ChannelFutureOwner,
 	GuardBotReplace,

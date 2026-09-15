@@ -13,11 +13,15 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peers/replace_boost_box.h" // CreateUserpicsWithMoreBadge
 #include "boxes/share_box.h"
 #include "calls/calls_instance.h"
+#include "chat_helpers/stickers_lottie.h"
 #include "core/application.h"
 #include "core/local_url_handlers.h"
+#include "data/data_document.h"
+#include "data/data_document_media.h"
 #include "data/data_group_call.h"
 #include "data/data_session.h"
-#include "info/bot/starref/info_bot_starref_common.h"
+#include "history/view/media/history_view_sticker_player.h"
+#include "lang/lang_tag.h"
 #include "tde2e/tde2e_api.h"
 #include "tde2e/tde2e_integration.h"
 #include "ui/boxes/boost_box.h"
@@ -34,6 +38,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "window/window_session_controller.h"
 #include "window/window_unlock_passcode_box.h"
+#include "styles/style_dialogs.h"
 #include "styles/style_layers.h"
 #include "styles/style_media_view.h"
 #include "styles/style_menu_icons.h"
@@ -45,6 +50,141 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QClipboard>
 
 namespace Calls::Group {
+namespace {
+
+// LoogriGram: both of these were `Info::BotStarRef` helpers - the affiliate
+// programs module is deleted, and the conference link box was the only thing
+// outside it still drawing them. They are local to this file now.
+[[nodiscard]] object_ptr<Ui::RpWidget> CreateLinkHeaderIcon(
+		not_null<QWidget*> parent,
+		not_null<Main::Session*> session,
+		int users = 0) {
+	auto result = object_ptr<Ui::RpWidget>(parent);
+	const auto raw = result.data();
+
+	struct State {
+		not_null<DocumentData*> icon;
+		std::shared_ptr<Data::DocumentMedia> media;
+		std::shared_ptr<HistoryView::StickerPlayer> player;
+		int counterWidth = 0;
+	};
+	const auto outerSide = st::confcallLinkThumbOuter;
+	const auto outerSkip = (outerSide - st::confcallLinkThumbInner) / 2;
+	const auto innerSide = (outerSide - 2 * outerSkip);
+	const auto add = st::confcallLinkCountAdd;
+	const auto outer = QSize(outerSide, outerSide + add);
+	const auto inner = QSize(innerSide, innerSide);
+	const auto state = raw->lifetime().make_state<State>(State{
+		.icon = ChatHelpers::GenerateLocalTgsSticker(
+			session,
+			u"starref_link"_q,
+			true),
+	});
+	state->media = state->icon->createMediaView();
+	state->player = std::make_unique<HistoryView::LottiePlayer>(
+		ChatHelpers::LottiePlayerFromDocument(
+			state->media.get(),
+			ChatHelpers::StickerLottieSize::MessageHistory,
+			inner,
+			Lottie::Quality::High));
+	const auto player = state->player.get();
+	player->setRepaintCallback([=] { raw->update(); });
+
+	const auto text = users
+		? Lang::FormatCountToShort(users).string
+		: QString();
+	const auto length = st::confcallLinkCountFont->width(text);
+	const auto contents = length + st::confcallLinkCountIcon.width();
+	const auto delta = (outer.width() - contents) / 2;
+	const auto badge = QRect(
+		delta,
+		outer.height() - st::confcallLinkCountFont->height - st::lineWidth,
+		outer.width() - 2 * delta,
+		st::confcallLinkCountFont->height);
+	const auto badgeRect = badge.marginsAdded(st::confcallLinkCountPadding);
+
+	raw->paintRequest() | rpl::on_next([=] {
+		auto p = QPainter(raw);
+		p.setPen(Qt::NoPen);
+		p.setBrush(st::windowBgActive);
+
+		auto hq = PainterHighQualityEnabler(p);
+
+		const auto left = (raw->width() - outer.width()) / 2;
+		p.drawEllipse(left, 0, outerSide, outerSide);
+
+		if (!text.isEmpty()) {
+			const auto rect = badgeRect.translated(left, 0);
+			const auto textRect = badge.translated(left, 0);
+			const auto radius = st::confcallLinkCountFont->height / 2.;
+			p.setPen(st::historyPeerUserpicFg);
+			p.setBrush(st::historyPeer2UserpicBg2);
+			p.drawRoundedRect(rect, radius, radius);
+
+			p.setFont(st::confcallLinkCountFont);
+			const auto shift = QPoint(
+				st::confcallLinkCountIcon.width(),
+				st::confcallLinkCountFont->ascent);
+			st::confcallLinkCountIcon.paint(
+				p,
+				textRect.topLeft() + st::confcallLinkCountIconPosition,
+				raw->width());
+			p.drawText(textRect.topLeft() + shift, text);
+		}
+		if (player->ready()) {
+			const auto now = crl::now();
+			const auto color = st::windowFgActive->c;
+			auto info = player->frame(inner, color, false, now, false);
+			p.drawImage(
+				QRect(QPoint(left + outerSkip, outerSkip), inner),
+				info.image);
+			if (info.index + 1 < player->framesCount()) {
+				player->markFrameShown();
+			}
+		}
+	}, raw->lifetime());
+
+	raw->resize(outer);
+
+	return result;
+}
+
+[[nodiscard]] object_ptr<Ui::AbstractButton> MakeLinkLabel(
+		not_null<QWidget*> parent,
+		const QString &link,
+		const style::InputField *stOverride) {
+	const auto &st = stOverride ? *stOverride : st::dialogsFilter;
+	const auto text = Ui::Text::StripUrlProtocol(link);
+	const auto margins = st.textMargins;
+	const auto height = st.heightMin;
+	const auto skip = margins.left();
+
+	auto result = object_ptr<Ui::AbstractButton>(parent);
+	const auto raw = result.data();
+
+	raw->resize(height, height);
+	raw->paintRequest() | rpl::on_next([=] {
+		auto p = QPainter(raw);
+		auto hq = PainterHighQualityEnabler(p);
+		p.setPen(Qt::NoPen);
+		p.setBrush(st.textBg);
+		const auto radius = st::roundRadiusLarge;
+		p.drawRoundedRect(0, 0, raw->width(), height, radius, radius);
+
+		const auto font = st.style.font;
+		p.setPen(st.textFg);
+		p.setFont(font);
+		const auto available = raw->width() - skip * 2;
+		p.drawText(
+			QRect(skip, margins.top(), available, font->height),
+			style::al_top,
+			font->elided(text, available));
+	}, raw->lifetime());
+
+	return result;
+}
+
+} // namespace
 
 object_ptr<Ui::GenericBox> ScreenSharingPrivacyRequestBox() {
 	return { nullptr };
@@ -331,7 +471,7 @@ void ShowConferenceCallLinkBox(
 		}
 
 		box->addRow(
-			Info::BotStarRef::CreateLinkHeaderIcon(box, &call->session()),
+			CreateLinkHeaderIcon(box, &call->session()),
 			st::boxRowPadding + st::confcallLinkHeaderIconPadding);
 		box->addRow(
 			object_ptr<Ui::FlatLabel>(
@@ -353,7 +493,7 @@ void ShowConferenceCallLinkBox(
 
 		Ui::AddSkip(box->verticalLayout(), st::defaultVerticalListSkip * 2);
 		const auto preview = box->addRow(
-			Info::BotStarRef::MakeLinkLabel(box, link, st.linkPreview));
+			MakeLinkLabel(box, link, st.linkPreview));
 		Ui::AddSkip(box->verticalLayout());
 
 		const auto copyCallback = [=] {

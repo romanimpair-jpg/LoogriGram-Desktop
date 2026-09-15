@@ -17,8 +17,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_user.h"
 #include "data/stickers/data_custom_emoji.h"
 #include "info/bot/earn/info_bot_earn_widget.h"
-#include "info/bot/starref/info_bot_starref_common.h"
-#include "info/bot/starref/info_bot_starref_join_widget.h"
 #include "info/channel_statistics/earn/earn_format.h"
 #include "info/info_controller.h"
 #include "info/info_memento.h"
@@ -260,17 +258,8 @@ void InnerWidget::fill() {
 			}));
 		container->resizeToWidth(container->width());
 	}
-	if (BotStarRef::Join::Allowed(peer()) && !peer()->isSelf()) {
-		const auto button = BotStarRef::AddViewListButton(
-			container,
-			tr::lng_credits_summary_earn_title(),
-			tr::lng_credits_summary_earn_about());
-		button->setClickedCallback([=] {
-			_controller->showSection(BotStarRef::Join::Make(peer()));
-		});
-		Ui::AddSkip(container);
-		Ui::AddDivider(container);
-	}
+	// LoogriGram: a link into the affiliate programs list stood here.
+	// That module is deleted.
 	if (!peer()->isSelf()) {
 		fillHistory();
 	}

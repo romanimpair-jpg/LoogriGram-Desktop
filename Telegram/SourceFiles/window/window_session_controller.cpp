@@ -447,7 +447,7 @@ void SessionNavigation::showPeerByLink(const PeerByLinkInfo &info) {
 			} else {
 				showPeerByLinkResolved(peer, info);
 			}
-		}, info.referral);
+		});
 	} else if (const auto id = std::get_if<ChannelId>(&info.usernameOrId)) {
 		resolveChannelById(*id, [=](not_null<ChannelData*> channel) {
 			showPeerByLinkResolved(channel, info);
@@ -517,29 +517,26 @@ void SessionNavigation::resolveChatLink(
 	}).send();
 }
 
+// LoogriGram: this carried a referral through to the server, so an affiliate
+// could be credited for the account that followed the link. The affiliate
+// module is deleted, and with the referrer gone the cache can always answer.
 void SessionNavigation::resolveUsername(
 		const QString &username,
-		Fn<void(not_null<PeerData*>)> done,
-		const QString &referral) {
-	if (referral.isEmpty()) {
-		if (const auto peer = _session->data().peerByUsername(username)) {
-			done(peer);
-			return;
-		}
+		Fn<void(not_null<PeerData*>)> done) {
+	if (const auto peer = _session->data().peerByUsername(username)) {
+		done(peer);
+		return;
 	}
 	_api.request(base::take(_resolveRequestId)).cancel();
-	using Flag = MTPcontacts_ResolveUsername::Flag;
 	_resolveRequestId = _api.request(MTPcontacts_ResolveUsername(
-		MTP_flags(referral.isEmpty() ? Flag() : Flag::f_referer),
+		MTP_flags(0),
 		MTP_string(username),
-		MTP_string(referral)
+		MTP_string()
 	)).done([=](const MTPcontacts_ResolvedPeer &result) {
 		resolveDone(result, done);
 	}).fail([=](const MTP::Error &error) {
 		_resolveRequestId = 0;
-		if (error.type() == u"STARREF_EXPIRED"_q) {
-			parentController()->showToast(tr::lng_star_ref_stopped(tr::now));
-		} else if (error.code() == 400) {
+		if (error.code() == 400) {
 			parentController()->show(
 				Ui::MakeInformBox(
 					tr::lng_username_not_found(tr::now, lt_user, username)),
