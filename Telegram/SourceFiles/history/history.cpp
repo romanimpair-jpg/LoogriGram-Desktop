@@ -75,7 +75,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/text/text_utilities.h"
 #include "ui/toast/toast.h"
 #include "ui/painter.h" // remove when History::paintUserpic accepts QPainter
-#include "payments/payments_checkout_process.h"
 #include "core/crash_reports.h"
 #include "core/application.h"
 #include "base/options.h"
@@ -1420,38 +1419,10 @@ void History::applyServiceChanges(
 		} else if (const auto chat = peer->asChat()) {
 			chat->setGroupCall(data.vcall(), data.vschedule_date().v);
 		}
-	}, [&](const MTPDmessageActionPaymentSent &data) {
-		if (const auto payment = item->Get<HistoryServicePayment>()) {
-			auto paid = std::optional<Payments::PaidInvoice>();
-			if (const auto message = payment->msg) {
-				if (const auto media = message->media()) {
-					if (media->invoice()) {
-						paid = Payments::CheckoutProcess::InvoicePaid(
-							message);
-					}
-				}
-			} else if (!payment->slug.isEmpty()) {
-				using Payments::CheckoutProcess;
-				paid = Payments::CheckoutProcess::InvoicePaid(
-					&session(),
-					payment->slug);
-			}
-			if (paid) {
-				// Toast on a current active window.
-				Ui::Toast::Show({
-					.text = tr::lng_payments_success(
-						tr::now,
-						lt_amount,
-						Ui::Text::Wrapped(payment->amount, EntityType::Bold),
-						lt_title,
-						tr::bold(paid->title),
-						tr::marked),
-					.textContext = Core::TextContext({
-						.session = &session(),
-					}),
-				});
-			}
-		}
+	// LoogriGram: messageActionPaymentSent fired a "Payment for X was
+	// successful" toast here, reporting the outcome of a checkout this client
+	// had just driven. Nothing here drives one, so the service message
+	// arrives on its own and speaks for itself, and the arm is gone.
 	}, [&](const MTPDmessageActionSetChatTheme &data) {
 		data.vtheme().match([&](const MTPDchatTheme &data) {
 			peer->setThemeToken(qs(data.vemoticon()));
@@ -1579,15 +1550,9 @@ void History::applyServiceChanges(
 				enabled && item->out(),
 				enabled && !item->out());
 		}
-	}, [&](const MTPDmessageActionPaidMessagesPrice &data) {
-		if (const auto channel = peer->asBroadcast()) {
-			for (const auto &controller : session().windows()) {
-				if (controller->activeChatCurrent().peer() == peer.get()) {
-					channel->updateFullForced();
-					break;
-				}
-			}
-		}
+	// LoogriGram: messageActionPaidMessagesPrice forced a full peer reload
+	// here so an open chat would pick up the channel's new per-message price.
+	// Nothing reads that price any more.
 	}, [](const auto &) {
 	});
 }

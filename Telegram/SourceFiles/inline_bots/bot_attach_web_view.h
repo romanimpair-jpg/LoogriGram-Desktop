@@ -45,11 +45,6 @@ namespace Data {
 class DocumentMedia;
 } // namespace Data
 
-namespace Payments {
-struct NonPanelPaymentForm;
-enum class CheckoutResult;
-} // namespace Payments
-
 namespace InlineBots {
 
 class WebViewInstance;
@@ -291,10 +286,6 @@ private:
 	void show(ShowArgs &&args);
 	void showGame();
 	void started(uint64 queryId);
-
-	auto nonPanelPaymentFormFactory(
-		Fn<void(Payments::CheckoutResult)> reactivate)
-	-> Fn<void(Payments::NonPanelPaymentForm)>;
 
 	Webview::ThemeParams botThemeParams() override;
 	Ui::Text::MarkedContext botTextContext() override;

@@ -801,8 +801,6 @@ TextState Service::textState(QPoint point, StateRequest request) const {
 			&& g.contains(point)) {
 			if (const auto gamescore = item->Get<HistoryServiceGameScore>()) {
 				result.link = gamescore->lnk;
-			} else if (const auto payment = item->Get<HistoryServicePayment>()) {
-				result.link = payment->invoiceLink;
 			} else if (const auto call = item->Get<HistoryServiceOngoingCall>()) {
 				const auto peer = history()->peer;
 				if (PeerHasThisCall(peer, call->id).value_or(false)) {

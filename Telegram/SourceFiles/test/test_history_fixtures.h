@@ -46,9 +46,10 @@ struct ServiceMessageFields {
 // The injection issues no MTP request, except for actions whose
 // applyServiceChanges or newItemAdded arm reaches the network:
 // messageActionSetChatWallPaper, messageActionSetChatTheme with a
-// plain-emoticon theme, messageActionPaidMessagesPrice on an active broadcast
-// peer, and any unique-gift action owned or hosted by the signed-in account,
-// which includes the demonstrated star-gift card.
+// plain-emoticon theme, and any unique-gift action owned or hosted by the
+// signed-in account, which includes the demonstrated star-gift card.
+// (messageActionPaidMessagesPrice was a fourth until paid messages were
+// removed; its arm no longer reaches the network.)
 // Both shapes are refused when History::folderKnown() is false, because
 // History::newItemAdded would then issue a requestDialogEntry MTP request.
 // For the regular shape only, the id sits above ServerMaxMsgId, where

@@ -60,8 +60,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_domain.h"
 #include "main/main_session.h"
 #include "mainwidget.h"
-#include "payments/payments_checkout_process.h"
-#include "payments/payments_non_panel_process.h"
 #include "storage/storage_account.h"
 #include "storage/storage_domain.h"
 #include "ui/basic_click_handlers.h"
@@ -1466,59 +1464,14 @@ bool WebViewInstance::botHandleLocalUri(QString uri, bool keepOpen) {
 	return true;
 }
 
+// LoogriGram: a mini app asks the client to open a checkout for one of its
+// invoices. We open none, but the app is waiting on an answer - see the
+// "answer requests, don't drop them" note - so it is told the invoice was
+// cancelled, which is the outcome it already handles.
 void WebViewInstance::botHandleInvoice(QString slug) {
 	Expects(_panel != nullptr);
 
-	using Result = Payments::CheckoutResult;
-	const auto weak = base::make_weak(_panel.get());
-	const auto reactivate = [=](Result result) {
-		if (const auto strong = weak.get()) {
-			strong->invoiceClosed(slug, [&] {
-				switch (result) {
-				case Result::Paid: return "paid";
-				case Result::Failed: return "failed";
-				case Result::Pending: return "pending";
-				case Result::Cancelled: return "cancelled";
-				}
-				Unexpected("Payments::CheckoutResult value.");
-			}());
-		}
-	};
-	Payments::CheckoutProcess::Start(
-		_session,
-		slug,
-		reactivate,
-		nonPanelPaymentFormFactory(reactivate));
-}
-
-auto WebViewInstance::nonPanelPaymentFormFactory(
-	Fn<void(Payments::CheckoutResult)> reactivate)
--> Fn<void(Payments::NonPanelPaymentForm)> {
-	using namespace Payments;
-	const auto panel = base::make_weak(_panel.get());
-	const auto weak = _context.controller;
-	const auto show = uiShow();
-	return [=](Payments::NonPanelPaymentForm form) {
-		using CreditsFormDataPtr = std::shared_ptr<CreditsFormData>;
-		using CreditsReceiptPtr = std::shared_ptr<CreditsReceiptData>;
-		v::match(form, [&](const CreditsFormDataPtr &form) {
-			if (const auto strong = panel.get()) {
-				ProcessCreditsPayment(
-					show,
-					strong->toastParent().get(),
-					form,
-					reactivate);
-			}
-		}, [&](const CreditsReceiptPtr &receipt) {
-			if (const auto controller = weak.get()) {
-				ProcessCreditsReceipt(controller, receipt, reactivate);
-			}
-		}, [&](RealFormPresentedNotification) {
-			if (const auto strong = panel.get()) {
-				strong->hideForPayment();
-			}
-		});
-	};
+	_panel->invoiceClosed(slug, "cancelled");
 }
 
 void WebViewInstance::botHandleMenuButton(

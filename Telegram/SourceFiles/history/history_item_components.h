@@ -846,7 +846,6 @@ struct HistoryServicePayment
 , HistoryServiceDependentData {
 	QString slug;
 	TextWithEntities amount;
-	ClickHandlerPtr invoiceLink;
 	bool recurringInit = false;
 	bool recurringUsed = false;
 	bool isCreditsCurrency = false;

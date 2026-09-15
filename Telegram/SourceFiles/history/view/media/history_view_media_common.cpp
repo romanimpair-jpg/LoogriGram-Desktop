@@ -45,8 +45,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "mainwindow.h"
 #include "media/streaming/media_streaming_utility.h"
-#include "payments/payments_checkout_process.h"
-#include "payments/payments_non_panel_process.h"
 #include "settings/settings_common.h"
 #include "webrtc/webrtc_environment.h"
 #include "webview/webview_interface.h"

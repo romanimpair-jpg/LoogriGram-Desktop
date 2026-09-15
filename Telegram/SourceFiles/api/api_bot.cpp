@@ -30,8 +30,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item.h"
 #include "history/history_item_components.h"
 #include "inline_bots/bot_attach_web_view.h"
-#include "payments/payments_checkout_process.h"
-#include "payments/payments_non_panel_process.h"
 #include "main/main_session.h"
 #include "mainwidget.h"
 #include "mainwindow.h"
@@ -350,15 +348,10 @@ void ActivateBotButton(ClickHandlerContext context, BotButtonLookup lookup) {
 		SendBotCallbackDataWithPassword(controller, item, lookup);
 	} break;
 
-	case ButtonType::Buy: {
-		Payments::CheckoutProcess::Start(
-			item,
-			Payments::Mode::Payment,
-			crl::guard(controller, [=](auto) {
-				controller->widget()->activate();
-			}),
-			Payments::ProcessNonPanelPaymentFormFactory(controller, item));
-	} break;
+	// LoogriGram: this opened the checkout for a bot's invoice. The message
+	// carrying the button is hidden at the view like every other invoice,
+	// so the button is not reachable; if one ever is, it does nothing.
+	case ButtonType::Buy: break;
 
 	case ButtonType::Url: {
 		auto url = QString::fromUtf8(button->data);

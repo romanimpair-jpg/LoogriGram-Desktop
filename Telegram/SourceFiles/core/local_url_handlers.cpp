@@ -24,7 +24,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/boxes/confirm_box.h"
 #include "ui/boxes/edit_birthday_box.h"
 #include "ui/integration.h"
-#include "payments/payments_non_panel_process.h"
 #include "boxes/peers/edit_peer_info_box.h"
 #include "boxes/share_box.h"
 // LoogriGram: still needed for Ui::ShowGiftErrorToast in
@@ -54,7 +53,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_controller.h"
 #include "window/window_peer_menu.h"
 #include "window/themes/window_theme_editor_box.h" // GenerateSlug.
-#include "payments/payments_checkout_process.h"
 #include "settings/settings_credits_graphics.h"
 #include "settings/settings_privacy_controllers.h"
 #include "storage/storage_account.h"

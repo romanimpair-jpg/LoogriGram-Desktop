@@ -75,8 +75,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_stories.h"
 #include "data/data_web_page.h"
 #include "chat_helpers/stickers_gift_box_pack.h"
-#include "payments/payments_checkout_process.h" // CheckoutProcess::Start.
-#include "payments/payments_non_panel_process.h" // ProcessNonPanelPaymentFormFactory.
 #include "platform/platform_notifications_manager.h"
 #include "spellcheck/spellcheck_highlight_syntax.h"
 #include "styles/style_dialogs.h"
@@ -5410,28 +5408,15 @@ void HistoryItem::createServiceFromMtp(const MTPDmessageService &message) {
 		const auto amount = data.vtotal_amount().v;
 		const auto currency = qs(data.vcurrency());
 		const auto payment = Get<HistoryServicePayment>();
-		const auto id = fullId();
-		const auto owner = &_history->owner();
 		payment->slug = data.vinvoice_slug().value_or_empty();
 		payment->recurringInit = data.is_recurring_init();
 		payment->recurringUsed = data.is_recurring_used();
 		payment->isCreditsCurrency = (currency == Ui::kCreditsCurrency);
 		payment->amount = AmountAndStarCurrency(amount, currency);
-		payment->invoiceLink = std::make_shared<LambdaClickHandler>([=](
-				ClickContext context) {
-			using namespace Payments;
-			const auto my = context.other.value<ClickHandlerContext>();
-			const auto weak = my.sessionWindow;
-			if (const auto item = owner->message(id)) {
-				CheckoutProcess::Start(
-					item,
-					Mode::Receipt,
-					crl::guard(weak, [=](auto) { weak->window().activate(); }),
-					Payments::ProcessNonPanelPaymentFormFactory(
-						weak,
-						item));
-			}
-		});
+		// LoogriGram: the service message stays and still reads "you paid N
+		// to X", because it is an arriving record of something that happened.
+		// Tapping it opened the receipt in the checkout panel, which is a
+		// payment surface, so it is no longer a link.
 	} else if (type == mtpc_messageActionGroupCall
 		|| type == mtpc_messageActionGroupCallScheduled) {
 		const auto started = (type == mtpc_messageActionGroupCall);
