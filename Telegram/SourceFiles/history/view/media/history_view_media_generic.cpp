@@ -16,6 +16,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_element.h"
 #include "history/view/history_view_cursor_state.h"
 #include "ui/chat/chat_style.h"
+#include "ui/effects/ripple_animation.h"
 #include "ui/dynamic_image.h"
 #include "ui/dynamic_thumbnails.h"
 #include "ui/painter.h"
@@ -24,6 +25,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/round_rect.h"
 #include "ui/userpic_view.h"
 #include "styles/style_chat.h"
+#include "styles/style_polls.h"
 
 namespace HistoryView {
 namespace {
@@ -64,8 +66,6 @@ private:
 
 	ClickHandlerPtr _link;
 	std::unique_ptr<Ui::RippleAnimation> _ripple;
-	mutable Ui::Premium::ColoredMiniStars _stars;
-	mutable std::optional<QColor> _starsLastColor;
 	Fn<void()> _repaint;
 
 	mutable QPoint _lastPoint;
@@ -88,9 +88,6 @@ ButtonPart::ButtonPart(
 		+ st::msgServiceGiftBoxButtonPadding.right()),
 	st::msgServiceGiftBoxButtonHeight)
 , _link(std::move(link))
-, _stars([=](const QRect &) {
-	repaint();
-}, Ui::Premium::MiniStarsType::SlowStars)
 , _repaint(std::move(repaint)) {
 }
 
@@ -116,24 +113,10 @@ void ButtonPart::draw(
 
 	auto white = QColor(255, 255, 255);
 	const auto fg = customColors ? white : context.st->msgServiceFg()->c;
-	if (!_starsLastColor || *_starsLastColor != fg) {
-		_starsLastColor = fg;
-		_stars.setColorOverride(QGradientStops{
-			{ 0., anim::with_alpha(fg, .3) },
-			{ 1., fg },
-		});
-		const auto padding = _size.height() / 2;
-		_stars.setCenter(
-			Rect(_size) - QMargins(padding, 0, padding, 0));
-	}
 
-	auto clipPath = QPainterPath();
-	clipPath.addRoundedRect(r, radius, radius);
-	p.setClipPath(clipPath);
-	_stars.setPaused(context.paused);
-	_stars.paint(p);
-	p.setClipping(false);
-
+	// LoogriGram: upstream sparkled this pill with the colored mini stars it
+	// came with from the unique gift view. It is a "View community" button
+	// now, so it is drawn plain.
 	if (_ripple) {
 		const auto opacity = p.opacity();
 		const auto ripple = customColors
