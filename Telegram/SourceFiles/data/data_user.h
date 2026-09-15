@@ -132,7 +132,6 @@ enum class UserDataFlag : uint32 {
 	HasUnreadStories = (1 << 20),
 	RequiresPremiumToWrite = (1 << 21),
 	HasRequirePremiumToWrite = (1 << 22),
-	HasStarsPerMessage = (1 << 23),
 	MessageMoneyRestrictionsKnown = (1 << 24),
 	ReadDatesPrivate = (1 << 25),
 	StoriesCorrespondent = (1 << 26),
@@ -201,7 +200,6 @@ public:
 	[[nodiscard]] bool hasPersonalPhoto() const;
 	[[nodiscard]] bool hasStoriesHidden() const;
 	[[nodiscard]] bool hasRequirePremiumToWrite() const;
-	[[nodiscard]] bool hasStarsPerMessage() const;
 	[[nodiscard]] bool requiresPremiumToWrite() const;
 	[[nodiscard]] bool messageMoneyRestrictionsKnown() const;
 	[[nodiscard]] bool canSendIgnoreMoneyRestrictions() const;
@@ -218,8 +216,6 @@ public:
 	void setStoriesCorrespondent(bool is);
 	[[nodiscard]] bool storiesCorrespondent() const;
 
-	void setStarsPerMessage(int stars);
-	[[nodiscard]] int starsPerMessage() const;
 
 	void setStarsRating(Data::StarsRating value);
 	[[nodiscard]] Data::StarsRating starsRating() const;
@@ -330,7 +326,6 @@ private:
 	Data::Birthday _birthday;
 	int _commonChatsCount = 0;
 	int _peerGiftsCount = 0;
-	int _starsPerMessage = 0;
 	ContactStatus _contactStatus = ContactStatus::Unknown;
 	CallsStatus _callsStatus = CallsStatus::Unknown;
 

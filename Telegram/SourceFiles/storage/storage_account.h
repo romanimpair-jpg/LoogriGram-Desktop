@@ -174,13 +174,6 @@ public:
 	[[nodiscard]] bool isPeerTrustedPayment(PeerId peerId);
 	void markPeerTrustedOpenWebView(PeerId peerId);
 	[[nodiscard]] bool isPeerTrustedOpenWebView(PeerId peerId);
-	void markPeerTrustedPayForMessage(PeerId peerId, int starsPerMessage);
-	[[nodiscard]] bool isPeerTrustedPayForMessage(
-		PeerId peerId,
-		int starsPerMessage);
-	[[nodiscard]] bool peerTrustedPayForMessageRead() const;
-	[[nodiscard]] bool hasPeerTrustedPayForMessageEntry(PeerId peerId) const;
-	void clearPeerTrustedPayForMessage(PeerId peerId);
 
 	template <typename Type, typename Other>
 	void writePref(std::string_view key, Other &&value) {
@@ -366,7 +359,6 @@ private:
 	qint32 _cacheBigFileTotalTimeLimit = 0;
 
 	base::flat_map<PeerId, base::flags<PeerTrustFlag>> _trustedPeers;
-	base::flat_map<PeerId, int> _trustedPayPerMessage;
 	bool _trustedPeersRead = false;
 	bool _readingUserSettings = false;
 	bool _recentHashtagsAndBotsWereRead = false;

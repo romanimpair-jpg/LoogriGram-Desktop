@@ -609,7 +609,6 @@ HistoryWidget::HistoryWidget(
 		session().attachWebView().attachBotsUpdates(),
 		session().changes().peerUpdates(
 			Data::PeerUpdate::Flag::Rights
-			| Data::PeerUpdate::Flag::StarsPerMessage
 		) | rpl::filter([=](const Data::PeerUpdate &update) {
 			return update.peer == _peer;
 		}) | rpl::to_empty
@@ -905,7 +904,6 @@ HistoryWidget::HistoryWidget(
 		| PeerUpdateFlag::ChatThemeToken
 		| PeerUpdateFlag::FullInfo
 		| PeerUpdateFlag::ManagedBot
-		| PeerUpdateFlag::StarsPerMessage
 		| PeerUpdateFlag::GiftSettings
 	) | rpl::filter([=](const Data::PeerUpdate &update) {
 		if (update.peer.get() == _peer) {
@@ -948,10 +946,6 @@ HistoryWidget::HistoryWidget(
 				}
 				return;
 			}
-		}
-		if (flags & PeerUpdateFlag::StarsPerMessage) {
-			updateFieldPlaceholder();
-			updateSendButtonType();
 		}
 		if (flags & PeerUpdateFlag::GiftSettings) {
 				}
@@ -999,9 +993,6 @@ HistoryWidget::HistoryWidget(
 		if (flags & PeerUpdateFlag::FullInfo) {
 			fullInfoUpdated();
 			updateSendButtonType();
-			if (_peer->starsPerMessageChecked()) {
-				session().credits().load();
-			}
 		}
 	}, lifetime());
 
@@ -2052,9 +2043,6 @@ void HistoryWidget::orderWidgets() {
 	if (_contactStatus) {
 		_contactStatus->bar().raise();
 	}
-	if (_paysStatus) {
-		_paysStatus->bar().raise();
-	}
 	if (_translateBar) {
 		_translateBar->raise();
 	}
@@ -3084,7 +3072,6 @@ void HistoryWidget::showHistory(
 	_showAtMsgId = showAtMsgId;
 	_showAtMsgParams = params;
 	_historyInited = false;
-	_paysStatus = nullptr;
 	_contactStatus = nullptr;
 	_businessBotStatus = nullptr;
 
@@ -3105,14 +3092,6 @@ void HistoryWidget::showHistory(
 
 		refreshDirectMessageShown();
 		if (const auto user = _peer->asUser()) {
-			_paysStatus = std::make_unique<PaysStatus>(
-				controller(),
-				_topBars.get(),
-				user);
-			_paysStatus->bar().heightValue(
-			) | rpl::on_next([=] {
-				updateControlsGeometry();
-			}, _paysStatus->bar().lifetime());
 			_businessBotStatus = std::make_unique<BusinessBotStatus>(
 				controller(),
 				_topBars.get(),
@@ -3829,9 +3808,6 @@ void HistoryWidget::updateControlsVisibility() {
 		_scroll->show();
 	}
 	_topBars->show();
-	if (_paysStatus) {
-		_paysStatus->show();
-	}
 	if (_contactStatus) {
 		_contactStatus->show();
 	}
@@ -5169,9 +5145,6 @@ void HistoryWidget::hideChildWidgets() {
 		_chooseTheme->hide();
 	}
 	_richDraftPreview->hide();
-	if (_paysStatus) {
-		_paysStatus->hide();
-	}
 	if (_contactStatus) {
 		_contactStatus->hide();
 	}
@@ -5494,8 +5467,6 @@ SendMenu::Details HistoryWidget::sendMenuDetails() const {
 		.isEphemeralBotReply(replyTo().messageId);
 	const auto type = (!_peer || ephemeralReply)
 		? SendMenu::Type::Disabled
-		: _peer->starsPerMessageChecked()
-		? SendMenu::Type::SilentOnly
 		: _peer->isSelf()
 		? SendMenu::Type::Reminder
 		: HistoryView::CanScheduleUntilOnline(_peer)
@@ -7037,9 +7008,6 @@ void HistoryWidget::fieldFocused() {
 }
 
 void HistoryWidget::updateFieldPlaceholder() {
-	_voiceRecordBar->setPauseInsteadSend(_history
-		&& _history->peer->starsPerMessageChecked() > 0);
-
 	if (!_editMsgId && _inlineBot && !_inlineLookingUpBot) {
 		_field->setPlaceholder(
 			rpl::single(_inlineBot->botInfo->inlinePlaceholder.mid(1)),
@@ -7047,8 +7015,6 @@ void HistoryWidget::updateFieldPlaceholder() {
 		return;
 	}
 
-	const auto ephemeralReply = session().ephemeralMessages()
-		.isEphemeralBotReply(replyTo().messageId);
 	_field->setPlaceholder([&]() -> rpl::producer<QString> {
 		const auto peer = _history ? _history->peer.get() : nullptr;
 		if (_editMsgId) {
@@ -7058,12 +7024,6 @@ void HistoryWidget::updateFieldPlaceholder() {
 		} else if ((_kbShown || _keyboard->forceReply())
 			&& !_keyboard->placeholder().isEmpty()) {
 			return rpl::single(_keyboard->placeholder());
-		} else if (const auto stars = ephemeralReply
-			? 0
-			: peer->starsPerMessageChecked()) {
-			return tr::lng_message_stars_ph(
-				lt_count,
-				rpl::single(stars * 1.));
 		} else if (const auto channel = peer->asChannel()) {
 			const auto topic = resolveReplyToTopic();
 			const auto topicRootId = topic
@@ -7558,13 +7518,8 @@ void HistoryWidget::updateControlsGeometry() {
 		_translateBar->move(0, translateTop);
 		_translateBar->resizeToWidth(innerWidth);
 	}
-	const auto paysStatusTop = translateTop
+	const auto contactStatusTop = translateTop
 		+ (_translateBar ? _translateBar->height() : 0);
-	if (_paysStatus) {
-		_paysStatus->bar().move(0, paysStatusTop);
-	}
-	const auto contactStatusTop = paysStatusTop
-		+ (_paysStatus ? _paysStatus->bar().height() : 0);
 	if (_contactStatus) {
 		_contactStatus->bar().move(tabsLeftSkip, contactStatusTop);
 	}
@@ -7835,9 +7790,6 @@ void HistoryWidget::updateHistoryGeometry(
 	}
 	if (_requestsBar) {
 		newScrollHeight -= _requestsBar->height();
-	}
-	if (_paysStatus) {
-		newScrollHeight -= _paysStatus->bar().height();
 	}
 	if (_contactStatus) {
 		newScrollHeight -= _contactStatus->bar().height();
@@ -8284,7 +8236,6 @@ void HistoryWidget::botCallbackSent(not_null<HistoryItem*> item) {
 int HistoryWidget::computeMaxFieldHeight() const {
 	const auto available = height()
 		- _topBar->height()
-		- (_paysStatus ? _paysStatus->bar().height() : 0)
 		- (_contactStatus ? _contactStatus->bar().height() : 0)
 		- (_businessBotStatus ? _businessBotStatus->bar().height() : 0)
 		- (_pinnedBar ? _pinnedBar->height() : 0)

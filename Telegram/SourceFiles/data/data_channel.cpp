@@ -1021,22 +1021,6 @@ void ChannelData::growSlowmodeLastMessage(TimeId when) {
 	session().changes().peerUpdated(this, UpdateFlag::Slowmode);
 }
 
-int ChannelData::starsPerMessage() const {
-	return _starsPerMessage;
-}
-
-int ChannelData::commonStarsPerMessage() const {
-	return owner().commonStarsPerMessage(this);
-}
-
-void ChannelData::setStarsPerMessage(int stars) {
-	if (_starsPerMessage != stars) {
-		_starsPerMessage = stars;
-		session().changes().peerUpdated(this, UpdateFlag::StarsPerMessage);
-	}
-	checkTrustedPayForMessage();
-}
-
 int ChannelData::peerGiftsCount() const {
 	return _peerGiftsCount;
 }
@@ -1345,8 +1329,6 @@ void ApplyChannelUpdate(
 	}
 
 	channel->setMessagesTTL(update.vttl_period().value_or_empty());
-	channel->setStarsPerMessage(
-		update.vsend_paid_messages_stars().value_or_empty());
 	channel->setGuardBotId(UserId(update.vguard_bot_id().value_or_empty()));
 	using Flag = ChannelDataFlag;
 	const auto mask = Flag::CanSetUsername
@@ -1362,9 +1344,6 @@ void ApplyChannelUpdate(
 		| Flag::PaidMediaAllowed
 		| Flag::CanViewCreditsRevenue
 		| Flag::StargiftsAvailable
-		| Flag::PaidMessagesAvailable
-		| (channel->starsPerMessage() ? Flag::HasStarsPerMessage : Flag())
-		| Flag::StarsPerMessageKnown
 		| Flag::HasWelcomeMessages;
 	channel->setFlags((channel->flags() & ~mask)
 		| (update.is_can_set_username() ? Flag::CanSetUsername : Flag())
@@ -1390,11 +1369,6 @@ void ApplyChannelUpdate(
 		| (update.is_stargifts_available()
 			? Flag::StargiftsAvailable
 			: Flag())
-		| (update.is_paid_messages_available()
-			? Flag::PaidMessagesAvailable
-			: Flag())
-		| (channel->starsPerMessage() ? Flag::HasStarsPerMessage : Flag())
-		| Flag::StarsPerMessageKnown
 		| (update.is_has_welcome_messages()
 			? Flag::HasWelcomeMessages
 			: Flag()));

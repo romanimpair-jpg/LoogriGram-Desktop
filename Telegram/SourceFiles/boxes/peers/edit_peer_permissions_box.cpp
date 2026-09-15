@@ -32,7 +32,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/profile/info_profile_values.h"
 #include "boxes/peers/edit_participants_box.h"
 #include "boxes/peers/edit_peer_info_box.h"
-#include "boxes/edit_privacy_box.h"
 #include "settings/settings_power_saving.h"
 #include "window/window_session_controller.h"
 #include "window/window_controller.h"
@@ -54,7 +53,6 @@ namespace {
 constexpr auto kSlowmodeValues = 8;
 constexpr auto kBoostsUnrestrictValues = 5;
 constexpr auto kForceDisableTooltipDuration = 3 * crl::time(1000);
-constexpr auto kDefaultChargeStars = 10;
 
 [[nodiscard]] auto Dependencies(PowerSaving::Flags)
 -> std::vector<std::pair<PowerSaving::Flag, PowerSaving::Flag>> {
@@ -1214,43 +1212,11 @@ void ShowEditPeerPermissionsBox(
 		rpl::variable<int> slowmodeSeconds;
 		rpl::variable<int> boostsUnrestrict;
 		rpl::variable<bool> hasSendRestrictions;
-		rpl::variable<int> starsPerMessage;
 	};
 	const auto state = inner->lifetime().make_state<State>();
-	const auto channel = peer->asChannel();
-	const auto available = channel && channel->paidMessagesAvailable();
 
 	Ui::AddSkip(inner);
 	Ui::AddDivider(inner);
-	auto charging = (Ui::SettingsButton*)nullptr;
-	if (available) {
-		Ui::AddSkip(inner);
-		const auto starsPerMessage = peer->isChannel()
-			? peer->asChannel()->commonStarsPerMessage()
-			: 0;
-		charging = inner->add(object_ptr<Ui::SettingsButton>(
-			inner,
-			tr::lng_rights_charge_stars(),
-			st::settingsButtonNoIcon));
-		charging->toggleOn(rpl::single(starsPerMessage > 0));
-		Ui::AddSkip(inner);
-		Ui::AddDividerText(inner, tr::lng_rights_charge_stars_about());
-
-		const auto chargeWrap = inner->add(
-			object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-				inner,
-				object_ptr<Ui::VerticalLayout>(inner)));
-		chargeWrap->toggleOn(charging->toggledValue());
-		chargeWrap->finishAnimating();
-		const auto chargeInner = chargeWrap->entity();
-
-		Ui::AddSkip(chargeInner);
-		state->starsPerMessage = SetupChargeSlider(
-			chargeInner,
-			peer,
-			(starsPerMessage > 0) ? starsPerMessage : std::optional<int>(),
-			kDefaultChargeStars);
-	}
 
 	static constexpr auto kSendRestrictions = Flag::EmbedLinks
 		| Flag::SendReactions
@@ -1306,14 +1272,10 @@ void ShowEditPeerPermissionsBox(
 		const auto boostsUnrestrict = hasRestrictions
 			? state->boostsUnrestrict.current()
 			: 0;
-		const auto starsPerMessage = (charging && charging->toggled())
-			? state->starsPerMessage.current()
-			: 0;
 		done({
 			restrictions,
 			slowmodeSeconds,
 			boostsUnrestrict,
-			starsPerMessage,
 		});
 	});
 	box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });

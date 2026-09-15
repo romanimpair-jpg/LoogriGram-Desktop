@@ -62,19 +62,14 @@ namespace {
 
 [[nodiscard]] rpl::producer<QString> PlaceholderText(
 		const std::shared_ptr<ChatHelpers::Show> &show,
-		rpl::producer<ReplyAreaType> type,
-		rpl::producer<int> starsPerMessage) {
+		rpl::producer<ReplyAreaType> type) {
 	return rpl::combine(
 		show->session().data().stories().stealthModeValue(),
-		std::move(type),
-		std::move(starsPerMessage)
-	) | rpl::map([](
-			Data::StealthMode value,
-			ReplyAreaType type,
-			int starsPerMessage) {
-		return std::tuple(value.enabledTill, type, starsPerMessage);
+		std::move(type)
+	) | rpl::map([](Data::StealthMode value, ReplyAreaType type) {
+		return std::tuple(value.enabledTill, type);
 	}) | rpl::distinct_until_changed(
-	) | rpl::map([](TimeId till, ReplyAreaType type, int starsPerMessage) {
+	) | rpl::map([](TimeId till, ReplyAreaType type) {
 		return rpl::single(
 			rpl::empty
 		) | rpl::then(
@@ -87,15 +82,7 @@ namespace {
 			rpl::single(0)
 		) | rpl::map([=](TimeId left) {
 			return (type == ReplyAreaType::VideoStreamComment)
-				? (starsPerMessage
-					? tr::lng_video_stream_comment_paid_ph(
-						lt_count,
-						rpl::single(starsPerMessage * 1.))
-					: tr::lng_video_stream_comment_ph())
-				: starsPerMessage
-				? tr::lng_message_stars_ph(
-					lt_count,
-					rpl::single(starsPerMessage * 1.))
+				? tr::lng_video_stream_comment_ph()
 				: left
 				? tr::lng_stealth_mode_countdown(
 					lt_left,
@@ -177,8 +164,7 @@ ReplyArea::ReplyArea(not_null<Controller*> controller)
 		.stickerOrEmojiChosen = _controller->stickerOrEmojiChosen(),
 		.customPlaceholder = PlaceholderText(
 			_controller->uiShow(),
-			rpl::deferred([=] { return _type.value(); }),
-			rpl::deferred([=] { return _starsForMessage.value(); })),
+			rpl::deferred([=] { return _type.value(); })),
 		.voiceCustomCancelText = tr::lng_record_cancel_stories(tr::now),
 		.voiceLockFromBottom = true,
 		.features = Features(false, false),
@@ -707,7 +693,6 @@ void ReplyArea::show(
 		_controller->setCommentsShownToggles(
 			_controls->commentsShownToggles());
 	}
-	_starsForMessage = starsPerMessageValue();
 	if (!peerChanged) {
 		if (_data.peer) {
 			_controls->clear();
@@ -791,26 +776,6 @@ void ReplyArea::show(
 			_cant = nullptr;
 		}
 	}
-}
-
-rpl::producer<int> ReplyArea::starsPerMessageValue() const {
-	if (const auto stream = _data.videoStream.get()) {
-		return rpl::combine(
-			Data::CanManageGroupCallValue(stream->peer()),
-			stream->messagesMinPriceValue()
-		) | rpl::map([=](bool canManage, int price) {
-			return canManage ? 0 : price;
-		});
-	} else if (const auto peer = _data.peer) {
-		using Flag = Data::PeerUpdate::Flag;
-		return peer->session().changes().peerFlagsValue(
-			peer,
-			Flag::StarsPerMessage | Flag::FullInfo
-		) | rpl::map([=] {
-			return peer->starsPerMessageChecked();
-		});
-	}
-	return rpl::single(0);
 }
 
 void ReplyArea::updateVideoStream(not_null<Calls::GroupCall*> videoStream) {

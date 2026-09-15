@@ -885,7 +885,6 @@ ChatWidget::ChatWidget(
 			| PeerUpdateFlag::FullInfo
 			| PeerUpdateFlag::Members
 			| PeerUpdateFlag::ManagedBot
-			| PeerUpdateFlag::StarsPerMessage
 			| PeerUpdateFlag::Migration
 			| PeerUpdateFlag::UnavailableReason
 	) | rpl::on_next([=](const Data::PeerUpdate &update) {
@@ -909,18 +908,12 @@ ChatWidget::ChatWidget(
 			| PeerUpdateFlag::Rights)) {
 			refreshCanSendMessages();
 		}
-		if (update.flags & (PeerUpdateFlag::FullInfo
-			| PeerUpdateFlag::Rights
-			| PeerUpdateFlag::ChannelAmIn
-			| PeerUpdateFlag::StarsPerMessage)) {
-		}
 		if (update.flags & PeerUpdateFlag::IsBlocked) {
 			refreshAboutView(true);
 		} else if (update.flags & (PeerUpdateFlag::FullInfo
 			| PeerUpdateFlag::Rights
 			| PeerUpdateFlag::Members
-			| PeerUpdateFlag::ManagedBot
-			| PeerUpdateFlag::StarsPerMessage)) {
+			| PeerUpdateFlag::ManagedBot)) {
 			refreshAboutView();
 		}
 		if (update.flags & PeerUpdateFlag::FullInfo) {
@@ -3076,11 +3069,7 @@ SendMenu::Details ChatWidget::sendMenuDetails() const {
 	const auto type = ephemeralReply
 		? Type::Disabled
 		: (mode() != Mode::History)
-		? ((_topic && !_peer->starsPerMessageChecked())
-			? Type::Scheduled
-			: Type::SilentOnly)
-		: _peer->starsPerMessageChecked()
-		? Type::SilentOnly
+		? (_topic ? Type::Scheduled : Type::SilentOnly)
 		: _peer->isSelf()
 		? Type::Reminder
 		: HistoryView::CanScheduleUntilOnline(_peer)
@@ -5571,8 +5560,7 @@ void ChatWidget::refreshAboutView(bool force) {
 			&& !user->phoneCountryCode().isEmpty()) {
 			refresh();
 		} else if (_inner->isEmpty()) {
-			if (user->starsPerMessage() > 0
-				|| (user->requiresPremiumToWrite()
+			if ((user->requiresPremiumToWrite()
 					&& !user->session().premium())
 				|| user->isFullLoaded()) {
 				refresh();

@@ -209,12 +209,6 @@ public:
 	[[nodiscard]] rpl::producer<bool> messagesEnabledValue() const {
 		return _messagesEnabled.value();
 	}
-	[[nodiscard]] int messagesMinPrice() const {
-		return _messagesMinPrice.current();
-	}
-	[[nodiscard]] rpl::producer<int> messagesMinPriceValue() const {
-		return _messagesMinPrice.value();
-	}
 
 	[[nodiscard]] not_null<PeerData*> resolveSendAs() const {
 		return _savedSendAs.current();
@@ -287,7 +281,6 @@ private:
 	rpl::variable<int> _fullCount = 0;
 	rpl::variable<int> _unmutedVideoLimit = 0;
 	rpl::variable<bool> _messagesEnabled = false;
-	rpl::variable<int> _messagesMinPrice = 0;
 	rpl::variable<TimeId> _recordStartDate = 0;
 	rpl::variable<TimeId> _scheduleDate = 0;
 	rpl::variable<bool> _scheduleStartSubscribed = false;

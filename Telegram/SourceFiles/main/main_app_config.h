@@ -80,11 +80,6 @@ public:
 	[[nodiscard]] float64 starsSellRate() const;
 	[[nodiscard]] float64 currencySellRate() const;
 	[[nodiscard]] bool starsSpendTopupInvoiceDisabled() const;
-	[[nodiscard]] bool paidMessagesAvailable() const;
-	[[nodiscard]] int paidMessageStarsMax() const;
-	[[nodiscard]] int paidMessageCommission() const;
-	[[nodiscard]] int paidMessageChannelStarsDefault() const;
-
 	[[nodiscard]] int pinnedGiftsLimit() const;
 	[[nodiscard]] int giftCollectionsLimit() const;
 	[[nodiscard]] int giftCollectionGiftsLimit() const;

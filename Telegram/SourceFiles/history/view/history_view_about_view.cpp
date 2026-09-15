@@ -38,7 +38,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_reply_markup.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
-#include "settings/sections/settings_credits.h" // BuyStarsHandler
 #include "ui/chat/chat_style.h"
 #include "ui/image/image_location_factory.h"
 #include "ui/text/custom_emoji_instance.h"
@@ -67,7 +66,6 @@ class EmptyChatLockedBox final
 public:
 	enum class Type {
 		PremiumRequired,
-		StarsCharged,
 		FreeDirect,
 	};
 
@@ -102,8 +100,6 @@ public:
 
 private:
 	const not_null<Element*> _parent;
-	Settings::BuyStarsHandler _buyStars;
-	rpl::variable<bool> _buyStarsLoading;
 	Type _type = {};
 
 };
@@ -521,7 +517,7 @@ EmptyChatLockedBox::~EmptyChatLockedBox() = default;
 int EmptyChatLockedBox::width() {
 	return (_type == Type::PremiumRequired)
 		? st::premiumRequiredWidth
-		: st::starsPerMessageWidth;
+		: st::directMessagesFreeWidth;
 }
 
 int EmptyChatLockedBox::top() {
@@ -541,9 +537,10 @@ int EmptyChatLockedBox::buttonSkip() {
 }
 
 rpl::producer<QString> EmptyChatLockedBox::button() {
-	return (_type == Type::FreeDirect || _type == Type::PremiumRequired)
-		? nullptr
-		: tr::lng_send_charges_stars_go();
+	// LoogriGram: the only button this box ever had said "top up your stars",
+	// for the case where the peer charged for a message. Nothing here is for
+	// sale, so neither box has a button now.
+	return nullptr;
 }
 
 auto EmptyChatLockedBox::buttonMinistars()
@@ -556,20 +553,10 @@ TextWithEntities EmptyChatLockedBox::subtitle() {
 }
 
 ClickHandlerPtr EmptyChatLockedBox::createViewLink() {
-	_buyStarsLoading = _buyStars.loadingValue();
-	const auto handler = [=](ClickContext context) {
-		const auto my = context.other.value<ClickHandlerContext>();
-		// LoogriGram: for PremiumRequired this button opened the page
-		// selling a subscription. buttonText() below now returns nothing
-		// for that case, so there is no button to press.
-		if (const auto controller = my.sessionWindow.get()) {
-			if (_type != Type::PremiumRequired
-				&& !_buyStarsLoading.current()) {
-				_buyStars.handler(controller->uiShow())();
-			}
-		}
-	};
-	return std::make_shared<LambdaClickHandler>(crl::guard(this, handler));
+	// LoogriGram: this opened the subscription page for PremiumRequired and
+	// the star top-up for a charging peer. Neither is offered, and button()
+	// returns nothing, so there is nothing to link.
+	return nullptr;
 }
 
 void EmptyChatLockedBox::draw(
@@ -756,10 +743,6 @@ bool AboutView::refresh() {
 				setItem(makePremiumRequired(), nullptr);
 			} else if (user->isBlocked()) {
 				setItem(makeBlocked(), nullptr);
-			} else if (user->businessDetails().intro) {
-				makeIntro(user);
-			} else if (const auto stars = user->starsPerMessageChecked()) {
-				setItem(makeStarsPerMessage(stars), nullptr);
 			} else {
 				makeIntro(user);
 			}
@@ -768,9 +751,7 @@ bool AboutView::refresh() {
 			if (_item) {
 				return false;
 			}
-			setItem(
-				makeStarsPerMessage(monoforum->starsPerMessageChecked()),
-				nullptr);
+			setItem(makeDirectMessagesFree(), nullptr);
 			return true;
 		}
 		if (_item) {
@@ -1076,37 +1057,21 @@ AdminLog::OwnedItem AboutView::makePremiumRequired() {
 	return result;
 }
 
-AdminLog::OwnedItem AboutView::makeStarsPerMessage(int stars) {
-	auto name = tr::bold(_history->peer->shortName());
-	auto cost = Ui::Text::IconEmoji(
-		&st::starIconEmoji
-	).append(tr::bold(Lang::FormatCountDecimal(stars)));
+// LoogriGram: this said either "N stars per message" or "this channel is
+// free to write to", for a user and for a channel's direct messages. Only
+// the free half is still true of anyone we can write to.
+AdminLog::OwnedItem AboutView::makeDirectMessagesFree() {
 	const auto item = _history->makeMessage({
 		.id = _history->nextNonHistoryEntryId(),
 		.flags = (MessageFlag::FakeAboutView
 			| MessageFlag::FakeHistoryItem
 			| MessageFlag::Local),
 		.from = _history->peer->id,
-	}, PreparedServiceText{ !_history->peer->isMonoforum()
-		? tr::lng_send_charges_stars_text(
-			tr::now,
-			lt_user,
-			std::move(name),
-			lt_amount,
-			std::move(cost),
-			tr::rich)
-		: stars
-		? tr::lng_send_charges_stars_channel(
+	}, PreparedServiceText{
+		tr::lng_send_free_channel(
 			tr::now,
 			lt_channel,
-			std::move(name),
-			lt_amount,
-			std::move(cost),
-			tr::rich)
-		: tr::lng_send_free_channel(
-			tr::now,
-			lt_channel,
-			std::move(name),
+			tr::bold(_history->peer->shortName()),
 			tr::rich),
 	});
 	auto result = AdminLog::OwnedItem(_delegate, item);
@@ -1114,9 +1079,7 @@ AdminLog::OwnedItem AboutView::makeStarsPerMessage(int stars) {
 		result.get(),
 		std::make_unique<EmptyChatLockedBox>(
 			result.get(),
-			(stars
-				? EmptyChatLockedBox::Type::StarsCharged
-				: EmptyChatLockedBox::Type::FreeDirect))));
+			EmptyChatLockedBox::Type::FreeDirect)));
 	return result;
 }
 

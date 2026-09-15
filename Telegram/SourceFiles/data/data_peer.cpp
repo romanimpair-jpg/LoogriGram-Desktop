@@ -382,17 +382,6 @@ void PeerData::invalidateEmptyUserpic() {
 	_userpicEmpty = nullptr;
 }
 
-void PeerData::checkTrustedPayForMessage() {
-	if (!_checkedTrustedPayForMessage
-		&& !starsPerMessage()
-		&& session().local().peerTrustedPayForMessageRead()) {
-		_checkedTrustedPayForMessage = 1;
-		if (session().local().hasPeerTrustedPayForMessageEntry(id)) {
-			session().local().clearPeerTrustedPayForMessage(id);
-		}
-	}
-}
-
 ClickHandlerPtr PeerData::createOpenLink() {
 	return std::make_shared<PeerClickHandler>(this);
 }
@@ -830,7 +819,6 @@ void PeerData::checkFolder(FolderId folderId) {
 void PeerData::clearBusinessBot() {
 	if (const auto details = _barDetails.get()) {
 		if (details->requestChatDate
-			|| details->paysPerMessage
 			|| !details->phoneCountryCode.isEmpty()) {
 			details->businessBot = nullptr;
 			details->businessBotManageUrl = QString();
@@ -874,10 +862,8 @@ void PeerData::saveTranslationDisabled(bool disabled) {
 
 void PeerData::setBarSettings(const MTPPeerSettings &data) {
 	data.match([&](const MTPDpeerSettings &data) {
-		const auto wasPaysPerMessage = paysPerMessage();
 		if (!data.vbusiness_bot_id()
 			&& !data.vrequest_chat_title()
-			&& !data.vcharge_paid_message_stars()
 			&& !data.vphone_country()
 			&& !data.vregistration_month()
 			&& !data.vname_change_date()
@@ -904,8 +890,6 @@ void PeerData::setBarSettings(const MTPPeerSettings &data) {
 				: nullptr;
 			_barDetails->businessBotManageUrl
 				= qs(data.vbusiness_bot_manage_url().value_or_empty());
-			_barDetails->paysPerMessage
-				= data.vcharge_paid_message_stars().value_or_empty();
 		}
 		using Flag = PeerBarSetting;
 		setBarSettings((data.is_add_contact() ? Flag::AddContact : Flag())
@@ -929,11 +913,6 @@ void PeerData::setBarSettings(const MTPPeerSettings &data) {
 			| (data.is_business_bot_can_reply()
 				? Flag::BusinessBotCanReply
 				: Flag()));
-		if (wasPaysPerMessage != paysPerMessage()) {
-			session().changes().peerUpdated(
-				this,
-				UpdateFlag::PaysPerMessage);
-		}
 	});
 }
 
@@ -952,27 +931,6 @@ void PeerData::setBarSettings(PeerBarSettings which) {
 					history->refreshHiddenLinksItems();
 				});
 			}
-		}
-	}
-}
-
-int PeerData::paysPerMessage() const {
-	return _barDetails ? _barDetails->paysPerMessage : 0;
-}
-
-void PeerData::clearPaysPerMessage() {
-	if (const auto details = _barDetails.get()) {
-		if (details->paysPerMessage) {
-			if (details->businessBot
-				|| details->requestChatDate
-				|| !details->phoneCountryCode.isEmpty()) {
-				details->paysPerMessage = 0;
-			} else {
-				_barDetails = nullptr;
-			}
-			session().changes().peerUpdated(
-				this,
-				UpdateFlag::PaysPerMessage);
 		}
 	}
 }
@@ -1914,26 +1872,6 @@ bool PeerData::amMonoforumAdmin() const {
 		return channel->flags() & ChannelDataFlag::MonoforumAdmin;
 	}
 	return false;
-}
-
-int PeerData::starsPerMessage() const {
-	if (const auto user = asUser()) {
-		return user->starsPerMessage();
-	} else if (const auto channel = asChannel()) {
-		return channel->starsPerMessage();
-	}
-	return 0;
-}
-
-int PeerData::starsPerMessageChecked() const {
-	if (const auto channel = asChannel()) {
-		if (channel->adminRights()
-			|| channel->amCreator()
-			|| amMonoforumAdmin()) {
-			return 0;
-		}
-	}
-	return starsPerMessage();
 }
 
 Data::StarsRating PeerData::starsRating() const {

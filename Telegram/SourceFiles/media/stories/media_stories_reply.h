@@ -155,14 +155,12 @@ private:
 	void chooseAttach(std::optional<bool> overrideSendImagesAsPhotos);
 
 	[[nodiscard]] Fn<SendMenu::Details()> sendMenuDetails() const;
-	[[nodiscard]] rpl::producer<int> starsPerMessageValue() const;
 
 	void showPremiumToast(not_null<DocumentData*> emoji);
 	[[nodiscard]] bool showSlowmodeError();
 
 	const not_null<Controller*> _controller;
 	rpl::variable<ReplyAreaType> _type;
-	rpl::variable<int> _starsForMessage;
 	base::weak_ptr<Calls::GroupCall> _videoStream;
 
 	const std::unique_ptr<HistoryView::ComposeControls> _controls;

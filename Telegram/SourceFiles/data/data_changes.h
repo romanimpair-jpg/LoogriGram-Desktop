@@ -79,7 +79,6 @@ struct PeerUpdate {
 		BackgroundEmoji     = (1ULL << 16),
 		StoriesState        = (1ULL << 17),
 		VerifyInfo          = (1ULL << 18),
-		StarsPerMessage     = (1ULL << 19),
 
 		// For users
 		CanShareContact     = (1ULL << 20),
@@ -101,7 +100,6 @@ struct PeerUpdate {
 		// LoogriGram: bit 36 was StarRefProgram. The gap is deliberate -
 		// these are runtime notification bits, never serialized, so
 		// renumbering the rest would be churn for nothing.
-		PaysPerMessage      = (1ULL << 37),
 		GiftSettings        = (1ULL << 38),
 		StarsRating         = (1ULL << 39),
 		ContactNote         = (1ULL << 40),

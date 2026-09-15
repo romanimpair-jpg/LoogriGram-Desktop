@@ -43,7 +43,6 @@ namespace HistoryView {
 class BusinessBotStatus;
 class ContactStatus;
 class ListWidget;
-class PaysStatus;
 class PinnedTracker;
 class TopicReopenBar;
 class TranslateTracker;
@@ -143,7 +142,6 @@ private:
 	std::unique_ptr<Ui::PinnedBar> _hidingPinnedBar;
 	std::unique_ptr<Ui::PinnedBar> _repliesRootView;
 	std::unique_ptr<TopicReopenBar> _topicReopenBar;
-	std::unique_ptr<PaysStatus> _paysStatus;
 	std::unique_ptr<ContactStatus> _contactStatus;
 	std::unique_ptr<BusinessBotStatus> _businessBotStatus;
 	rpl::variable<int> _height = 0;
@@ -155,7 +153,6 @@ private:
 	int _pinnedBarHeight = 0;
 	int _repliesRootViewHeight = 0;
 	int _topicReopenBarHeight = 0;
-	int _paysStatusHeight = 0;
 	int _contactStatusHeight = 0;
 	int _businessBotStatusHeight = 0;
 	HistoryItem *_shownRepliesRootItem = nullptr;

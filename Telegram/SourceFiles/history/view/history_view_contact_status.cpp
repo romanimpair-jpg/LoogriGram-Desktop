@@ -23,7 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/boxes/confirm_box.h"
 #include "ui/layers/generic_box.h"
 #include "ui/ui_utility.h"
-#include "chat_helpers/message_field.h" // PaidSendButtonText
 #include "core/click_handler_types.h"
 #include "core/ui_integration.h"
 #include "history/history.h"
@@ -1266,120 +1265,6 @@ void TopicReopenBar::setupHandler() {
 	_reopen->setClickedCallback([=] {
 		_topic->setClosedAndSave(false);
 	});
-}
-
-class PaysStatus::Bar final : public Ui::RpWidget {
-public:
-	Bar(QWidget *parent, not_null<PeerData*> peer);
-
-	void showState(State state);
-
-	[[nodiscard]] rpl::producer<> removeClicks() const;
-
-private:
-	void paintEvent(QPaintEvent *e) override;
-	int resizeGetHeight(int newWidth) override;
-
-	not_null<PeerData*> _peer;
-	object_ptr<Ui::FlatLabel> _label;
-	object_ptr<Ui::LinkButton> _remove;
-	rpl::event_stream<> _removeClicks;
-
-};
-
-PaysStatus::Bar::Bar(QWidget *parent, not_null<PeerData*> peer)
-: RpWidget(parent)
-, _peer(peer)
-, _label(this, st::paysStatusLabel)
-, _remove(this, tr::lng_payment_bar_button(tr::now)) {
-	_label->setAttribute(Qt::WA_TransparentForMouseEvents);
-}
-
-void PaysStatus::Bar::showState(State state) {
-	_label->setMarkedText(tr::lng_payment_bar_text(
-		tr::now,
-		lt_name,
-		TextWithEntities{ _peer->shortName() },
-		lt_cost,
-		PaidSendButtonText(tr::now, state.perMessage),
-		tr::marked));
-	resizeToWidth(width());
-}
-
-rpl::producer<> PaysStatus::Bar::removeClicks() const {
-	return _remove->clicks() | rpl::to_empty;
-}
-
-void PaysStatus::Bar::paintEvent(QPaintEvent *e) {
-	QPainter p(this);
-	p.fillRect(e->rect(), st::historyContactStatusButton.bgColor);
-}
-
-int PaysStatus::Bar::resizeGetHeight(int newWidth) {
-	const auto skip = st::defaultPeerListItem.photoPosition.y();
-	_label->resizeToWidth(newWidth - skip);
-	_label->moveToLeft(skip, skip, newWidth);
-	_remove->move(
-		(newWidth - _remove->width()) / 2,
-		skip + _label->height() + skip);
-	return _remove->y() + _remove->height() + skip;
-}
-
-PaysStatus::PaysStatus(
-	not_null<Window::SessionController*> window,
-	not_null<Ui::RpWidget*> parent,
-	not_null<UserData*> user)
-: _controller(window)
-, _user(user)
-, _paidAlready(std::make_shared<rpl::variable<int>>())
-, _inner(Ui::CreateChild<Bar>(parent.get(), user))
-, _bar(parent, object_ptr<Bar>::fromRaw(_inner)) {
-	setupState();
-	setupHandlers();
-}
-
-void PaysStatus::setupState() {
-	_user->session().api().requestPeerSettings(_user);
-
-	_user->session().changes().peerFlagsValue(
-		_user,
-		Data::PeerUpdate::Flag::PaysPerMessage
-	) | rpl::on_next([=] {
-		_state = State{ _user->paysPerMessage() };
-		if (_state.perMessage > 0) {
-			_inner->showState(_state);
-			_bar.toggleContent(true);
-		} else {
-			_bar.toggleContent(false);
-		}
-	}, _bar.lifetime());
-}
-
-void PaysStatus::setupHandlers() {
-	_inner->removeClicks(
-	) | rpl::on_next([=] {
-		Window::PeerMenuConfirmToggleFee(
-			_controller,
-			_paidAlready,
-			_user->session().user(),
-			_user,
-			true);
-	}, _bar.lifetime());
-}
-
-void PaysStatus::show() {
-	if (!_shown) {
-		_shown = true;
-		if (_state.perMessage > 0) {
-			_inner->showState(_state);
-			_bar.toggleContent(true);
-		}
-	}
-	_bar.show();
-}
-
-void PaysStatus::hide() {
-	_bar.hide();
 }
 
 } // namespace HistoryView

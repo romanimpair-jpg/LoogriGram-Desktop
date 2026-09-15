@@ -99,22 +99,6 @@ bool AppConfig::starsSpendTopupInvoiceDisabled() const {
 	return get<bool>(u"stars_spend_topup_invoice_disabled"_q, false);
 }
 
-bool AppConfig::paidMessagesAvailable() const {
-	return get<bool>(u"stars_paid_messages_available"_q, false);
-}
-
-int AppConfig::paidMessageStarsMax() const {
-	return get<int>(u"stars_paid_message_amount_max"_q, 10'000);
-}
-
-int AppConfig::paidMessageCommission() const {
-	return get<int>(u"stars_paid_message_commission_permille"_q, 850);
-}
-
-int AppConfig::paidMessageChannelStarsDefault() const {
-	return get<int>(u"stars_paid_messages_channel_amount_default"_q, 10);
-}
-
 int AppConfig::pinnedGiftsLimit() const {
 	return get<int>(u"stargifts_pinned_to_top_limit"_q, 6);
 }

@@ -1217,7 +1217,6 @@ void TopBar::setupUserpicButton(
 		if (const auto user = peer->asUser()) {
 			return !user->isSelf()
 				&& !user->isBot()
-				&& !user->starsPerMessageChecked()
 				&& user->owner().history(user)->lastServerMessage();
 		}
 		return false;

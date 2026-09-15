@@ -113,7 +113,6 @@ bool TTLValidator::can() const {
 			&& !_peer->isSelf()
 			&& !_peer->isNotificationsUser()
 			&& !_peer->asUser()->isInaccessible()
-			&& !_peer->asUser()->starsPerMessage()
 			&& !_peer->asUser()->isVerifyCodes()
 			&& (!_peer->asUser()->requiresPremiumToWrite()
 				|| _peer->session().premium()))

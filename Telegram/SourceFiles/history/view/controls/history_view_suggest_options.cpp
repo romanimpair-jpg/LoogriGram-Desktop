@@ -667,8 +667,9 @@ void ChooseSuggestPriceBox(
 				return;
 			}
 		}
-		const auto requiredStars = peer->starsPerMessageChecked()
-			+ (ton ? 0 : int(base::SafeRound(value.value())));
+		const auto requiredStars = ton
+			? 0
+			: int(base::SafeRound(value.value()));
 		if (!admin && requiredStars) {
 			if (!credits->loaded()) {
 				state->savePending = true;

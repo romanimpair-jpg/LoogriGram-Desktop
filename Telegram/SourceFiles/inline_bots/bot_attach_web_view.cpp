@@ -2849,8 +2849,10 @@ std::unique_ptr<Ui::DropdownMenu> MakeAttachBotsMenu(
 			controller->show(Box(MusicAttachBox, controller, peer, actionFactory));
 		}, &st::menuIconSoundOn);
 	}
-	const auto addBots = Data::CanSend(peer, ChatRestriction::SendInline, false)
-		&& !peer->starsPerMessageChecked();
+	const auto addBots = Data::CanSend(
+		peer,
+		ChatRestriction::SendInline,
+		false);
 	for (const auto &bot : bots->attachBots()) {
 		if (!addBots
 			|| !bot.inAttachMenu

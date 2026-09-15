@@ -198,7 +198,6 @@ struct PeerBarDetails {
 	TimeId requestChatDate = 0;
 	UserData *businessBot = nullptr;
 	QString businessBotManageUrl;
-	int paysPerMessage = 0;
 };
 
 struct PaintUserpicContext {
@@ -333,8 +332,6 @@ public:
 	[[nodiscard]] bool canManageWelcomeMessages() const;
 	[[nodiscard]] bool amMonoforumAdmin() const;
 
-	[[nodiscard]] int starsPerMessage() const;
-	[[nodiscard]] int starsPerMessageChecked() const;
 	[[nodiscard]] Data::StarsRating starsRating() const;
 
 	[[nodiscard]] UserData *asBot();
@@ -505,8 +502,6 @@ public:
 			? _barSettings.changes()
 			: (_barSettings.value() | rpl::type_erased);
 	}
-	[[nodiscard]] int paysPerMessage() const;
-	void clearPaysPerMessage();
 	[[nodiscard]] bool hideLinks() const;
 	[[nodiscard]] QString requestChatTitle() const;
 	[[nodiscard]] TimeId requestChatDate() const;
@@ -613,7 +608,6 @@ protected:
 	void updateUserpic(PhotoId photoId, MTP::DcId dcId, bool hasVideo);
 	void clearUserpic();
 	void invalidateEmptyUserpic();
-	void checkTrustedPayForMessage();
 
 private:
 	void fillNames();
@@ -652,7 +646,6 @@ private:
 	uint32 _nameVersion : 16 = 1;
 	uint32 _sensitiveContent : 1 = 0;
 	uint32 _wallPaperOverriden : 1 = 0;
-	uint32 _checkedTrustedPayForMessage : 1 = 0;
 
 	TimeId _ttlPeriod = 0;
 

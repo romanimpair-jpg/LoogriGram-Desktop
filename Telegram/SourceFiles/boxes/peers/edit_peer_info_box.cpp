@@ -31,7 +31,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peers/toggle_topics_box.h"
 #include "boxes/peers/verify_peers_box.h"
 #include "boxes/peer_list_controllers.h"
-#include "boxes/edit_privacy_box.h" // EditDirectMessagesPriceBox
+#include "boxes/edit_privacy_box.h" // EditDirectMessagesBox
 #include "boxes/stickers_box.h"
 #include "boxes/username_box.h"
 #include "chat_helpers/emoji_suggestions_widget.h"
@@ -311,30 +311,26 @@ void SaveSlowmodeSeconds(
 	api->registerModifyRequest(key, requestId);
 }
 
-void SaveStarsPerMessage(
+// LoogriGram: this request carried two things - whether a channel allows
+// direct messages at all, and what it charges for one. Only the first is
+// still ours to send, so the price is always zero and the group half of the
+// call, which had no allow flag and existed only to set a price, is gone.
+void SaveDirectMessagesAllowed(
 		std::shared_ptr<Ui::Show> show,
 		not_null<ChannelData*> channel,
-		int starsPerMessage,
+		bool allowed,
 		Fn<void(bool)> done) {
 	const auto api = &channel->session().api();
 	const auto key = Api::RequestKey("stars_per_message", channel->id);
 
-	const auto broadcast = channel->isBroadcast();
-
 	using Flag = MTPchannels_UpdatePaidMessagesPrice::Flag;
-	const auto broadcastAllowed = broadcast && (starsPerMessage >= 0);
 	const auto requestId = api->request(MTPchannels_UpdatePaidMessagesPrice(
-		MTP_flags(broadcastAllowed
-			? Flag::f_broadcast_messages_allowed
-			: Flag(0)),
+		MTP_flags(allowed ? Flag::f_broadcast_messages_allowed : Flag(0)),
 		channel->inputChannel(),
-		MTP_long(starsPerMessage)
+		MTP_long(0)
 	)).done([=](const MTPUpdates &result) {
 		api->clearModifyRequest(key);
 		api->applyUpdates(result);
-		if (!broadcast) {
-			channel->owner().editStarsPerMessage(channel, starsPerMessage);
-		}
 		done(true);
 	}).fail([=](const MTP::Error &error) {
 		api->clearModifyRequest(key);
@@ -342,11 +338,6 @@ void SaveStarsPerMessage(
 			show->showToast(error.type());
 			done(false);
 		} else {
-			if (!broadcast) {
-				channel->owner().editStarsPerMessage(
-					channel,
-					starsPerMessage);
-			}
 			done(true);
 		}
 	}).send();
@@ -407,10 +398,6 @@ void ShowEditPermissions(
 					channel,
 					result.boostsUnrestrict,
 					close);
-				const auto price = result.starsPerMessage;
-				SaveStarsPerMessage(show, channel, price, [=](bool ok) {
-					close();
-				});
 			}
 		};
 		auto done = [=](EditPeerPermissionsBoxResult result) {
@@ -422,9 +409,7 @@ void ShowEditPermissions(
 			const auto saveFor = peer->migrateToOrMe();
 			const auto chat = saveFor->asChat();
 			if (!chat
-				|| (!result.slowmodeSeconds
-					&& !result.boostsUnrestrict
-					&& !result.starsPerMessage)) {
+				|| (!result.slowmodeSeconds && !result.boostsUnrestrict)) {
 				save(saveFor, result);
 				return;
 			}
@@ -440,12 +425,10 @@ void ShowEditPermissions(
 	navigation->parentController()->show(Box(std::move(createBox)));
 }
 
-[[nodiscard]] int CurrentPricePerDirectMessage(
+[[nodiscard]] bool CurrentDirectMessagesAllowed(
 		not_null<ChannelData*> broadcast) {
 	const auto monoforumLink = broadcast->monoforumLink();
-	return (monoforumLink && !monoforumLink->monoforumDisabled())
-		? monoforumLink->commonStarsPerMessage()
-		: -1;
+	return monoforumLink && !monoforumLink->monoforumDisabled();
 }
 
 class Controller : public base::has_weak_ptr {
@@ -487,7 +470,7 @@ private:
 		std::optional<bool> requestToJoin;
 		std::optional<bool> requestToJoinApplyToInvites;
 		std::optional<ChannelData*> discussionLink;
-		std::optional<int> starsPerDirectMessage;
+		std::optional<bool> directMessagesAllowed;
 	};
 
 	[[nodiscard]] object_ptr<Ui::RpWidget> createPhotoAndTitleEdit();
@@ -534,7 +517,7 @@ private:
 	[[nodiscard]] bool validateUsernamesOrder(Saving &to) const;
 	[[nodiscard]] bool validateUsername(Saving &to) const;
 	[[nodiscard]] bool validateDiscussionLink(Saving &to) const;
-	[[nodiscard]] bool validateDirectMessagesPrice(Saving &to) const;
+	[[nodiscard]] bool validateDirectMessagesAllowed(Saving &to) const;
 	[[nodiscard]] bool validateTitle(Saving &to) const;
 	[[nodiscard]] bool validateDescription(Saving &to) const;
 	[[nodiscard]] bool validateHistoryVisibility(Saving &to) const;
@@ -549,7 +532,7 @@ private:
 	void saveUsernamesOrder();
 	void saveUsername();
 	void saveDiscussionLink();
-	void saveDirectMessagesPrice();
+	void saveDirectMessagesAllowed();
 	void saveTitle();
 	void saveDescription();
 	void saveHistoryVisibility();
@@ -578,7 +561,7 @@ private:
 	std::optional<ChannelData*> _discussionLinkSavedValue;
 	ChannelData *_discussionLinkOriginalValue = nullptr;
 	bool _channelHasLocationOriginalValue = false;
-	std::optional<rpl::variable<int>> _starsPerDirectMessageSavedValue;
+	std::optional<rpl::variable<bool>> _directMessagesAllowedSavedValue;
 	std::optional<HistoryVisibility> _historyVisibilitySavedValue;
 	std::optional<EditPeerTypeData> _typeDataSavedValue;
 	std::optional<bool> _forumSavedValue;
@@ -1059,15 +1042,14 @@ void Controller::showEditDiscussionLinkBox() {
 
 void Controller::showEditDirectMessagesBox() {
 	Expects(_peer->isBroadcast());
-	Expects(_starsPerDirectMessageSavedValue.has_value());
+	Expects(_directMessagesAllowedSavedValue.has_value());
 
-	const auto stars = _starsPerDirectMessageSavedValue->current();
 	_navigation->parentController()->show(Box(
-		EditDirectMessagesPriceBox,
+		EditDirectMessagesBox,
 		_peer->asChannel(),
-		(stars >= 0) ? stars : std::optional<int>(),
-		[=](std::optional<int> value) {
-			*_starsPerDirectMessageSavedValue = value.value_or(-1);
+		_directMessagesAllowedSavedValue->current(),
+		[=](bool value) {
+			*_directMessagesAllowedSavedValue = value;
 		}));
 }
 
@@ -1190,20 +1172,14 @@ void Controller::fillDirectMessagesButton() {
 		return;
 	}
 
-	const auto perMessage = CurrentPricePerDirectMessage(_peer->asChannel());
-	_starsPerDirectMessageSavedValue = rpl::variable<int>(perMessage);
+	const auto allowed = CurrentDirectMessagesAllowed(_peer->asChannel());
+	_directMessagesAllowedSavedValue = rpl::variable<bool>(allowed);
 
-	auto label = _starsPerDirectMessageSavedValue->value(
-	) | rpl::map([](int starsPerMessage) {
-		return (starsPerMessage < 0)
-			? tr::lng_manage_monoforum_off(tr::marked)
-			: !starsPerMessage
+	auto label = _directMessagesAllowedSavedValue->value(
+	) | rpl::map([](bool allowed) {
+		return allowed
 			? tr::lng_manage_monoforum_free(tr::marked)
-			: rpl::single(Ui::Text::IconEmoji(
-				&st::starIconEmojiColored
-			).append(' ').append(
-				Lang::FormatCreditsAmountDecimal(
-					CreditsAmount{ starsPerMessage })));
+			: tr::lng_manage_monoforum_off(tr::marked);
 	}) | rpl::flatten_latest();
 	AddButtonWithText(
 		_controls.buttonsLayout,
@@ -2142,7 +2118,7 @@ std::optional<Controller::Saving> Controller::validate() const {
 	if (validateUsernamesOrder(result)
 		&& validateUsername(result)
 		&& validateDiscussionLink(result)
-		&& validateDirectMessagesPrice(result)
+		&& validateDirectMessagesAllowed(result)
 		&& validateTitle(result)
 		&& validateDescription(result)
 		&& validateHistoryVisibility(result)
@@ -2192,11 +2168,11 @@ bool Controller::validateDiscussionLink(Saving &to) const {
 	return true;
 }
 
-bool Controller::validateDirectMessagesPrice(Saving &to) const {
-	if (!_starsPerDirectMessageSavedValue) {
+bool Controller::validateDirectMessagesAllowed(Saving &to) const {
+	if (!_directMessagesAllowedSavedValue) {
 		return true;
 	}
-	to.starsPerDirectMessage = _starsPerDirectMessageSavedValue->current();
+	to.directMessagesAllowed = _directMessagesAllowedSavedValue->current();
 	return true;
 }
 
@@ -2301,7 +2277,7 @@ void Controller::save() {
 		pushSaveStage([=] { saveUsernamesOrder(); });
 		pushSaveStage([=] { saveUsername(); });
 		pushSaveStage([=] { saveDiscussionLink(); });
-		pushSaveStage([=] { saveDirectMessagesPrice(); });
+		pushSaveStage([=] { saveDirectMessagesAllowed(); });
 		pushSaveStage([=] { saveTitle(); });
 		pushSaveStage([=] { saveDescription(); });
 		pushSaveStage([=] { saveHistoryVisibility(); });
@@ -2464,14 +2440,14 @@ void Controller::saveDiscussionLink() {
 	}).send();
 }
 
-void Controller::saveDirectMessagesPrice() {
+void Controller::saveDirectMessagesAllowed() {
 	const auto channel = _peer->asChannel();
 	if (!channel) {
 		return continueSave();
 	}
-	const auto current = CurrentPricePerDirectMessage(channel);
-	const auto desired = _savingData.starsPerDirectMessage
-		? *_savingData.starsPerDirectMessage
+	const auto current = CurrentDirectMessagesAllowed(channel);
+	const auto desired = _savingData.directMessagesAllowed
+		? *_savingData.directMessagesAllowed
 		: current;
 	if (desired == current) {
 		return continueSave();
@@ -2484,7 +2460,7 @@ void Controller::saveDirectMessagesPrice() {
 			cancelSave();
 		}
 	};
-	SaveStarsPerMessage(show, channel, desired, crl::guard(this, done));
+	SaveDirectMessagesAllowed(show, channel, desired, crl::guard(this, done));
 }
 
 void Controller::saveTitle() {

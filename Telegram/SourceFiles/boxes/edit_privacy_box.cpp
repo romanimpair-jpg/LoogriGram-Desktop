@@ -28,13 +28,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/effects/premium_graphics.h"
 #include "ui/layers/generic_box.h"
 #include "ui/painter.h"
-#include "ui/text/format_values.h"
 #include "ui/text/text_utilities.h"
 #include "ui/toast/toast.h"
 #include "ui/vertical_list.h"
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/checkbox.h"
-#include "ui/widgets/continuous_sliders.h"
 #include "ui/widgets/popup_menu.h"
 #include "ui/widgets/shadow.h"
 #include "ui/wrap/slide_wrap.h"
@@ -50,7 +48,6 @@ namespace {
 
 constexpr auto kPremiumsRowId = PeerId(FakeChatId(BareId(1))).value;
 constexpr auto kMiniAppsRowId = PeerId(FakeChatId(BareId(2))).value;
-constexpr auto kDefaultPrivateMessagesPrice = 10;
 
 using Exceptions = Api::UserPrivacy::Exceptions;
 
@@ -461,145 +458,6 @@ auto PrivacyExceptionsBoxController::createRow(not_null<History*> history)
 	return result;
 }
 
-[[nodiscard]] object_ptr<Ui::RpWidget> MakeChargeStarsSlider(
-		QWidget *parent,
-		not_null<const style::MediaSlider*> sliderStyle,
-		not_null<const style::FlatLabel*> labelStyle,
-		int valuesCount,
-		Fn<int(int)> valueByIndex,
-		int value,
-		int minValue,
-		int maxValue,
-		Fn<void(int)> valueProgress,
-		Fn<void(int)> valueFinished) {
-	auto result = object_ptr<Ui::VerticalLayout>(parent);
-	const auto raw = result.data();
-
-	const auto labels = raw->add(object_ptr<Ui::RpWidget>(raw));
-	const auto min = Ui::CreateChild<Ui::FlatLabel>(
-		raw,
-		Lang::FormatCountDecimal(minValue),
-		*labelStyle);
-	const auto max = Ui::CreateChild<Ui::FlatLabel>(
-		raw,
-		Lang::FormatCountDecimal(maxValue),
-		*labelStyle);
-	const auto current = Ui::CreateChild<Ui::FlatLabel>(
-		raw,
-		Lang::FormatCountDecimal(value),
-		*labelStyle);
-	min->setTextColorOverride(st::windowSubTextFg->c);
-	max->setTextColorOverride(st::windowSubTextFg->c);
-	const auto slider = raw->add(object_ptr<Ui::MediaSliderWheelless>(
-		raw,
-		*sliderStyle));
-	labels->resize(
-		labels->width(),
-		current->height() + st::defaultVerticalListSkip);
-	struct State {
-		int indexMin = 0;
-		int index = 0;
-	};
-	const auto state = raw->lifetime().make_state<State>();
-	const auto updateByIndex = [=] {
-		const auto outer = labels->width();
-		const auto minWidth = min->width();
-		const auto maxWidth = max->width();
-		const auto currentWidth = current->width();
-		if (minWidth + maxWidth + currentWidth > outer) {
-			return;
-		}
-
-		min->moveToLeft(0, 0, outer);
-		max->moveToRight(0, 0, outer);
-		current->moveToLeft((outer - current->width()) / 2, 0, outer);
-	};
-	const auto updateByValue = [=](int value) {
-		current->setText(value > 0
-			? tr::lng_action_gift_for_stars(tr::now, lt_count_decimal, value)
-			: tr::lng_manage_monoforum_free(tr::now));
-
-		state->index = 0;
-		auto maxIndex = valuesCount - 1;
-		while (state->index < maxIndex) {
-			const auto mid = (state->index + maxIndex) / 2;
-			const auto midValue = valueByIndex(mid);
-			if (midValue == value) {
-				state->index = mid;
-				break;
-			} else if (midValue < value) {
-				state->index = mid + 1;
-			} else {
-				maxIndex = mid - 1;
-			}
-		}
-		updateByIndex();
-	};
-	const auto progress = [=](int value) {
-		updateByValue(value);
-		valueProgress(value);
-	};
-	const auto finished = [=](int value) {
-		updateByValue(value);
-		valueFinished(value);
-	};
-	style::PaletteChanged() | rpl::on_next([=] {
-		min->setTextColorOverride(st::windowSubTextFg->c);
-		max->setTextColorOverride(st::windowSubTextFg->c);
-	}, raw->lifetime());
-	updateByValue(value);
-	state->indexMin = 0;
-
-	slider->setPseudoDiscrete(
-		valuesCount,
-		valueByIndex,
-		value,
-		progress,
-		finished,
-		state->indexMin);
-	slider->resize(slider->width(), sliderStyle->seekSize.height());
-
-	raw->widthValue() | rpl::on_next([=](int width) {
-		labels->resizeToWidth(width);
-		updateByIndex();
-	}, slider->lifetime());
-
-	return result;
-}
-
-void EditNoPaidMessagesExceptions(
-		not_null<Window::SessionController*> window,
-		const Api::UserPrivacy::Rule &value) {
-	auto controller = std::make_unique<PrivacyExceptionsBoxController>(
-		&window->session(),
-		tr::lng_messages_privacy_remove_fee(),
-		value.always,
-		std::optional<SpecialRowType>());
-	auto initBox = [=, controller = controller.get()](
-			not_null<PeerListBox*> box) {
-		box->addButton(tr::lng_settings_save(), [=] {
-			auto copy = value;
-			auto &setTo = copy.always;
-			setTo.peers = box->collectSelectedRows();
-			setTo.premiums = false;
-			setTo.miniapps = false;
-			auto &removeFrom = copy.never;
-			for (const auto &peer : setTo.peers) {
-				removeFrom.peers.erase(
-					ranges::remove(removeFrom.peers, peer),
-					end(removeFrom.peers));
-			}
-			window->session().api().userPrivacy().save(
-				Api::UserPrivacy::Key::NoPaidMessages,
-				copy);
-			box->closeBox();
-		});
-		box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
-	};
-	window->show(
-		Box<PeerListBox>(std::move(controller), std::move(initBox)));
-}
-
 } // namespace
 
 bool EditPrivacyController::hasOption(Option option) const {
@@ -962,14 +820,12 @@ void EditPrivacyBox::showFinished() {
 
 void EditMessagesPrivacyBox(
 		not_null<Ui::GenericBox*> box,
-		not_null<Window::SessionController*> controller,
-		const QString &highlightControlId) {
+		not_null<Window::SessionController*> controller) {
 	box->setTitle(tr::lng_messages_privacy_title());
 	box->setWidth(st::boxWideWidth);
 
 	constexpr auto kOptionAll = 0;
 	constexpr auto kOptionPremium = 1;
-	constexpr auto kOptionCharge = 2;
 
 	const auto session = &controller->session();
 	const auto allowed = [=] {
@@ -980,19 +836,12 @@ void EditMessagesPrivacyBox(
 	const auto inner = box->verticalLayout();
 	inner->add(object_ptr<Ui::PlainShadow>(box));
 
-	auto highlightCharged = (Ui::RpWidget*)nullptr;
-	auto highlightRemoveFee = (Ui::RpWidget*)nullptr;
-
 	Ui::AddSkip(inner, st::messagePrivacyTopSkip);
 	Ui::AddSubsectionTitle(inner, tr::lng_messages_privacy_subtitle());
 	const auto group = std::make_shared<Ui::RadiobuttonGroup>(
-		(!allowed()
+		((!allowed() || !privacy->newRequirePremiumCurrent())
 			? kOptionAll
-			: privacy->newRequirePremiumCurrent()
-			? kOptionPremium
-			: privacy->newChargeStarsCurrent()
-			? kOptionCharge
-			: kOptionAll));
+			: kOptionPremium));
 	inner->add(
 		object_ptr<Ui::Radiobutton>(
 			inner,
@@ -1016,94 +865,7 @@ void EditMessagesPrivacyBox(
 
 	Ui::AddDividerText(inner, tr::lng_messages_privacy_about());
 
-	const auto available = session->appConfig().paidMessagesAvailable();
-
-	const auto charged = available
-		? inner->add(
-			object_ptr<Ui::Radiobutton>(
-				inner,
-				group,
-				kOptionCharge,
-				tr::lng_messages_privacy_charge(tr::now),
-				st::messagePrivacyCheck),
-			st::settingsSendTypePadding + style::margins(
-				0,
-				st::messagePrivacyBottomSkip,
-				0,
-				st::messagePrivacyBottomSkip))
-		: nullptr;
-	highlightCharged = charged;
-
-	struct State {
-		rpl::variable<int> stars;
-	};
-	const auto state = std::make_shared<State>();
-	const auto savedValue = privacy->newChargeStarsCurrent();
-
-	if (available) {
-		Ui::AddDividerText(inner, tr::lng_messages_privacy_charge_about());
-
-		const auto chargeWrap = inner->add(
-			object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-				inner,
-				object_ptr<Ui::VerticalLayout>(inner)));
-		const auto chargeInner = chargeWrap->entity();
-
-		Ui::AddSkip(chargeInner);
-
-		state->stars = SetupChargeSlider(
-			chargeInner,
-			session->user(),
-			(savedValue > 0) ? savedValue : std::optional<int>(),
-			kDefaultPrivateMessagesPrice);
-
-		Ui::AddSkip(chargeInner);
-		Ui::AddSubsectionTitle(
-			chargeInner,
-			tr::lng_messages_privacy_exceptions());
-
-		const auto key = Api::UserPrivacy::Key::NoPaidMessages;
-		session->api().userPrivacy().reload(key);
-		auto label = session->api().userPrivacy().value(
-			key
-		) | rpl::map([=](const Api::UserPrivacy::Rule &value) {
-			using namespace Settings;
-			const auto always = ExceptionUsersCount(value.always.peers);
-			return always
-				? tr::lng_edit_privacy_exceptions_count(
-					tr::now,
-					lt_count,
-					always)
-				: tr::lng_edit_privacy_exceptions_add(tr::now);
-		});
-
-		const auto exceptions = Settings::AddButtonWithLabel(
-			chargeInner,
-			tr::lng_messages_privacy_remove_fee(),
-			std::move(label),
-			st::settingsButtonNoIcon);
-		highlightRemoveFee = exceptions;
-
-		const auto shower = exceptions->lifetime().make_state<rpl::lifetime>();
-		exceptions->setClickedCallback([=] {
-			*shower = session->api().userPrivacy().value(
-				key
-			) | rpl::take(
-				1
-			) | rpl::on_next([=](const Api::UserPrivacy::Rule &value) {
-				EditNoPaidMessagesExceptions(controller, value);
-			});
-		});
-		Ui::AddSkip(chargeInner);
-		Ui::AddDividerText(
-			chargeInner,
-			tr::lng_messages_privacy_remove_about());
-
-		using namespace rpl::mappers;
-		chargeWrap->toggleOn(group->value() | rpl::map(_1 == kOptionCharge));
-		chargeWrap->finishAnimating();
-	}
-	// LoogriGram: the toast still says why these two options are locked - the
+	// LoogriGram: the toast still says why this option is locked - the
 	// restriction is the server's and applies either way - but "Telegram
 	// Premium" in it is plain semibold text now rather than a link into the
 	// subscription page. The sentence reads the same without it.
@@ -1119,12 +881,9 @@ void EditMessagesPrivacyBox(
 
 	if (!allowed()) {
 		CreateRadiobuttonLock(restricted, st::messagePrivacyCheck);
-		if (charged) {
-			CreateRadiobuttonLock(charged, st::messagePrivacyCheck);
-		}
 
 		group->setChangedCallback([=](int value) {
-			if (value == kOptionPremium || value == kOptionCharge) {
+			if (value == kOptionPremium) {
 				group->setValue(kOptionAll);
 				showToast();
 			}
@@ -1141,11 +900,7 @@ void EditMessagesPrivacyBox(
 		box->addButton(tr::lng_settings_save(), [=] {
 			if (allowed()) {
 				const auto value = group->current();
-				const auto premiumRequired = (value == kOptionPremium);
-				const auto chargeStars = (value == kOptionCharge)
-					? state->stars.current()
-					: 0;
-				privacy->updateMessagesPrivacy(premiumRequired, chargeStars);
+				privacy->updateMessagesPrivacy(value == kOptionPremium);
 				box->closeBox();
 			} else {
 				showToast();
@@ -1155,118 +910,18 @@ void EditMessagesPrivacyBox(
 			box->closeBox();
 		});
 	}
-
-	if (!highlightControlId.isEmpty()) {
-		box->showFinishes() | rpl::take(1) | rpl::on_next([=] {
-			if (highlightControlId == u"privacy/set-price"_q) {
-				Settings::HighlightWidget(
-					highlightCharged,
-					{ .radius = st::boxRadius });
-			} else if (highlightControlId == u"privacy/remove-fee"_q) {
-				Settings::HighlightWidget(highlightRemoveFee);
-			}
-		}, box->lifetime());
-	}
 }
 
-rpl::producer<int> SetupChargeSlider(
-		not_null<Ui::VerticalLayout*> container,
-		not_null<PeerData*> peer,
-		std::optional<int> savedValue,
-		int defaultValue,
-		bool allowZero) {
-	struct State {
-		rpl::variable<int> stars;
-	};
-	const auto broadcast = peer->isBroadcast();
-	const auto group = !broadcast && !peer->isUser();
-	const auto state = container->lifetime().make_state<State>();
-	const auto chargeStars = savedValue.value_or(defaultValue);
-	state->stars = chargeStars;
-
-	Ui::AddSubsectionTitle(container, broadcast
-		? tr::lng_manage_monoforum_price()
-		: group
-		? tr::lng_rights_charge_price()
-		: tr::lng_messages_privacy_price());
-
-	auto values = std::vector<int>();
-	const auto minStars = allowZero ? 0 : 1;
-	const auto maxStars = peer->session().appConfig().paidMessageStarsMax();
-	if (chargeStars < minStars) {
-		values.push_back(chargeStars);
-	}
-	for (auto i = minStars; i < std::min(100, maxStars); ++i) {
-		values.push_back(i);
-	}
-	for (auto i = 100; i < std::min(1000, maxStars); i += 10) {
-		if (i < chargeStars + 10 && chargeStars < i) {
-			values.push_back(chargeStars);
-		}
-		values.push_back(i);
-	}
-	for (auto i = 1000; i < maxStars + 1; i += 100) {
-		if (i < chargeStars + 100 && chargeStars < i) {
-			values.push_back(chargeStars);
-		}
-		values.push_back(i);
-	}
-	const auto valuesCount = int(values.size());
-	const auto setStars = [=](int value) {
-		state->stars = value;
-	};
-	container->add(
-		MakeChargeStarsSlider(
-			container,
-			&st::settingsScale,
-			&st::settingsScaleLabel,
-			valuesCount,
-			[=](int index) { return values[index]; },
-			chargeStars,
-			minStars,
-			maxStars,
-			setStars,
-			setStars),
-		st::boxRowPadding);
-
-	const auto skip = 2 * st::defaultVerticalListSkip;
-	Ui::AddSkip(container, skip);
-
-	const auto details = container->add(
-		object_ptr<Ui::VerticalLayout>(container));
-	state->stars.value() | rpl::on_next([=](int stars) {
-		while (details->count()) {
-			delete details->widgetAt(0);
-		}
-		if (!stars) {
-			Ui::AddDivider(details);
-			return;
-		}
-		const auto &appConfig = peer->session().appConfig();
-		const auto percent = appConfig.paidMessageCommission();
-		const auto ratio = appConfig.starsWithdrawRate();
-		const auto dollars = int(base::SafeRound(stars * ratio));
-		const auto amount = Ui::FillAmountAndCurrency(dollars, u"USD"_q);
-		Ui::AddDividerText(
-			details,
-			(broadcast
-				? tr::lng_manage_monoforum_price_about
-				: group
-				? tr::lng_rights_charge_price_about
-				: tr::lng_messages_privacy_price_about)(
-					lt_percent,
-					rpl::single(QString::number(percent / 10.) + '%'),
-					lt_amount,
-					rpl::single('~' + amount)));
-	}, details->lifetime());
-	return state->stars.value();
-}
-
-void EditDirectMessagesPriceBox(
+// LoogriGram: this box set a price in stars on writing to a channel's direct
+// messages, with a toggle above the slider that turned the whole thing on.
+// The toggle is not a money control - direct messages can be open and free -
+// so it stays and the price goes, along with the link block's dependence on
+// a slider that is no longer between them.
+void EditDirectMessagesBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<ChannelData*> channel,
-		std::optional<int> savedValue,
-		Fn<void(std::optional<int>)> callback) {
+		bool savedValue,
+		Fn<void(bool)> callback) {
 	box->setTitle(tr::lng_manage_monoforum());
 	box->setWidth(st::boxWideWidth);
 
@@ -1289,7 +944,7 @@ void EditDirectMessagesPriceBox(
 		box,
 		tr::lng_manage_monoforum_allow(),
 		st::settingsButtonNoIcon));
-	toggle->toggleOn(rpl::single(savedValue.has_value()));
+	toggle->toggleOn(rpl::single(savedValue));
 
 	Ui::AddSkip(container);
 	Ui::AddDivider(container);
@@ -1300,24 +955,10 @@ void EditDirectMessagesPriceBox(
 			box,
 			object_ptr<Ui::VerticalLayout>(box)),
 		style::margins());
-	wrap->toggle(savedValue.has_value(), anim::type::instant);
+	wrap->toggle(savedValue, anim::type::instant);
 	wrap->toggleOn(toggle->toggledChanges());
 
-	const auto result = box->lifetime().make_state<int>(
-		savedValue.value_or(0));
-
 	const auto inner = wrap->entity();
-	Ui::AddSkip(inner);
-	SetupChargeSlider(
-		inner,
-		channel,
-		savedValue,
-		channel->session().appConfig().paidMessageChannelStarsDefault(),
-		true
-	) | rpl::on_next([=](int stars) {
-		*result = stars;
-	}, box->lifetime());
-
 	if (const auto username = channel->username(); !username.isEmpty()) {
 		Ui::AddSkip(inner);
 		Ui::AddSubsectionTitle(
@@ -1376,7 +1017,7 @@ void EditDirectMessagesPriceBox(
 
 	box->addButton(tr::lng_settings_save(), [=] {
 		const auto weak = base::make_weak(box);
-		callback(toggle->toggled() ? *result : std::optional<int>());
+		callback(toggle->toggled());
 		if (const auto strong = weak.get()) {
 			strong->closeBox();
 		}

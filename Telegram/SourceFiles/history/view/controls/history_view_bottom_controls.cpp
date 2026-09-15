@@ -113,10 +113,7 @@ void BottomControls::applyPeerUpdate(Data::PeerUpdate::Flags flags) {
 	if (flags & (Flag::ChannelAmIn | Flag::Rights)) {
 		refreshJoinGroupText();
 	}
-	if (flags & (Flag::FullInfo
-		| Flag::Rights
-		| Flag::ChannelAmIn
-		| Flag::StarsPerMessage)) {
+	if (flags & (Flag::FullInfo | Flag::Rights | Flag::ChannelAmIn)) {
 		refreshDirectMessageShown();
 	}
 	if (flags & Flag::Notifications) {

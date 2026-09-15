@@ -447,28 +447,28 @@ void Premium::requestPremiumRequiredSlice() {
 
 		auto index = 0;
 		for (const auto &user : base::take(_resolveMessageMoneyRequestedUsers)) {
-			const auto set = [&](bool requirePremium, int stars) {
+			const auto set = [&](bool requirePremium) {
 				using Flag = UserDataFlag;
 				constexpr auto me = Flag::RequiresPremiumToWrite;
 				constexpr auto known = Flag::MessageMoneyRestrictionsKnown;
 				constexpr auto hasPrem = Flag::HasRequirePremiumToWrite;
-				constexpr auto hasStars = Flag::HasStarsPerMessage;
-				user->setStarsPerMessage(stars);
 				user->setFlags((user->flags() & ~me)
 					| known
-					| (requirePremium ? (me | hasPrem) : Flag())
-					| (stars ? hasStars : Flag()));
+					| (requirePremium ? (me | hasPrem) : Flag()));
 			};
 			if (index >= list.size()) {
-				set(false, 0);
+				set(false);
 				continue;
 			}
+			// LoogriGram: a third requirement, paying stars per message,
+			// used to be answered by remembering the price. Nothing here
+			// pays, so it reads the same as no requirement at all.
 			list[index++].match([&](const MTPDrequirementToContactEmpty &) {
-				set(false, 0);
+				set(false);
 			}, [&](const MTPDrequirementToContactPremium &) {
-				set(true, 0);
+				set(true);
 			}, [&](const MTPDrequirementToContactPaidMessages &data) {
-				set(false, data.vstars_amount().v);
+				set(false);
 			});
 		}
 		if (!_messageMoneyRequestScheduled
@@ -758,24 +758,18 @@ rpl::producer<rpl::no_value, QString> SponsoredToggle::setToggled(bool v) {
 MessageMoneyRestriction ResolveMessageMoneyRestrictions(
 		not_null<PeerData*> peer,
 		History *maybeHistory) {
-	if (const auto channel = peer->asChannel()) {
-		return {
-			.starsPerMessage = channel->starsPerMessageChecked(),
-			.known = true,
-		};
+	if (peer->isChannel()) {
+		return { .known = true };
 	}
 	const auto user = peer->asUser();
 	if (!user) {
 		return { .known = true };
 	} else if (user->messageMoneyRestrictionsKnown()) {
 		return {
-			.starsPerMessage = user->starsPerMessageChecked(),
 			.premiumRequired = (user->requiresPremiumToWrite()
 				&& !user->session().premium()),
 			.known = true,
 		};
-	} else if (user->hasStarsPerMessage()) {
-		return {};
 	} else if (!user->hasRequirePremiumToWrite()) {
 		return { .known = true };
 	} else if (user->flags() & UserDataFlag::MutualContact) {

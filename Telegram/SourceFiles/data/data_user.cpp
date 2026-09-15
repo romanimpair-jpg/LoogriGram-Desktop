@@ -634,10 +634,6 @@ bool UserData::hasRequirePremiumToWrite() const {
 	return (flags() & UserDataFlag::HasRequirePremiumToWrite);
 }
 
-bool UserData::hasStarsPerMessage() const {
-	return (flags() & UserDataFlag::HasStarsPerMessage);
-}
-
 bool UserData::requiresPremiumToWrite() const {
 	return !isSelf() && (flags() & UserDataFlag::RequiresPremiumToWrite);
 }
@@ -669,10 +665,6 @@ void UserData::setNoForwardsFlags(bool myEnabled, bool peerEnabled) {
 	}
 }
 
-int UserData::starsPerMessage() const {
-	return _starsPerMessage;
-}
-
 void UserData::setStoriesCorrespondent(bool is) {
 	if (is) {
 		_flags.add(UserDataFlag::StoriesCorrespondent);
@@ -683,14 +675,6 @@ void UserData::setStoriesCorrespondent(bool is) {
 
 bool UserData::storiesCorrespondent() const {
 	return (_flags.current() & UserDataFlag::StoriesCorrespondent);
-}
-
-void UserData::setStarsPerMessage(int stars) {
-	if (_starsPerMessage != stars) {
-		_starsPerMessage = stars;
-		session().changes().peerUpdated(this, UpdateFlag::StarsPerMessage);
-	}
-	checkTrustedPayForMessage();
 }
 
 void UserData::setStarsRating(Data::StarsRating value) {
@@ -872,8 +856,6 @@ void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update) {
 	if (const auto pinned = update.vpinned_msg_id()) {
 		SetTopPinnedMessageId(user, pinned->v);
 	}
-	user->setStarsPerMessage(
-		update.vsend_paid_messages_stars().value_or_empty());
 	using Flag = UserDataFlag;
 	const auto mask = Flag::Blocked
 		| Flag::HasPhoneCalls
@@ -884,7 +866,6 @@ void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update) {
 		| (update.is_contact_require_premium()
 			? Flag::HasRequirePremiumToWrite
 			: Flag())
-		| (user->starsPerMessage() ? Flag::HasStarsPerMessage : Flag())
 		| Flag::MessageMoneyRestrictionsKnown
 		| Flag::RequiresPremiumToWrite
 		| Flag::UnofficialSecurityRisk;
@@ -899,7 +880,6 @@ void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update) {
 			? Flag::VoiceMessagesForbidden
 			: Flag())
 		| (update.is_read_dates_private() ? Flag::ReadDatesPrivate : Flag())
-		| (user->starsPerMessage() ? Flag::HasStarsPerMessage : Flag())
 		| Flag::MessageMoneyRestrictionsKnown
 		| (update.is_contact_require_premium()
 			? (Flag::RequiresPremiumToWrite | Flag::HasRequirePremiumToWrite)

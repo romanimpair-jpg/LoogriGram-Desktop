@@ -339,7 +339,6 @@ private:
 	void addDeleteTopic();
 	void addVideoChat();
 	void addViewStatistics();
-	void addToggleFee();
 	void addSetPersonalChannel();
 
 	[[nodiscard]] bool skipCreateActions() const;
@@ -1356,7 +1355,7 @@ SendMenu::Details Filler::createSendMenuDetails() const {
 
 	const auto type = (_request.section == Section::Scheduled)
 		? Type::Disabled
-		: (!_peer || _peer->starsPerMessageChecked())
+		: !_peer
 		? Type::SilentOnly
 		: (_request.section == Section::Replies)
 		? (_topic ? Type::Scheduled : Type::SilentOnly)
@@ -2033,63 +2032,6 @@ void Filler::fillMonoforumPeerActions() {
 	Expects(_sublist != nullptr);
 
 	addBanFromChannel();
-	addToggleFee();
-}
-
-void Filler::addToggleFee() {
-	const auto feeRemoved = _sublist->isFeeRemoved();
-	const auto text = feeRemoved
-		? tr::lng_context_charge_fee(tr::now)
-		: tr::lng_context_remove_fee(tr::now);
-	const auto navigation = _controller;
-	const auto parent = _sublist->parentChat();
-	const auto user = _sublist->sublistPeer()->asUser();
-	if (!parent || !user) {
-		return;
-	}
-	const auto paidAmount = std::make_shared<rpl::variable<int>>();
-	_addAction(text, [=] {
-		const auto removeFee = !feeRemoved;
-		PeerMenuConfirmToggleFee(
-			navigation,
-			paidAmount,
-			parent,
-			user,
-			removeFee);
-	}, feeRemoved ? &st::menuIconEarn : &st::menuIconCancelFee);
-	_addAction({ .isSeparator = true });
-	_addAction({ .make = [=](not_null<Ui::PopupMenu*> menuParent) {
-		const auto actionParent = menuParent->menu();
-		const auto text = feeRemoved
-			? tr::lng_context_fee_free(
-				tr::now,
-				lt_name,
-				TextWithEntities{ user->shortName() },
-				tr::marked)
-			: tr::lng_context_fee_now(
-				tr::now,
-				lt_name,
-				TextWithEntities{ user->shortName() },
-				lt_amount,
-				tr::marked().append(
-					st::starIconEmojiMiniFont
-				).append(Lang::FormatCountDecimal(
-					user->owner().commonStarsPerMessage(parent)
-				)),
-				tr::marked);
-		const auto action = Ui::CreateChild<QAction>(actionParent);
-		action->setDisabled(true);
-		auto result = base::make_unique_q<Ui::Menu::Action>(
-			actionParent,
-			st::windowFeeItem,
-			action,
-			nullptr,
-			nullptr);
-		result->setMarkedText(text, QString(), Core::TextContext({
-			.session = &user->session(),
-		}));
-		return result;
-	} });
 }
 
 void Filler::addSetPersonalChannel() {
@@ -3391,17 +3333,7 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 
 	const auto sendMenuType = [=] {
 		const auto selected = state->box->collectSelectedRows();
-		const auto hasPaid = [&] {
-			for (const auto &peer : selected) {
-				if (peer->starsPerMessageChecked()) {
-					return true;
-				}
-			}
-			return false;
-		}();
-		return hasPaid
-			? SendMenu::Type::SilentOnly
-			: ranges::all_of(selected, HistoryView::CanScheduleUntilOnline)
+		return ranges::all_of(selected, HistoryView::CanScheduleUntilOnline)
 			? SendMenu::Type::ScheduledToUser
 			: ((selected.size() == 1) && selected.front()->isSelf())
 			? SendMenu::Type::Reminder
@@ -4337,83 +4269,6 @@ bool CanArchive(History *history, PeerData *peer) {
 		}
 	}
 	return true;
-}
-
-void PeerMenuConfirmToggleFee(
-		not_null<Window::SessionNavigation*> navigation,
-		std::shared_ptr<rpl::variable<int>> paidAmount,
-		not_null<PeerData*> peer,
-		not_null<UserData*> user,
-		bool removeFee) {
-	const auto parent = peer->isChannel() ? peer->asChannel() : nullptr;
-	const auto exception = [=](bool refund) {
-		using Flag = MTPaccount_ToggleNoPaidMessagesException::Flag;
-		const auto api = &user->session().api();
-		api->request(MTPaccount_ToggleNoPaidMessagesException(
-			MTP_flags((refund ? Flag::f_refund_charged : Flag())
-				| (removeFee ? Flag() : Flag::f_require_payment)
-				| (parent ? Flag::f_parent_peer : Flag())),
-			(parent ? parent->input() : MTPInputPeer()),
-			user->inputUser()
-		)).done([=] {
-			if (!parent) {
-				user->clearPaysPerMessage();
-			} else if (const auto monoforum = peer->monoforum()) {
-				if (const auto sublist = monoforum->sublistLoaded(user)) {
-					sublist->toggleFeeRemoved(removeFee);
-				}
-			}
-		}).send();
-	};
-	if (!removeFee) {
-		exception(false);
-		return;
-	}
-	navigation->uiShow()->show(Box([=](not_null<Ui::GenericBox*> box) {
-		const auto refund = std::make_shared<base::weak_qptr<Ui::Checkbox>>();
-		Ui::ConfirmBox(box, {
-			.text = tr::lng_payment_refund_text(
-				tr::now,
-				lt_name,
-				tr::bold(user->shortName()),
-				tr::marked),
-			.confirmed = [=](Fn<void()> close) {
-				exception(*refund && (*refund)->checked());
-				close();
-			},
-			.confirmText = tr::lng_payment_refund_confirm(tr::now),
-			.title = tr::lng_payment_refund_title(tr::now),
-		});
-		const auto paid = box->lifetime().make_state<
-			rpl::variable<int>
-		>();
-		*paid = paidAmount->value();
-		paid->value() | rpl::on_next([=](int already) {
-			if (!already) {
-				delete base::take(*refund).get();
-			} else if (!*refund) {
-				const auto skip = st::defaultCheckbox.margin.top();
-				*refund = box->addRow(
-					object_ptr<Ui::Checkbox>(
-						box,
-						tr::lng_payment_refund_also(
-							lt_count,
-							paid->value() | tr::to_count()),
-						false,
-						st::defaultCheckbox),
-					st::boxRowPadding + QMargins(0, skip, 0, skip));
-			}
-		}, box->lifetime());
-
-		using Flag = MTPaccount_GetPaidMessagesRevenue::Flag;
-		user->session().api().request(MTPaccount_GetPaidMessagesRevenue(
-			MTP_flags(parent ? Flag::f_parent_peer : Flag()),
-			parent ? parent->input() : MTPInputPeer(),
-			user->inputUser()
-		)).done([=](const MTPaccount_PaidMessagesRevenue &result) {
-			*paidAmount = result.data().vstars_amount().v;
-		}).send();
-	}));
 }
 
 void ForwardToSelf(

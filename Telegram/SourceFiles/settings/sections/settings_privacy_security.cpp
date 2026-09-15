@@ -895,13 +895,9 @@ void BuildPrivacySection(SectionBuilder &builder) {
 	});
 
 	const auto privacy = &session->api().globalPrivacy();
-	auto messagesLabel = rpl::combine(
-		privacy->newRequirePremium(),
-		privacy->newChargeStars()
-	) | rpl::map([=](bool requirePremium, int chargeStars) {
-		return chargeStars
-			? tr::lng_edit_privacy_paid()
-			: requirePremium
+	auto messagesLabel = privacy->newRequirePremium(
+	) | rpl::map([=](bool requirePremium) {
+		return requirePremium
 			? tr::lng_edit_privacy_contacts_and_premium()
 			: tr::lng_edit_privacy_everyone();
 	}) | rpl::flatten_latest();
@@ -913,7 +909,7 @@ void BuildPrivacySection(SectionBuilder &builder) {
 		.st = &st::settingsButtonNoIcon,
 		.label = rpl::duplicate(messagesLabel),
 		.onClick = [=] {
-			controller->show(Box(EditMessagesPrivacyBox, controller, QString()));
+			controller->show(Box(EditMessagesPrivacyBox, controller));
 		},
 		.keywords = { u"messages"_q, u"new"_q, u"unknown"_q },
 	});

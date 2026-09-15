@@ -78,14 +78,11 @@ enum class ChannelDataFlag : uint64 {
 	CanViewCreditsRevenue = (1ULL << 34),
 	SignatureProfiles = (1ULL << 35),
 	StargiftsAvailable = (1ULL << 36),
-	PaidMessagesAvailable = (1ULL << 37),
 	AutoTranslation = (1ULL << 38),
 	Monoforum = (1ULL << 39),
 	MonoforumAdmin = (1ULL << 40),
 	MonoforumDisabled = (1ULL << 41),
 	ForumTabs = (1ULL << 42),
-	HasStarsPerMessage = (1ULL << 43),
-	StarsPerMessageKnown = (1ULL << 44),
 	HasActiveVideoStream = (1ULL << 45),
 	Community = (1ULL << 46),
 	CommunityCollapsed = (1ULL << 47),
@@ -286,15 +283,6 @@ public:
 	}
 	[[nodiscard]] bool stargiftsAvailable() const {
 		return flags() & Flag::StargiftsAvailable;
-	}
-	[[nodiscard]] bool paidMessagesAvailable() const {
-		return flags() & Flag::PaidMessagesAvailable;
-	}
-	[[nodiscard]] bool hasStarsPerMessage() const {
-		return flags() & Flag::HasStarsPerMessage;
-	}
-	[[nodiscard]] bool starsPerMessageKnown() const {
-		return flags() & Flag::StarsPerMessageKnown;
 	}
 	[[nodiscard]] bool hasWelcomeMessages() const {
 		return flags() & Flag::HasWelcomeMessages;
@@ -534,9 +522,6 @@ public:
 	[[nodiscard]] TimeId slowmodeLastMessage() const;
 	void growSlowmodeLastMessage(TimeId when);
 
-	void setStarsPerMessage(int stars);
-	[[nodiscard]] int starsPerMessage() const;
-	[[nodiscard]] int commonStarsPerMessage() const;
 
 	[[nodiscard]] int peerGiftsCount() const;
 	void setPeerGiftsCount(int count);
@@ -644,7 +629,6 @@ private:
 	int _kickedCount = 0;
 	int _pendingRequestsCount = 0;
 	int _levelHint = 0;
-	int _starsPerMessage = 0;
 	UserId _guardBotId = 0;
 
 	Data::AllowedReactions _allowedReactions;

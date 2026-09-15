@@ -10,7 +10,7 @@ using "ui/chat/chat.style";
 premiumRequiredWidth: 186px;
 premiumRequiredIcon: icon{{ "chat/large_lockedchat", msgServiceFg }};
 directMessagesIcon: icon{{ "chat/large_messages", msgServiceFg }};
-starsPerMessageWidth: 226px;
+directMessagesFreeWidth: 226px;
 chatIntroWidth: 224px;
 chatIntroTitleMargin: margins(11px, 16px, 11px, 4px);
 chatIntroMargin: margins(11px, 0px, 11px, 0px);

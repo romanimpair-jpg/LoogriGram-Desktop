@@ -1002,9 +1002,6 @@ public:
 	void sentFromScheduled(SentFromScheduled value);
 	[[nodiscard]] rpl::producer<SentFromScheduled> sentFromScheduled() const;
 
-	void editStarsPerMessage(not_null<ChannelData*> channel, int count);
-	[[nodiscard]] int commonStarsPerMessage(
-		not_null<const ChannelData*> channel) const;
 
 	void setPendingStarsRating(StarsRatingPending value);
 	[[nodiscard]] StarsRatingPending pendingStarsRating() const;
@@ -1386,7 +1383,6 @@ private:
 	base::flat_set<ChannelId> _pinnedCommunitiesNotLoaded;
 
 	// This one from `channel`, not `channelFull`.
-	base::flat_map<not_null<const ChannelData*>, int> _commonStarsPerMessage;
 
 	MessageIdsList _mimeForwardIds;
 

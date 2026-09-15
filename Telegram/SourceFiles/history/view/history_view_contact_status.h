@@ -96,7 +96,6 @@ private:
 			SetBotPhoto,
 		};
 		Type type = Type::None;
-		int starsPerMessage = 0;
 		QString requestChatName;
 		TimeId requestDate = 0;
 		bool requestChatIsBroadcast = false;
@@ -178,40 +177,6 @@ private:
 	const not_null<Data::ForumTopic*> _topic;
 	QPointer<Ui::FlatButton> _reopen;
 	SlidingBar _bar;
-
-};
-
-class PaysStatus final {
-public:
-	PaysStatus(
-		not_null<Window::SessionController*> controller,
-		not_null<Ui::RpWidget*> parent,
-		not_null<UserData*> user);
-
-	void show();
-	void hide();
-
-	[[nodiscard]] SlidingBar &bar() {
-		return _bar;
-	}
-
-private:
-	class Bar;
-
-	struct State {
-		int perMessage = 0;
-	};
-
-	void setupState();
-	void setupHandlers();
-
-	const not_null<Window::SessionController*> _controller;
-	const not_null<UserData*> _user;
-	std::shared_ptr<rpl::variable<int>> _paidAlready;
-	State _state;
-	QPointer<Bar> _inner;
-	SlidingBar _bar;
-	bool _shown = false;
 
 };
 

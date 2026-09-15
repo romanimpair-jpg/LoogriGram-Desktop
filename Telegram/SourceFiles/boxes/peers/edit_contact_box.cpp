@@ -585,8 +585,8 @@ void Controller::setupPhotoButtons() {
 				.sessionWindow = base::make_weak(_window),
 			}));
 	});
-	suggestBirthdayWrap->toggleOn(rpl::single(!_user->birthday().valid()
-		&& !_user->starsPerMessageChecked()));
+	suggestBirthdayWrap->toggleOn(
+		rpl::single(!_user->birthday().valid()));
 
 	_suggestIcon = Ui::MakeAnimatedIcon({
 		.generator = [] {
@@ -614,8 +614,7 @@ void Controller::setupPhotoButtons() {
 		object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
 			inner,
 			object_ptr<Ui::VerticalLayout>(inner)));
-	suggestButtonWrap->toggleOn(
-		rpl::single(!_user->starsPerMessageChecked()));
+	suggestButtonWrap->toggleOn(rpl::single(true));
 
 	const auto suggestButton = Settings::AddButtonWithIcon(
 		suggestButtonWrap->entity(),

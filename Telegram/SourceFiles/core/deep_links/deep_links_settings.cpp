@@ -1143,35 +1143,7 @@ void RegisterSettingsHandlers(Router &router) {
 			if (!ctx.controller) {
 				return Result::NeedsAuth;
 			}
-			ctx.controller->show(Box(EditMessagesPrivacyBox, ctx.controller, QString()));
-			return Result::Handled;
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"privacy/messages/set-price"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			ctx.controller->show(Box(
-				EditMessagesPrivacyBox,
-				ctx.controller,
-				u"privacy/set-price"_q));
-			return Result::Handled;
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"privacy/messages/remove-fee"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			ctx.controller->show(Box(
-				EditMessagesPrivacyBox,
-				ctx.controller,
-				u"privacy/remove-fee"_q));
+			ctx.controller->show(Box(EditMessagesPrivacyBox, ctx.controller));
 			return Result::Handled;
 		}},
 	});

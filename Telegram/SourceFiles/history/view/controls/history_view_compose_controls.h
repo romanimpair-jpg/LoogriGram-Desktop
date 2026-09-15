@@ -405,7 +405,6 @@ private:
 
 	[[nodiscard]] bool showRecordButton() const;
 	[[nodiscard]] bool showStopButton() const;
-	[[nodiscard]] int shownStarsPerMessage() const;
 	bool updateBotCommandShown();
 	bool refreshBotMenuButton();
 	bool updateLikeShown();

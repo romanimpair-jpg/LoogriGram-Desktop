@@ -5808,8 +5808,7 @@ void HistoryInner::refreshAboutView(bool force) {
 			&& !user->phoneCountryCode().isEmpty()) {
 			refresh();
 		} else if (!historyHeight()) {
-			if (user->starsPerMessage() > 0
-				|| (user->requiresPremiumToWrite()
+			if ((user->requiresPremiumToWrite()
 					&& !user->session().premium())
 				|| user->isFullLoaded()) {
 				refresh();

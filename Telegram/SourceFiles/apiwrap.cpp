@@ -586,16 +586,12 @@ void ApiWrap::sendMessageFail(
 			show->showToast(tr::lng_error_schedule_limit(tr::now));
 		}
 	} else if (error.startsWith(paidStarsPrefix)) {
+		// LoogriGram: the server wants stars to deliver this message and we
+		// will not pay. The price it names is no longer remembered; the
+		// send simply failed.
 		if (show) {
 			show->showToast(
 				u"Payment requirements changed. Please, try again."_q);
-		}
-		if (const auto stars = error.mid(paidStarsPrefix.size()).toInt()) {
-			if (const auto user = peer->asUser()) {
-				user->setStarsPerMessage(stars);
-			} else if (const auto channel = peer->asChannel()) {
-				channel->setStarsPerMessage(stars);
-			}
 		}
 		peer->updateFull();
 	} else if (error == u"BALANCE_TOO_LOW"_q) {

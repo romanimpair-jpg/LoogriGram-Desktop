@@ -101,7 +101,6 @@ public:
 
 	void setStartRecordingFilter(FilterCallback &&callback);
 	void setTTLFilter(FilterCallback &&callback);
-	void setPauseInsteadSend(bool pauseInsteadSend);
 
 	[[nodiscard]] bool isRecording() const;
 	[[nodiscard]] bool isRecordingLocked() const;
@@ -214,7 +213,6 @@ private:
 	base::unique_qptr<QObject> _keyFilterInRecordingState;
 
 	bool _warningShown = false;
-	bool _pauseInsteadSend = false;
 
 	rpl::variable<bool> _recording = false;
 	rpl::variable<bool> _inField = false;

@@ -2439,10 +2439,6 @@ bool ComposeControls::showRecordButton() const {
 		&& !isEditingMessage();
 }
 
-int ComposeControls::shownStarsPerMessage() const {
-	return _history ? _history->peer->starsPerMessageChecked() : 0;
-}
-
 void ComposeControls::clearListenState() {
 	_voiceRecordBar->clearListenState();
 }
@@ -2691,9 +2687,6 @@ void ComposeControls::initFieldAutocomplete() {
 }
 
 void ComposeControls::updateFieldPlaceholder() {
-	_voiceRecordBar->setPauseInsteadSend(_history
-		&& _history->peer->starsPerMessageChecked() > 0);
-
 	if (!isEditingMessage() && _isInlineBot) {
 		_field->setPlaceholder(
 			rpl::single(_inlineBot->botInfo->inlinePlaceholder.mid(1)),
@@ -2701,20 +2694,12 @@ void ComposeControls::updateFieldPlaceholder() {
 		return;
 	}
 
-	const auto ephemeralReply = session().ephemeralMessages()
-		.isEphemeralBotReply(replyingToMessage().messageId);
 	auto normal = [&]() -> rpl::producer<QString> {
 		const auto peer = _history ? _history->peer.get() : nullptr;
 		if (isEditingMessage()) {
 			return tr::lng_edit_message_text();
 		} else if (!peer) {
 			return tr::lng_message_ph();
-		} else if (const auto stars = ephemeralReply
-			? 0
-			: peer->starsPerMessageChecked()) {
-			return tr::lng_message_stars_ph(
-				lt_count,
-				rpl::single(stars * 1.));
 		} else if (const auto channel = peer->asChannel()) {
 			const auto realReplyTo = replyingToMessage();
 			const auto replyTo = realReplyTo.replying()
@@ -5220,7 +5205,6 @@ void ComposeControls::initWebpageProcess() {
 		| Data::PeerUpdate::Flag::Notifications
 		| Data::PeerUpdate::Flag::MessagesTTL
 		| Data::PeerUpdate::Flag::FullInfo
-		| Data::PeerUpdate::Flag::StarsPerMessage
 		| Data::PeerUpdate::Flag::GiftSettings
 	) | rpl::filter([peer = _history->peer](const Data::PeerUpdate &update) {
 		return (update.peer.get() == peer);
@@ -5238,11 +5222,7 @@ void ComposeControls::initWebpageProcess() {
 		if (flags & Data::PeerUpdate::Flag::MessagesTTL) {
 			updateMessagesTTLShown();
 		}
-		if (flags & Data::PeerUpdate::Flag::StarsPerMessage) {
-			updateFieldPlaceholder();
-		}
-		if (flags & (Data::PeerUpdate::Flag::Rights
-			| Data::PeerUpdate::Flag::StarsPerMessage)) {
+		if (flags & Data::PeerUpdate::Flag::Rights) {
 			updateAttachBotsMenu();
 		}
 		if (flags & (Data::PeerUpdate::Flag::Rights

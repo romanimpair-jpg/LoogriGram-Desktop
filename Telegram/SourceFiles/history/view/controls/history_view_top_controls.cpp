@@ -562,25 +562,6 @@ void TopControls::setupPeerBars() {
 	if (!user) {
 		return;
 	}
-	if (!_paysStatus) {
-		_paysStatus = std::make_unique<PaysStatus>(
-			_controller,
-			_topBars.get(),
-			user);
-		_paysStatus->show();
-		_paysStatusHeight = 0;
-		_paysStatus->bar().heightValue(
-		) | rpl::on_next([=] {
-			const auto height = _paysStatus->bar().height();
-			if (height == _paysStatusHeight) {
-				return;
-			}
-			const auto was = this->height();
-			_paysStatusHeight = height;
-			updateLayout();
-			applyHeightChangeWithRelayout(was, this->height());
-		}, _paysStatus->bar().lifetime());
-	}
 	if (!_businessBotStatus) {
 		_businessBotStatus = std::make_unique<BusinessBotStatus>(
 			_controller,
@@ -970,12 +951,10 @@ void TopControls::rebuildModeSensitiveBars() {
 		_groupCallBar = nullptr;
 		_requestsBar = nullptr;
 		_contactStatus = nullptr;
-		_paysStatus = nullptr;
 		_businessBotStatus = nullptr;
 		_groupCallBarHeight = 0;
 		_requestsBarHeight = 0;
 		_contactStatusHeight = 0;
-		_paysStatusHeight = 0;
 		_businessBotStatusHeight = 0;
 		if (fullChat) {
 			setupGroupCallBar();
@@ -1042,10 +1021,6 @@ void TopControls::updateLayout() {
 		_translateBar->resizeToWidth(_width);
 		top += _translateBarHeight;
 	}
-	if (_paysStatus) {
-		_paysStatus->bar().move(0, top);
-		top += _paysStatusHeight;
-	}
 	if (_contactStatus) {
 		_contactStatus->bar().move(0, top);
 		top += _contactStatusHeight;
@@ -1069,9 +1044,6 @@ void TopControls::updateZOrder() {
 	}
 	if (_contactStatus) {
 		_contactStatus->bar().raise();
-	}
-	if (_paysStatus) {
-		_paysStatus->bar().raise();
 	}
 	if (_translateBar) {
 		_translateBar->raise();

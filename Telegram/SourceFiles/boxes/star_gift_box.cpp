@@ -2274,14 +2274,11 @@ void Controller::rowClicked(not_null<PeerListRow*> row) {
 
 } // namespace
 
+// LoogriGram: a message could not ride along with a gift to someone who
+// charged stars to receive one. Nobody charges us anything now.
 rpl::producer<bool> StarGiftMessageAllowedValue(not_null<PeerData*> peer) {
 	peer->updateFull();
-	return peer->session().changes().peerFlagsValue(
-		peer,
-		Data::PeerUpdate::Flag::StarsPerMessage
-	) | rpl::map([=] {
-		return peer->starsPerMessageChecked() == 0;
-	});
+	return rpl::single(true);
 }
 
 not_null<InputField*> AddStarGiftMessageField(
@@ -3244,20 +3241,19 @@ void SendOfferBuyGift(
 		std::shared_ptr<ChatHelpers::Show> show,
 		std::shared_ptr<Data::UniqueGift> unique,
 		SuggestOptions options,
-		int starsPerMessage,
 		Fn<void(bool)> done) {
 	const auto randomId = base::RandomValue<uint64>();
 	const auto owner = show->session().data().peer(unique->ownerId);
 
 	using Flag = MTPpayments_SendStarGiftOffer::Flag;
 	show->session().api().request(MTPpayments_SendStarGiftOffer(
-		MTP_flags(starsPerMessage ? Flag::f_allow_paid_stars : Flag()),
+		MTP_flags(Flag()),
 		owner->input(),
 		MTP_string(unique->slug),
 		StarsAmountToTL(options.price()),
 		MTP_int(options.offerDuration),
 		MTP_long(randomId),
-		MTP_long(starsPerMessage)
+		MTP_long(0)
 	)).done([=](const MTPUpdates &result) {
 		show->session().api().applyUpdates(result);
 		done(true);
@@ -3277,7 +3273,6 @@ void ConfirmOfferBuyGift(
 		SuggestOptions options,
 		Fn<void()> done) {
 	const auto owner = show->session().data().peer(unique->ownerId);
-	const auto fee = owner->starsPerMessageChecked();
 	const auto price = options.price();
 	const auto sent = std::make_shared<bool>();
 	const auto send = [=](Fn<void()> close) {
@@ -3285,7 +3280,7 @@ void ConfirmOfferBuyGift(
 			return;
 		}
 		*sent = true;
-		SendOfferBuyGift(show, unique, options, fee, [=](bool ok) {
+		SendOfferBuyGift(show, unique, options, [=](bool ok) {
 			*sent = false;
 			if (ok) {
 				if (const auto window = show->resolveWindow()) {
