@@ -992,7 +992,7 @@ void BuildFoldersListSection(
 }
 
 void BuildTagsSection(SectionBuilder &builder, not_null<FoldersState*> state) {
-	if (!builder.session()->premiumPossible()) {
+	if (!builder.session()->premium()) {
 		return;
 	}
 
@@ -1298,7 +1298,7 @@ const auto kMeta = BuildHelper({
 		};
 	});
 
-	if (builder.session()->premiumPossible()) {
+	if (builder.session()->premium()) {
 		builder.add(nullptr, [] {
 			return SearchEntry{
 				.id = u"folders/show-tags"_q,

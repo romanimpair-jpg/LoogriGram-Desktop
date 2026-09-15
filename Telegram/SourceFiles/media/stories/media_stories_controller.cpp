@@ -1826,7 +1826,7 @@ bool Controller::allowStealthMode() const {
 	const auto story = this->story();
 	return story
 		&& !story->peer()->isSelf()
-		&& story->peer()->session().premiumPossible();
+		&& story->peer()->session().premium();
 }
 
 void Controller::setupStealthMode() {

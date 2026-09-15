@@ -43,7 +43,7 @@ struct ActivateArgs {
 // LoogriGram: two of these are gone - PremiumOffer at 2, the annual /
 // upgrade / restore subscription pitch, and PremiumGrace at 6, which offered
 // to repair a lapsed subscription through @premiumbot. Both were already
-// unreachable: one asked premiumPossible() && !premium(), which is a
+// unreachable: one asked premium() && !premium(), which is a
 // contradiction here, and the other asked premiumCanBuy() outright. The
 // numbers are a sort order rather than an index, so the gaps are harmless and
 // the rest keep their relative places.

@@ -235,7 +235,7 @@ void ApplyBotsList(
 			}
 		}
 		if constexpr (MTPDmessages_chatsSlice::Is<decltype(data)>()) {
-			if (session->premiumPossible()) {
+			if (session->premium()) {
 				result.more = data.vcount().v - data.vchats().v.size();
 			}
 		}
@@ -260,7 +260,7 @@ void ApplyBotsList(
 			result.list.push_back(session->data().processUser(user));
 		}
 		if constexpr (MTPDusers_usersSlice::Is<decltype(data)>()) {
-			if (session->premiumPossible()) {
+			if (session->premium()) {
 				result.more = data.vcount().v - data.vusers().v.size();
 			}
 		}

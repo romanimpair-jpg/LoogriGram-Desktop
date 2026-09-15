@@ -113,7 +113,7 @@ constexpr auto kLinkProtocols = {
 					if (document->isPremiumEmoji()) {
 						if (!allowPremiumEmoji
 							|| premiumSkipped
-							|| !session->premiumPossible()
+							|| !session->premium()
 							|| !allowPremiumEmoji(document)) {
 							premiumSkipped = document;
 							i = all.erase(i);

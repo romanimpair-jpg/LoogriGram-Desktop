@@ -125,9 +125,7 @@ public:
 	}
 
 	[[nodiscard]] bool premium() const;
-	[[nodiscard]] bool premiumPossible() const;
-	[[nodiscard]] rpl::producer<bool> premiumPossibleValue() const;
-	[[nodiscard]] bool premiumCanBuy() const;
+	[[nodiscard]] rpl::producer<bool> premiumValue() const;
 
 	// LoogriGram: sets Last Seen to Nobody. Suppressing presence client side
 	// is not enough on its own, because the server also infers it from
@@ -349,7 +347,6 @@ private:
 	const std::unique_ptr<Support::FastButtonsBots> _fastButtonsBots;
 
 	std::shared_ptr<QImage> _selfUserpicView;
-	rpl::variable<bool> _premiumPossible = false;
 	bool _messagePrimaryEditedDate = false;
 
 	rpl::event_stream<bool> _termsLockChanges;

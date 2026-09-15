@@ -286,10 +286,6 @@ void Session::appConfigRefreshed() {
 		.appealUrl = config.get<QString>(u"freeze_appeal_url"_q, QString()),
 	};
 
-	_premiumPossible = !config.get<bool>(
-		u"premium_purchase_blocked"_q,
-		true);
-
 	_messagePrimaryEditedDate = config.get<bool>(
 		u"message_primary_edited_date"_q,
 		false);
@@ -355,39 +351,23 @@ bool Session::premium() const {
 	return _user->isPremium();
 }
 
-bool Session::premiumPossible() const {
-	return premium() || premiumCanBuy();
-}
-
-rpl::producer<bool> Session::premiumPossibleValue() const {
-	auto premium = _user->flagsValue(
-	) | rpl::filter([=](UserData::Flags::Change change) {
-		return (change.diff & UserDataFlag::Premium);
-	}) | rpl::map([=] {
+// LoogriGram: premiumPossible() was premium() || premiumCanBuy(), and
+// nothing can be bought in-app, so the two were the same answer. Both are
+// gone and every caller asks premium() directly. This producer, which was
+// premiumPossibleValue(), emits the current value first because several
+// callers need one before the flag next changes; flagsValue() alone only
+// fires on a change.
+rpl::producer<bool> Session::premiumValue() const {
+	return rpl::single(
+		rpl::empty
+	) | rpl::then(
+		_user->flagsValue() | rpl::filter([=](
+				UserData::Flags::Change change) {
+			return (change.diff & UserDataFlag::Premium);
+		}) | rpl::to_empty
+	) | rpl::map([=] {
 		return _user->isPremium();
 	});
-	// The combine is kept, and its second value deliberately ignored, so this
-	// still emits once both sides have a value - the premium producer alone
-	// only fires on a change and would leave consumers without an initial
-	// value. Purchasability no longer contributes, matching premiumCanBuy().
-	return rpl::combine(
-		std::move(premium),
-		_premiumPossible.value()
-	) | rpl::map([](bool premium, bool) {
-		return premium;
-	});
-}
-
-// LoogriGram: nothing can be bought in-app. premiumPossible() therefore
-// reduces to premium(), which drops the whole Premium/Stars/Currency/Business
-// block from settings via BuildPremiumSection()'s early return, and sends
-// every limit box down its existing !premiumPossible branch - an explanatory
-// box with a single OK button instead of a purchase pitch. That branch is
-// upstream's own, used where purchases are unavailable, so nothing is
-// left half-wired. The reactive premiumPossibleValue() above keeps its
-// combine so it still emits initially, but now ignores purchasability.
-bool Session::premiumCanBuy() const {
-	return false;
 }
 
 void Session::applyGhostModePrivacy() {

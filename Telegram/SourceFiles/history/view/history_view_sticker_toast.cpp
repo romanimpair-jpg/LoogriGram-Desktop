@@ -60,7 +60,7 @@ void StickerToast::showFor(
 		not_null<DocumentData*> document,
 		Section section) {
 	const auto sticker = document->sticker();
-	if (!sticker || !document->session().premiumPossible()) {
+	if (!sticker || !document->session().premium()) {
 		return;
 	} else if (const auto strong = _weak.get()) {
 		if (_for == document) {

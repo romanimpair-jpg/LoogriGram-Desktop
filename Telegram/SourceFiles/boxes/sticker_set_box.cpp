@@ -1006,7 +1006,7 @@ void StickerSetBox::updateButtons() {
 		if (_inner->notInstalled()) {
 			// LoogriGram: a premium emoji set used to replace the Add button
 			// with an "Unlock" one that opened the subscription page. That
-			// asked for !premium() && premiumPossible(), and premiumPossible()
+			// asked for !premium() && premium(), and premium()
 			// is premium() here, so it was already a contradiction - the set
 			// simply adds like any other.
 			const auto addText = ((type == Data::StickersType::Emoji)
@@ -1175,7 +1175,7 @@ void StickerSetBox::Inner::applySet(const TLStickerSet &set) {
 	_selected = -1;
 	setCursor(style::cur_default);
 	const auto owner = &_session->data();
-	const auto premiumPossible = _session->premiumPossible();
+	const auto premiumAllowed = _session->premium();
 	set.match([&](const MTPDmessages_stickerSet &data) {
 		const auto &v = data.vdocuments().v;
 		_pack.reserve(v.size());
@@ -1187,7 +1187,7 @@ void StickerSetBox::Inner::applySet(const TLStickerSet &set) {
 				continue;
 			}
 			_pack.push_back(document);
-			if (!document->isPremiumSticker() || premiumPossible) {
+			if (!document->isPremiumSticker() || premiumAllowed) {
 				_elements.push_back({
 					document,
 					document->createMediaView(),

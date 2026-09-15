@@ -799,7 +799,7 @@ void EditFilterBox(
 
 		wrap->toggleOn(
 			rpl::combine(
-				session->premiumPossibleValue(),
+				session->premiumValue(),
 				session->data().chatsFilters().tagsEnabledValue(),
 				Data::AmPremiumValue(session)
 			) | rpl::map([=] (bool possible, bool tagsEnabled, bool premium) {

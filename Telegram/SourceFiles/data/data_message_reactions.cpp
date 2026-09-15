@@ -166,7 +166,7 @@ PossibleItemReactionsRef LookupPossibleReactions(
 	const auto &all = item->reactions();
 	const auto &allowed = PeerAllowedReactions(peer);
 	const auto limit = UniqueReactionsLimit(peer);
-	const auto premiumPossible = session->premiumPossible();
+	const auto premiumAllowed = session->premium();
 	const auto limited = (all.size() >= limit) && [&] {
 		const auto my = item->chosenReactions();
 		if (my.empty()) {
@@ -190,14 +190,14 @@ PossibleItemReactionsRef LookupPossibleReactions(
 		auto &&all = ranges::views::concat(myTags, tags);
 		result.recent.reserve(myTags.size() + tags.size());
 		for (const auto &reaction : all) {
-			if (premiumPossible
+			if (premiumAllowed
 				|| ranges::contains(tags, reaction.id, &Reaction::id)) {
 				if (added.emplace(reaction.id).second) {
 					result.recent.push_back(&reaction);
 				}
 			}
 		}
-		result.customAllowed = premiumPossible;
+		result.customAllowed = premiumAllowed;
 		result.tags = true;
 	} else if (limited) {
 		result.recent.reserve(all.size());
@@ -218,7 +218,7 @@ PossibleItemReactionsRef LookupPossibleReactions(
 			: full.size());
 		add([&](const Reaction &reaction) {
 			const auto id = reaction.id;
-			if (id.custom() && !premiumPossible) {
+			if (id.custom() && !premiumAllowed) {
 				return false;
 			} else if ((allowed.type == AllowedReactionsType::Some)
 				&& !ranges::contains(allowed.some, id)) {
@@ -239,7 +239,7 @@ PossibleItemReactionsRef LookupPossibleReactions(
 			}
 		}
 		result.customAllowed = (allowed.type == AllowedReactionsType::All)
-			&& premiumPossible;
+			&& premiumAllowed;
 
 		const auto favoriteId = reactions->favoriteId();
 		if (favoriteId.custom()
@@ -282,17 +282,17 @@ PossibleItemReactionsRef LookupPossibleReactions(
 	const auto &full = reactions->list(Reactions::Type::Active);
 	const auto &top = reactions->list(Reactions::Type::Top);
 	const auto &recent = reactions->list(Reactions::Type::Recent);
-	const auto premiumPossible = session->premiumPossible();
+	const auto premiumAllowed = session->premium();
 	auto added = base::flat_set<ReactionId>();
 	result.recent.reserve(full.size());
 	for (const auto &reaction : ranges::views::concat(top, recent, full)) {
-		if (premiumPossible || !reaction.id.custom()) {
+		if (premiumAllowed || !reaction.id.custom()) {
 			if (added.emplace(reaction.id).second) {
 				result.recent.push_back(&reaction);
 			}
 		}
 	}
-	result.customAllowed = premiumPossible;
+	result.customAllowed = premiumAllowed;
 	const auto i = ranges::find(
 		result.recent,
 		reactions->favoriteId(),

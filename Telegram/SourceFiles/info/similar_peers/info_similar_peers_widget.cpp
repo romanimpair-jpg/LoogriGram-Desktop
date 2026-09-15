@@ -115,7 +115,7 @@ void ListController::rebuild() {
 	// LoogriGram: the tail of this list used to fade out behind a locked
 	// "Show more" button and a line about the larger premium limit, both of
 	// which opened the subscription page. It was built only when
-	// !premium() && premiumPossible(), which is a contradiction here, so the
+	// !premium() && premium(), which is a contradiction here, so the
 	// panel and the height it reserved are deleted rather than left unbuilt.
 	delegate()->peerListRefreshRows();
 }

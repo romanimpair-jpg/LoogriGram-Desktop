@@ -2454,7 +2454,7 @@ bool StickersBox::Inner::appendSet(not_null<StickersSet*> set) {
 }
 
 bool StickersBox::Inner::skipPremium() const {
-	return !_session->premiumPossible();
+	return !_session->premium();
 }
 
 int StickersBox::Inner::countMaxNameWidth(bool installedSet) const {

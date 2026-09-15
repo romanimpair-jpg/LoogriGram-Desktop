@@ -391,7 +391,7 @@ void CreateManagedBotBox(
 				// LoogriGram: the cap is the server's and is reported as it
 				// was. What went is the other half of the branch - a toast
 				// naming the larger premium cap and opening the subscription
-				// page - which asked for !premium() && premiumPossible() and
+				// page - which asked for !premium() && premium() and
 				// so could never have been reached here.
 				const auto limits = Data::PremiumLimits(session);
 				const auto current = session->premium()

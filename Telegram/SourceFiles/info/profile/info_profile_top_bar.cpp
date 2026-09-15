@@ -450,7 +450,7 @@ TopBar::TopBar(
 	// LoogriGram: a "last seen when?" pill used to sit beside the status on
 	// another user's profile, offering to reveal your own last seen in
 	// exchange for theirs or to subscribe instead. It was built only for
-	// !premium() && premiumPossible(), so it could never appear here - and
+	// !premium() && premium(), so it could never appear here - and
 	// revealing our own last seen is what ghost mode exists to prevent.
 	bindStatus();
 

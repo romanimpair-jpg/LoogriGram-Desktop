@@ -322,7 +322,7 @@ void SimilarChannels::draw(Painter &p, const PaintContext &context) const {
 
 // LoogriGram: this was validateLastPremiumLock, and the lock half of it -
 // recomputing whether the "+N more" bubble wears a padlock - is gone, because
-// it asked for !premium() && premiumPossible(). Filling the thumbnails behind
+// it asked for !premium() && premium(). Filling the thumbnails behind
 // that bubble is the other half and is load-bearing, so the function stays
 // under the name of the work it still does.
 void SimilarChannels::validateMoreThumbnails() const {

@@ -607,7 +607,7 @@ EmojiListWidget::EmojiListWidget(
 
 	rpl::combine(
 		Data::AmPremiumValue(&session()),
-		session().premiumPossibleValue()
+		session().premiumValue()
 	) | rpl::skip(1) | rpl::on_next([=] {
 		refreshCustom();
 		resizeToWidth(width());
@@ -3488,12 +3488,10 @@ void EmojiListWidget::refreshCustom() {
 	const auto wasSectionTop = sectionInfoByOffset(wasTop).top;
 	auto old = base::take(_custom);
 	const auto session = &this->session();
-	const auto premiumPossible = session->premiumPossible();
-	const auto onlyUnicodeEmoji = _onlyUnicodeEmoji || !premiumPossible;
-	const auto premiumMayBeBought = (!onlyUnicodeEmoji)
-		&& premiumPossible
-		&& !session->premium()
-		&& !_allowWithoutPremium;
+	// LoogriGram: premiumMayBeBought asked for premiumPossible() and not
+	// premium() at once, which was only ever true where a subscription could
+	// be bought. It cannot, so no set is marked as requiring one.
+	const auto onlyUnicodeEmoji = _onlyUnicodeEmoji || !session->premium();
 	const auto owner = &session->data();
 	const auto &sets = owner->stickers().sets();
 	const auto push = [&](uint64 setId, bool installed) {
@@ -3556,11 +3554,9 @@ void EmojiListWidget::refreshCustom() {
 			} else if (valid) {
 				i->thumbnailDocument = it->second->lookupThumbnailDocument();
 				i->title = it->second->title;
-				const auto premiumRequired = premium && premiumMayBeBought;
-				if (i->canRemove != canRemove
-					|| i->premiumRequired != premiumRequired) {
+				if (i->canRemove != canRemove || i->premiumRequired) {
 					i->canRemove = canRemove;
-					i->premiumRequired = premiumRequired;
+					i->premiumRequired = false;
 					i->ripple.reset();
 				}
 				if (i->canRemove && !i->premiumRequired) {
@@ -3597,7 +3593,6 @@ void EmojiListWidget::refreshCustom() {
 			.title = it->second->title,
 			.list = std::move(set),
 			.canRemove = canRemove,
-			.premiumRequired = premium && premiumMayBeBought,
 		});
 	};
 	refreshEmojiStatusCollectibles();

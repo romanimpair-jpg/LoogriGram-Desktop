@@ -718,7 +718,7 @@ void BackgroundPreviewBox::applyForPeer() {
 	if (forChannel()) {
 		checkLevelForChannel();
 		return;
-	} else if (_fromMessageId || !_forPeer->session().premiumPossible()) {
+	} else if (_fromMessageId || !_forPeer->session().premium()) {
 		applyForPeer(false);
 		return;
 	} else if (_forBothOverlay) {
@@ -763,7 +763,7 @@ void BackgroundPreviewBox::applyForPeer() {
 	});
 	// LoogriGram: this was a padlocked button that answered a non-subscriber
 	// with the wallpaper pitch. It could not be reached by one: the overlay
-	// it sits in is only built when premiumPossible(), which is premium()
+	// it sits in is only built when premium(), which is premium()
 	// here, so the lock was never engaged and the pitch never shown. Plain
 	// button, one thing it does.
 	const auto forBoth = CreateChild<RoundButton>(

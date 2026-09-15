@@ -332,7 +332,7 @@ struct State {
 				box->closeBox();
 			// LoogriGram: a !premium branch here opened the stories pitch.
 			// Both ways into this box - the stories menu item and the
-			// viewer's own control - already require premiumPossible(),
+			// viewer's own control - already require premium(),
 			// which is premium() here, so it could not be reached.
 			} else if (now.mode.cooldownTill > now.now) {
 				show->showToast(ToastCooldown());
@@ -380,7 +380,7 @@ void AddStealthModeMenu(
 		not_null<PeerData*> peer,
 		not_null<Window::SessionController*> controller,
 		Fn<void()> onActivated) {
-	if (!peer->session().premiumPossible() || !peer->isUser()) {
+	if (!peer->session().premium() || !peer->isUser()) {
 		return;
 	}
 	const auto now = base::unixtime::now();

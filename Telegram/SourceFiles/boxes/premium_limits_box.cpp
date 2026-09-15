@@ -403,7 +403,7 @@ void SimpleLimitBox(
 		not_null<Ui::GenericBox*> box,
 		const style::PremiumLimits *stOverride,
 		not_null<Main::Session*> session,
-		bool premiumPossible,
+		bool premium,
 		rpl::producer<QString> title,
 		rpl::producer<TextWithEntities> text,
 		const QString &refAddition,
@@ -427,11 +427,11 @@ void SimpleLimitBox(
 		(descriptor.complexRatio
 			? descriptor.premiumLimit
 			: 2 * descriptor.current),
-		ChooseBubbleType(premiumPossible),
+		ChooseBubbleType(premium),
 		descriptor.phrase,
 		descriptor.icon);
 	Ui::AddSkip(top, st::premiumLineTextSkip);
-	if (premiumPossible) {
+	if (premium) {
 		Ui::Premium::AddLimitRow(
 			top,
 			st,
@@ -457,7 +457,7 @@ void SimpleLimitBox(
 
 	// LoogriGram: the explanation of the cap stays - it is an error message
 	// for a limit the server imposes either way - but the offer of a way
-	// around it does not. premiumPossible() is premium() now, so the branch
+	// around it does not. premium() is premium() now, so the branch
 	// this replaces could only ever have been reached to sell something.
 	box->addButton(tr::lng_box_ok(), [=] {
 		box->closeBox();
@@ -482,7 +482,7 @@ void SimpleLimitBox(
 		box,
 		stOverride,
 		session,
-		session->premiumPossible(),
+		session->premium(),
 		std::move(title),
 		std::move(text),
 		refAddition,
@@ -502,26 +502,13 @@ void SimplePinsLimitBox(
 		float64 premiumLimit,
 		float64 currentCount) {
 	const auto premium = session->premium();
-	const auto premiumPossible = session->premiumPossible();
 
 	const auto current = std::clamp(currentCount, defaultLimit, premiumLimit);
 
-	auto text = rpl::combine(
-		tr::lng_filter_pin_limit1(
-			lt_count,
-			rpl::single(premium ? premiumLimit : defaultLimit),
-			tr::rich),
-		((premium || !premiumPossible)
-			? rpl::single(TextWithEntities())
-			: tr::lng_filter_pin_limit2(
-				lt_count,
-				rpl::single(premiumLimit),
-				tr::rich))
-	) | rpl::map([](TextWithEntities &&a, TextWithEntities &&b) {
-		return b.text.isEmpty()
-			? a
-			: a.append(QChar(' ')).append(std::move(b));
-	});
+	auto text = tr::lng_filter_pin_limit1(
+		lt_count,
+		rpl::single(premium ? premiumLimit : defaultLimit),
+		tr::rich);
 	SimpleLimitBox(
 		box,
 		nullptr,
@@ -538,7 +525,6 @@ void ChannelsLimitBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session) {
 	const auto premium = session->premium();
-	const auto premiumPossible = session->premiumPossible();
 
 	const auto limits = Data::PremiumLimits(session);
 	const auto defaultLimit = float64(limits.channelsDefault());
@@ -550,12 +536,7 @@ void ChannelsLimitBox(
 			lt_count,
 			rpl::single(current),
 			tr::rich),
-		((premium || !premiumPossible)
-			? tr::lng_channels_limit2_final(tr::rich)
-			: tr::lng_channels_limit2(
-				lt_count,
-				rpl::single(premiumLimit),
-				tr::rich))
+		tr::lng_channels_limit2_final(tr::rich)
 	) | rpl::map([](TextWithEntities &&a, TextWithEntities &&b) {
 		return a.append(QChar(' ')).append(std::move(b));
 	});
@@ -624,7 +605,6 @@ void PublicLinksLimitBox(
 		Fn<void()> retry) {
 	const auto session = &navigation->session();
 	const auto premium = session->premium();
-	const auto premiumPossible = session->premiumPossible();
 
 	const auto limits = Data::PremiumLimits(session);
 	const auto defaultLimit = float64(limits.channelsPublicDefault());
@@ -636,12 +616,7 @@ void PublicLinksLimitBox(
 			lt_count,
 			rpl::single(current),
 			tr::rich),
-		((premium || !premiumPossible)
-			? tr::lng_links_limit2_final(tr::rich)
-			: tr::lng_links_limit2(
-				lt_count,
-				rpl::single(premiumLimit),
-				tr::rich))
+		tr::lng_links_limit2_final(tr::rich)
 	) | rpl::map([](TextWithEntities &&a, TextWithEntities &&b) {
 		return a.append(QChar(' ')).append(std::move(b));
 	});
@@ -687,7 +662,6 @@ void FilterChatsLimitBox(
 		int currentCount,
 		bool include) {
 	const auto premium = session->premium();
-	const auto premiumPossible = session->premiumPossible();
 
 	const auto limits = Data::PremiumLimits(session);
 	const auto defaultLimit = float64(limits.dialogFiltersChatsDefault());
@@ -697,24 +671,12 @@ void FilterChatsLimitBox(
 		defaultLimit,
 		premiumLimit);
 
-	auto text = rpl::combine(
-		(include
-			? tr::lng_filter_chats_limit1
-			: tr::lng_filter_chats_exlude_limit1)(
-				lt_count,
-				rpl::single(premium ? premiumLimit : defaultLimit),
-				tr::rich),
-		((premium || !premiumPossible)
-			? rpl::single(TextWithEntities())
-			: tr::lng_filter_chats_limit2(
-				lt_count,
-				rpl::single(premiumLimit),
-				tr::rich))
-	) | rpl::map([](TextWithEntities &&a, TextWithEntities &&b) {
-		return b.text.isEmpty()
-			? a
-			: a.append(QChar(' ')).append(std::move(b));
-	});
+	auto text = (include
+		? tr::lng_filter_chats_limit1
+		: tr::lng_filter_chats_exlude_limit1)(
+			lt_count,
+			rpl::single(premium ? premiumLimit : defaultLimit),
+			tr::rich);
 
 	SimpleLimitBox(
 		box,
@@ -730,29 +692,16 @@ void FilterLinksLimitBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session) {
 	const auto premium = session->premium();
-	const auto premiumPossible = session->premiumPossible();
 
 	const auto limits = Data::PremiumLimits(session);
 	const auto defaultLimit = float64(limits.dialogFiltersLinksDefault());
 	const auto premiumLimit = float64(limits.dialogFiltersLinksPremium());
 	const auto current = (premium ? premiumLimit : defaultLimit);
 
-	auto text = rpl::combine(
-		tr::lng_filter_links_limit1(
-			lt_count,
-			rpl::single(premium ? premiumLimit : defaultLimit),
-			tr::rich),
-		((premium || !premiumPossible)
-			? rpl::single(TextWithEntities())
-			: tr::lng_filter_links_limit2(
-				lt_count,
-				rpl::single(premiumLimit),
-				tr::rich))
-	) | rpl::map([](TextWithEntities &&a, TextWithEntities &&b) {
-		return b.text.isEmpty()
-			? a
-			: a.append(QChar(' ')).append(std::move(b));
-	});
+	auto text = tr::lng_filter_links_limit1(
+		lt_count,
+		rpl::single(premium ? premiumLimit : defaultLimit),
+		tr::rich);
 
 	SimpleLimitBox(
 		box,
@@ -776,7 +725,6 @@ void FiltersLimitBox(
 		not_null<Main::Session*> session,
 		std::optional<int> filtersCountOverride) {
 	const auto premium = session->premium();
-	const auto premiumPossible = session->premiumPossible();
 
 	const auto limits = Data::PremiumLimits(session);
 	const auto defaultLimit = float64(limits.dialogFiltersDefault());
@@ -786,22 +734,10 @@ void FiltersLimitBox(
 		[](const Data::ChatFilter &f) { return f.id() != FilterId(); }));
 	const auto current = float64(filtersCountOverride.value_or(cloud));
 
-	auto text = rpl::combine(
-		tr::lng_filters_limit1(
-			lt_count,
-			rpl::single(premium ? premiumLimit : defaultLimit),
-			tr::rich),
-		((premium || !premiumPossible)
-			? rpl::single(TextWithEntities())
-			: tr::lng_filters_limit2(
-				lt_count,
-				rpl::single(premiumLimit),
-				tr::rich))
-	) | rpl::map([](TextWithEntities &&a, TextWithEntities &&b) {
-		return b.text.isEmpty()
-			? a
-			: a.append(QChar(' ')).append(std::move(b));
-	});
+	auto text = tr::lng_filters_limit1(
+		lt_count,
+		rpl::single(premium ? premiumLimit : defaultLimit),
+		tr::rich);
 	SimpleLimitBox(
 		box,
 		nullptr,
@@ -816,7 +752,6 @@ void ShareableFiltersLimitBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session) {
 	const auto premium = session->premium();
-	const auto premiumPossible = session->premiumPossible();
 
 	const auto limits = Data::PremiumLimits(session);
 	const auto defaultLimit = float64(limits.dialogShareableFiltersDefault());
@@ -825,22 +760,10 @@ void ShareableFiltersLimitBox(
 		session->data().chatsFilters().list(),
 		[](const Data::ChatFilter &f) { return f.chatlist(); }));
 
-	auto text = rpl::combine(
-		tr::lng_filter_shared_limit1(
-			lt_count,
-			rpl::single(premium ? premiumLimit : defaultLimit),
-			tr::rich),
-		((premium || !premiumPossible)
-			? rpl::single(TextWithEntities())
-			: tr::lng_filter_shared_limit2(
-				lt_count,
-				rpl::single(premiumLimit),
-				tr::rich))
-	) | rpl::map([](TextWithEntities &&a, TextWithEntities &&b) {
-		return b.text.isEmpty()
-			? a
-			: a.append(QChar(' ')).append(std::move(b));
-	});
+	auto text = tr::lng_filter_shared_limit1(
+		lt_count,
+		rpl::single(premium ? premiumLimit : defaultLimit),
+		tr::rich);
 	SimpleLimitBox(
 		box,
 		nullptr,
@@ -936,7 +859,6 @@ void CaptionLimitBox(
 		int remove,
 		const style::PremiumLimits *stOverride) {
 	const auto premium = session->premium();
-	const auto premiumPossible = session->premiumPossible();
 
 	const auto limits = Data::PremiumLimits(session);
 	const auto defaultLimit = float64(limits.captionLengthDefault());
@@ -947,22 +869,10 @@ void CaptionLimitBox(
 		defaultLimit,
 		premiumLimit);
 
-	auto text = rpl::combine(
-		tr::lng_caption_limit1(
-			lt_count,
-			rpl::single(currentLimit),
-			tr::rich),
-		(!premiumPossible
-			? rpl::single(TextWithEntities())
-			: tr::lng_caption_limit2(
-				lt_count,
-				rpl::single(premiumLimit),
-				tr::rich))
-	) | rpl::map([](TextWithEntities &&a, TextWithEntities &&b) {
-		return b.text.isEmpty()
-			? a
-			: a.append(QChar(' ')).append(std::move(b));
-	});
+	auto text = tr::lng_caption_limit1(
+		lt_count,
+		rpl::single(currentLimit),
+		tr::rich);
 
 	SimpleLimitBox(
 		box,
@@ -1000,9 +910,9 @@ void FileSizeLimitBox(
 
 	const auto tooLarge = (fileSizeBytes > premiumLimit * 512ULL * 1024);
 	const auto showLimit = tooLarge ? premiumGb : defaultGb;
-	const auto premiumPossible = !tooLarge && session->premiumPossible();
+	const auto showPremiumRow = !tooLarge && session->premium();
 
-	const auto current = (fileSizeBytes && premiumPossible)
+	const auto current = (fileSizeBytes && showPremiumRow)
 		? std::clamp(
 			float64(((fileSizeBytes / uint64(1024 * 1024)) + 499) / 1000),
 			defaultGb,
@@ -1012,26 +922,16 @@ void FileSizeLimitBox(
 		return tr::lng_file_size_limit(tr::now, lt_count, count);
 	};
 
-	auto text = rpl::combine(
-		tr::lng_file_size_limit1(
-			lt_size,
-			rpl::single(tr::bold(gb(showLimit))),
-			tr::rich),
-		(!premiumPossible
-			? rpl::single(TextWithEntities())
-			: tr::lng_file_size_limit2(
-				lt_size,
-				rpl::single(tr::bold(gb(premiumGb))),
-				tr::rich))
-	) | rpl::map([](TextWithEntities &&a, TextWithEntities &&b) {
-		return a.append(QChar(' ')).append(std::move(b));
-	});
+	auto text = tr::lng_file_size_limit1(
+		lt_size,
+		rpl::single(tr::bold(gb(showLimit))),
+		tr::rich);
 
 	SimpleLimitBox(
 		box,
 		stOverride,
 		session,
-		premiumPossible,
+		showPremiumRow,
 		tr::lng_file_size_limit_title(),
 		std::move(text),
 		"upload_max_fileparts",
