@@ -36,11 +36,18 @@ below is proven. The update progress ring could not be checked, because it
 lives in the build *doing* the downloading and `g2533f37` did not have it;
 it is verifiable on the next update.
 
-**Since then `patches` has gained 21 commits - 248 files, −44,930 lines - and
-not one of them has been compiled.** That is the premium and monetisation
-removal; see `PREMIUM-HANDOFF.md` for what is done, what is left, and the
-four checks that stand in for a compiler. The `out/` cache is warm, so the
-next build should be 45-75 minutes rather than two hours.
+**Since then `patches` has gained 34 commits - 388 files, −63,374 lines -
+and not one of them has been compiled.** That is the premium and monetisation
+removal; see `PREMIUM-HANDOFF.md` for the rule it now follows, what is done,
+what is left, and the four checks that stand in for a compiler. The `out/`
+cache is warm, so the next build should be 45-75 minutes rather than two
+hours, and building only at the end of the removal is the agreed plan.
+
+The rule, settled and not to be re-litigated: **no money operations
+whatsoever, neither paying nor being paid.** Stars, TON, gifts,
+subscriptions, in either direction. Inbound content is still *rendered* -
+hidden at the view, never refused at parse - which is a different question
+and is why `LoogriGram::HiddenContent()` exists.
 
 One thing that looks like a bug and is not: the taskbar and Start Menu still
 show upstream's plane. The binary does not contain it - the exe's resource
