@@ -14,9 +14,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peers/replace_boost_box.h"
 #include "boxes/background_box.h"
 #include "boxes/premium_preview_box.h"
-#include "boxes/star_gift_box.h"
 #include "boxes/stickers_box.h"
-#include "boxes/transfer_gift_box.h"
 #include "chat_helpers/compose/compose_show.h"
 #include "core/ui_integration.h"
 #include "data/stickers/data_custom_emoji.h"
@@ -36,7 +34,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "history/history_item.h"
 #include "info/channel_statistics/boosts/info_boosts_widget.h"
-#include "info/peer_gifts/info_peer_gifts_common.h"
 #include "info/profile/tabs/info_profile_tabs_strip.h"
 #include "info/profile/info_profile_emoji_status_panel.h"
 #include "info/profile/info_profile_top_bar.h"
@@ -84,88 +81,6 @@ using namespace Settings;
 constexpr auto kFakeChannelId = ChannelId(0xFFFFFFF000ULL);
 constexpr auto kFakeWebPageId = WebPageId(0xFFFFFFFF00000000ULL);
 constexpr auto kUnsetColorIndex = uint8(0xFF);
-
-base::unique_qptr<Ui::RpWidget> CreateEmptyPlaceholder(
-		not_null<Ui::RpWidget*> parent,
-		int width,
-		const QMargins &padding,
-		Fn<void()> switchToNextTab) {
-	const auto container = Ui::CreateChild<Ui::RpWidget>(parent);
-	auto result = base::unique_qptr<Ui::RpWidget>{ container };
-
-	auto icon = Settings::CreateLottieIcon(
-		container,
-		{
-			.name = u"my_gifts_empty"_q,
-			.sizeOverride = st::normalBoxLottieSize,
-		},
-		st::settingsBlockedListIconPadding);
-	const auto iconWidget = icon.widget.data();
-	iconWidget->show();
-
-	const auto emptyLabel = Ui::CreateChild<Ui::FlatLabel>(
-		container,
-		tr::lng_gift_stars_tabs_my_empty(),
-		st::giftBoxGiftEmptyLabel);
-	emptyLabel->setTryMakeSimilarLines(true);
-	emptyLabel->resizeToWidth(
-		width - st::boxRowPadding.left() - st::boxRowPadding.right());
-	emptyLabel->show();
-
-	const auto emptyNextLabel = switchToNextTab
-		? Ui::CreateChild<Ui::FlatLabel>(
-			container,
-			tr::lng_gift_stars_tabs_my_empty_next(
-				lt_emoji,
-				rpl::single(Ui::Text::IconEmoji(&st::textMoreIconEmoji)),
-				tr::link),
-			st::giftBoxGiftEmptyLabel)
-		: nullptr;
-	if (emptyNextLabel) {
-		emptyNextLabel->resizeToWidth(
-			width - st::boxRowPadding.left() - st::boxRowPadding.right());
-		emptyNextLabel->setClickHandlerFilter([=](auto...) {
-			switchToNextTab();
-			return false;
-		});
-	}
-
-	icon.animate(anim::repeat::loop);
-
-	const auto labelHeight = emptyLabel->height();
-	const auto nextLabelHeight = emptyNextLabel
-		? emptyNextLabel->height()
-		: 0;
-	const auto totalHeight = iconWidget->height()
-		+ st::normalFont->height + labelHeight + nextLabelHeight
-		+ (nextLabelHeight ? st::normalFont->height : 0)
-		+ padding.top() + padding.bottom();
-	container->resize(width, totalHeight);
-
-	container->sizeValue(
-	) | rpl::on_next([=](QSize size) {
-		const auto totalContentHeight = iconWidget->height()
-			+ st::normalFont->height + emptyLabel->height()
-			+ (emptyNextLabel
-				? st::normalFont->height + emptyNextLabel->height()
-				: 0);
-		const auto iconY = (size.height() - totalContentHeight) / 2;
-		iconWidget->move(
-			(size.width() - iconWidget->width()) / 2,
-			iconY);
-		emptyLabel->move(
-			(size.width() - emptyLabel->width()) / 2,
-			iconY + iconWidget->height() + st::normalFont->height);
-		if (emptyNextLabel) {
-			emptyNextLabel->move(
-				(size.width() - emptyNextLabel->width()) / 2,
-				iconY + iconWidget->height() + st::normalFont->height
-					+ emptyLabel->height() + st::normalFont->height);
-		}
-	}, container->lifetime());
-
-	return result;
-}
 
 class PreviewDelegate final : public HistoryView::DefaultElementDelegate {
 public:
@@ -1096,401 +1011,6 @@ void Apply(
 	return result;
 }
 
-struct ColorGiftTabsResult {
-	Fn<void()> switchToNext;
-	QPointer<Ui::SubTabs> tabs;
-};
-
-ColorGiftTabsResult AddColorGiftTabs(
-		not_null<Ui::VerticalLayout*> container,
-		not_null<Main::Session*> session,
-		Fn<void(uint64 giftId)> chosen,
-		bool profile) {
-	using namespace Info::PeerGifts;
-
-	struct State {
-		rpl::variable<std::vector<Data::StarGift>> list;
-		Ui::SubTabs *tabs = nullptr;
-	};
-	const auto state = container->lifetime().make_state<State>();
-
-	GiftsStars(
-		session,
-		session->user()
-	) | rpl::on_next([=](const std::vector<GiftTypeStars> &list) {
-		auto filtered = std::vector<Data::StarGift>();
-		for (const auto &gift : list) {
-			if ((profile || gift.info.peerColorAvailable) && gift.resale) {
-				filtered.push_back(gift.info);
-			}
-		}
-		state->list = std::move(filtered);
-	}, container->lifetime());
-
-	state->list.value(
-	) | rpl::on_next([=](const std::vector<Data::StarGift> &list) {
-		auto tabs = std::vector<Ui::SubTabs::Tab>();
-		tabs.push_back({
-			.id = u"my"_q,
-			.text = tr::lng_gift_stars_tabs_my(tr::now, tr::marked),
-		});
-		for (const auto &gift : list) {
-			auto text = TextWithEntities();
-			tabs.push_back({
-				.id = QString::number(gift.id),
-				.text = Data::SingleCustomEmoji(
-					gift.document).append(' ').append(gift.resellTitle),
-			});
-		}
-		const auto context = Core::TextContext({
-			.session = session,
-		});
-		if (!state->tabs) {
-			state->tabs = container->add(
-				object_ptr<Ui::SubTabs>(
-					container,
-					st::defaultSubTabs,
-					Ui::SubTabs::Options{
-						.selected = u"my"_q,
-						.centered = true,
-					},
-					std::move(tabs),
-					context));
-
-			state->tabs->activated(
-			) | rpl::on_next([=](const QString &id) {
-				state->tabs->setActiveTab(id);
-				chosen(id.toULongLong());
-			}, state->tabs->lifetime());
-		} else {
-			state->tabs->setTabs(std::move(tabs), context);
-		}
-		container->resizeToWidth(container->width());
-	}, container->lifetime());
-
-	return {
-		.switchToNext = [=]() {
-			const auto &list = state->list.current();
-			if (!list.empty()) {
-				if (state->tabs) {
-					state->tabs->setActiveTab(QString::number(list.front().id));
-				}
-				chosen(list.front().id);
-			}
-		},
-		.tabs = state->tabs,
-	};
-}
-
-void AddGiftSelector(
-		not_null<Ui::VerticalLayout*> container,
-		not_null<Main::Session*> session,
-		rpl::producer<uint64> showingGiftIdValue,
-		Fn<void(std::shared_ptr<Data::UniqueGift> selected)> chosen,
-		rpl::producer<uint64> selected,
-		bool profile,
-		rpl::producer<uint64> selectedGiftId = rpl::single(uint64(0)),
-		Fn<void()> switchToNextTab = nullptr) {
-	using namespace Info::PeerGifts;
-
-	const auto raw = container->add(
-		object_ptr<Ui::VisibleRangeWidget>(container));
-
-	struct List {
-		std::vector<GiftTypeStars> list;
-		rpl::lifetime loading;
-		QString offset;
-		bool loaded = false;
-	};
-	struct State {
-		std::optional<Delegate> delegate;
-		rpl::variable<uint64> showingGiftId;
-		base::flat_map<uint64, List> lists;
-		List *current = nullptr;
-		std::vector<bool> validated;
-		std::vector<std::unique_ptr<GiftButton>> buttons;
-		rpl::variable<Ui::VisibleRange> visibleRange;
-		rpl::variable<uint64> selected;
-		rpl::variable<uint64> selectedGiftId;
-		int perRow = 1;
-		base::unique_qptr<Ui::RpWidget> emptyPlaceholder;
-
-		Fn<void()> loadMore;
-		Fn<void()> resize;
-		Fn<void()> rebuild;
-	};
-	const auto state = raw->lifetime().make_state<State>();
-	state->delegate.emplace(session, GiftButtonMode::Full);
-	state->showingGiftId = std::move(showingGiftIdValue);
-	state->selected = std::move(selected);
-	state->selectedGiftId = std::move(selectedGiftId);
-	const auto shadow = st::defaultDropdownMenu.wrap.shadow;
-	const auto extend = shadow.extend;
-	state->loadMore = [=] {
-		const auto selfId = session->userPeerId();
-		const auto shownGiftId = state->showingGiftId.current();
-		if (state->current->loaded || state->current->loading) {
-			return;
-		} else if (shownGiftId) {
-			state->current->loading = Data::ResaleGiftsSlice(
-				session,
-				shownGiftId,
-				{},
-				state->current->offset
-			) | rpl::on_next([=](Data::ResaleGiftsDescriptor slice) {
-				auto &entry = state->lists[shownGiftId];
-				entry.loading.destroy();
-				entry.offset = slice.offset;
-				entry.loaded = entry.offset.isEmpty();
-				if (state->showingGiftId.current() != shownGiftId) {
-					return;
-				}
-
-				auto &list = state->current->list;
-				for (const auto &gift : slice.list) {
-					if (gift.unique && (profile || gift.unique->peerColor)) {
-						list.push_back({
-							.info = gift,
-							.resale = true,
-							.mine = (gift.unique->ownerId == selfId),
-						});
-					}
-				}
-				state->resize();
-			});
-		} else {
-			state->current->loading = Data::MyUniqueGiftsSlice(
-				session,
-				Data::MyUniqueType::OwnedAndHosted,
-				state->current->offset
-			) | rpl::on_next([=](Data::MyGiftsDescriptor slice) {
-				auto &entry = state->lists[shownGiftId];
-				entry.loading.destroy();
-				entry.offset = slice.offset;
-				entry.loaded = entry.offset.isEmpty();
-				if (state->showingGiftId.current() != shownGiftId) {
-					return;
-				}
-
-				auto &list = state->current->list;
-				for (const auto &gift : slice.list) {
-					if (gift.info.unique
-						&& (profile || gift.info.unique->peerColor)) {
-						list.push_back({ .info = gift.info });
-					}
-				}
-				state->resize();
-			});
-		}
-	};
-	state->rebuild = [=] {
-		const auto shownGiftId = state->showingGiftId.current();
-		const auto width = st::boxWideWidth;
-		const auto padding = st::giftBoxPadding;
-		const auto available = width - padding.left() - padding.right();
-		const auto range = state->visibleRange.current();
-		const auto count = int(state->current->list.size());
-
-		auto &buttons = state->buttons;
-		if (buttons.size() < count) {
-			buttons.resize(count);
-		}
-		auto &validated = state->validated;
-		validated.resize(count);
-
-		auto x = padding.left();
-		auto y = padding.top();
-		const auto single = state->delegate->buttonSize();
-		const auto perRow = state->perRow;
-		const auto singlew = single.width() + st::giftBoxGiftSkip.x();
-		const auto singleh = single.height() + st::giftBoxGiftSkip.y();
-		const auto rowFrom = std::max(range.top - y, 0) / singleh;
-		const auto rowTill = (std::max(range.bottom - y + st::giftBoxGiftSkip.y(), 0) + singleh - 1)
-			/ singleh;
-		Assert(rowTill >= rowFrom);
-		const auto first = rowFrom * perRow;
-		const auto last = std::min(rowTill * perRow, count);
-		const auto selectedCollectibleId = state->selected.current();
-		const auto selectedGiftId = state->selectedGiftId.current();
-		auto checkedFrom = 0;
-		auto checkedTill = int(buttons.size());
-		const auto ensureButton = [&](int index) {
-			auto &button = buttons[index];
-			if (!button) {
-				validated[index] = false;
-				for (; checkedFrom != first; ++checkedFrom) {
-					if (buttons[checkedFrom]) {
-						button = std::move(buttons[checkedFrom]);
-						break;
-					}
-				}
-			}
-			if (!button) {
-				for (; checkedTill != last; ) {
-					--checkedTill;
-					if (buttons[checkedTill]) {
-						button = std::move(buttons[checkedTill]);
-						break;
-					}
-				}
-			}
-			if (!button) {
-				const auto delegate = &*state->delegate;
-				button = std::make_unique<GiftButton>(raw, delegate);
-			}
-			const auto raw = button.get();
-			if (validated[index]) {
-				return;
-			}
-			raw->show();
-			validated[index] = true;
-			const auto &gift = state->current->list[index];
-			raw->setDescriptor({ gift }, shownGiftId
-				? GiftButtonMode::Full
-				: GiftButtonMode::Minimal);
-			raw->setClickedCallback([=, unique = gift.info.unique] {
-				chosen(unique);
-			});
-			raw->setGeometry(QRect(QPoint(x, y), single), extend);
-			const auto isSelected = selectedCollectibleId
-				? (gift.info.unique->id == selectedCollectibleId)
-				: (gift.info.unique->id == selectedGiftId);
-			raw->toggleSelected(
-				isSelected,
-				GiftSelectionMode::Inset,
-				anim::type::instant);
-		};
-		y += rowFrom * singleh;
-		for (auto row = rowFrom; row != rowTill; ++row) {
-			for (auto col = 0; col != perRow; ++col) {
-				const auto index = row * perRow + col;
-				if (index >= count) {
-					break;
-				}
-				const auto last = !((col + 1) % perRow);
-				if (last) {
-					x = padding.left() + available - single.width();
-				}
-				ensureButton(index);
-				if (last) {
-					x = padding.left();
-					y += singleh;
-				} else {
-					x += singlew;
-				}
-			}
-		}
-		const auto till = std::min(int(buttons.size()), rowTill * perRow);
-		for (auto i = count; i < till; ++i) {
-			if (const auto button = buttons[i].get()) {
-				button->hide();
-			}
-		}
-
-		const auto find = [=](uint64 id) -> GiftButton* {
-			if (!id) {
-				return nullptr;
-			}
-			const auto count = int(state->current->list.size());
-			for (auto i = 0; i != count; ++i) {
-				const auto &gift = state->current->list[i];
-				if (gift.info.unique->id == id) {
-					return state->buttons[i].get();
-				}
-			}
-			return nullptr;
-		};
-
-		state->selected.value(
-		) | rpl::combine_previous() | rpl::on_next([=](
-				uint64 wasCollectibleId,
-				uint64 nowCollectibleId) {
-			if (wasCollectibleId) {
-				if (const auto button = find(wasCollectibleId)) {
-					button->toggleSelected(false, GiftSelectionMode::Inset);
-				}
-			}
-			if (nowCollectibleId) {
-				if (const auto button = find(nowCollectibleId)) {
-					button->toggleSelected(true, GiftSelectionMode::Inset);
-				}
-			}
-		}, raw->lifetime());
-
-		state->selectedGiftId.value(
-		) | rpl::combine_previous() | rpl::on_next([=](
-				uint64 wasGiftId,
-				uint64 nowGiftId) {
-			if (wasGiftId) {
-				if (const auto button = find(wasGiftId)) {
-					button->toggleSelected(false, GiftSelectionMode::Inset);
-				}
-			}
-			if (nowGiftId) {
-				if (const auto button = find(nowGiftId)) {
-					button->toggleSelected(true, GiftSelectionMode::Inset);
-				}
-			}
-		}, raw->lifetime());
-
-		const auto page = range.bottom - range.top;
-		if (page > 0 && range.bottom + page > raw->height()) {
-			state->loadMore();
-		}
-	};
-
-	const auto width = st::boxWideWidth;
-	const auto padding = st::giftBoxPadding;
-	const auto available = width - padding.left() - padding.right();
-	state->perRow = available / state->delegate->buttonSize().width();
-
-	state->resize = [=] {
-		const auto count = int(state->current->list.size());
-		state->validated.clear();
-
-		if (count == 0 && state->showingGiftId.current() == 0) {
-			if (!state->emptyPlaceholder) {
-				state->emptyPlaceholder = CreateEmptyPlaceholder(
-					raw,
-					width,
-					padding,
-					switchToNextTab);
-			}
-			state->emptyPlaceholder->show();
-			raw->resize(raw->width(), state->emptyPlaceholder->height());
-			return;
-		} else if (state->emptyPlaceholder) {
-			state->emptyPlaceholder = nullptr;
-		}
-
-		const auto rows = (count + state->perRow - 1) / state->perRow;
-		const auto height = padding.top()
-			+ (rows * state->delegate->buttonSize().height())
-			+ ((rows - 1) * st::giftBoxGiftSkip.y())
-			+ padding.bottom();
-		raw->resize(raw->width(), height);
-
-		state->rebuild();
-	};
-
-	state->showingGiftId.value(
-	) | rpl::on_next([=](uint64 showingId) {
-		state->current = &state->lists[showingId];
-		state->buttons.clear();
-		if (state->emptyPlaceholder) {
-			state->emptyPlaceholder = nullptr;
-		}
-		state->delegate.emplace(session, showingId
-			? GiftButtonMode::Full
-			: GiftButtonMode::Minimal);
-		state->resize();
-	}, raw->lifetime());
-
-	state->visibleRange = raw->visibleRange();
-	state->visibleRange.value(
-	) | rpl::on_next(state->rebuild, raw->lifetime());
-}
-
 Fn<void(int)> CreateTabsWidget(
 		not_null<Ui::VerticalLayout*> container,
 		const std::vector<QString> &labels,
@@ -1656,7 +1176,6 @@ void AddLevelBadge(
 struct ColorSectionHighlights {
 	QPointer<Ui::SettingsButton> emojiButton;
 	QPointer<Ui::SettingsButton> resetButton;
-	QPointer<Ui::SubTabs> giftTabs;
 };
 
 void EditPeerColorSection(
@@ -1676,10 +1195,8 @@ void EditPeerColorSection(
 		rpl::variable<DocumentId> emojiId;
 		rpl::variable<EmojiStatusId> statusId;
 		rpl::variable<std::optional<Ui::ColorCollectible>> collectible;
-		rpl::variable<uint64> showingGiftId;
 		rpl::variable<uint8> profileIndex;
 		rpl::variable<DocumentId> profileEmojiId;
-		std::shared_ptr<Data::UniqueGift> buyCollectible;
 		Info::Profile::TopBar *preview = nullptr;
 		TimeId statusUntil = 0;
 		bool statusChanged = false;
@@ -1851,7 +1368,6 @@ void EditPeerColorSection(
 				state->index.value(),
 				[=](uint8 index) {
 					if (state->collectible.current()) {
-						state->buyCollectible = nullptr;
 						state->collectible = std::nullopt;
 						state->emojiId = 0;
 					}
@@ -1968,46 +1484,12 @@ void EditPeerColorSection(
 			Ui::AddSkip(container);
 			appendProfileSettings(container, channel);
 		}
-	} else if (peer->isSelf()) {
-		Ui::AddSkip(container, st::settingsColorSampleSkip);
-
-		const auto session = &peer->session();
-		const auto giftTabs = AddColorGiftTabs(
-			container,
-			session,
-			[=](uint64 giftId) { state->showingGiftId = giftId; },
-			false);
-		if (highlights) {
-			highlights->giftTabs = giftTabs.tabs;
-		}
-
-		auto showingGiftId = state->showingGiftId.value();
-		AddGiftSelector(
-			container,
-			session,
-			std::move(showingGiftId),
-			[=](std::shared_ptr<Data::UniqueGift> selected) {
-				state->index = selected->peerColor ? kUnsetColorIndex : 0;
-				state->emojiId = selected->peerColor
-					? selected->peerColor->backgroundEmojiId
-					: 0;
-				state->buyCollectible = (selected->peerColor
-					&& (selected->ownerId != session->userPeerId())
-					&& selected->starsForResale > 0)
-					? selected
-					: nullptr;
-				state->collectible = selected->peerColor
-					? *selected->peerColor
-					: std::optional<Ui::ColorCollectible>();
-			},
-			state->collectible.value() | rpl::map([](
-					const std::optional<Ui::ColorCollectible> &value) {
-				return value ? value->collectibleId : 0;
-			}),
-			false,
-			rpl::single(uint64(0)),
-			giftTabs.switchToNext);
 	}
+	// LoogriGram: a tab strip and gift grid sat here, to wear a collectible
+	// gift's colour - one you own, or one bought from a reseller on the
+	// spot. A collectible colour already set from elsewhere still shows in
+	// the preview above and can still be cleared by picking a plain colour;
+	// only choosing and buying one is gone.
 
 	button->setClickedCallback([=] {
 		if (state->applying) {
@@ -2032,19 +1514,6 @@ void EditPeerColorSection(
 			.statusChanged = false,
 			.forProfile = true,
 		};
-		if (const auto buy = state->buyCollectible) {
-			const auto done = [=, weak = base::make_weak(box)](bool ok) {
-				if (ok) {
-					if (const auto strong = weak.get()) {
-						strong->closeBox();
-					}
-					Apply(show, peer, values, [] {}, [] {});
-				}
-			};
-			const auto to = peer->session().user();
-			ShowBuyResaleGiftBox(show, buy, false, to, done);
-			return;
-		}
 		state->applying = true;
 		if (peer->isChannel()) {
 			// First request: regular color data (without toast)
@@ -2066,48 +1535,20 @@ void EditPeerColorSection(
 			state->applying = false;
 		}));
 	});
-	state->collectible.value(
-	) | rpl::on_next([=] {
-		const auto buy = state->buyCollectible.get();
-		while (!button->children().isEmpty()) {
-			delete button->children().first();
+	// LoogriGram: this button read "Buy for N stars" while a resale gift was
+	// selected. Nothing is selected that way any more, so it is the plain
+	// apply button.
+	button->setText(rpl::combine(
+		tr::lng_settings_color_apply(),
+		Data::AmPremiumValue(&peer->session())
+	) | rpl::map([=](const QString &text, bool premium) {
+		auto result = TextWithEntities();
+		if (!premium && peer->isSelf()) {
+			result.append(Ui::Text::IconEmoji(&st::giftBoxLock));
 		}
-		if (!buy) {
-			button->setText(rpl::combine(
-				tr::lng_settings_color_apply(),
-				Data::AmPremiumValue(&peer->session())
-			) | rpl::map([=](const QString &text, bool premium) {
-				auto result = TextWithEntities();
-				if (!premium && peer->isSelf()) {
-					result.append(Ui::Text::IconEmoji(&st::giftBoxLock));
-				}
-				result.append(text);
-				return result;
-			}));
-		} else if (buy->onlyAcceptTon) {
-			button->setText(rpl::single(QString()));
-			Ui::SetButtonTwoLabels(
-				button,
-				tr::lng_gift_buy_resale_button(
-					lt_cost,
-					rpl::single(Data::FormatGiftResaleTon(*buy)),
-					tr::marked),
-				tr::lng_gift_buy_resale_equals(
-					lt_cost,
-					rpl::single(Ui::Text::IconEmoji(
-						&st::starIconEmojiSmall
-					).append(Lang::FormatCountDecimal(buy->starsForResale))),
-					tr::marked),
-				st::resaleButtonTitle,
-				st::resaleButtonSubtitle);
-		} else {
-			button->setText(tr::lng_gift_buy_resale_button(
-				lt_cost,
-				rpl::single(Ui::Text::IconEmoji(&st::starIconEmoji).append(
-					Lang::FormatCountDecimal(buy->starsForResale))),
-				tr::marked));
-		}
-	}, button->lifetime());
+		result.append(text);
+		return result;
+	}));
 }
 
 void EditPeerProfileColorSection(
@@ -2133,9 +1574,6 @@ void EditPeerProfileColorSection(
 		rpl::variable<uint8> index = kUnsetColorIndex;
 		rpl::variable<DocumentId> patternEmojiId;
 		rpl::variable<EmojiStatusId> wearable;
-		rpl::variable<uint64> showingGiftId;
-		rpl::variable<uint64> selectedGiftId;
-		std::shared_ptr<Data::UniqueGift> buyCollectible;
 		Ui::ColorSelector *selector = nullptr;
 	};
 	const auto state = button->lifetime().make_state<State>();
@@ -2144,7 +1582,6 @@ void EditPeerProfileColorSection(
 
 	const auto resetUnique = [=] {
 		preview->setLocalEmojiStatusId({});
-		state->buyCollectible = nullptr;
 		state->wearable = {};
 	};
 
@@ -2250,47 +1687,9 @@ void EditPeerProfileColorSection(
 		}
 	}, button->lifetime());
 
-	if (peer->isSelf()) {
-		Ui::AddSkip(container, st::settingsColorSampleSkip);
-
-		const auto session = &peer->session();
-		const auto giftTabs = AddColorGiftTabs(
-			container,
-			session,
-			[=](uint64 giftId) { state->showingGiftId = giftId; },
-			true);
-		if (highlights) {
-			highlights->giftTabs = giftTabs.tabs;
-		}
-
-		auto showingGiftId = state->showingGiftId.value();
-		AddGiftSelector(
-			container,
-			session,
-			std::move(showingGiftId),
-			[=](std::shared_ptr<Data::UniqueGift> selected) {
-				state->selectedGiftId = selected->id;
-				state->index = kUnsetColorIndex;
-				state->patternEmojiId = 0;
-				state->buyCollectible = (selected->peerColor
-					&& (selected->ownerId != session->userPeerId())
-					&& selected->starsForResale > 0)
-					? selected
-					: nullptr;
-				const auto statuses = &peer->owner().emojiStatuses();
-				state->wearable = statuses->fromUniqueGift(*selected);
-				preview->setColorProfileIndex(std::nullopt);
-				preview->setPatternEmojiId(selected->pattern.document->id);
-				preview->setLocalEmojiStatusId(state->wearable.current());
-				resetWrap->toggle(true, anim::type::normal);
-			},
-			state->wearable.value() | rpl::map([=](const EmojiStatusId &value) {
-				return value.collectible ? value.collectible->id : 0;
-			}),
-			true,
-			state->selectedGiftId.value(),
-			giftTabs.switchToNext);
-	}
+	// LoogriGram: the same collectible-gift picker as in the name-colour
+	// box stood here, for wearing a gift as a profile backdrop. A collectible
+	// status set elsewhere still shows and can still be reset.
 
 	struct ProfileState {
 		bool applying = false;
@@ -2318,19 +1717,6 @@ void EditPeerProfileColorSection(
 			.statusChanged = statusChanged,
 			.forProfile = true,
 		};
-		if (const auto buy = state->buyCollectible) {
-			const auto done = [=, weak = base::make_weak(box)](bool ok) {
-				if (ok) {
-					if (const auto strong = weak.get()) {
-						strong->closeBox();
-					}
-					Apply(show, peer, values, [] {}, [] {});
-				}
-			};
-			const auto to = peer->session().user();
-			ShowBuyResaleGiftBox(show, buy, false, to, done);
-			return;
-		}
 		profileState->applying = true;
 		Apply(show, peer, values, crl::guard(box, [=] {
 			box->closeBox();
@@ -2340,47 +1726,19 @@ void EditPeerProfileColorSection(
 	});
 	state->wearable.value(
 	) | rpl::on_next([=](EmojiStatusId id) {
-		const auto buy = state->buyCollectible.get();
-		while (!button->children().isEmpty()) {
-			delete button->children().first();
-		}
-		if (!buy) {
-			button->setText(rpl::combine(
-				(id.collectible
-					? tr::lng_settings_color_wear()
-					: tr::lng_settings_color_apply()),
-				Data::AmPremiumValue(&peer->session())
-			) | rpl::map([=](const QString &text, bool premium) {
-				auto result = TextWithEntities();
-				if (!premium && peer->isSelf()) {
-					result.append(Ui::Text::IconEmoji(&st::giftBoxLock));
-				}
-				result.append(text);
-				return result;
-			}));
-		} else if (buy->onlyAcceptTon) {
-			button->setText(rpl::single(QString()));
-			Ui::SetButtonTwoLabels(
-				button,
-				tr::lng_gift_buy_resale_button(
-					lt_cost,
-					rpl::single(Data::FormatGiftResaleTon(*buy)),
-					tr::marked),
-				tr::lng_gift_buy_resale_equals(
-					lt_cost,
-					rpl::single(Ui::Text::IconEmoji(
-						&st::starIconEmojiSmall
-					).append(Lang::FormatCountDecimal(buy->starsForResale))),
-					tr::marked),
-				st::resaleButtonTitle,
-				st::resaleButtonSubtitle);
-		} else {
-			button->setText(tr::lng_gift_buy_resale_button(
-				lt_cost,
-				rpl::single(Ui::Text::IconEmoji(&st::starIconEmoji).append(
-					Lang::FormatCountDecimal(buy->starsForResale))),
-				tr::marked));
-		}
+		button->setText(rpl::combine(
+			(id.collectible
+				? tr::lng_settings_color_wear()
+				: tr::lng_settings_color_apply()),
+			Data::AmPremiumValue(&peer->session())
+		) | rpl::map([=](const QString &text, bool premium) {
+			auto result = TextWithEntities();
+			if (!premium && peer->isSelf()) {
+				result.append(Ui::Text::IconEmoji(&st::giftBoxLock));
+			}
+			result.append(text);
+			return result;
+		}));
 	}, button->lifetime());
 }
 
@@ -2520,9 +1878,6 @@ void EditPeerColorBox(
 		controller->checkHighlightControl(
 			u"profile-color/add-icons"_q,
 			highlights.emojiButton.data());
-		controller->checkHighlightControl(
-			u"profile-color/use-gift"_q,
-			highlights.giftTabs.data());
 		controller->checkHighlightControl(
 			u"profile-color/reset"_q,
 			highlights.resetButton.data());

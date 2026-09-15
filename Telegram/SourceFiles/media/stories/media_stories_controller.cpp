@@ -19,7 +19,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "core/click_handler_types.h"
 #include "core/core_settings.h"
-#include "core/local_url_handlers.h"
 #include "core/update_checker.h"
 #include "data/data_changes.h"
 #include "data/data_document.h"
@@ -46,7 +45,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "media/stories/media_stories_view.h"
 #include "media/audio/media_audio.h"
 #include "info/stories/info_stories_common.h"
-#include "settings/settings_credits_graphics.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/boxes/report_box_graphics.h"
 #include "ui/controls/send_button.h"
@@ -2041,37 +2039,14 @@ ClickHandlerPtr MakeChannelPostHandler(
 	}));
 }
 
+// LoogriGram: a `tg://nft?slug=` area on a story opened the collectible
+// gift's own box, which offers it for sale. The special case is gone and
+// such a link is treated as any other, which for an unregistered tg:// link
+// means nothing happens.
 ClickHandlerPtr MakeUrlAreaHandler(
 		base::weak_ptr<Controller> weak,
 		const QString &url) {
-	class Handler final : public HiddenUrlClickHandler {
-	public:
-		Handler(const QString &url, base::weak_ptr<Controller> weak)
-		: HiddenUrlClickHandler(url), _weak(weak) {
-		}
-
-		void onClick(ClickContext context) const override {
-			const auto raw = url();
-			const auto strong = _weak.get();
-			const auto prefix = u"tg://nft?slug="_q;
-			if (raw.startsWith(prefix) && strong) {
-				const auto slug = raw.mid(
-					prefix.size()
-				).split('&').front().split('#').front();
-				Core::ResolveAndShowUniqueGift(
-					strong->uiShow(),
-					slug,
-					::Settings::DarkCreditsEntryBoxStyle());
-			} else {
-				HiddenUrlClickHandler::onClick(context);
-			}
-		}
-
-	private:
-		base::weak_ptr<Controller> _weak;
-
-	};
-	return std::make_shared<Handler>(url, weak);
+	return std::make_shared<HiddenUrlClickHandler>(url);
 }
 
 } // namespace Media::Stories

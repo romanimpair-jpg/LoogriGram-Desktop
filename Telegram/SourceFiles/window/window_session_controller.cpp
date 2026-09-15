@@ -34,7 +34,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_subsection_tabs.h"
 #include "media/player/media_player_instance.h"
 #include "media/view/media_view_open_common.h"
-#include "data/components/gift_auctions.h"
 #include "data/components/recent_peers.h"
 #include "data/stickers/data_custom_emoji.h"
 #include "data/data_document_resolver.h"

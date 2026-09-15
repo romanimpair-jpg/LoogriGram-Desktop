@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/profile/info_profile_shared_media_classic.h"
 
 #include "core/ui_integration.h"
-#include "data/components/recent_shared_media_gifts.h"
 #include "data/data_channel.h"
 #include "data/data_document.h"
 #include "data/data_forum_topic.h"

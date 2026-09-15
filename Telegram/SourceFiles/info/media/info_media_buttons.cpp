@@ -12,7 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/qt/qt_key_modifiers.h"
 #include "core/application.h"
 #include "core/ui_integration.h"
-#include "data/components/recent_shared_media_gifts.h"
 #include "data/data_channel.h"
 #include "data/data_document.h"
 #include "data/data_saved_messages.h"

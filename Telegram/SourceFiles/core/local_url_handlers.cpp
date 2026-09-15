@@ -26,10 +26,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/integration.h"
 #include "boxes/peers/edit_peer_info_box.h"
 #include "boxes/share_box.h"
-// LoogriGram: still needed for Ui::ShowGiftErrorToast in
-// ResolveAndShowUniqueGift, which stories and the premium
-// section still call. It goes with the gift subsystem.
-#include "boxes/star_gift_box.h"
 #include "boxes/connection_box.h"
 #include "boxes/edit_privacy_box.h"
 #include "boxes/sticker_set_box.h"
@@ -1882,63 +1878,6 @@ bool InternalPassportOrOAuthLink(const QString &url) {
 
 bool StartUrlRequiresActivate(const QString &url) {
 	return Core::App().passcodeLocked() || !InternalPassportLink(url);
-}
-
-void ResolveAndShowUniqueGift(
-		std::shared_ptr<ChatHelpers::Show> show,
-		const QString &slug,
-		::Settings::CreditsEntryBoxStyleOverrides st) {
-	struct Request {
-		base::weak_ptr<Main::Session> weak;
-		QString slug;
-		mtpRequestId id = 0;
-	};
-	static auto request = Request();
-
-	const auto session = &show->session();
-	if (request.weak.get() == session && request.slug == slug) {
-		return;
-	} else if (const auto strong = request.weak.get()) {
-		strong->api().request(request.id).cancel();
-	}
-	request.weak = session;
-	request.slug = slug;
-	const auto clear = [=] {
-		if (request.weak.get() == session && request.slug == slug) {
-			request = {};
-		}
-	};
-	request.id = session->api().request(
-		MTPpayments_GetUniqueStarGift(MTP_string(slug))
-	).done([=](const MTPpayments_UniqueStarGift &result) {
-		clear();
-
-		const auto &data = result.data();
-		session->data().processUsers(data.vusers());
-		if (const auto gift = Api::FromTL(session, data.vgift())) {
-			Core::App().hideMediaView();
-
-			using namespace ::Settings;
-			show->show(Box(
-				GlobalStarGiftBox,
-				show,
-				*gift,
-				StarGiftResaleInfo(),
-				st));
-			show->activate();
-		}
-	}).fail([=](const MTP::Error &error) {
-		clear();
-		if (!Ui::ShowGiftErrorToast(show, error)) {
-			show->showToast(u"Error: "_q + error.type());
-		}
-	}).send();
-}
-
-void ResolveAndShowUniqueGift(
-		std::shared_ptr<ChatHelpers::Show> show,
-		const QString &slug) {
-	ResolveAndShowUniqueGift(std::move(show), slug, {});
 }
 
 TimeId ParseVideoTimestamp(QStringView value) {

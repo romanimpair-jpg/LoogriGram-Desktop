@@ -10,7 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "base/binary_guard.h"
 #include "boxes/add_contact_box.h"
-#include "boxes/gift_credits_box.h"
 #include "boxes/language_box.h"
 #include "boxes/stickers_box.h"
 #include "chat_helpers/emoji_sets_manager.h"
@@ -444,16 +443,6 @@ void RegisterSettingsHandlers(Router &router) {
 	});
 
 	router.add(u"settings"_q, {
-		.path = u"profile-color/profile/use-gift"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowPeerColorBox(
-				ctx,
-				PeerColorTab::Profile,
-				u"profile-color/use-gift"_q);
-		}},
-	});
-
-	router.add(u"settings"_q, {
 		.path = u"profile-color/profile/reset"_q,
 		.action = CodeBlock{ [](const Context &ctx) {
 			return ShowPeerColorBox(
@@ -477,16 +466,6 @@ void RegisterSettingsHandlers(Router &router) {
 				ctx,
 				PeerColorTab::Name,
 				u"profile-color/add-icons"_q);
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"profile-color/name/use-gift"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowPeerColorBox(
-				ctx,
-				PeerColorTab::Name,
-				u"profile-color/use-gift"_q);
 		}},
 	});
 
@@ -1367,11 +1346,6 @@ void RegisterSettingsHandlers(Router &router) {
 	});
 
 	router.add(u"settings"_q, {
-		.path = u"appearance/your-color/profile/use-gift"_q,
-		.action = AliasTo{ u"settings"_q, u"profile-color/profile/use-gift"_q },
-	});
-
-	router.add(u"settings"_q, {
 		.path = u"appearance/your-color/profile/reset"_q,
 		.action = AliasTo{ u"settings"_q, u"profile-color/profile/reset"_q },
 	});
@@ -1384,11 +1358,6 @@ void RegisterSettingsHandlers(Router &router) {
 	router.add(u"settings"_q, {
 		.path = u"appearance/your-color/name/add-icons"_q,
 		.action = AliasTo{ u"settings"_q, u"profile-color/name/add-icons"_q },
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"appearance/your-color/name/use-gift"_q,
-		.action = AliasTo{ u"settings"_q, u"profile-color/name/use-gift"_q },
 	});
 
 	router.add(u"settings"_q, {

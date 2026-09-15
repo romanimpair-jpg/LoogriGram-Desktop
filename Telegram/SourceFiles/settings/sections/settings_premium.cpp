@@ -1830,11 +1830,9 @@ void ShowGiftPremium(
 void ShowEmojiStatusPremium(
 		not_null<Window::SessionController*> controller,
 		not_null<PeerData*> peer) {
-	if (const auto unique = peer->emojiStatusId().collectible.get()) {
-		Core::ResolveAndShowUniqueGift(controller->uiShow(), unique->slug);
-	} else {
-		ShowPremium(controller, Ref::EmojiStatus::Serialize({ peer->id }));
-	}
+	// LoogriGram: a collectible emoji status opened the gift's own box,
+	// where it is for sale. Only the plain case is left.
+	ShowPremium(controller, Ref::EmojiStatus::Serialize({ peer->id }));
 }
 
 void ShowPremiumGiftPremium(
