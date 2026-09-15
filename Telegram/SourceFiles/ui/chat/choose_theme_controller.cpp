@@ -198,7 +198,7 @@ QImage GenerateChatThemePreview(
 		not_null<ChatTheme*> theme,
 		EmojiPtr emoji,
 		QSize size) {
-	auto result = GeneratePreview(theme, nullptr, size).preview;
+	auto result = GeneratePreview(theme, size).preview;
 	if (emoji) {
 		auto p = QPainter(&result);
 		const auto large = Ui::Emoji::GetSizeLarge();
