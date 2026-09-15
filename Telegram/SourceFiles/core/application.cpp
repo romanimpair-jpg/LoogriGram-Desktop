@@ -85,7 +85,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/storage_databases.h"
 #include "storage/storage_folder_archive.h"
 #include "storage/localstorage.h"
-#include "payments/payments_checkout_process.h"
 #include "export/export_manager.h"
 #include "webrtc/webrtc_environment.h"
 #include "window/window_saved_windows.h"
@@ -243,7 +242,8 @@ Application::Application()
 }
 
 void Application::closeAdditionalWindows() {
-	Payments::CheckoutProcess::ClearAll();
+	// LoogriGram: a checkout panel could be open here and had to be closed
+	// with everything else. There is no checkout.
 	for (const auto &[index, account] : _domain->accounts()) {
 		if (account->sessionExists()) {
 			account->session().attachWebView().closeAll();

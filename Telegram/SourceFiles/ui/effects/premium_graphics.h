@@ -21,7 +21,6 @@ struct phrase;
 enum lngtag_count : int;
 
 namespace Data {
-struct PremiumSubscriptionOption;
 } // namespace Data
 
 namespace style {
@@ -121,13 +120,6 @@ void ShowListBox(
 	not_null<Ui::GenericBox*> box,
 	const style::PremiumLimits &st,
 	std::vector<ListEntry> entries);
-
-void AddGiftOptions(
-	not_null<Ui::VerticalLayout*> parent,
-	std::shared_ptr<Ui::RadiobuttonGroup> group,
-	std::vector<Data::PremiumSubscriptionOption> gifts,
-	const style::PremiumOption &st,
-	bool topBadges = false);
 
 } // namespace Premium
 } // namespace Ui

@@ -521,8 +521,6 @@ public:
 	void growSlowmodeLastMessage(TimeId when);
 
 
-	[[nodiscard]] int peerGiftsCount() const;
-	void setPeerGiftsCount(int count);
 
 	[[nodiscard]] int boostsApplied() const;
 	[[nodiscard]] int boostsUnrestrict() const;
@@ -620,7 +618,6 @@ private:
 	std::unique_ptr<Data::CommunityInfo> _communityInfo;
 	bool _discussionLinkKnown = false;
 
-	int _peerGiftsCount = 0;
 	int _membersCount = -1;
 	int _adminsCount = 1;
 	int _restrictedCount = 0;

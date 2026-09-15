@@ -19,12 +19,9 @@ class VerticalLayout;
 namespace Data {
 struct Boost;
 struct BoostsListSlice;
-struct CreditsHistoryEntry;
-struct CreditsStatusSlice;
 struct PublicForwardsSlice;
 struct RecentPostId;
 struct StatisticsLists;
-struct SubscriptionEntry;
 } // namespace Data
 
 namespace Main {

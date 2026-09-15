@@ -89,7 +89,6 @@ struct PeerUpdate {
 		BotCanBeInvited     = (1ULL << 25),
 		BotStartToken       = (1ULL << 26),
 		CommonChats         = (1ULL << 27),
-		PeerGifts           = (1ULL << 28),
 		HasCalls            = (1ULL << 29),
 		SupportInfo         = (1ULL << 30),
 		IsBot               = (1ULL << 31),

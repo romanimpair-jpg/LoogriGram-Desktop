@@ -7,7 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "api/api_premium.h"
 
-#include "api/api_premium_option.h"
 #include "api/api_text_entities.h"
 #include "apiwrap.h"
 #include "base/random.h"
@@ -22,47 +21,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item.h"
 #include "main/main_app_config.h"
 #include "main/main_session.h"
-#include "payments/payments_form.h"
 #include "ui/chat/chat_style.h" // ColorCollectible
 #include "ui/text/format_values.h"
 
 namespace Api {
 namespace {
-
-[[nodiscard]] GiftCode Parse(const MTPDpayments_checkedGiftCode &data) {
-	return {
-		.from = data.vfrom_id() ? peerFromMTP(*data.vfrom_id()) : PeerId(),
-		.to = data.vto_id() ? peerFromUser(*data.vto_id()) : PeerId(),
-		.giveawayId = data.vgiveaway_msg_id().value_or_empty(),
-		.date = data.vdate().v,
-		.used = data.vused_date().value_or_empty(),
-		.days = data.vdays().v,
-		.giveaway = data.is_via_giveaway(),
-	};
-}
-
-[[nodiscard]] Data::PremiumSubscriptionOptions GiftCodesFromTL(
-		const QVector<MTPPremiumGiftCodeOption> &tlOptions) {
-	auto options = PremiumSubscriptionOptionsFromTL(tlOptions);
-	for (auto i = 0; i < options.size(); i++) {
-		const auto &tlOption = tlOptions[i].data();
-		const auto currency = qs(tlOption.vcurrency());
-		const auto perUserText = Ui::FillAmountAndCurrency(
-			tlOption.vamount().v / float64(tlOption.vusers().v),
-			currency,
-			false);
-		options[i].costPerMonth = perUserText
-			+ ' '
-			+ QChar(0x00D7)
-			+ ' '
-			+ QString::number(tlOption.vusers().v);
-		options[i].total = Ui::FillAmountAndCurrency(
-			tlOption.vamount().v,
-			currency);
-		options[i].currency = currency;
-	}
-	return options;
-}
 
 [[nodiscard]] int FindStarsForResale(const MTPVector<MTPStarsAmount> *list) {
 	if (!list) {
@@ -107,20 +70,6 @@ Premium::Premium(not_null<ApiWrap*> api)
 	});
 }
 
-rpl::producer<TextWithEntities> Premium::statusTextValue() const {
-	return _statusTextUpdates.events_starting_with_copy(
-		_statusText.value_or(TextWithEntities()));
-}
-
-auto Premium::videos() const
--> const base::flat_map<QString, not_null<DocumentData*>> & {
-	return _videos;
-}
-
-rpl::producer<> Premium::videosUpdated() const {
-	return _videosUpdated.events();
-}
-
 auto Premium::stickers() const
 -> const std::vector<not_null<DocumentData*>> & {
 	return _stickers;
@@ -151,66 +100,11 @@ rpl::producer<> Premium::helloStickersUpdated() const {
 	return _helloStickersUpdated.events();
 }
 
-int64 Premium::monthlyAmount() const {
-	return _monthlyAmount;
-}
-
-QString Premium::monthlyCurrency() const {
-	return _monthlyCurrency;
-}
-
+// LoogriGram: reload() also fetched help.getPremiumPromo, which is the
+// subscription's price list, its pitch text and the videos shown beside it.
+// The section that displayed all three is deleted.
 void Premium::reload() {
-	reloadPromo();
 	reloadStickers();
-}
-
-void Premium::reloadPromo() {
-	if (_promoRequestId) {
-		return;
-	}
-	_promoRequestId = _api.request(MTPhelp_GetPremiumPromo(
-	)).done([=](const MTPhelp_PremiumPromo &result) {
-		_promoRequestId = 0;
-		const auto &data = result.data();
-		_session->data().processUsers(data.vusers());
-
-		_subscriptionOptions = PremiumSubscriptionOptionsFromTL(
-			data.vperiod_options().v);
-		for (const auto &option : data.vperiod_options().v) {
-			if (option.data().vmonths().v == 1) {
-				_monthlyAmount = option.data().vamount().v;
-				_monthlyCurrency = qs(option.data().vcurrency());
-			}
-		}
-		auto text = TextWithEntities{
-			qs(data.vstatus_text()),
-			EntitiesFromMTP(_session, data.vstatus_entities().v),
-		};
-		_statusText = text;
-		_statusTextUpdates.fire(std::move(text));
-		auto videos = base::flat_map<QString, not_null<DocumentData*>>();
-		const auto count = int(std::min(
-			data.vvideo_sections().v.size(),
-			data.vvideos().v.size()));
-		videos.reserve(count);
-		for (auto i = 0; i != count; ++i) {
-			const auto document = _session->data().processDocument(
-				data.vvideos().v[i]);
-			if ((!document->isVideoFile() && !document->isGifv())
-				|| !document->supportsStreaming()) {
-				document->forceIsStreamedAnimation();
-			}
-			videos.emplace(
-				qs(data.vvideo_sections().v[i]),
-				document);
-		}
-		if (_videos != videos) {
-			_videos = std::move(videos);
-			_videosUpdated.fire({});
-		}
-	}).fail([=] {
-		_promoRequestId = 0;
-	}).send();
 }
 
 void Premium::reloadStickers() {
@@ -294,120 +188,6 @@ void Premium::reloadHelloStickers() {
 	}).send();
 }
 
-void Premium::checkGiftCode(
-		const QString &slug,
-		Fn<void(GiftCode)> done) {
-	if (_giftCodeRequestId) {
-		if (_giftCodeSlug == slug) {
-			return;
-		}
-		_api.request(_giftCodeRequestId).cancel();
-	}
-	_giftCodeSlug = slug;
-	_giftCodeRequestId = _api.request(MTPpayments_CheckGiftCode(
-		MTP_string(slug)
-	)).done([=](const MTPpayments_CheckedGiftCode &result) {
-		_giftCodeRequestId = 0;
-
-		const auto &data = result.data();
-		_session->data().processUsers(data.vusers());
-		_session->data().processChats(data.vchats());
-		done(updateGiftCode(slug, Parse(data)));
-	}).fail([=](const MTP::Error &error) {
-		_giftCodeRequestId = 0;
-
-		done(updateGiftCode(slug, {}));
-	}).send();
-}
-
-GiftCode Premium::updateGiftCode(
-		const QString &slug,
-		const GiftCode &code) {
-	auto &now = _giftCodes[slug];
-	if (now != code) {
-		now = code;
-		_giftCodeUpdated.fire_copy(slug);
-	}
-	return code;
-}
-
-rpl::producer<GiftCode> Premium::giftCodeValue(const QString &slug) const {
-	return _giftCodeUpdated.events_starting_with_copy(
-		slug
-	) | rpl::filter(rpl::mappers::_1 == slug) | rpl::map([=] {
-		const auto i = _giftCodes.find(slug);
-		return (i != end(_giftCodes)) ? i->second : GiftCode();
-	});
-}
-
-void Premium::applyGiftCode(const QString &slug, Fn<void(QString)> done) {
-	_api.request(MTPpayments_ApplyGiftCode(
-		MTP_string(slug)
-	)).done([=](const MTPUpdates &result) {
-		_session->api().applyUpdates(result);
-		done({});
-	}).fail([=](const MTP::Error &error) {
-		done(error.type());
-	}).send();
-}
-
-void Premium::resolveGiveawayInfo(
-		not_null<PeerData*> peer,
-		MsgId messageId,
-		Fn<void(GiveawayInfo)> done) {
-	Expects(done != nullptr);
-
-	_giveawayInfoDone = std::move(done);
-	if (_giveawayInfoRequestId) {
-		if (_giveawayInfoPeer == peer
-			&& _giveawayInfoMessageId == messageId) {
-			return;
-		}
-		_api.request(_giveawayInfoRequestId).cancel();
-	}
-	_giveawayInfoPeer = peer;
-	_giveawayInfoMessageId = messageId;
-	_giveawayInfoRequestId = _api.request(MTPpayments_GetGiveawayInfo(
-		_giveawayInfoPeer->input(),
-		MTP_int(_giveawayInfoMessageId.bare)
-	)).done([=](const MTPpayments_GiveawayInfo &result) {
-		_giveawayInfoRequestId = 0;
-
-		auto info = GiveawayInfo();
-		result.match([&](const MTPDpayments_giveawayInfo &data) {
-			info.participating = data.is_participating();
-			info.state = data.is_preparing_results()
-				? GiveawayState::Preparing
-				: GiveawayState::Running;
-			info.adminChannelId = data.vadmin_disallowed_chat_id()
-				? ChannelId(*data.vadmin_disallowed_chat_id())
-				: ChannelId();
-			info.disallowedCountry = qs(
-				data.vdisallowed_country().value_or_empty());
-			info.tooEarlyDate
-				= data.vjoined_too_early_date().value_or_empty();
-			info.startDate = data.vstart_date().v;
-		}, [&](const MTPDpayments_giveawayInfoResults &data) {
-			info.state = data.is_refunded()
-				? GiveawayState::Refunded
-				: GiveawayState::Finished;
-			info.giftCode = qs(data.vgift_code_slug().value_or_empty());
-			info.activatedCount = data.vactivated_count().value_or_empty();
-			info.finishDate = data.vfinish_date().v;
-			info.startDate = data.vstart_date().v;
-			info.credits = data.vstars_prize().value_or_empty();
-		});
-		_giveawayInfoDone(std::move(info));
-	}).fail([=] {
-		_giveawayInfoRequestId = 0;
-		_giveawayInfoDone({});
-	}).send();
-}
-
-const Data::PremiumSubscriptionOptions &Premium::subscriptionOptions() const {
-	return _subscriptionOptions;
-}
-
 rpl::producer<> Premium::someMessageMoneyRestrictionsResolved() const {
 	return _someMessageMoneyRestrictionsResolved.events();
 }
@@ -489,272 +269,6 @@ void Premium::requestPremiumRequiredSlice() {
 	}).send();
 }
 
-PremiumGiftCodeOptions::PremiumGiftCodeOptions(not_null<PeerData*> peer)
-: _peer(peer)
-, _api(&peer->session().api().instance()) {
-}
-
-rpl::producer<rpl::no_value, QString> PremiumGiftCodeOptions::request() {
-	return [=](auto consumer) {
-		auto lifetime = rpl::lifetime();
-
-		using TLOption = MTPPremiumGiftCodeOption;
-		_api.request(MTPpayments_GetPremiumGiftCodeOptions(
-			MTP_flags(_peer->isChannel()
-				? MTPpayments_GetPremiumGiftCodeOptions::Flag::f_boost_peer
-				: MTPpayments_GetPremiumGiftCodeOptions::Flag(0)),
-			_peer->input()
-		)).done([=](const MTPVector<TLOption> &result) {
-			auto tlMapOptions = base::flat_map<Amount, QVector<TLOption>>();
-			for (const auto &tlOption : result.v) {
-				const auto &data = tlOption.data();
-				tlMapOptions[data.vusers().v].push_back(tlOption);
-				if (qs(data.vcurrency()) == Ui::kCreditsCurrency) {
-					continue;
-				}
-
-				const auto token = Token{ data.vusers().v, data.vmonths().v };
-				_stores[token] = Store{
-					.amount = data.vamount().v,
-					.currency = qs(data.vcurrency()),
-					.product = qs(data.vstore_product().value_or_empty()),
-					.quantity = data.vstore_quantity().value_or_empty(),
-				};
-				if (!ranges::contains(_availablePresets, data.vusers().v)) {
-					_availablePresets.push_back(data.vusers().v);
-				}
-			}
-			for (const auto &[amount, tlOptions] : tlMapOptions) {
-				if (amount == 1 && _optionsForOnePerson.currencies.empty()) {
-					for (const auto &option : tlOptions) {
-						_optionsForOnePerson.months.push_back(
-							option.data().vmonths().v);
-						_optionsForOnePerson.totalCosts.push_back(
-							option.data().vamount().v);
-						_optionsForOnePerson.currencies.push_back(
-							qs(option.data().vcurrency()));
-					}
-				}
-				_subscriptionOptions[amount] = GiftCodesFromTL(tlOptions);
-			}
-			consumer.put_done();
-		}).fail([=](const MTP::Error &error) {
-			consumer.put_error_copy(error.type());
-		}).send();
-
-		return lifetime;
-	};
-}
-
-rpl::producer<rpl::no_value, QString> PremiumGiftCodeOptions::applyPrepaid(
-		const Payments::InvoicePremiumGiftCode &invoice,
-		uint64 prepaidId) {
-	return [=](auto consumer) {
-		auto lifetime = rpl::lifetime();
-		const auto channel = _peer->asChannel();
-		if (!channel) {
-			return lifetime;
-		}
-
-		_api.request(MTPpayments_LaunchPrepaidGiveaway(
-			_peer->input(),
-			MTP_long(prepaidId),
-			invoice.giveawayCredits
-				? Payments::InvoiceCreditsGiveawayToTL(invoice)
-				: Payments::InvoicePremiumGiftCodeGiveawayToTL(invoice)
-		)).done([=](const MTPUpdates &result) {
-			_peer->session().api().applyUpdates(result);
-			consumer.put_done();
-		}).fail([=](const MTP::Error &error) {
-			consumer.put_error_copy(error.type());
-		}).send();
-
-		return lifetime;
-	};
-}
-
-const std::vector<int> &PremiumGiftCodeOptions::availablePresets() const {
-	return _availablePresets;
-}
-
-[[nodiscard]] int PremiumGiftCodeOptions::monthsFromPreset(int monthsIndex) {
-	Expects(monthsIndex >= 0 && monthsIndex < _availablePresets.size());
-
-	return _optionsForOnePerson.months[monthsIndex];
-}
-
-Payments::InvoicePremiumGiftCode PremiumGiftCodeOptions::invoice(
-		int users,
-		int months) {
-	const auto randomId = base::RandomValue<uint64>();
-	const auto token = Token{ users, months };
-	const auto &store = _stores[token];
-	return Payments::InvoicePremiumGiftCode{
-		.currency = store.currency,
-		.storeProduct = store.product,
-		.randomId = randomId,
-		.amount = store.amount,
-		.storeQuantity = store.quantity,
-		.users = token.users,
-		.months = token.months,
-	};
-}
-
-std::vector<GiftOptionData> PremiumGiftCodeOptions::optionsForPeer() const {
-	auto result = std::vector<GiftOptionData>();
-
-	if (!_optionsForOnePerson.currencies.empty()) {
-		const auto count = int(_optionsForOnePerson.months.size());
-		result.reserve(count);
-		for (auto i = 0; i != count; ++i) {
-			Assert(i < _optionsForOnePerson.totalCosts.size());
-			Assert(i < _optionsForOnePerson.currencies.size());
-			result.push_back({
-				.cost = _optionsForOnePerson.totalCosts[i],
-				.currency = _optionsForOnePerson.currencies[i],
-				.months = _optionsForOnePerson.months[i],
-			});
-		}
-	}
-	return result;
-}
-
-Data::PremiumSubscriptionOptions PremiumGiftCodeOptions::optionsForGiveaway(
-		int usersCount) {
-	const auto skipForStars = [&](Data::PremiumSubscriptionOptions options) {
-		const auto proj = &Data::PremiumSubscriptionOption::currency;
-		options.erase(
-			ranges::remove(options, Ui::kCreditsCurrency, proj),
-			end(options));
-		return options;
-	};
-	const auto it = _subscriptionOptions.find(usersCount);
-	if (it != end(_subscriptionOptions)) {
-		return skipForStars(it->second);
-	} else {
-		auto tlOptions = QVector<MTPPremiumGiftCodeOption>();
-		for (auto i = 0; i < _optionsForOnePerson.months.size(); i++) {
-			tlOptions.push_back(MTP_premiumGiftCodeOption(
-				MTP_flags(MTPDpremiumGiftCodeOption::Flags(0)),
-				MTP_int(usersCount),
-				MTP_int(_optionsForOnePerson.months[i]),
-				MTPstring(),
-				MTPint(),
-				MTP_string(_optionsForOnePerson.currencies[i]),
-				MTP_long(_optionsForOnePerson.totalCosts[i] * usersCount)));
-		}
-		_subscriptionOptions[usersCount] = GiftCodesFromTL(tlOptions);
-		return skipForStars(_subscriptionOptions[usersCount]);
-	}
-}
-
-auto PremiumGiftCodeOptions::requestStarGifts()
--> rpl::producer<rpl::no_value, QString> {
-	return [=](auto consumer) {
-		auto lifetime = rpl::lifetime();
-
-		_api.request(MTPpayments_GetStarGifts(
-			MTP_int(0)
-		)).done([=](const MTPpayments_StarGifts &result) {
-			result.match([&](const MTPDpayments_starGifts &data) {
-				_peer->owner().processUsers(data.vusers());
-				_peer->owner().processChats(data.vchats());
-				_giftsHash = data.vhash().v;
-				const auto &list = data.vgifts().v;
-				const auto session = &_peer->session();
-				auto gifts = std::vector<Data::StarGift>();
-				gifts.reserve(list.size());
-				for (const auto &gift : list) {
-					if (auto parsed = FromTL(session, gift)) {
-						gifts.push_back(std::move(*parsed));
-					}
-				}
-				_gifts = std::move(gifts);
-			}, [&](const MTPDpayments_starGiftsNotModified &) {
-			});
-			consumer.put_done();
-		}).fail([=](const MTP::Error &error) {
-			consumer.put_error_copy(error.type());
-		}).send();
-
-		return lifetime;
-	};
-}
-
-auto PremiumGiftCodeOptions::starGifts() const
--> const std::vector<Data::StarGift> & {
-	return _gifts;
-}
-
-int PremiumGiftCodeOptions::giveawayBoostsPerPremium() const {
-	constexpr auto kFallbackCount = 4;
-	return _peer->session().appConfig().get<int>(
-		u"giveaway_boosts_per_premium"_q,
-		kFallbackCount);
-}
-
-int PremiumGiftCodeOptions::giveawayCountriesMax() const {
-	constexpr auto kFallbackCount = 10;
-	return _peer->session().appConfig().get<int>(
-		u"giveaway_countries_max"_q,
-		kFallbackCount);
-}
-
-int PremiumGiftCodeOptions::giveawayAddPeersMax() const {
-	constexpr auto kFallbackCount = 10;
-	return _peer->session().appConfig().get<int>(
-		u"giveaway_add_peers_max"_q,
-		kFallbackCount);
-}
-
-int PremiumGiftCodeOptions::giveawayPeriodMax() const {
-	constexpr auto kFallbackCount = 3600 * 24 * 7;
-	return _peer->session().appConfig().get<int>(
-		u"giveaway_period_max"_q,
-		kFallbackCount);
-}
-
-bool PremiumGiftCodeOptions::giveawayGiftsPurchaseAvailable() const {
-	return _peer->session().appConfig().get<bool>(
-		u"giveaway_gifts_purchase_available"_q,
-		false);
-}
-
-SponsoredToggle::SponsoredToggle(not_null<Main::Session*> session)
-: _api(&session->api().instance()) {
-}
-
-rpl::producer<bool> SponsoredToggle::toggled() {
-	return [=](auto consumer) {
-		auto lifetime = rpl::lifetime();
-
-		_api.request(MTPusers_GetFullUser(
-			MTP_inputUserSelf()
-		)).done([=](const MTPusers_UserFull &result) {
-			consumer.put_next_copy(
-				result.data().vfull_user().data().is_sponsored_enabled());
-		}).fail([=] { consumer.put_next(false); }).send();
-
-		return lifetime;
-	};
-}
-
-rpl::producer<rpl::no_value, QString> SponsoredToggle::setToggled(bool v) {
-	return [=](auto consumer) {
-		auto lifetime = rpl::lifetime();
-
-		_api.request(MTPaccount_ToggleSponsoredMessages(
-			MTP_bool(v)
-		)).done([=] {
-			consumer.put_done();
-		}).fail([=](const MTP::Error &error) {
-			consumer.put_error_copy(error.type());
-		}).send();
-
-		return lifetime;
-	};
-}
-
 MessageMoneyRestriction ResolveMessageMoneyRestrictions(
 		not_null<PeerData*> peer,
 		History *maybeHistory) {
@@ -805,26 +319,6 @@ MessageMoneyRestriction ResolveMessageMoneyRestrictions(
 		};
 	}
 	return {};
-}
-
-rpl::producer<DocumentData*> RandomHelloStickerValue(
-		not_null<Main::Session*> session) {
-	const auto premium = &session->api().premium();
-	const auto random = [=] {
-		const auto &v = premium->helloStickers();
-		Assert(!v.empty());
-		return v[base::RandomIndex(v.size())].get();
-	};
-	const auto &v = premium->helloStickers();
-	if (!v.empty()) {
-		return rpl::single(random());
-	}
-	return rpl::single<DocumentData*>(
-		nullptr
-	) | rpl::then(premium->helloStickersUpdated(
-	) | rpl::filter([=] {
-		return !premium->helloStickers().empty();
-	}) | rpl::take(1) | rpl::map(random));
 }
 
 std::optional<Data::StarGift> FromTL(

@@ -1015,17 +1015,6 @@ void ChannelData::growSlowmodeLastMessage(TimeId when) {
 	session().changes().peerUpdated(this, UpdateFlag::Slowmode);
 }
 
-int ChannelData::peerGiftsCount() const {
-	return _peerGiftsCount;
-}
-
-void ChannelData::setPeerGiftsCount(int count) {
-	if (_peerGiftsCount != count) {
-		_peerGiftsCount = count;
-		session().changes().peerUpdated(this, UpdateFlag::PeerGifts);
-	}
-}
-
 int ChannelData::boostsApplied() const {
 	if (const auto info = mgInfo.get()) {
 		return info->boostsApplied;
@@ -1376,7 +1365,6 @@ void ApplyChannelUpdate(
 	channel->setRestrictedCount(update.vbanned_count().value_or_empty());
 	channel->setKickedCount(update.vkicked_count().value_or_empty());
 	channel->setSlowmodeSeconds(update.vslowmode_seconds().value_or_empty());
-	channel->setPeerGiftsCount(update.vstargifts_count().value_or_empty());
 	channel->setMainProfileTab(Data::ParseProfileTab(update.vmain_tab()));
 	if (const auto next = update.vslowmode_next_send_date()) {
 		channel->growSlowmodeLastMessage(

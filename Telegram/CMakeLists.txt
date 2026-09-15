@@ -132,12 +132,6 @@ PRIVATE
     api/api_common.h
     api/api_confirm_phone.cpp
     api/api_confirm_phone.h
-    api/api_credits.cpp
-    api/api_credits.h
-    api/api_credits_history_entry.cpp
-    api/api_credits_history_entry.h
-    api/api_earn.cpp
-    api/api_earn.h
     api/api_editing.cpp
     api/api_editing.h
     api/api_filter_updates.h
@@ -163,8 +157,6 @@ PRIVATE
     api/api_polls.h
     api/api_premium.cpp
     api/api_premium.h
-    api/api_premium_option.cpp
-    api/api_premium_option.h
     api/api_reactions_notify_settings.cpp
     api/api_reactions_notify_settings.h
     api/api_read_metrics.cpp
@@ -318,10 +310,6 @@ PRIVATE
     boxes/edit_privacy_box.h
     boxes/edit_todo_list_box.cpp
     boxes/edit_todo_list_box.h
-    boxes/gift_credits_box.cpp
-    boxes/gift_credits_box.h
-    boxes/gift_premium_box.cpp
-    boxes/gift_premium_box.h
     boxes/language_box.cpp
     boxes/language_box.h
     boxes/max_invite_box.cpp
@@ -350,8 +338,6 @@ PRIVATE
     boxes/pin_messages_box.h
     boxes/premium_limits_box.cpp
     boxes/premium_limits_box.h
-    boxes/premium_preview_box.cpp
-    boxes/premium_preview_box.h
     boxes/reactions_settings_box.cpp
     boxes/reactions_settings_box.h
     boxes/report_messages_box.cpp
@@ -362,8 +348,6 @@ PRIVATE
     boxes/select_future_owner_box.h
     boxes/self_destruction_box.cpp
     boxes/self_destruction_box.h
-    boxes/send_credits_box.cpp
-    boxes/send_credits_box.h
     boxes/send_gif_with_caption_box.cpp
     boxes/send_gif_with_caption_box.h
     boxes/send_files_box.cpp
@@ -372,28 +356,12 @@ PRIVATE
     boxes/send_files_box_reply_header.h
     boxes/share_box.cpp
     boxes/share_box.h
-    boxes/star_gift_auction_box.cpp
-    boxes/star_gift_auction_box.h
-    boxes/star_gift_box.cpp
-    boxes/star_gift_box.h
-    boxes/star_gift_cover_box.cpp
-    boxes/star_gift_cover_box.h
-    boxes/star_gift_craft_animation.cpp
-    boxes/star_gift_craft_animation.h
-    boxes/star_gift_craft_box.cpp
-    boxes/star_gift_craft_box.h
-    boxes/star_gift_preview_box.cpp
-    boxes/star_gift_preview_box.h
-    boxes/star_gift_resale_box.cpp
-    boxes/star_gift_resale_box.h
     boxes/sticker_creator_box.cpp
     boxes/sticker_creator_box.h
     boxes/sticker_set_box.cpp
     boxes/sticker_set_box.h
     boxes/stickers_box.cpp
     boxes/stickers_box.h
-    boxes/transfer_gift_box.cpp
-    boxes/transfer_gift_box.h
     boxes/translate_box.cpp
     boxes/translate_box.h
     boxes/unconfirmed_auth_denied_box.cpp
@@ -604,14 +572,10 @@ PRIVATE
     data/business/data_business_info.h
     data/business/data_shortcut_messages.cpp
     data/business/data_shortcut_messages.h
-    data/components/credits.cpp
-    data/components/credits.h
     data/components/ephemeral_messages.cpp
     data/components/ephemeral_messages.h
     data/components/factchecks.cpp
     data/components/factchecks.h
-    data/components/gift_auctions.cpp
-    data/components/gift_auctions.h
     data/components/location_pickers.cpp
     data/components/location_pickers.h
     data/components/passkeys.cpp
@@ -622,8 +586,6 @@ PRIVATE
     data/components/recent_inline_bots.h
     data/components/recent_peers.cpp
     data/components/recent_peers.h
-    data/components/recent_shared_media_gifts.cpp
-    data/components/recent_shared_media_gifts.h
     data/components/scheduled_messages.cpp
     data/components/scheduled_messages.h
     data/components/top_peers.cpp
@@ -845,7 +807,6 @@ PRIVATE
     dialogs/suggestions/suggestion.h
     dialogs/suggestions/suggestion_birthday_setup.cpp
     dialogs/suggestions/suggestion_custom_promo.cpp
-    dialogs/suggestions/suggestion_low_credits_subs.cpp
     dialogs/suggestions/suggestion_unreviewed_auth.cpp
     dialogs/suggestions/suggestion_userpic_setup.cpp
     dialogs/dialogs_widget.cpp
@@ -918,8 +879,6 @@ PRIVATE
     history/view/controls/history_view_forward_panel.h
     history/view/controls/history_view_rich_draft_preview.cpp
     history/view/controls/history_view_rich_draft_preview.h
-    history/view/controls/history_view_suggest_options.cpp
-    history/view/controls/history_view_suggest_options.h
     history/view/controls/history_view_ttl_button.cpp
     history/view/controls/history_view_ttl_button.h
     history/view/controls/history_view_video_cover_uploader.cpp
@@ -1189,12 +1148,6 @@ PRIVATE
     info/media/info_media_widget.h
     info/members/info_members_widget.cpp
     info/members/info_members_widget.h
-    info/peer_gifts/info_peer_gifts_collections.cpp
-    info/peer_gifts/info_peer_gifts_collections.h
-    info/peer_gifts/info_peer_gifts_common.cpp
-    info/peer_gifts/info_peer_gifts_common.h
-    info/peer_gifts/info_peer_gifts_widget.cpp
-    info/peer_gifts/info_peer_gifts_widget.h
     info/polls/info_polls_list_widget.cpp
     info/polls/info_polls_list_widget.h
     info/polls/info_polls_results_inner_widget.cpp
@@ -1609,12 +1562,6 @@ PRIVATE
     passport/passport_panel_form.h
     passport/passport_panel_password.cpp
     passport/passport_panel_password.h
-    payments/payments_checkout_process.cpp
-    payments/payments_checkout_process.h
-    payments/payments_form.cpp
-    payments/payments_form.h
-    payments/payments_non_panel_process.cpp
-    payments/payments_non_panel_process.h
     platform/win/file_utilities_win.cpp
     platform/win/file_utilities_win.h
     platform/win/launcher_win.cpp
@@ -1696,10 +1643,6 @@ PRIVATE
     settings/settings_common_session.h
     settings/detailed_settings_button.cpp
     settings/detailed_settings_button.h
-    settings/sections/settings_credits.cpp
-    settings/sections/settings_credits.h
-    settings/settings_credits_graphics.cpp
-    settings/settings_credits_graphics.h
     settings/settings_experimental.cpp
     settings/settings_experimental.h
     settings/sections/settings_folders.cpp
@@ -1736,8 +1679,6 @@ PRIVATE
     settings/sections/settings_passkeys.h
     settings/settings_power_saving.cpp
     settings/settings_power_saving.h
-    settings/sections/settings_premium.cpp
-    settings/sections/settings_premium.h
     settings/settings_privacy_controllers.cpp
     settings/settings_privacy_controllers.h
     settings/settings_scale_preview.cpp
@@ -1854,8 +1795,6 @@ PRIVATE
     test/test_via_window.h
     test/test_widgets.cpp
     test/test_widgets.h
-    ui/boxes/emoji_stake_box.cpp
-    ui/boxes/emoji_stake_box.h
     ui/boxes/peer_qr_box.cpp
     ui/boxes/peer_qr_box.h
     ui/chat/attach/attach_item_single_file_preview.cpp
@@ -1884,8 +1823,6 @@ PRIVATE
     ui/controls/warning_tooltip.h
     ui/effects/animated_string.cpp
     ui/effects/animated_string.h
-    ui/effects/credits_graphics.cpp
-    ui/effects/credits_graphics.h
     ui/effects/emoji_fly_animation.cpp
     ui/effects/emoji_fly_animation.h
     ui/effects/message_sending_animation_common.h

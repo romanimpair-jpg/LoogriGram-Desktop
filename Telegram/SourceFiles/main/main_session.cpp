@@ -130,7 +130,6 @@ Session::Session(
 , _recentInlineBots(std::make_unique<Data::RecentInlineBots>(this))
 , _factchecks(std::make_unique<Data::Factchecks>(this))
 , _locationPickers(std::make_unique<Data::LocationPickers>())
-, _credits(std::make_unique<Data::Credits>(this))
 , _promoSuggestions(std::make_unique<Data::PromoSuggestions>(this, [=] {
 	using State = Data::SetupEmailState;
 	if (_promoSuggestions->setupEmailState() == State::Setup

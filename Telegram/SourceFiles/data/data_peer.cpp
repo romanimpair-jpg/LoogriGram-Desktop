@@ -1985,15 +1985,6 @@ void PeerData::setStoriesState(StoriesState state) {
 	}
 }
 
-int PeerData::peerGiftsCount() const {
-	if (const auto user = asUser()) {
-		return user->peerGiftsCount();
-	} else if (const auto channel = asChannel()) {
-		return channel->peerGiftsCount();
-	}
-	return 0;
-}
-
 void PeerData::setMainProfileTab(Data::ProfileTab tab) {
 	if (_mainProfileTab != tab) {
 		_mainProfileTab = tab;

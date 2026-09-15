@@ -69,10 +69,6 @@ namespace Info::GlobalMedia {
 struct Tag;
 } // namespace Info::GlobalMedia
 
-namespace Info::PeerGifts {
-struct Tag;
-} // namespace Info::PeerGifts
-
 namespace Info::Stories {
 struct Tag;
 } // namespace Info::Stories

@@ -78,7 +78,6 @@ class Chatbots;
 class BusinessInfo;
 struct ReactionId;
 struct UnavailableReason;
-struct CreditsStatusSlice;
 struct StarsRatingPending;
 struct UniqueGift;
 
@@ -461,10 +460,6 @@ public:
 		not_null<PeerData*> owner,
 		Fn<void(std::optional<Data::SavedStarGift>)> done);
 
-	using CreditsSubsRebuilder = rpl::event_stream<CreditsStatusSlice>;
-	using CreditsSubsRebuilderPtr = std::shared_ptr<CreditsSubsRebuilder>;
-	[[nodiscard]] CreditsSubsRebuilderPtr createCreditsSubsRebuilder();
-	[[nodiscard]] CreditsSubsRebuilderPtr activeCreditsSubsRebuilder() const;
 
 	void registerRestricted(
 		not_null<const HistoryItem*> item,
@@ -1386,7 +1381,6 @@ private:
 
 	MessageIdsList _mimeForwardIds;
 
-	std::weak_ptr<CreditsSubsRebuilder> _creditsSubsRebuilder;
 
 	using CredentialsWithGeneration = std::pair<
 		const Passport::SavedCredentials,

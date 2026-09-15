@@ -202,17 +202,6 @@ void UserData::setCommonChatsCount(int count) {
 	}
 }
 
-int UserData::peerGiftsCount() const {
-	return _peerGiftsCount;
-}
-
-void UserData::setPeerGiftsCount(int count) {
-	if (_peerGiftsCount != count) {
-		_peerGiftsCount = count;
-		session().changes().peerUpdated(this, UpdateFlag::PeerGifts);
-	}
-}
-
 bool UserData::hasPrivateForwardName() const {
 	return !_privateForwardName.isEmpty();
 }
@@ -893,7 +882,6 @@ void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update) {
 		: UserData::CallsStatus::Disabled);
 	user->setAbout(qs(update.vabout().value_or_empty()));
 	user->setCommonChatsCount(update.vcommon_chats_count().v);
-	user->setPeerGiftsCount(update.vstargifts_count().value_or_empty());
 	user->setMainProfileTab(Data::ParseProfileTab(update.vmain_tab()));
 	user->checkFolder(update.vfolder_id().value_or_empty());
 	if (const auto theme = update.vtheme()) {

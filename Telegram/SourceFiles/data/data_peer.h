@@ -591,7 +591,6 @@ public:
 	[[nodiscard]] bool hasActiveVideoStream() const;
 	void setStoriesState(StoriesState state);
 
-	[[nodiscard]] int peerGiftsCount() const;
 
 	void setMainProfileTab(Data::ProfileTab tab);
 	[[nodiscard]] Data::ProfileTab mainProfileTab() const;
