@@ -18,7 +18,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "dialogs/ui/dialogs_stories_list.h"
 #include "info/media/info_media_buttons.h"
 #include "info/media/info_media_list_widget.h"
-#include "info/peer_gifts/info_peer_gifts_widget.h"
 #include "info/profile/info_profile_actions.h"
 #include "info/profile/info_profile_icon.h"
 #include "info/profile/info_profile_top_bar.h"
@@ -325,7 +324,6 @@ void InnerWidget::createProfileTop() {
 	Ui::AddDivider(divider);
 	Ui::AddSkip(divider);
 
-	addGiftsButton(tracker);
 	addArchiveButton(tracker);
 	addRecentButton(tracker);
 
@@ -457,49 +455,8 @@ void InnerWidget::addRecentButton(Ui::MultiSlideTracker &tracker) {
 	tracker.track(recentWrap);
 }
 
-void InnerWidget::addGiftsButton(Ui::MultiSlideTracker &tracker) {
-	Expects(_top != nullptr);
-
-	const auto user = _peer->asUser();
-	Assert(user != nullptr);
-
-	auto count = Profile::PeerGiftsCountValue(
-		user
-	) | rpl::start_spawning(_top->lifetime());
-
-	const auto giftsWrap = _top->add(
-		object_ptr<Ui::SlideWrap<Ui::SettingsButton>>(
-			_top,
-			object_ptr<Ui::SettingsButton>(
-				_top,
-				tr::lng_peer_gifts_title(),
-				st::infoSharedMediaButton))
-	)->setDuration(
-		st::infoSlideDuration
-	)->toggleOn(rpl::duplicate(count) | rpl::map(rpl::mappers::_1 > 0));
-
-	const auto gifts = giftsWrap->entity();
-	gifts->addClickHandler([=] {
-		_controller->showSection(PeerGifts::Make(_peer));
-	});
-	auto label = rpl::duplicate(
-		count
-	) | rpl::filter(
-		rpl::mappers::_1 > 0
-	) | rpl::map([=](int count) {
-		return (count > 0) ? QString::number(count) : QString();
-	});
-	::Settings::CreateRightLabel(
-		gifts,
-		std::move(label),
-		st::infoSharedMediaButton,
-		tr::lng_stories_archive_button());
-	object_ptr<Profile::FloatingIcon>(
-		gifts,
-		st::infoIconMediaGifts,
-		st::infoSharedMediaButtonIconPosition)->show();
-	tracker.track(giftsWrap);
-}
+// LoogriGram: a "Gifts" row here opened the profile's gifts tab. Gifts
+// are not browsed from this client.
 
 bool InnerWidget::hasFlexibleTopBar() const {
 	return (_controller->key().storiesAlbumId() != Stories::ArchiveId()

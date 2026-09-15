@@ -313,9 +313,6 @@ object_ptr<Ui::RpWidget> InnerWidget::setupContent(
 		}
 		if (!_topic && !_savedMessages) {
 			tabs.push_back(MakeStoriesTabDescriptor(tabsPeer));
-			if (!_sublist) {
-				tabs.push_back(MakeGiftsTabDescriptor(_peer));
-			}
 		}
 		if ((_peer->isChat() || _peer->isMegagroup())
 			&& !_peer->isMonoforum()

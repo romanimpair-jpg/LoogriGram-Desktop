@@ -17,7 +17,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/timer_rpl.h"
 #include "base/unixtime.h"
 #include "base/weak_ptr.h"
-#include "boxes/star_gift_box.h"
 #include "boxes/edit_caption_box.h"
 #include "boxes/premium_preview_box.h"
 #include "boxes/send_files_box.h"

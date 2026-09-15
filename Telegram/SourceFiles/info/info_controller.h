@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "data/data_message_reaction_id.h"
 #include "data/data_search_controller.h"
-#include "info/peer_gifts/info_peer_gifts_common.h"
 #include "info/saved/info_saved_music_common.h"
 #include "info/statistics/info_statistics_tag.h"
 #include "info/stories/info_stories_common.h"
@@ -74,7 +73,6 @@ public:
 	Key(Stories::Tag stories);
 	Key(Saved::MusicTag music);
 	Key(Statistics::Tag statistics);
-	Key(PeerGifts::Tag gifts);
 	Key(GlobalMedia::Tag global);
 	Key(not_null<PollData*> poll, FullMsgId contextId);
 	Key(
@@ -94,8 +92,6 @@ public:
 	[[nodiscard]] int storiesAlbumId() const;
 	[[nodiscard]] int storiesAddToAlbumId() const;
 	[[nodiscard]] PeerData *musicPeer() const;
-	[[nodiscard]] PeerData *giftsPeer() const;
-	[[nodiscard]] int giftsCollectionId() const;
 	[[nodiscard]] Statistics::Tag statisticsTag() const;
 	[[nodiscard]] PollData *poll() const;
 	[[nodiscard]] FullMsgId pollContextId() const;
@@ -124,7 +120,6 @@ private:
 		Stories::Tag,
 		Saved::MusicTag,
 		Statistics::Tag,
-		PeerGifts::Tag,
 		GlobalMedia::Tag,
 		PollKey,
 		ReactionsKey> _value;
@@ -149,7 +144,6 @@ public:
 		CommunityRequests,
 		ReactionsList,
 		SavedSublists,
-		PeerGifts,
 		Members,
 		Settings,
 		Downloads,
@@ -236,12 +230,6 @@ public:
 	}
 	[[nodiscard]] PeerData *musicPeer() const {
 		return key().musicPeer();
-	}
-	[[nodiscard]] PeerData *giftsPeer() const {
-		return key().giftsPeer();
-	}
-	[[nodiscard]] int giftsCollectionId() const {
-		return key().giftsCollectionId();
 	}
 	[[nodiscard]] Statistics::Tag statisticsTag() const {
 		return key().statisticsTag();

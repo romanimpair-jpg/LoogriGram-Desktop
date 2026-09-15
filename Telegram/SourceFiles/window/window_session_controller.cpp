@@ -22,7 +22,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_filters_menu.h"
 #include "window/section_widget.h"
 #include "window/window_separate_id.h"
-#include "info/peer_gifts/info_peer_gifts_widget.h"
 #include "info/stories/info_stories_widget.h"
 #include "info/info_memento.h"
 #include "info/info_controller.h"
@@ -700,8 +699,6 @@ void SessionNavigation::showPeerByLinkResolved(
 		}));
 	} else if (info.storyAlbumId > 0) {
 		showSection(Info::Stories::Make(peer, info.storyAlbumId));
-	} else if (info.giftCollectionId > 0) {
-		showSection(Info::PeerGifts::Make(peer, info.giftCollectionId));
 	} else if (bot && resolveType == ResolveType::BotApp) {
 		const auto itemId = info.clickFromMessageId;
 		const auto item = _session->data().message(itemId);

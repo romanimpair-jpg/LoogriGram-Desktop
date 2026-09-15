@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/controls/history_view_bottom_controls.h"
 
 #include "apiwrap.h"
-#include "boxes/star_gift_box.h"
 #include "chat_helpers/message_field.h"
 #include "data/data_changes.h"
 #include "data/data_channel.h"

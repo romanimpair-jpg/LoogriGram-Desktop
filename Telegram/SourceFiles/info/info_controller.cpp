@@ -63,9 +63,6 @@ Key::Key(Saved::MusicTag music) : _value(music) {
 Key::Key(Statistics::Tag statistics) : _value(statistics) {
 }
 
-Key::Key(PeerGifts::Tag gifts) : _value(gifts) {
-}
-
 Key::Key(GlobalMedia::Tag global) : _value(global) {
 }
 
@@ -165,20 +162,6 @@ PeerData *Key::musicPeer() const {
 		return tag->peer;
 	}
 	return nullptr;
-}
-
-PeerData *Key::giftsPeer() const {
-	if (const auto tag = std::get_if<PeerGifts::Tag>(&_value)) {
-		return tag->peer;
-	}
-	return nullptr;
-}
-
-int Key::giftsCollectionId() const {
-	if (const auto tag = std::get_if<PeerGifts::Tag>(&_value)) {
-		return tag->collectionId;
-	}
-	return 0;
 }
 
 Statistics::Tag Key::statisticsTag() const {

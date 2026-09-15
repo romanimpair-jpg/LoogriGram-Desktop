@@ -662,17 +662,9 @@ rpl::producer<int> SavedSublistCountValue(
 	return sublist->fullCountValue();
 }
 
-// LoogriGram: nobody's gift collection is shown, so nobody's is loaded. This
-// is the one chokepoint every consumer reads - the profile row, the profile
-// tab and the stories page all gate their own visibility on it being above
-// zero, so returning zero removes the entry points and the request behind
-// them at once.
-//
-// A forced getter rather than a removal, deliberately and temporarily: the
-// tab machinery it hides belongs to the gifts subsystem, and goes with it.
-rpl::producer<int> PeerGiftsCountValue(not_null<PeerData*> peer) {
-	return rpl::single(0);
-}
+// LoogriGram: PeerGiftsCountValue counted a peer's received gifts, and was
+// forced to zero to hide the profile row, the profile tab and the stories
+// page entry at once. All three are deleted now, so it is too.
 
 rpl::producer<bool> CanAddMemberValue(not_null<PeerData*> peer) {
 	if (const auto chat = peer->asChat()) {

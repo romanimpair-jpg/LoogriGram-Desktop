@@ -269,7 +269,6 @@ public:
 		Data::SavedSublist *sublist,
 		PeerId migratedPeerId);
 	explicit ContentMemento(not_null<Data::SavedMessages*> savedMessages);
-	explicit ContentMemento(PeerGifts::Tag gifts);
 	explicit ContentMemento(Settings::Tag settings);
 	explicit ContentMemento(Downloads::Tag downloads);
 	explicit ContentMemento(Stories::Tag stories);
@@ -320,12 +319,6 @@ public:
 	}
 	[[nodiscard]] PeerData *musicPeer() const {
 		return _musicPeer;
-	}
-	[[nodiscard]] PeerData *giftsPeer() const {
-		return _giftsPeer;
-	}
-	[[nodiscard]] int giftsCollectionId() const {
-		return _giftsCollectionId;
 	}
 	[[nodiscard]] Statistics::Tag statisticsTag() const {
 		return _statisticsTag;
@@ -389,8 +382,6 @@ private:
 	int _storiesAlbumId = 0;
 	int _storiesAddToAlbumId = 0;
 	PeerData * const _musicPeer = nullptr;
-	PeerData * const _giftsPeer = nullptr;
-	int _giftsCollectionId = 0;
 	Statistics::Tag _statisticsTag;
 	PollData * const _poll = nullptr;
 	std::shared_ptr<Api::WhoReadList> _reactionsWhoReadIds;

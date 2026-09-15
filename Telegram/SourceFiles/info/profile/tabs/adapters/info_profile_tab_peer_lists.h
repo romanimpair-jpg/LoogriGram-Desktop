@@ -17,7 +17,5 @@ namespace Info::Profile {
 	not_null<UserData*> user);
 [[nodiscard]] MediaTabDescriptor MakeSimilarPeersTabDescriptor(
 	not_null<PeerData*> peer);
-[[nodiscard]] MediaTabDescriptor MakeGiftsTabDescriptor(
-	not_null<PeerData*> peer);
 
 } // namespace Info::Profile

@@ -25,7 +25,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_chat_section.h"
 #include "info/info_controller.h"
 #include "info/info_memento.h"
-#include "info/peer_gifts/info_peer_gifts_widget.h"
 #include "info/profile/info_profile_values.h"
 #include "info/saved/info_saved_music_widget.h"
 #include "info/stories/info_stories_widget.h"

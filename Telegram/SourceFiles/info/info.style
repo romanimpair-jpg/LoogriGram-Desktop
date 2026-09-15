@@ -557,7 +557,6 @@ infoIconMediaStories: icon {{ "info/info_media_stories", infoIconFg }};
 infoIconMediaSaved: icon {{ "info/info_media_saved", infoIconFg }};
 infoIconMediaStoriesArchive: icon {{ "info/info_stories_archive", infoIconFg }};
 infoIconMediaStoriesRecent: icon {{ "info/info_stories_recent", infoIconFg }};
-infoIconMediaGifts: icon {{ "menu/gift_premium", infoIconFg, point(4px, 4px) }};
 
 infoIconDeleteRed: icon {{ "info/info_delete", attentionButtonFg }};
 infoIconReport: icon {{ "info/info_report", attentionButtonFg }};

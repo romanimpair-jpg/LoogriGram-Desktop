@@ -120,7 +120,6 @@ private:
 	void startTop();
 	void addArchiveButton(Ui::MultiSlideTracker &tracker);
 	void addRecentButton(Ui::MultiSlideTracker &tracker);
-	void addGiftsButton(Ui::MultiSlideTracker &tracker);
 	void finalizeTop();
 
 	void refreshAlbumsTabs();

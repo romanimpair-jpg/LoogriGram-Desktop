@@ -286,9 +286,7 @@ bool TabsHost::canSetMainTab(Data::ProfileTab tab) const {
 	} else if (const auto channel = _context.peer->asBroadcast()) {
 		return channel->canEditInformation();
 	}
-	return _context.peer->isSelf()
-		&& ((tab == Data::ProfileTab::Posts)
-			|| (tab == Data::ProfileTab::Gifts));
+	return _context.peer->isSelf() && (tab == Data::ProfileTab::Posts);
 }
 
 Fn<void()> TabsHost::openInWindowFor(const MediaTabDescriptor &tab) const {

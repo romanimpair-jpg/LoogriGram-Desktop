@@ -621,8 +621,8 @@ bool ResolveUsernameOrPhone(
 	const auto storyParam = params.value(u"story"_q);
 	const auto storyAlbumParam = params.value(u"album"_q);
 	const auto storyAlbumId = storyAlbumParam.toInt();
-	const auto giftCollectionParam = params.value(u"collection"_q);
-	const auto giftCollectionId = giftCollectionParam.toInt();
+	// LoogriGram: a ?collection= parameter opened a collection of a peer's
+	// gifts. Gifts are not browsed from this client.
 	const auto appname = webChannelPreviewLink ? QString() : appnameParam;
 	const auto commentParam = params.value(u"comment"_q);
 	const auto commentId = commentParam.toInt();
@@ -655,7 +655,6 @@ bool ResolveUsernameOrPhone(
 		.pollOption = pollOption,
 		.storyParam = storyParam,
 		.storyAlbumId = storyAlbumId,
-		.giftCollectionId = giftCollectionId,
 		.videoTimestamp = (!videot.isEmpty()
 			? ParseVideoTimestamp(videot)
 			: std::optional<TimeId>()),

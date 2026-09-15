@@ -20,7 +20,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/requests_list/info_requests_list_widget.h"
 #include "info/community/info_community_widget.h"
 #include "info/community_requests/info_community_requests_widget.h"
-#include "info/peer_gifts/info_peer_gifts_widget.h"
 #include "info/polls/info_polls_list_widget.h"
 #include "info/polls/info_polls_results_widget.h"
 #include "info/info_section_widget.h"

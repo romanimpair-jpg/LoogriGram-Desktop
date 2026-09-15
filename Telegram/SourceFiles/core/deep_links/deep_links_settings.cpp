@@ -27,7 +27,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_user.h"
 #include "data/notify/data_notify_settings.h"
 #include "info/info_memento.h"
-#include "info/peer_gifts/info_peer_gifts_widget.h"
 #include "info/settings/info_settings_widget.h"
 #include "info/stories/info_stories_widget.h"
 #include "lang/lang_keys.h"
@@ -403,17 +402,8 @@ void RegisterSettingsHandlers(Router &router) {
 		}},
 	});
 
-	router.add(u"settings"_q, {
-		.path = u"my-profile/gifts"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			ctx.controller->showSection(
-				Info::PeerGifts::Make(ctx.controller->session().user()));
-			return Result::Handled;
-		}},
-	});
+	// LoogriGram: a settings deep link opened your own gifts. Gifts are not
+	// browsed from this client.
 
 	router.add(u"settings"_q, {
 		.path = u"my-profile/archived-posts"_q,
