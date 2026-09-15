@@ -89,54 +89,11 @@ void ChooseSuggestPriceBox(
 	not_null<Ui::GenericBox*> box,
 	SuggestPriceBoxArgs &&args);
 
-[[nodiscard]] bool CanEditSuggestedMessage(not_null<HistoryItem*> item);
-
 [[nodiscard]] CreditsAmount PriceAfterCommission(
 	not_null<Main::Session*> session,
 	CreditsAmount price);
 [[nodiscard]] QString FormatAfterCommissionPercent(
 	not_null<Main::Session*> session,
 	CreditsAmount price);
-
-class SuggestOptionsBar final {
-public:
-	SuggestOptionsBar(
-		std::shared_ptr<ChatHelpers::Show> show,
-		not_null<PeerData*> peer,
-		SuggestOptions values,
-		SuggestMode mode);
-	~SuggestOptionsBar();
-
-	void paintBar(QPainter &p, int x, int y, int outerWidth);
-	void edit();
-
-	void paintIcon(QPainter &p, int x, int y, int outerWidth);
-	void paintLines(QPainter &p, int x, int y, int outerWidth);
-
-	[[nodiscard]] SuggestOptions values() const;
-
-	[[nodiscard]] rpl::producer<> updates() const;
-
-	[[nodiscard]] rpl::lifetime &lifetime();
-
-private:
-	void updateTexts();
-
-	[[nodiscard]] TextWithEntities composeText(
-		Ui::Text::CustomEmojiHelper &helper) const;
-
-	const std::shared_ptr<ChatHelpers::Show> _show;
-	const not_null<PeerData*> _peer;
-	const SuggestMode _mode = SuggestMode::New;
-
-	Ui::Text::String _title;
-	Ui::Text::String _text;
-
-	SuggestOptions _values;
-	rpl::event_stream<> _updates;
-
-	rpl::lifetime _lifetime;
-
-};
 
 } // namespace HistoryView

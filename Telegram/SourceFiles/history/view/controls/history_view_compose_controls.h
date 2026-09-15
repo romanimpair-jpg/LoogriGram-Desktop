@@ -138,12 +138,9 @@ struct ComposeControlsDescriptor {
 	bool voiceLockFromBottom = false;
 	ChatHelpers::ComposeFeatures features;
 	rpl::producer<bool> scheduledToggleValue;
-	Fn<SuggestOptions()> currentSuggest;
 	Fn<void(QString)> processShortcut;
 	Fn<bool(int)> moderateKeyActivateCallback;
 
-	rpl::producer<bool> suggestPostToggleShown;
-	rpl::producer<bool> suggestPostToggleActive;
 	rpl::producer<bool> botKeyboardShownToggleShown;
 	rpl::producer<bool> botKeyboardHideToggleShown;
 	rpl::producer<bool> botCommandStartShownExtraGuard;
@@ -226,7 +223,6 @@ public:
 	-> rpl::producer<ReplyNextRequest>;
 	[[nodiscard]] rpl::producer<> focusRequests() const;
 	[[nodiscard]] rpl::producer<> showScheduledRequests() const;
-	[[nodiscard]] rpl::producer<> suggestPostToggleClicks() const;
 	[[nodiscard]] rpl::producer<> botKeyboardToggleClicks() const;
 	[[nodiscard]] rpl::producer<Api::SendOptions> scrollToMaxRequests() const;
 
@@ -543,8 +539,6 @@ private:
 	base::unique_qptr<Controls::CharactersLimitLabel> _charsLimitation;
 	FieldCharsCountManager _fieldCharsCountManager;
 	base::unique_qptr<Ui::IconButton> _scheduled;
-	base::unique_qptr<Ui::IconButton> _toggleSuggestPost;
-	bool _suggestPostActive = false;
 	base::unique_qptr<Ui::IconButton> _botKeyboardShow;
 	base::unique_qptr<Ui::IconButton> _botKeyboardHide;
 	rpl::variable<bool> _botCommandStartExtraGuard = true;
@@ -562,7 +556,6 @@ private:
 	std::shared_ptr<Ui::ChatStyle> _chatStyle;
 
 	const Fn<SendMenu::Details()> _sendMenuDetails;
-	const Fn<SuggestOptions()> _currentSuggest;
 	const Fn<void(QString)> _processShortcut;
 	const Fn<bool(int)> _moderateKeyActivateCallback;
 	const Fn<void(not_null<DocumentData*>)> _unavailableEmojiPasted;
@@ -586,7 +579,6 @@ private:
 	rpl::event_stream<> _replyCancelled;
 	rpl::event_stream<> _focusRequests;
 	rpl::event_stream<> _showScheduledRequests;
-	rpl::event_stream<> _suggestPostToggleClicks;
 	rpl::event_stream<> _botKeyboardToggleClicks;
 	rpl::event_stream<> _commentsShownToggles;
 	rpl::variable<bool> _recording;

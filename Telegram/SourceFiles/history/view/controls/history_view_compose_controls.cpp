@@ -79,7 +79,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/controls/history_view_forward_panel.h"
 #include "history/view/controls/history_view_rich_draft_preview.h"
 #include "history/view/controls/history_view_draft_options.h"
-#include "history/view/controls/history_view_suggest_options.h"
 #include "history/view/controls/history_view_ttl_button.h"
 #include "history/view/controls/history_view_voice_record_bar.h"
 #include "history/view/controls/history_view_webpage_processor.h"
@@ -244,7 +243,6 @@ public:
 	[[nodiscard]] SendMenu::Details saveMenuDetails(bool hasSendText) const;
 
 	[[nodiscard]] FullReplyTo getDraftReply() const;
-	[[nodiscard]] SuggestOptions suggestOptions() const;
 	[[nodiscard]] rpl::producer<> editCancelled() const {
 		return _editCancelled.events();
 	}
@@ -281,8 +279,6 @@ private:
 
 	bool hasPreview() const;
 
-	void applySuggestOptions(SuggestOptions suggest, SuggestMode mode);
-	void cancelSuggestPost();
 
 	struct Preview {
 		Controls::WebpageParsed parsed;
@@ -310,7 +306,6 @@ private:
 	rpl::variable<FullReplyTo> _replyTo;
 	rpl::variable<FullReplyTo> _replyToExternal;
 	std::unique_ptr<ForwardPanel> _forwardPanel;
-	std::unique_ptr<SuggestOptionsBar> _suggestOptions;
 	rpl::producer<> _toForwardUpdated;
 
 	HistoryItem *_shownMessage = nullptr;
@@ -397,9 +392,7 @@ void FieldHeader::init() {
 		p.fillRect(rect(), st::historyComposeAreaBg);
 
 		const auto position = st::historyReplyIconPosition;
-		if (_suggestOptions) {
-			_suggestOptions->paintIcon(p, 0, 0, width());
-		} else if (_preview.parsed) {
+		if (_preview.parsed) {
 			st::historyLinkIcon.paint(p, position, width());
 		} else if (isEditingMessage()) {
 			st::historyEditIcon.paint(p, position, width());
@@ -538,13 +531,9 @@ void FieldHeader::init() {
 				if (_preview.parsed) {
 					_editOptionsRequests.fire({});
 				} else if (isEditingMessage()) {
-					if (_suggestOptions) {
-						_suggestOptions->edit();
-					} else {
-						_jumpToItemRequests.fire(FullReplyTo{
-							.messageId = _editMsgId.current()
-						});
-					}
+					_jumpToItemRequests.fire(FullReplyTo{
+						.messageId = _editMsgId.current()
+					});
 				} else if (reply && (e->modifiers() & Qt::ControlModifier)) {
 					_jumpToItemRequests.fire_copy(reply);
 				} else if (reply || readyToForward()) {
@@ -808,11 +797,6 @@ void FieldHeader::paintEditOrReplyToMessage(Painter &p) {
 		_mediaEditManager.paintCoverUpload(p, to);
 	}
 
-	if (_suggestOptions) {
-		_suggestOptions->paintLines(p, textLeft, 0, width());
-		return;
-	}
-
 	p.setPen(st::historyReplyNameFg);
 	p.setFont(st::msgServiceNameFont);
 	_shownMessageName.drawElided(
@@ -972,12 +956,6 @@ FullReplyTo FieldHeader::getDraftReply() const {
 		: _replyTo.current();
 }
 
-SuggestOptions FieldHeader::suggestOptions() const {
-	return _suggestOptions
-		? _suggestOptions->values()
-		: SuggestOptions();
-}
-
 void FieldHeader::updateControlsGeometry(QSize size) {
 	_cancel->moveToRight(0, 0);
 	_clickableRect = QRect(
@@ -1010,37 +988,11 @@ void FieldHeader::editMessage(
 		_inPhotoEdit = false;
 		_inPhotoEditOver.stop();
 	}
-	if (id && suggest) {
-		applySuggestOptions(suggest, SuggestMode::Change);
-	} else {
-		cancelSuggestPost();
-	}
 	update();
 }
 
-void FieldHeader::applySuggestOptions(
-		SuggestOptions suggest,
-		SuggestMode mode) {
-	Expects(suggest.exists);
-
-	using namespace HistoryView;
-	_suggestOptions = std::make_unique<SuggestOptionsBar>(
-		_show,
-		_history->peer,
-		suggest,
-		mode);
-	_suggestOptions->updates() | rpl::on_next([=] {
-		update();
-		_saveDraftRequests.fire({});
-	}, _suggestOptions->lifetime());
-}
-
-void FieldHeader::cancelSuggestPost() {
-	if (!_suggestOptions) {
-		return;
-	}
-	_suggestOptions = nullptr;
-}
+// LoogriGram: a bar above the field carried the price offered to have a
+// post published. Paying to be published is deleted.
 
 void FieldHeader::replyToMessage(FullReplyTo id) {
 	id.monoforumPeerId = 0;
@@ -1090,7 +1042,7 @@ MessageToEdit FieldHeader::queryToEdit() {
 			.scheduled = item->isScheduled() ? item->date() : 0,
 			.shortcutId = item->shortcutId(),
 			.invertCaption = _mediaEditManager.invertCaption(),
-			.suggest = suggestOptions(),
+			.suggest = SuggestOptions(),
 		},
 		.spoilered = _mediaEditManager.spoilered(),
 		.videoCover = _mediaEditManager.videoCover(),
@@ -1207,7 +1159,6 @@ ComposeControls::ComposeControls(
 		.lockFromBottom = descriptor.voiceLockFromBottom,
 	}))
 , _sendMenuDetails(descriptor.sendMenuDetails)
-, _currentSuggest(descriptor.currentSuggest)
 , _processShortcut(std::move(descriptor.processShortcut))
 , _moderateKeyActivateCallback(
 	std::move(descriptor.moderateKeyActivateCallback))
@@ -1248,41 +1199,6 @@ ComposeControls::ComposeControls(
 				updateControlsGeometry(_wrap->size());
 			} else if (_scheduled && !hasScheduled) {
 				_scheduled = nullptr;
-			}
-		}, _wrap->lifetime());
-	}
-	if (descriptor.suggestPostToggleShown) {
-		std::move(
-			descriptor.suggestPostToggleShown
-		) | rpl::on_next([=](bool has) {
-			if (!_toggleSuggestPost && has) {
-				_toggleSuggestPost = base::make_unique_q<Ui::IconButton>(
-					_wrap.get(),
-					st::historySuggestPostToggle);
-				_toggleSuggestPost->setVisible(!_suggestPostActive);
-				_toggleSuggestPost->clicks(
-				) | rpl::filter(
-					rpl::mappers::_1 == Qt::LeftButton
-				) | rpl::to_empty | rpl::start_to_stream(
-					_suggestPostToggleClicks,
-					_toggleSuggestPost->lifetime());
-				orderControls();
-				updateControlsVisibility();
-				updateControlsGeometry(_wrap->size());
-			} else if (_toggleSuggestPost && !has) {
-				_toggleSuggestPost = nullptr;
-				updateControlsGeometry(_wrap->size());
-			}
-		}, _wrap->lifetime());
-	}
-	if (descriptor.suggestPostToggleActive) {
-		std::move(
-			descriptor.suggestPostToggleActive
-		) | rpl::on_next([=](bool active) {
-			_suggestPostActive = active;
-			if (_toggleSuggestPost) {
-				_toggleSuggestPost->setVisible(!_suggestPostActive);
-				updateControlsGeometry(_wrap->size());
 			}
 		}, _wrap->lifetime());
 	}
@@ -1358,10 +1274,6 @@ ComposeControls::ComposeControls(
 
 rpl::producer<> ComposeControls::showScheduledRequests() const {
 	return _showScheduledRequests.events();
-}
-
-rpl::producer<> ComposeControls::suggestPostToggleClicks() const {
-	return _suggestPostToggleClicks.events();
 }
 
 rpl::producer<> ComposeControls::botKeyboardToggleClicks() const {
@@ -1945,7 +1857,7 @@ bool ComposeControls::confirmMediaEdit(Ui::PreparedList &list) {
 			_editingId,
 			std::move(list),
 			_field->getTextWithTags(),
-			_header->suggestOptions(),
+			SuggestOptions(),
 			queryToEdit.spoilered,
 			queryToEdit.options.invertCaption,
 			crl::guard(_wrap.get(), [=] { cancelEditMessage(); }));
@@ -2097,9 +2009,7 @@ void ComposeControls::saveFieldToHistoryLocalDraft(bool save) {
 		return;
 	}
 	const auto id = _header->getDraftReply();
-	const auto suggest = _currentSuggest
-		? _currentSuggest()
-		: SuggestOptions();
+	const auto suggest = SuggestOptions();
 	if (shouldShowRichDraftPreview()) {
 		_history->clearDraft(key);
 	} else if (_preview && (id || suggest.exists || !_field->empty())) {
@@ -2382,7 +2292,7 @@ void ComposeControls::init() {
 			_photoEditMedia,
 			_editingId,
 			_field->getTextWithTags(),
-			_header->suggestOptions(),
+			SuggestOptions(),
 			queryToEdit.spoilered,
 			queryToEdit.options.invertCaption,
 			crl::guard(_wrap.get(), [=] { cancelEditMessage(); }));
@@ -3071,11 +2981,7 @@ void ComposeControls::registerDraftSource() {
 		const auto draft = [=] {
 			return Storage::MessageDraft{
 				_header->getDraftReply(),
-				(_header->suggestOptions().exists
-					? _header->suggestOptions()
-					: _currentSuggest
-					? _currentSuggest()
-					: SuggestOptions()),
+				SuggestOptions(),
 				_field->getTextWithTags(),
 				_preview->draft(),
 			};
@@ -4406,9 +4312,6 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		- (_likeShown ? _like->width() : 0)
 		- (_botCommandShown ? _botCommandStart->width() : 0)
 		- ((_silent && !_silent->isHidden()) ? _silent->width() : 0)
-		- ((_toggleSuggestPost && !_toggleSuggestPost->isHidden())
-			? _toggleSuggestPost->width()
-			: 0)
 		- ((_scheduled && !_scheduled->isHidden())
 			? _scheduled->width()
 			: 0)
@@ -4509,12 +4412,6 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		_botKeyboardHide->moveToRight(right, buttonsTop);
 		right += _botKeyboardHide->width();
 	}
-	if (_toggleSuggestPost) {
-		_toggleSuggestPost->moveToRight(right, buttonsTop);
-		if (!_toggleSuggestPost->isHidden()) {
-			right += _toggleSuggestPost->width();
-		}
-	}
 	if (_scheduled) {
 		_scheduled->moveToRight(right, buttonsTop);
 		if (!_scheduled->isHidden()) {
@@ -4564,9 +4461,6 @@ void ComposeControls::updateControlsVisibility() {
 	}
 	if (_scheduled) {
 		_scheduled->setVisible(!hide);
-	}
-	if (_toggleSuggestPost) {
-		_toggleSuggestPost->setVisible(!_suggestPostActive);
 	}
 	if (_commentsShown) {
 		_commentsShown->setVisible(!_commentsShownHidden.current());
@@ -5155,7 +5049,7 @@ bool ComposeControls::updateReplaceMediaButton() {
 				_regularWindow,
 				_editingId,
 				_field->getTextWithTags(),
-				_header->suggestOptions(),
+				SuggestOptions(),
 				queryToEdit.spoilered,
 				queryToEdit.options.invertCaption,
 				crl::guard(_wrap.get(), [=] { cancelEditMessage(); }));

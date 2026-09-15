@@ -794,13 +794,6 @@ void ChooseSuggestPriceBox(
 	}
 }
 
-bool CanEditSuggestedMessage(not_null<HistoryItem*> item) {
-	if (item->richPage()) {
-		return false;
-	}
-	const auto media = item->media();
-	return !media || media->allowsEditCaption();
-}
 
 // LoogriGram: CanAddOfferToMessage gated a context menu item that put a
 // price on someone else's post. That item is deleted.
@@ -828,138 +821,8 @@ QString FormatAfterCommissionPercent(
 	return QString::number(mul / 10.) + '%';
 }
 
-SuggestOptionsBar::SuggestOptionsBar(
-	std::shared_ptr<ChatHelpers::Show> show,
-	not_null<PeerData*> peer,
-	SuggestOptions values,
-	SuggestMode mode)
-: _show(std::move(show))
-, _peer(peer)
-, _mode(mode)
-, _values(values) {
-	updateTexts();
-}
-
-SuggestOptionsBar::~SuggestOptionsBar() = default;
-
-void SuggestOptionsBar::paintIcon(
-		QPainter &p,
-		int x,
-		int y,
-		int outerWidth) {
-	st::historySuggestIconActive.paint(
-		p,
-		QPoint(x, y) + st::historySuggestIconPosition,
-		outerWidth);
-}
-
-void SuggestOptionsBar::paintBar(QPainter &p, int x, int y, int outerWidth) {
-	paintIcon(p, x, y, outerWidth);
-	paintLines(p, x + st::historyReplySkip, y, outerWidth);
-}
-
-void SuggestOptionsBar::paintLines(
-		QPainter &p,
-		int x,
-		int y,
-		int outerWidth) {
-	auto available = outerWidth
-		- x
-		- st::historyReplyCancel.width
-		- st::msgReplyPadding.right();
-	p.setPen(st::windowActiveTextFg);
-	_title.draw(p, {
-		.position = QPoint(x, y + st::msgReplyPadding.top()),
-		.availableWidth = available,
-	});
-	p.setPen(st::windowSubTextFg);
-	_text.draw(p, {
-		.position = QPoint(
-			x,
-			y + st::msgReplyPadding.top() + st::msgServiceNameFont->height),
-		.availableWidth = available,
-	});
-}
-
-void SuggestOptionsBar::edit() {
-	const auto weak = std::make_shared<base::weak_qptr<Ui::BoxContent>>();
-	const auto apply = [=](SuggestOptions values) {
-		_values = values;
-		updateTexts();
-		_updates.fire({});
-		if (const auto strong = weak->get()) {
-			strong->closeBox();
-		}
-	};
-	*weak = _show->show(Box(ChooseSuggestPriceBox, SuggestPriceBoxArgs{
-		.peer = _peer,
-		.done = apply,
-		.value = _values,
-		.mode = _mode,
-	}));
-}
-
-void SuggestOptionsBar::updateTexts() {
-	_title.setText(
-		st::semiboldTextStyle,
-		((_mode == SuggestMode::New)
-			? tr::lng_suggest_bar_title(tr::now)
-			: tr::lng_suggest_options_change(tr::now)));
-
-	auto helper = Ui::Text::CustomEmojiHelper();
-	const auto text = composeText(helper);
-	_text.setMarkedText(
-		st::defaultTextStyle,
-		text,
-		kMarkupTextOptions,
-		helper.context());
-}
-
-TextWithEntities SuggestOptionsBar::composeText(
-		Ui::Text::CustomEmojiHelper &helper) const {
-	const auto amount = _values.price().ton()
-		? helper.paletteDependent(Ui::Earn::IconCurrencyEmoji({
-			.size = st::suggestBarTonIconSize,
-			.margin = st::suggestBarTonIconMargins,
-		})).append(Lang::FormatCreditsAmountDecimal(_values.price()))
-		: helper.paletteDependent(
-			Ui::Earn::IconCreditsEmojiSmall()
-		).append(Lang::FormatCreditsAmountDecimal(_values.price()));
-	const auto date = langDateTime(base::unixtime::parse(_values.date));
-	if (!_values.price() && !_values.date) {
-		return tr::lng_suggest_bar_text(tr::now, tr::marked);
-	} else if (!_values.date) {
-		return tr::lng_suggest_bar_priced(
-			tr::now,
-			lt_amount,
-			amount,
-			tr::marked);
-	} else if (!_values.price()) {
-		return tr::lng_suggest_bar_dated(
-			tr::now,
-			lt_date,
-			tr::marked(date),
-			tr::marked);
-	}
-	return tr::marked().append(
-		amount
-	).append("   ").append(
-		QString::fromUtf8("\xf0\x9f\x93\x86 ")
-	).append(date);
-}
-
-SuggestOptions SuggestOptionsBar::values() const {
-	auto result = _values;
-	result.exists = 1;
-	return result;
-}
-
-rpl::producer<> SuggestOptionsBar::updates() const {
-	return _updates.events();
-}
-
-rpl::lifetime &SuggestOptionsBar::lifetime() {
-	return _lifetime;
-}
+// LoogriGram: SuggestOptionsBar was the bar above the compose field that
+// carried the price offered to have a post published. Paying to be
+// published is deleted, so nothing builds one.
 
 } // namespace HistoryView
