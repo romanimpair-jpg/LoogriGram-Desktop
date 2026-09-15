@@ -470,9 +470,6 @@ void ReplyArea::chooseAttach(
 
 Fn<SendMenu::Details()> ReplyArea::sendMenuDetails() const {
 	return crl::guard(this, [=] {
-		const auto call = _videoStream
-			? _videoStream->lookupReal()
-			: nullptr;
 		return SendMenu::Details{
 			.type = (!_data.videoStream
 				? SendMenu::Type::SilentOnly
