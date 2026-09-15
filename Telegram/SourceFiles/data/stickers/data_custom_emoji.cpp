@@ -31,7 +31,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/file_download.h" // kMaxFileInMemory
 #include "ui/chat/chats_filter_tag.h"
 #include "ui/effects/premium_stars_colored.h"
-#include "ui/effects/credits_graphics.h"
 #include "ui/widgets/fields/input_field.h"
 #include "ui/text/custom_emoji_instance.h"
 #include "ui/text/text_custom_emoji.h"

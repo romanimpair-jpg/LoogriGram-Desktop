@@ -41,7 +41,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_user_names.h"
 #include "api/api_websites.h"
 #include "data/business/data_shortcut_messages.h"
-#include "data/components/credits.h"
 #include "data/components/ephemeral_messages.h"
 #include "data/components/scheduled_messages.h"
 #include "data/components/welcome_messages.h"

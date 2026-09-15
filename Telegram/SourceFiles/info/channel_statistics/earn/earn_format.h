@@ -7,7 +7,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
-#include "data/data_channel_earn.h"
+#include "core/credits_amount.h"
+
+// LoogriGram: this came from data/data_channel_earn.h, which was otherwise
+// the channel revenue statistics and went with the earn pages.
+namespace Data {
+using EarnInt = uint64;
+} // namespace Data
 
 namespace Info::ChannelEarn {
 

@@ -7,7 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "api/api_statistics.h"
 
-#include "api/api_credits_history_entry.h"
 #include "api/api_statistics_data_deserialize.h"
 #include "apiwrap.h"
 #include "base/unixtime.h"
@@ -697,126 +696,6 @@ void Boosts::requestBoosts(
 
 Data::BoostStatus Boosts::boostStatus() const {
 	return _boostStatus;
-}
-
-EarnStatistics::EarnStatistics(not_null<PeerData*> peer)
-: StatisticsRequestSender(peer)
-, _isUser(peer->isUser()) {
-}
-
-rpl::producer<rpl::no_value, QString> EarnStatistics::request() {
-	return [=](auto consumer) {
-		auto lifetime = rpl::lifetime();
-
-		api().request(MTPpayments_GetStarsRevenueStats(
-			MTP_flags(MTPpayments_getStarsRevenueStats::Flag::f_ton),
-			(_isUser ? user()->input() : channel()->input())
-		)).done([=](const MTPpayments_StarsRevenueStats &result) {
-			const auto &data = result.data();
-			const auto &balances = data.vstatus().data();
-			const auto amount = [](const auto &a) {
-				return CreditsAmountFromTL(a);
-			};
-			_data = Data::EarnStatistics{
-				.topHoursGraph = data.vtop_hours_graph()
-					? StatisticalGraphFromTL(*data.vtop_hours_graph())
-					: Data::StatisticalGraph(),
-				.revenueGraph = StatisticalGraphFromTL(data.vrevenue_graph()),
-				.currentBalance = amount(balances.vcurrent_balance()),
-				.availableBalance = amount(balances.vavailable_balance()),
-				.overallRevenue = amount(balances.voverall_revenue()),
-				.usdRate = data.vusd_rate().v,
-			};
-
-			requestHistory({}, [=](Data::EarnHistorySlice &&slice) {
-				_data.firstHistorySlice = std::move(slice);
-
-				if (!_isUser) {
-					api().request(
-						MTPchannels_GetFullChannel(channel()->inputChannel())
-					).done([=](const MTPmessages_ChatFull &result) {
-						result.data().vfull_chat().match([&](
-								const MTPDchannelFull &d) {
-							// Not a full ApplyChannelUpdate() here: that would
-							// re-trigger an EarnStatistics request and loop. We
-							// only refresh the revenue-visibility flags that
-							// gate this screen, which may be stale if the
-							// program was enabled after the last full load.
-							using Flag = ChannelDataFlag;
-							const auto channel = this->channel();
-							channel->setFlags((channel->flags()
-								& ~(Flag::CanViewRevenue
-									| Flag::CanViewCreditsRevenue))
-								| (d.is_can_view_revenue()
-									? Flag::CanViewRevenue
-									: Flag())
-								| (d.is_can_view_stars_revenue()
-									? Flag::CanViewCreditsRevenue
-									: Flag()));
-							_data.switchedOff = d.is_restricted_sponsored();
-						}, [](const auto &) {
-						});
-						consumer.put_done();
-					}).fail([=](const MTP::Error &error) {
-						consumer.put_error_copy(error.type());
-					}).send();
-				} else {
-					consumer.put_done();
-				}
-			});
-		}).fail([=](const MTP::Error &error) {
-			consumer.put_error_copy(error.type());
-		}).send();
-
-		return lifetime;
-	};
-}
-
-void EarnStatistics::requestHistory(
-		const Data::EarnHistorySlice::OffsetToken &token,
-		Fn<void(Data::EarnHistorySlice)> done) {
-	if (_requestId) {
-		return;
-	}
-
-	constexpr auto kTlFirstSlice = tl::make_int(kFirstSlice);
-	constexpr auto kTlLimit = tl::make_int(kLimit);
-
-	_requestId = api().request(MTPpayments_GetStarsTransactions(
-		MTP_flags(MTPpayments_getStarsTransactions::Flag::f_ton),
-		MTP_string(), // Subscription ID.
-		(_isUser ? user()->input() : channel()->input()),
-		MTP_string(token),
-		token.isEmpty() ? kTlFirstSlice : kTlLimit
-	)).done([=](const MTPpayments_StarsStatus &result) {
-		_requestId = 0;
-
-		const auto nextToken = result.data().vnext_offset().value_or_empty();
-
-		const auto tlTransactions
-			= result.data().vhistory().value_or_empty();
-
-		const auto peer = _isUser ? (PeerData*)user() : (PeerData*)channel();
-		auto list = ranges::views::all(
-			tlTransactions
-		) | ranges::views::transform([=](const auto &d) {
-			return CreditsHistoryEntryFromTL(d, peer);
-		}) | ranges::to_vector;
-		done(Data::EarnHistorySlice{
-			.list = std::move(list),
-			.total = int(tlTransactions.size()),
-			// .total = result.data().vcount().v,
-			.allLoaded = nextToken.isEmpty(),
-			.token = Data::EarnHistorySlice::OffsetToken(nextToken),
-		});
-	}).fail([=] {
-		done({});
-		_requestId = 0;
-	}).send();
-}
-
-Data::EarnStatistics EarnStatistics::data() const {
-	return _data;
 }
 
 } // namespace Api

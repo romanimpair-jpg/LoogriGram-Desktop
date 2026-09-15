@@ -7,7 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/data_user.h"
 
-#include "api/api_credits.h"
 #include "api/api_global_privacy.h"
 #include "api/api_sensitive_content.h"
 #include "api/api_statistics.h"
@@ -20,7 +19,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "data/business/data_business_common.h"
 #include "data/business/data_business_info.h"
-#include "data/components/credits.h"
 #include "data/data_cloud_themes.h"
 #include "data/data_forum.h"
 #include "data/data_forum_icons.h"
@@ -928,43 +926,8 @@ void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update) {
 				user,
 				Data::PeerUpdate::Flag::Rights);
 		}
-		if (info->canEditInformation) {
-			static constexpr auto kTimeout = crl::time(60000);
-			const auto id = user->id;
-			const auto weak = base::make_weak(&user->session());
-			const auto creditsLoadLifetime
-				= std::make_shared<rpl::lifetime>();
-			const auto creditsLoad
-				= creditsLoadLifetime->make_state<Api::CreditsStatus>(user);
-			creditsLoad->request({}, [=](Data::CreditsStatusSlice slice) {
-				if (const auto strong = weak.get()) {
-					strong->credits().apply(id, slice.balance);
-				}
-				creditsLoadLifetime->destroy();
-			});
-			base::timer_once(kTimeout) | rpl::on_next([=] {
-				creditsLoadLifetime->destroy();
-			}, *creditsLoadLifetime);
-			const auto currencyLoadLifetime
-				= std::make_shared<rpl::lifetime>();
-			const auto currencyLoad
-				= currencyLoadLifetime->make_state<Api::EarnStatistics>(user);
-			const auto apply = [=](const CreditsAmount &balance) {
-				if (const auto strong = weak.get()) {
-					strong->credits().applyCurrency(id, balance);
-				}
-				currencyLoadLifetime->destroy();
-			};
-			currencyLoad->request() | rpl::on_error_done(
-				[=](const QString &error) {
-					apply(CreditsAmount(0, CreditsType::Ton));
-				},
-				[=] { apply(currencyLoad->data().currentBalance); },
-				*currencyLoadLifetime);
-			base::timer_once(kTimeout) | rpl::on_next([=] {
-				currencyLoadLifetime->destroy();
-			}, *currencyLoadLifetime);
-		}
+		// LoogriGram: a bot we manage had its star and TON balances fetched
+		// here, for the bot earn page. That page is deleted.
 	}
 
 	if (const auto paper = update.vwallpaper()) {

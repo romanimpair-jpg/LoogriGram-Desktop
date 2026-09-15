@@ -7,11 +7,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/data_channel.h"
 
-#include "api/api_credits.h"
 #include "api/api_global_privacy.h"
 #include "api/api_statistics.h"
 #include "base/timer_rpl.h"
-#include "data/components/credits.h"
 #include "data/data_changes.h"
 #include "data/data_channel_admins.h"
 #include "data/data_user.h"
@@ -1515,42 +1513,9 @@ void ApplyChannelUpdate(
 		channel->setWallPaper({});
 	}
 
-	if ((channel->flags() & Flag::CanViewRevenue)
-		|| (channel->flags() & Flag::CanViewCreditsRevenue)) {
-		static constexpr auto kTimeout = crl::time(60000);
-		const auto id = channel->id;
-		const auto weak = base::make_weak(&channel->session());
-		const auto creditsLoadLifetime = std::make_shared<rpl::lifetime>();
-		const auto creditsLoad
-			= creditsLoadLifetime->make_state<Api::CreditsStatus>(channel);
-		creditsLoad->request({}, [=](Data::CreditsStatusSlice slice) {
-			if (const auto strong = weak.get()) {
-				strong->credits().apply(id, slice.balance);
-			}
-			creditsLoadLifetime->destroy();
-		});
-		base::timer_once(kTimeout) | rpl::on_next([=] {
-			creditsLoadLifetime->destroy();
-		}, *creditsLoadLifetime);
-		const auto currencyLoadLifetime = std::make_shared<rpl::lifetime>();
-		const auto currencyLoad
-			= currencyLoadLifetime->make_state<Api::EarnStatistics>(channel);
-		const auto apply = [=](const CreditsAmount &balance) {
-			if (const auto strong = weak.get()) {
-				strong->credits().applyCurrency(id, balance);
-			}
-			currencyLoadLifetime->destroy();
-		};
-		currencyLoad->request() | rpl::on_error_done(
-			[=](const QString &error) {
-				apply(CreditsAmount(0, CreditsType::Ton));
-			},
-			[=] { apply(currencyLoad->data().currentBalance); },
-			*currencyLoadLifetime);
-		base::timer_once(kTimeout) | rpl::on_next([=] {
-			currencyLoadLifetime->destroy();
-		}, *currencyLoadLifetime);
-	}
+	// LoogriGram: a channel we can see the revenue of had its star and TON
+	// balances fetched here on every full update, for the earn pages. Those
+	// pages are deleted and no screen shows a balance.
 
 	// For clearUpTill() call.
 	channel->owner().sendHistoryChangeNotifications();

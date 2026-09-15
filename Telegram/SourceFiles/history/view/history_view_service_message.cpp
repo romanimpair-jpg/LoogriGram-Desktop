@@ -818,8 +818,6 @@ TextState Service::textState(QPoint point, StateRequest request) const {
 				result.link = results->lnk;
 			} else if (const auto custom = item->Get<HistoryServiceCustomLink>()) {
 				result.link = custom->link;
-			} else if (const auto payment = item->Get<HistoryServicePaymentRefund>()) {
-				result.link = payment->link;
 			} else if (const auto done = item->Get<HistoryServiceTodoCompletions>()) {
 				result.link = done->lnk;
 			} else if (const auto append = item->Get<HistoryServiceTodoAppendTasks>()) {

@@ -10,7 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "api/api_peer_colors.h"
 #include "data/data_emoji_statuses.h"
-#include "data/data_credits.h"
 #include "data/data_peer.h"
 #include "data/data_star_gift.h"
 #include "data/stickers/data_custom_emoji.h"

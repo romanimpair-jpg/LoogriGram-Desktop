@@ -868,7 +868,6 @@ struct HistoryServiceCustomLink
 
 struct HistoryServicePaymentRefund
 : RuntimeComponent<HistoryServicePaymentRefund, HistoryItem> {
-	ClickHandlerPtr link;
 	PeerData *peer = nullptr;
 	QString transactionId;
 	QString currency;

@@ -28,7 +28,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/text/format_values.h"
 #include "ui/text/text_isolated_emoji.h"
 #include "ui/text/text_utilities.h"
-#include "settings/settings_credits_graphics.h" // ShowRefundInfoBox.
 #include "storage/file_upload.h"
 #include "storage/storage_shared_media.h"
 #include "main/main_session.h"
@@ -3107,9 +3106,6 @@ void HistoryItem::setRealId(MsgId newId) {
 		this,
 		Data::MessageUpdate::Flag::NewMaybeAdded);
 
-	if (out() && starsPaid()) {
-		_history->session().credits().load(true);
-	}
 }
 
 bool HistoryItem::canPin() const {
@@ -5481,14 +5477,9 @@ void HistoryItem::createServiceFromMtp(const MTPDmessageService &message) {
 		refund->amount = data.vtotal_amount().v;
 		refund->currency = qs(data.vcurrency());
 		refund->transactionId = qs(data.vcharge().data().vid());
-		const auto id = fullId();
-		refund->link = std::make_shared<LambdaClickHandler>([=](
-			ClickContext context) {
-			const auto my = context.other.value<ClickHandlerContext>();
-			if (const auto window = my.sessionWindow.get()) {
-				Settings::ShowRefundInfoBox(window, id);
-			}
-		});
+		// LoogriGram: this service message still says a payment was
+		// refunded, because that happened. Tapping it opened the refund's
+		// entry in the credits history, which is a payments screen.
 	} else if (type == mtpc_messageActionTodoCompletions) {
 		const auto &data = action.c_messageActionTodoCompletions();
 		UpdateComponents(HistoryServiceTodoCompletions::Bit());

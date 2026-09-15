@@ -52,7 +52,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/localstorage.h"
 #include "chat_helpers/stickers_dice_pack.h" // Stickers::DicePacks::IsSlot.
 #include "chat_helpers/stickers_gift_box_pack.h"
-#include "data/components/credits.h"
 #include "data/data_session.h"
 #include "data/data_auto_download.h"
 #include "data/data_photo.h"
@@ -2578,7 +2577,6 @@ MediaDice::MediaDice(
 , _outcome(outcome)
 , _emoji(emoji)
 , _value(value) {
-	parent->history()->session().credits().tonLoad();
 }
 
 std::unique_ptr<Media> MediaDice::clone(not_null<HistoryItem*> parent) {

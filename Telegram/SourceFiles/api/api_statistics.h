@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "api/api_statistics_sender.h"
 #include "data/data_boosts.h"
-#include "data/data_channel_earn.h"
 #include "data/data_statistics.h"
 #include "data/data_statistics_lists.h"
 
@@ -80,27 +79,6 @@ private:
 
 };
 
-class EarnStatistics final : public StatisticsRequestSender {
-public:
-	explicit EarnStatistics(not_null<PeerData*> peer);
-
-	[[nodiscard]] rpl::producer<rpl::no_value, QString> request();
-	void requestHistory(
-		const Data::EarnHistorySlice::OffsetToken &token,
-		Fn<void(Data::EarnHistorySlice)> done);
-
-	[[nodiscard]] Data::EarnStatistics data() const;
-
-	static constexpr auto kFirstSlice = int(5);
-	static constexpr auto kLimit = int(10);
-
-private:
-	const bool _isUser = false;
-	Data::EarnStatistics _data;
-
-	mtpRequestId _requestId = 0;
-
-};
 
 class Boosts final {
 public:

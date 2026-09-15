@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "api/api_blocked_peers.h"
 #include "api/api_chat_participants.h"
-#include "api/api_credits.h"
 #include "api/api_report.h"
 #include "api/api_statistics.h"
 #include "apiwrap.h"
@@ -34,7 +33,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/ui_integration.h"
 #include "data/business/data_business_common.h"
 #include "data/business/data_business_info.h"
-#include "data/components/credits.h"
 #include "data/data_changes.h"
 #include "data/data_channel.h"
 #include "data/data_chat.h"
@@ -73,7 +71,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/boxes/peer_qr_box.h"
 #include "ui/boxes/report_box_graphics.h"
 #include "ui/controls/userpic_button.h"
-#include "ui/effects/credits_graphics.h"
 #include "ui/effects/toggle_arrow.h"
 #include "ui/painter.h"
 #include "ui/rect.h"

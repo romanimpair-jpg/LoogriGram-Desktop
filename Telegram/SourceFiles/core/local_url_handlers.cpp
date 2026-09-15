@@ -35,7 +35,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/text/text_utilities.h"
 #include "ui/toast/toast.h"
 #include "ui/vertical_list.h"
-#include "data/components/credits.h"
 #include "data/data_birthday.h"
 #include "data/data_channel.h"
 #include "data/data_document.h"

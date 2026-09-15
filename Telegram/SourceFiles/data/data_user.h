@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "core/credits_amount.h"
-#include "data/components/credits.h"
 #include "data/data_birthday.h"
 #include "data/data_peer.h"
 #include "data/data_chat_participant_status.h"

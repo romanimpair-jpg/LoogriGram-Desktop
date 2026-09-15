@@ -19,7 +19,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session_settings.h"
 #include "main/main_app_config.h"
 #include "main/session/send_as_peers.h"
-#include "data/components/credits.h"
 #include "data/data_user.h"
 #include "data/data_session.h"
 #include "data/data_histories.h"

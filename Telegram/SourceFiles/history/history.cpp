@@ -23,7 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/ui_integration.h"
 #include "dialogs/ui/dialogs_layout.h"
 #include "data/business/data_shortcut_messages.h"
-#include "data/components/credits.h"
 #include "data/components/scheduled_messages.h"
 #include "data/components/top_peers.h"
 #include "data/notify/data_notify_settings.h"
@@ -593,9 +592,6 @@ not_null<HistoryItem*> History::createItem(
 	});
 	if (newMessage && result->out() && result->isRegular()) {
 		session().topPeers().increment(peer, result->date());
-		if (result->starsPaid()) {
-			session().credits().load(true);
-		}
 	}
 	if (newMessage && !result->out() && result->isRegular()) {
 		if (const auto bot = GuestChatBotForCurrentUser(result)) {

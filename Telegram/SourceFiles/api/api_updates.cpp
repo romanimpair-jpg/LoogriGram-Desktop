@@ -23,7 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mtproto/mtproto_dc_options.h"
 #include "chat_helpers/stickers_dice_pack.h"
 #include "data/business/data_shortcut_messages.h"
-#include "data/components/credits.h"
 #include "data/components/ephemeral_messages.h"
 #include "data/components/promo_suggestions.h"
 #include "data/components/scheduled_messages.h"
@@ -2865,10 +2864,9 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 		_session->data().stories().apply(data.vstealth_mode());
 	} break;
 
-	case mtpc_updateStarsBalance: {
-		const auto &data = update.c_updateStarsBalance();
-		_session->credits().apply(data);
-	} break;
+	// LoogriGram: our star balance changed. Nothing here spends or earns
+	// stars and no screen shows a balance, so it is ignored.
+	case mtpc_updateStarsBalance: break;
 
 	// LoogriGram: an update telling us which peer our paid reactions would be
 	// shown as coming from. Paid reactions are deleted, so it is ignored.

@@ -17,7 +17,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/widgets/checkbox.h"
 #include "ui/widgets/fields/input_field.h"
 #include "ui/widgets/fields/number_input.h"
-#include "ui/effects/credits_graphics.h"
 #include "ui/widgets/labels.h"
 #include "ui/wrap/slide_wrap.h"
 #include "styles/style_settings.h"

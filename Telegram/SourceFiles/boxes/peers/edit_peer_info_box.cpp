@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "apiwrap.h"
 #include "api/api_communities.h"
-#include "api/api_credits.h"
 #include "api/api_peer_photo.h"
 #include "api/api_statistics.h"
 #include "api/api_user_names.h"
@@ -39,7 +38,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/tabbed_selector.h"
 #include "core/application.h"
 #include "core/core_settings.h"
-#include "data/components/credits.h"
 #include "data/components/welcome_messages.h"
 #include "data/data_channel.h"
 #include "data/data_chat.h"

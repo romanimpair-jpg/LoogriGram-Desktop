@@ -54,20 +54,6 @@ void AddBoostsList(
 	not_null<PeerData*> peer,
 	rpl::producer<QString> title);
 
-using Clicked = Fn<void(
-	const Data::CreditsHistoryEntry &,
-	const Data::SubscriptionEntry &)>;
-void AddCreditsHistoryList(
-	std::shared_ptr<Main::SessionShow> show,
-	const Data::CreditsStatusSlice &firstSlice,
-	not_null<Ui::VerticalLayout*> container,
-	Clicked entryClickedCallback,
-	not_null<PeerData*> peer,
-	bool in,
-	bool out,
-	bool subscription = false,
-	bool currency = false);
-
 [[nodiscard]] not_null<Ui::SlideWrap<Ui::SettingsButton>*> AddShowMoreButton(
 	not_null<Ui::VerticalLayout*> container,
 	rpl::producer<QString> title);
