@@ -83,22 +83,14 @@ void PostsSearch::setQuery(const QString &query) {
 	}
 }
 
-int PostsSearch::setAllowedStars(int stars) {
-	if (!_query) {
-		return 0;
-	} else if (_floodState) {
-		if (_floodState->freeSearchesLeft > 0) {
-			stars = 0;
-		} else if (_floodState->nextFreeSearchTime > 0
-			&& _floodState->nextFreeSearchTime <= base::unixtime::now()) {
-			stars = 0;
-		} else {
-			stars = std::min(int(_floodState->starsPerPaidSearch), stars);
-		}
+// LoogriGram: once the free daily searches ran out, a post search could
+// be bought with stars. No money is spent through this client, so the
+// free searches are all there are.
+
+void PostsSearch::searchNow() {
+	if (_query) {
+		requestSearch(*_query);
 	}
-	_entries[*_query].allowedStars = stars;
-	requestSearch(*_query);
-	return stars;
 }
 
 void PostsSearch::pushStateUpdate(const Entry &entry) {
@@ -175,13 +167,9 @@ void PostsSearch::requestSearch(const QString &query) {
 		return;
 	}
 
-	const auto useStars = entry.allowedStars;
-	entry.allowedStars = 0;
-
 	using Flag = MTPchannels_SearchPosts::Flag;
 	entry.searchId = _api.request(MTPchannels_SearchPosts(
-		MTP_flags(Flag::f_query
-			| (useStars ? Flag::f_allow_paid_stars : Flag())),
+		MTP_flags(Flag::f_query),
 		MTP_string(), // hashtag
 		MTP_string(query),
 		MTP_int(entry.offsetRate),
@@ -304,7 +292,6 @@ void PostsSearch::setFloodStateFrom(const MTPDsearchPostsFlood &data) {
 		.freeSearchesPerDay = data.vtotal_daily().v,
 		.freeSearchesLeft = left,
 		.nextFreeSearchTime = next,
-		.starsPerPaidSearch = uint32(data.vstars_amount().v),
 	};
 }
 

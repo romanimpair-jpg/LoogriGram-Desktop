@@ -125,13 +125,12 @@ void PostsSearchIntro::update(PostsSearchIntroState state) {
 	_state = std::move(state);
 }
 
-rpl::producer<int> PostsSearchIntro::searchWithStars() const {
-	return _button->clicks() | rpl::map([=] {
-		const auto &now = _state.current();
-		return (now.needsPremium || now.freeSearchesLeft)
-			? 0
-			: int(now.starsPerPaidSearch);
-	});
+// LoogriGram: this reported how many stars a click was worth, so the caller
+// could buy a search once the free ones ran out. Only free searches remain.
+rpl::producer<> PostsSearchIntro::searchRequests() const {
+	return _button->clicks() | rpl::filter([=] {
+		return _state.current().freeSearchesLeft > 0;
+	}) | rpl::to_empty;
 }
 
 void PostsSearchIntro::setup() {
@@ -222,13 +221,7 @@ void PostsSearchIntro::setup() {
 
 			Ui::SetButtonTwoLabels(
 				_button,
-				tr::lng_posts_limit_search_paid(
-					lt_cost,
-					rpl::single(Ui::Text::IconEmoji(
-						&st::starIconEmoji
-					).append(
-						Lang::FormatCountDecimal(state.starsPerPaidSearch))),
-					tr::marked),
+				tr::lng_posts_limit_reached(tr::marked),
 				tr::lng_posts_limit_unlocks(
 					lt_duration,
 					FormatCountdownTill(

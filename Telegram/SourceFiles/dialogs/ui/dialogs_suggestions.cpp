@@ -2035,40 +2035,13 @@ void Suggestions::setupPostsIntro(const PostsSearchIntroState &intro) {
 	delete base::take(_postsContent);
 	_postsSearchIntro = Ui::CreateChild<PostsSearchIntro>(_postsWrap, intro);
 
-	_postsSearchIntro->searchWithStars(
-	) | rpl::on_next([=](int stars) {
-		// LoogriGram: searching posts for stars is a purchase, and this
-		// branch answered a non-subscriber by opening the page that sells
-		// the subscription. It does nothing now.
-		if (!_controller->session().premium()) {
-			return;
-		} else if (!stars) {
-			_postsSearch->setAllowedStars(0);
-		} else {
-			using namespace Settings;
-			const auto done = [=](Settings::SmallBalanceResult result) {
-				if (result == Settings::SmallBalanceResult::Success
-					|| result == Settings::SmallBalanceResult::Already) {
-					const auto spent = _postsSearch->setAllowedStars(stars);
-					if (spent > 0) {
-						_controller->showToast({
-							.text = tr::lng_posts_paid_spent(
-								tr::now,
-								lt_count,
-								spent,
-								tr::rich),
-							.attach = RectPart::Top,
-							.duration = Ui::Toast::kDefaultDuration * 2,
-						});
-					}
-				}
-			};
-			MaybeRequestBalanceIncrease(
-				_controller->uiShow(),
-				stars,
-				SmallBalanceForSearch{},
-				done);
-		}
+	// LoogriGram: once the free daily post searches ran out, another could
+	// be bought with stars, and a non-subscriber was answered with the page
+	// selling the subscription. Neither happens; a free search is a free
+	// search and the limit is simply the limit.
+	_postsSearchIntro->searchRequests(
+	) | rpl::on_next([=] {
+		_postsSearch->searchNow();
 	}, _postsSearchIntro->lifetime());
 
 	_postsScroll->heightValue() | rpl::on_next([=](int height) {

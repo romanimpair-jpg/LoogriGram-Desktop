@@ -32,8 +32,10 @@ public:
 	[[nodiscard]] rpl::producer<PostsSearchState> pagesUpdates() const;
 
 	void setQuery(const QString &query);
-	int setAllowedStars(int stars);
 	void requestMore();
+	// LoogriGram: setAllowedStars(0) used to be how the free search was
+	// started, because the same call set the price. This is that half.
+	void searchNow();
 
 private:
 	struct Entry {
@@ -44,13 +46,13 @@ private:
 		PeerData *offsetPeer = nullptr;
 		MsgId offsetId = 0;
 		int offsetRate = 0;
-		int allowedStars = 0;
 		mutable int pagesPushed = 0;
 		bool loaded = false;
 	};
 
 	void recheck();
 	void applyQuery();
+
 	void requestSearch(const QString &query);
 	void requestState(const QString &query, bool force = false);
 	void setFloodStateFrom(const MTPDsearchPostsFlood &data);
