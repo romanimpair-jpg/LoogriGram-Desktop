@@ -72,7 +72,6 @@ set(style_files
     settings/settings.style
     settings/sections/settings_local_storage.style
     settings/sections/settings_active_sessions.style
-    settings/sections/settings_premium.style
     ui/controls/filter_link_header.style
     media/view/media_view.style
     overview/overview.style
@@ -135,13 +134,9 @@ PRIVATE
     data/data_authorization.h
     data/data_birthday.cpp
     data/data_birthday.h
-    data/data_channel_earn.h
-    data/data_credits.h
-    data/data_credits_earn.h
     data/data_passkey_deserialize.cpp
     data/data_passkey_deserialize.h
     data/data_peer_colors.h
-    data/data_premium_subscription_option.h
     data/data_statistics.h
     data/data_statistics_chart.cpp
     data/data_statistics_chart.h
@@ -263,8 +258,6 @@ PRIVATE
 
     media/media_common.h
 
-    menu/gift_resale_filter.cpp
-    menu/gift_resale_filter.h
     menu/menu_action_with_thumbnail.cpp
     menu/menu_action_with_thumbnail.h
     menu/menu_checked_action.cpp
@@ -284,20 +277,6 @@ PRIVATE
     passport/ui/passport_form_row.cpp
     passport/ui/passport_form_row.h
 
-    payments/ui/payments_edit_card.cpp
-    payments/ui/payments_edit_card.h
-    payments/ui/payments_edit_information.cpp
-    payments/ui/payments_edit_information.h
-    payments/ui/payments_form_summary.cpp
-    payments/ui/payments_form_summary.h
-    payments/ui/payments_field.cpp
-    payments/ui/payments_field.h
-    payments/ui/payments_panel.cpp
-    payments/ui/payments_panel.h
-    payments/ui/payments_panel_data.h
-    payments/ui/payments_panel_delegate.h
-    payments/ui/payments_reaction_box.cpp
-    payments/ui/payments_reaction_box.h
 
     platform/win/current_geo_location_win.cpp
     platform/win/current_geo_location_win.h
@@ -530,8 +509,6 @@ PRIVATE
     ui/effects/premium_bubble.h
     ui/effects/premium_graphics.cpp
     ui/effects/premium_graphics.h
-    ui/effects/premium_promo_particles.cpp
-    ui/effects/premium_promo_particles.h
     ui/effects/premium_stars.cpp
     ui/effects/premium_stars.h
     ui/effects/premium_stars_colored.cpp
@@ -552,8 +529,6 @@ PRIVATE
     ui/effects/toggle_arrow.h
     ui/effects/ttl_icon.cpp
     ui/effects/ttl_icon.h
-    ui/effects/unique_gift_message_bubble.cpp
-    ui/effects/unique_gift_message_bubble.h
     ui/effects/upload_progress_overlay.cpp
     ui/effects/upload_progress_overlay.h
     ui/search_field_controller.cpp
@@ -679,7 +654,6 @@ PRIVATE
     desktop-app::lib_webview
     desktop-app::lib_webrtc
     desktop-app::lib_spellcheck
-    desktop-app::lib_stripe
     desktop-app::external_kcoreaddons
     desktop-app::external_minizip
     desktop-app::external_webrtc
