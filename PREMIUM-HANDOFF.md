@@ -1,135 +1,202 @@
 # Removing Premium — handoff
 
-Written 2026-09-15, mid-job, for whoever picks this up. Read
-`LOOGRIGRAM.md` first; this only covers the premium removal.
+Rewritten 2026-09-15, second session. Read `LOOGRIGRAM.md` first; this covers
+only the premium and monetisation removal.
 
 ## Where the work lives
 
-| Branch | What | Verified? |
-|---|---|---|
-| `patches` | Everything up to and including the macOS/Linux removal, plus one include fix | Building as `07d1f5568`. The build *before* it failed on one file, fixed by that commit |
-| `premium-work` | 9 commits, the premium removal so far. Rebased onto `patches` | **No. Never compiled.** |
+**All of it is on `patches`, merged and pushed.** The `premium-work` side
+branch is fully contained in `patches` now and can be deleted; it is left
+only so the earlier history is easy to find.
 
-`premium-work` is 76 files, −33,159 lines. Merge it into `patches` and build
-*that* once `patches` is known green — do not stack more on an unverified
-base than you have to.
+| | |
+|---|---|
+| `patches` | 21 commits past the last build, 248 files, **−44,930 lines** |
+| Last commit that actually compiled | `07d1f5568d`, green 2026-09-14, installed and in use |
+| Everything since | **Never compiled. Not once.** |
 
-**Build from `patches` only.** GitHub scopes caches by branch, so a side
-branch pays the full two hours. And ask before dispatching: a
-`mode=build` + `config=Release` run publishes a release, and the installed
-app offers it as an update on next launch.
+That last line is the whole risk. Twenty-one commits of deletion, every one
+of them checked by the audits below and none of them by a compiler.
 
-## The decision everything rests on
+### Building it
 
-**Gifts, giveaways and paid posts are hidden at the view, not refused at
-parse.** The `HistoryItem` is still created and still lives in history.
+The `out/` tree cache from the green build is warm and valid:
+`Windows-x64-out-Release-v4-…-07d1f5568d`, 1.34 GiB. **Expect 45–75 minutes,
+not two hours.** The two-hour figure is the *cold* case, and the last run was
+cold on purpose because `OUT_CACHE_SALT` had been raised to 4 to discard
+every tree built under the old timestamp scheme.
 
-This is not fussiness. Telegram tracks what has been read by message id, and
-the read position only advances past messages we have. Drop one at parse
-time and nothing ever marks it read, so the chat keeps an unread badge that
-scrolling cannot clear — the same coupling that made read-receipt
-suppression get reverted here, arriving from the other direction.
+45–75 rather than the measured 46 because this diff touches
+`window_session_controller.h`, `mtp_instance.h`, `main_session_settings.h`
+and several `.style` files, whose generated headers are included nearly
+everywhere. The useful corollary: **those wide headers are already dirty, so
+piling more removal into the same build costs very little extra.**
 
-`LoogriGram::HiddenContent()` in `core/loogrigram_hidden_content.cpp` is the
-one predicate. Three places ask, and all three are needed or the hiding
-leaks: `Element::isHidden()`, `History::computeChatListMessageFromLast` (or
-the sidebar advertises a gift the chat will not show), and
-`System::skipNotification` (or a toast announces a message that is not
-there). `Element::refreshMedia` also stops before building a view for one.
+And ask first. `mode=build` + `config=Release` publishes a release, and the
+installed app offers it as an update on next launch.
 
-Upstream already supports all of this — hidden elements cost zero height,
-built for photo albums. Nothing was invented.
+## The one rule that decides everything
 
-## Decisions already taken — do not relitigate
+**We take no part in it; we still render what arrives.** Settled three
+separate times now, and it is the difference between a removal that works and
+one that breaks ordinary chats:
 
-- **Two non-purchase things are hidden deliberately.** `MediaGiftBox` is a
-  container, not a purchase marker. A birthday suggestion ("X suggests you
-  add your date of birth") and a collectible chat theme are filed under it,
-  and the user chose to hide both. There is a comment in the predicate
-  saying so, because the obvious "fix" is to narrow the check.
-- **Limit boxes keep their explanations.** The caps are the server's and
-  apply either way, so "the document can't be sent, it is larger than 2 GB"
-  is an error message, not a premium surface. What went is the way around
-  it — the Increase Limit buttons, the comparison bars, the account-switch
-  offer.
-- **Inbound content is not stubbed.** Because none of it renders, there are
-  no recipient stubs to write. This is why the four `createView` overrides
-  return nullptr rather than being deleted: `Media::createView` is pure
-  virtual.
-- **Paid posts vanish without trace**, knowingly.
-- Kept: the verified check, and scam / fake / direct badges — warnings, not
-  purchases.
+- **Gifts** are hidden at the *view*, never refused at parse. The item stays
+  in history or the read position never advances past it and the chat keeps
+  an unread badge scrolling cannot clear - the read-receipt coupling arriving
+  from the other side. `LoogriGram::HiddenContent()` is the one predicate,
+  and three places ask: `Element::isHidden()`,
+  `History::computeChatListMessageFromLast` and `System::skipNotification`.
+- **Business** is two things under one name. The settings that configure
+  *our* business account are deleted; the data layer is not, because
+  `data_business_common` and `data_business_info` carry *other people's*
+  opening hours, location and chat intro.
+- **Shortcut messages** looked like a Business feature and are not.
+  `data_shortcut_messages.h` has sixteen includers outside Business - the
+  send pipeline threads a shortcut id through `api_sending`, `api_editing`,
+  `apiwrap`, `history_item`, `share_box` and more.
 
-## Still to do, in the order I would take it
+Before deleting any directory, count what includes it from outside. Twice now
+the count has changed the plan.
 
-1. **The upsell entry points — 52 files.** Every "you need Premium for
-   this" call: `Settings::ShowPremium` (31 files) and
-   `ShowPremiumPreviewBox` (21). Each needs a judgement about what happens
-   instead — nothing, a disabled control, or a brief "not available". This
-   is the gate on everything below, because `settings_premium.cpp` and
-   `premium_preview_box.cpp` cannot go while they have callers.
-2. **Premium proper** — `settings_premium.cpp` (2,165),
-   `premium_preview_box.cpp` (1,836). Unreachable by any link or settings
-   row already.
-3. **Business** (7,938), **boosts/giveaways** (6,463), **star referrals**
-   (3,561). Seller-side, little inbound coupling.
-4. **Credits / Stars / TON** (11,342).
-5. **Gifts** (26,488) — last, and the biggest. `history_view_unique_gift`
-   and `history_view_premium_gift` are already deleted; what remains is
-   `star_gift_box.cpp` (5,354) and friends. `ResolveAndShowUniqueGift` in
-   `local_url_handlers.cpp` goes here — stories and the premium section
-   still call it, which is why `star_gift_box.h` is still included there.
-6. **`premiumCanBuy()` and `premiumPossible()` last of all.**
-   `premiumPossible()` is now exactly `premium()`, so every
-   `(premium || !premiumPossible)` is provably always true — but there are
-   104 references, so do it when the surfaces are gone, not before.
+## What is done
 
-Also still present, noted rather than done: the **bot verification icon**
-(`PeerBadge::drawVerified`), an arbitrary server-supplied custom emoji drawn
-*before* a name from a path no gate touches — the only coloured emoji left
-beside a name; **"Set as status"** in the emoji picker menu, which sets
-something nothing here displays; and the **collectible status gradients** in
-`ui/top_background_gradient.cpp`, `calls/calls_panel_background.cpp` and
-`history_view_about_view.cpp`, which read `emojiStatusId().collectible`
-directly and were never gated.
+Ten commits this session, on top of the nine in the first one.
 
-## Traps this job has already sprung
+- **The upsell entry points are closed.** There is no call to
+  `Settings::ShowPremium`, `ShowPremiumPreviewBox`, `ShowPremiumPreviewToBuy`
+  or `ShowPremiumPromoToast` left outside files that later steps delete
+  whole. That was the gate on everything else.
+- Where a restriction is the server's and real, its wording is kept verbatim
+  and only the link is removed - "Telegram Premium" as plain semibold text
+  instead of a link into the page selling it. Where the text was nothing but
+  a pitch, the whole surface went.
+- **Boosting is gone** - `resolveBoostState`, `applyBoost`,
+  `MTPpremium_ApplyBoost`, five boxes, the slot-reassignment screen, the menu
+  item, `?boost` links. Giving a boost spends a subscription slot, so the
+  flow was a way of paying and nothing else.
+- **The speed-limit nag is gone**, six layers down to the MTProto flag that
+  detected the server throttling a non-subscriber.
+- **Telegram Business is gone** - ten modules, ~7,400 lines.
+- **Emoji statuses are finished** - they still tinted profile headers and
+  call panels from a collectible's palette, could still be set from two
+  context menus, and were still being requested by bots.
 
-- **Removing an include is a behaviour change.** This broke the build:
-  nothing in `unread_badge.cpp` changed, but two headers it had been getting
-  transitively went away with the includes that supplied them. There is an
-  audit for this at
-  `Telegram/build/audit_includes.py` — for every include dropped from a
-  surviving file, take the names that header declares, check whether the
-  file still uses any, then **discard any name another still-included
-  header also declares**. That last step is what turns "`Session` appears 40
-  times" into silence: 68 candidates became 5. It found one real bug.
-- **`cmake/td_ui.cmake` holds the UI sources**, not
-  `Telegram/CMakeLists.txt`. The "four lists, not one" trap in
-  `LOOGRIGRAM.md`, live: deleting eleven `ui/effects/premium_*` files needed
-  their entries removed from `td_ui.cmake`. What caught it was asserting
-  every entry exists exactly once rather than deleting best-effort.
-- **A regex collapse ate an `rpl::combine(` opening and left its closing**,
-  and mangled the indentation of the call after it — and brace *and* paren
-  counts both still balanced, so the cheap checks said fine. Caught by
-  reading the result back. Prefer exact-text edits; when a range delete is
-  unavoidable, read both sides of the seam.
-- **Heredocs mangle Python with `\n` in string literals.** Write the script
-  to a file and run it.
+## What is left, in the order to take it
 
-## Checks worth re-running after any deletion here
+1. **Credits / Stars / TON** (~11,000 lines). The big one and the next one.
+   Measured coupling, which is why it was not started at the tail of a
+   session: 30 includers of `data/components/credits.h`, 35 of
+   `settings/settings_credits_graphics.h`, 25 of `api/api_credits.h`, 20 of
+   `ui/effects/credits_graphics.h`, 14 each of `boxes/send_credits_box.h` and
+   `data/data_credits.h`. `core/credits_amount.h` is a core money type with
+   11 includers.
 
-All cheap, all have caught something:
+   Expect the same inbound/outbound split: a message that merely *mentions* a
+   star amount has to keep rendering, exactly as a received gift does.
+
+2. **Gifts** (~26,000 lines), which are priced in stars and therefore bound
+   to the above. `star_gift_box.cpp` alone is 5,354 lines.
+
+3. **`settings_premium.cpp` (2,165) and `premium_preview_box.cpp` (1,836).**
+   These were step 2 in the old plan and are now nearly last, because what
+   holds them is not upsells any more - it is gifts. Two things must be
+   extracted first, both found by the include audit rather than by reading:
+   - `ShowStickerPreviewBox` lives in `premium_preview_box.cpp` and is not a
+     premium surface at all. `window/section_widget.cpp` uses it.
+   - `Settings::MakeEmojiStatusPreview` has no callers left as of this
+     commit, but check again rather than assuming.
+
+4. **`premiumCanBuy()` and `premiumPossible()` last of all.**
+   `premiumPossible()` is exactly `premium()` now, so every
+   `(premium || !premiumPossible)` is provably always true - but there are
+   ~100 references, so do it when the surfaces are gone.
+
+Also still present, noted rather than done:
+
+- **The bot verification icon.** `PeerBadge::drawVerified` paints an
+  arbitrary server-supplied custom emoji *before* a name, from a path no gate
+  ever touched. A third party paid to mark that account, and it is the only
+  coloured emoji left beside a name. Four call sites. Take it and `PeerBadge`
+  holds no state at all, so it becomes a free function and every `_badge`
+  member that exists to carry that state goes with it.
+- **`specific_win.cpp:450` hard-codes "Telegram autorun link. You can disable
+  autorun in Telegram settings."** into the Startup shortcut's description.
+  A branding leak of the same class as the `lang.strings` one, in a file that
+  survives. Found by reading the shortcut, not the source.
+
+## Checks to run after every removal here
+
+All four are cheap and every one of them has caught something real.
 
 ```
-# every build-list path still resolves on disk
-# every icon named in any .style resolves under Resources/icons
-# brace balance on every touched file
-# the Class::method definitions lost are exactly the intended ones:
-for f in $(git diff --name-only BASE HEAD -- '*.cpp'); do
-  diff <(git show BASE:$f | grep -oE '^[A-Za-z_][A-Za-z0-9_:<>*& ]*::[A-Za-z_~][A-Za-z0-9_]*\(' | sort -u) \
+# 1. brace AND paren balance, compared against HEAD rather than to zero -
+#    two files in this tree are already off by one inside string literals
+# 2. the Class::method definitions lost are exactly the intended ones
+for f in $(git diff --name-only HEAD -- '*.cpp'); do
+  [ -f "$f" ] || continue
+  diff <(git show HEAD:$f | grep -oE '^[A-Za-z_][A-Za-z0-9_:<>*& ]*::[A-Za-z_~][A-Za-z0-9_]*\(' | sort -u) \
        <(grep -oE '^[A-Za-z_][A-Za-z0-9_:<>*& ]*::[A-Za-z_~][A-Za-z0-9_]*\(' $f | sort -u) | grep '^<'
 done
+# 3. python3 Telegram/build/audit_includes.py HEAD
+# 4. every build-list path resolves on disk, and every icon named in any
+#    .style resolves under Resources/icons or lib_ui/icons. The baseline is
+#    257 false positives (generated qrc, folder icons); compare to that
+#    number, not to zero.
 ```
 
-Brace balance alone is not enough — see the regex trap above.
+## Traps sprung this session
+
+Four, and three of them were invisible to the cheap checks.
+
+- **A guard that was never asserted.** A scripted range delete of
+  `MainWidget::showNonPremiumLimitToast` was protected by a callback counting
+  the method definitions inside the range - written as a lambda whose result
+  was never asserted, so it evaluated to false and did nothing. The range ran
+  on and took `showBackFromStack` with it. Brace *and* paren counts both
+  stayed balanced. Only check 2 saw it. **Assert, do not merely call.**
+- **A replacement comment with no trailing newline** glued the following `}`
+  onto the end of the comment, commenting out the closing brace of a
+  constructor. Balanced, and wrong, because the brace is still a character in
+  the file. Only reading the seam saw it.
+- **The include audit found two real breaks** among 31 dropped includes:
+  `section_widget.cpp` needs `ShowStickerPreviewBox` and
+  `bot_attach_web_view.cpp` needed `MakeEmojiStatusPreview` - both
+  non-premium functions that happen to live in premium files. Dropping an
+  include because the file no longer uses *the premium thing* is not the same
+  as the file no longer using the header.
+- **A generated id list with CRLF endings** made 379 consecutive
+  `gh cache delete` calls fail, silently, because each id carried a trailing
+  `\r`. Same shape as the `MediaController` NUL byte on the Android side:
+  Windows line endings in a file another tool reads.
+
+## The app icon is not a build problem
+
+Worth recording because it looks exactly like the stale-resource bug that
+shipped `g2533f37`, and is not.
+
+The taskbar and Start Menu show upstream's plane. The binary does not contain
+it. Read out of the running `app\LoogriGram.exe` with a PE resource parser:
+one `RT_GROUP_ICON` (id 640), eight `RT_ICON` entries, sizes 16/20/24/32/48/64
+BMP plus 128/256 PNG - ours. Upstream ships five. The 256px image extracted
+from the exe is MD5-identical to `branding/LoogriGram/icon256.ico`.
+
+So it is the Windows shell icon cache. Clearing
+`%LocalAppData%\Microsoft\Windows\Explorer\iconcache*.db` and restarting
+Explorer fixed the **taskbar**. The Start Menu kept its own copy and did not
+follow, even after deleting `IconCache.db`, the `{AFBF9F1A-…}` app-list
+caches and re-saving both shortcuts. Left there deliberately - it is cosmetic
+and costs nothing in the repo.
+
+## CI caches
+
+Cleaned this session: 385 entries down to 5, 4,791 MB down to 3,826 of the
+10,240 available. What went was 378 orphaned `sccache/*` entries (sccache was
+removed from the workflow long ago for logging zero compile requests),
+`qt6-Release-v1` (the matrix builds Qt 5 only) and `libs-Release-v1`
+(superseded by v2). What is left is all live.
+
+**The two `out-Release-v4` trees are deliberate, not waste.** The workflow
+prunes to the newest two on purpose: a failed run also caches its
+half-rebuilt tree, and the older entry is the last *good* one to fall back
+to. Only the newest is ever restored.

@@ -29,10 +29,25 @@ bar, no "Premium users" privacy row, and the tray menu says LoogriGram.
 
 ### Where to pick up
 
-Everything below is committed but **not yet built**. The next build is a full
-one - the salt was bumped - so allow two hours, and check three things in the
-result: the new artwork in the exe, no emoji status beside any name, and the
-ring on the update row while a download runs.
+`g07d1f55` built green on 2026-09-14, installed itself and is in daily use.
+Verified in it: the new artwork, and no emoji status beside any name - the
+two things `g2533f37` got wrong from a correct tree, so the build-cache fix
+below is proven. The update progress ring could not be checked, because it
+lives in the build *doing* the downloading and `g2533f37` did not have it;
+it is verifiable on the next update.
+
+**Since then `patches` has gained 21 commits - 248 files, −44,930 lines - and
+not one of them has been compiled.** That is the premium and monetisation
+removal; see `PREMIUM-HANDOFF.md` for what is done, what is left, and the
+four checks that stand in for a compiler. The `out/` cache is warm, so the
+next build should be 45-75 minutes rather than two hours.
+
+One thing that looks like a bug and is not: the taskbar and Start Menu still
+show upstream's plane. The binary does not contain it - the exe's resource
+table has exactly one icon group with our eight images, and the 256px one
+extracted from it is byte-identical to `branding/LoogriGram/icon256.ico`. It
+is the Windows shell icon cache. Clearing Explorer's fixed the taskbar; the
+Start Menu keeps its own and did not follow.
 
 ### Two bugs from one cause: source that never reached the binary
 
@@ -703,17 +718,37 @@ Still sitting at the "forced getter" stage:
   userpic click opened stories from four places, all removed, with the rings.
   `Ui::StarsRating` deleted outright. The gradient/solid/pattern profile
   background is off at its three inputs.
+- ~~**The upsell entry points.**~~ **Done.** No call to
+  `Settings::ShowPremium`, `ShowPremiumPreviewBox`, `ShowPremiumPreviewToBuy`
+  or `ShowPremiumPromoToast` survives outside files that later steps delete
+  whole. Where a restriction is the server's, its wording is kept verbatim
+  and only the link into the page selling a way past it is removed. Where
+  the text was nothing but a pitch, the surface went.
+- ~~**The premium 3D effect renderers.**~~ **Done**, with
+  `Resources/art/premium/` and the `.obj` -> `.binobj` build step that
+  existed only to feed them.
+- ~~**Boosting.**~~ **Done.** Giving a boost spends a subscription slot, so
+  the whole flow was a way of paying: `resolveBoostState`, `applyBoost`,
+  `MTPpremium_ApplyBoost`, five boxes, the slot-reassignment screen, the
+  menu item and `?boost` links. Kept, being the channel-owner side rather
+  than a purchase: `AskBoostBox`, the Boosts statistics page,
+  `ParseBoostCounters` and `LookupBoostFeatures`.
+- ~~**Telegram Business.**~~ **Done**, ~7,400 lines - but only half of what
+  wears the name. See `PREMIUM-HANDOFF.md`: the data layer stays, because
+  `data_shortcut_messages` threads a shortcut id through the whole send
+  pipeline and `data_business_common`/`info` carry *other people's* opening
+  hours, location and chat intro.
+- ~~**Emoji statuses, the rest of them.**~~ **Done.** They still tinted
+  profile headers and call panels from a collectible's own palette, could
+  still be set from two context menus, and were still being requested by
+  bots - now refused with `USER_DECLINED`, the answer the declined box sent,
+  because an unanswered bot request strands the page.
 - **Premium.** `premiumCanBuy()` is one line that neutralises the settings
   block and every limit box, and what it neutralises is all still compiled.
   `premiumBadgesShown()` is gone - the badges it gated are deleted rather than
   hidden. The lesson it left stands: **a gate in front of two painters is not
   a removal, and a third painter can have its own slot.** That is exactly how
   the author-name status survived it.
-- **The premium 3D effect renderers.** `premium_coin_renderer`,
-  `premium_3d_mesh` and five siblings still compile, which is why
-  `Resources/art/premium/` cannot be deleted yet - `flecks.png`,
-  `star_texture.svg`, `coin_border.png` and `coin_logo.obj` are still
-  referenced. This is the next obvious removal.
 - **Suggestion popups.** `suggestEmoji()`, `suggestStickersByEmoji()` and
   `suggestAnimatedEmoji()` return false at the getter, with the setters and
   stored fields deliberately kept so the settings rows and serialization still
@@ -731,14 +766,11 @@ Still sitting at the "forced getter" stage:
   `dialogs_inner_widget`, `history_view_top_bar_widget`, `peer_list_box`. Take
   it and `PeerBadge` holds no state at all, so it becomes a free function and
   every `_badge` member that exists to carry that state goes with it.
-- **The emoji status picker.** Still reachable from the emoji panel's context
-  menu (`menu/menu_emoji_status.cpp`) even though nothing here displays what
-  it sets. `EmojiStatusPanel` itself has to stay - it is also the topic icon
-  and profile pattern emoji picker.
-- **Collectible status gradients.** `ui/top_background_gradient.cpp`,
-  `calls/calls_panel_background.cpp` and `history_view_about_view.cpp` read
-  `emojiStatusId().collectible` directly, with no gate at all, and still tint
-  profile headers and the call panel from it.
+- **`specific_win.cpp:450`** hard-codes "Telegram autorun link. You can
+  disable autorun in Telegram settings." into the Startup shortcut's
+  description. A branding leak of the same class as the `lang.strings` one,
+  in a file that survives, found by reading the shortcut rather than the
+  source.
 
 Two of these cannot simply be deleted and need the caller rewritten instead,
 which is the work rather than a reason to stop: `updateOnline` also drives
