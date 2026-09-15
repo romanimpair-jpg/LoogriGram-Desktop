@@ -1839,24 +1839,9 @@ void FillContextMenuItems(
 			result->addAction(tr::lng_profile_copy_phone(tr::now), [=] {
 				QGuiApplication::clipboard()->setText(phone);
 			}, &st::menuIconCopy);
-		} else if (const auto gift = itemMedia
-			? itemMedia->gift()
-			: nullptr) {
-			const auto peer = view->data()->history()->peer;
-			const auto user = peer->asUser();
-			if (!user
-				|| (!user->isInaccessible()
-					&& !user->isNotificationsUser())) {
-				const auto controller = list->controller();
-				const auto starGiftUpgrade = gift->upgrade
-					&& (gift->type == Data::GiftType::StarGift);
-				const auto isGift = gift->slug.isEmpty() || !gift->channel;
-				const auto out = view->data()->out();
-				const auto outgoingGift = isGift
-					&& (starGiftUpgrade ? !out : out);
-				// LoogriGram: "Send a gift" stood here. Gifts are not sent.
-			}
 		}
+		// LoogriGram: a gift message offered "Send a gift" here. Gifts are
+		// not sent, and that was all the gift branch did.
 		if (const auto document = media ? media->getDocument() : nullptr) {
 			AddDocumentActions(result, document, view->data(), list);
 		}
