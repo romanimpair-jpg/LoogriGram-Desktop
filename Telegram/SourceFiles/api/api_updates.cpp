@@ -25,7 +25,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/business/data_shortcut_messages.h"
 #include "data/components/credits.h"
 #include "data/components/ephemeral_messages.h"
-#include "data/components/gift_auctions.h"
 #include "data/components/promo_suggestions.h"
 #include "data/components/scheduled_messages.h"
 #include "data/components/top_peers.h"
@@ -2875,15 +2874,10 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 	// shown as coming from. Paid reactions are deleted, so it is ignored.
 	case mtpc_updatePaidReactionPrivacy: break;
 
-	case mtpc_updateStarGiftAuctionState: {
-		const auto &data = update.c_updateStarGiftAuctionState();
-		_session->giftAuctions().apply(data);
-	} break;
-
-	case mtpc_updateStarGiftAuctionUserState: {
-		const auto &data = update.c_updateStarGiftAuctionUserState();
-		_session->giftAuctions().apply(data);
-	} break;
+	// LoogriGram: the state of a gift auction, and of our own bid in one.
+	// Gift auctions are deleted; nothing tracks either.
+	case mtpc_updateStarGiftAuctionState: break;
+	case mtpc_updateStarGiftAuctionUserState: break;
 
 	case mtpc_updateEmojiGameInfo: {
 		const auto &data = update.c_updateEmojiGameInfo();

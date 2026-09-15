@@ -20,27 +20,17 @@ namespace HistoryView {
 
 struct TextState;
 
+// LoogriGram: this had a second kind, a giveaway message's "How this works"
+// button. Giveaways are deleted, so only the rich-page kind remains and the
+// media-based constructor with it.
 class ViewButton {
 public:
-	enum class Kind {
-		Giveaway,
-		RichMessage,
-	};
-
-	ViewButton(
-		not_null<Data::Media*> media,
-		uint8 colorIndex,
-		Fn<void()> updateCallback);
 	ViewButton(
 		FullMsgId itemId,
 		uint8 colorIndex,
 		Fn<void()> updateCallback);
 	~ViewButton();
 
-	[[nodiscard]] static bool MediaHasViewButton(
-		not_null<Data::Media*> media);
-
-	[[nodiscard]] bool matches(not_null<Data::Media*> media) const;
 	[[nodiscard]] bool matches(FullMsgId itemId) const;
 	[[nodiscard]] int height() const;
 	[[nodiscard]] bool belowMessageInfo() const;

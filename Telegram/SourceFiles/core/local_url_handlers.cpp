@@ -49,7 +49,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_controller.h"
 #include "window/window_peer_menu.h"
 #include "window/themes/window_theme_editor_box.h" // GenerateSlug.
-#include "settings/settings_credits_graphics.h"
 #include "settings/settings_privacy_controllers.h"
 #include "storage/storage_account.h"
 #include "mainwidget.h"

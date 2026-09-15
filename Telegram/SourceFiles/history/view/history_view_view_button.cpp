@@ -7,7 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_view_button.h"
 
-#include "boxes/gift_premium_box.h"
 #include "core/application.h"
 #include "core/click_handler_types.h"
 #include "data/data_session.h"
@@ -24,45 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace HistoryView {
 namespace {
-
-[[nodiscard]] ClickHandlerPtr MakeMediaButtonClickHandler(
-		not_null<Data::Media*> media) {
-	const auto start = media->giveawayStart();
-	const auto results = media->giveawayResults();
-	Assert(start || results);
-
-	const auto peer = media->parent()->history()->peer;
-	const auto messageId = media->parent()->id;
-	if (media->parent()->isSending() || media->parent()->hasFailed()) {
-		return nullptr;
-	}
-	const auto maybeStart = start
-		? *start
-		: std::optional<Data::GiveawayStart>();
-	const auto maybeResults = results
-		? *results
-		: std::optional<Data::GiveawayResults>();
-	return std::make_shared<LambdaClickHandler>([=](
-			ClickContext context) {
-		const auto my = context.other.value<ClickHandlerContext>();
-		const auto controller = my.sessionWindow.get();
-		if (!controller) {
-			return;
-		}
-		ResolveGiveawayInfo(
-			controller,
-			peer,
-			messageId,
-			maybeStart,
-			maybeResults);
-	});
-}
-
-[[nodiscard]] QString MakeMediaButtonText(not_null<Data::Media*> media) {
-	Expects(media->giveawayStart() || media->giveawayResults());
-
-	return tr::lng_prizes_how_works(tr::now, tr::upper);
-}
 
 [[nodiscard]] ClickHandlerPtr MakeRichMessageButtonClickHandler(
 		FullMsgId itemId) {
@@ -87,10 +47,6 @@ namespace {
 
 struct ViewButton::Inner {
 	Inner(
-		not_null<Data::Media*> media,
-		uint8 colorIndex,
-		Fn<void()> updateCallback);
-	Inner(
 		FullMsgId itemId,
 		uint8 colorIndex,
 		Fn<void()> updateCallback);
@@ -98,45 +54,23 @@ struct ViewButton::Inner {
 	void createRipple(int height);
 	void toggleRipple(bool pressed, int height);
 
-	const Kind kind;
 	const style::margins &margins;
 	const ClickHandlerPtr link;
 	const Fn<void()> updateCallback;
-	Data::Media *media = nullptr;
 	FullMsgId itemId;
 	uint32 lastWidth : 24 = 0;
 	uint32 colorIndex : 6 = 0;
 	uint32 aboveInfo : 1 = 0;
-	uint32 externalLink : 1 = 0;
 	QPoint lastPoint;
 	std::unique_ptr<Ui::RippleAnimation> ripple;
 	Ui::Text::String text;
 };
 
-bool ViewButton::MediaHasViewButton(not_null<Data::Media*> media) {
-	return media->giveawayStart() || media->giveawayResults();
-}
-
-ViewButton::Inner::Inner(
-	not_null<Data::Media*> media,
-	uint8 colorIndex,
-	Fn<void()> updateCallback)
-: kind(Kind::Giveaway)
-, margins(st::historyViewButtonMargins)
-, link(MakeMediaButtonClickHandler(media))
-, updateCallback(std::move(updateCallback))
-, media(media)
-, colorIndex(colorIndex)
-, aboveInfo(1)
-, text(st::historyViewButtonTextStyle, MakeMediaButtonText(media)) {
-}
-
 ViewButton::Inner::Inner(
 	FullMsgId itemId,
 	uint8 colorIndex,
 	Fn<void()> updateCallback)
-: kind(Kind::RichMessage)
-, margins(st::historyViewButtonMargins)
+: margins(st::historyViewButtonMargins)
 , link(MakeRichMessageButtonClickHandler(itemId))
 , updateCallback(std::move(updateCallback))
 , itemId(itemId)
@@ -146,9 +80,7 @@ ViewButton::Inner::Inner(
 }
 
 void ViewButton::Inner::createRipple(int height) {
-	const auto radius = (kind == Kind::RichMessage)
-		? st::historyPagePreview.radius
-		: st::roundRadiusLarge;
+	const auto radius = st::historyPagePreview.radius;
 	ripple = std::make_unique<Ui::RippleAnimation>(
 		st::defaultRippleAnimation,
 		Ui::RippleAnimation::RoundRectMask(
@@ -169,16 +101,6 @@ void ViewButton::Inner::toggleRipple(bool pressed, int height) {
 }
 
 ViewButton::ViewButton(
-	not_null<Data::Media*> media,
-	uint8 colorIndex,
-	Fn<void()> updateCallback)
-: _inner(std::make_unique<Inner>(
-	media,
-	colorIndex,
-	std::move(updateCallback))) {
-}
-
-ViewButton::ViewButton(
 		FullMsgId itemId,
 		uint8 colorIndex,
 		Fn<void()> updateCallback)
@@ -191,12 +113,8 @@ ViewButton::ViewButton(
 ViewButton::~ViewButton() {
 }
 
-bool ViewButton::matches(not_null<Data::Media*> media) const {
-	return (_inner->kind == Kind::Giveaway) && (_inner->media == media);
-}
-
 bool ViewButton::matches(FullMsgId itemId) const {
-	return (_inner->kind == Kind::RichMessage) && (_inner->itemId == itemId);
+	return (_inner->itemId == itemId);
 }
 
 void ViewButton::resized() const {
@@ -206,11 +124,9 @@ void ViewButton::resized() const {
 }
 
 int ViewButton::height() const {
-	return (_inner->kind == Kind::RichMessage)
-		? (st::historyPageButtonHeight
-			+ _inner->margins.top()
-			+ _inner->margins.bottom())
-		: st::historyViewButtonHeight;
+	return st::historyPageButtonHeight
+		+ _inner->margins.top()
+		+ _inner->margins.bottom();
 }
 
 bool ViewButton::belowMessageInfo() const {
@@ -227,7 +143,7 @@ void ViewButton::draw(
 	const auto cache = context.outbg
 		? stm->replyCache[st->colorPatternIndex(_inner->colorIndex)].get()
 		: st->coloredReplyCache(selected, _inner->colorIndex).get();
-	if (_inner->kind == Kind::RichMessage) {
+	{
 		Ui::Text::ValidateQuotePaintCache(*cache, st::historyPagePreview);
 		Ui::Text::FillQuotePaint(p, r, *cache, st::historyPagePreview);
 		if (_inner->ripple) {
@@ -254,38 +170,6 @@ void ViewButton::draw(
 				textWidth,
 				1,
 				style::al_top);
-		}
-	} else {
-		const auto radius = st::historyPagePreview.radius;
-		if (_inner->ripple) {
-			_inner->ripple->paint(p, r.left(), r.top(), r.width(), &cache->bg);
-			if (_inner->ripple->empty()) {
-				_inner->ripple = nullptr;
-			}
-		}
-		PainterHighQualityEnabler hq(p);
-		p.setPen(Qt::NoPen);
-		p.setBrush(cache->bg);
-		p.drawRoundedRect(r, radius, radius);
-
-		p.setPen(cache->icon);
-		_inner->text.drawElided(
-			p,
-			r.left(),
-			r.top() + (r.height() - _inner->text.minHeight()) / 2,
-			r.width(),
-			1,
-			style::al_top);
-
-		if (_inner->externalLink) {
-			const auto &icon = st::msgBotKbUrlIcon;
-			const auto padding = st::msgBotKbIconPadding;
-			icon.paint(
-				p,
-				r.left() + r.width() - icon.width() - padding,
-				r.top() + padding,
-				r.width(),
-				cache->icon);
 		}
 	}
 	if (_inner->lastWidth != r.width()) {

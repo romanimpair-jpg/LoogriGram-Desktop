@@ -18,20 +18,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace Data {
 class ForumTopic;
-class DocumentMedia;
-struct SavedStarGift;
 struct ColorProfileSet;
-class SavedStarGiftId;
 } // namespace Data
 
 namespace Info::Profile {
 class TopicIconView;
 } // namespace Info::Profile
-
-namespace Lottie {
-class Animation;
-class MultiPlayer;
-} // namespace Lottie
 
 namespace Ui {
 class UploadProgressOverlay;
@@ -136,7 +128,6 @@ public:
 	void showSearch();
 
 	void setRoundEdges(bool value);
-	void setLottieSingleLoop(bool value);
 	void setColorProfileIndex(std::optional<uint8> index);
 	void setPatternEmojiId(std::optional<DocumentId> patternEmojiId);
 	void setLocalEmojiStatusId(EmojiStatusId emojiStatusId);
@@ -161,9 +152,6 @@ private:
 	[[nodiscard]] int titleMostLeft() const;
 	[[nodiscard]] int statusMostLeft() const;
 	[[nodiscard]] QRect userpicGeometry() const;
-	void updateGiftButtonsGeometry(
-		float64 progressCurrent,
-		const QRect &userpicRect);
 	void paintUserpic(QPainter &p, const QRect &geometry);
 	void updateVideoUserpic();
 	void showTopBarMenu(
@@ -188,19 +176,6 @@ private:
 		QPainter &p,
 		const QRect &clip,
 		const QRect &userpicGeometry);
-	void setupPinnedToTopGifts(
-		not_null<Window::SessionController*> controller);
-	void setupNewGifts(
-		not_null<Window::SessionController*> controller,
-		const std::vector<Data::SavedStarGift> &gifts);
-	void paintPinnedToTopGifts(
-		QPainter &p,
-		const QRect &clip,
-		const QRect &userpicGeometry);
-	[[nodiscard]] QPointF calculateGiftPosition(
-		int position,
-		float64 progress,
-		const QRect &userpicRect) const;
 	void adjustColors(const std::optional<QColor> &edgeColor);
 	void updateCollectibleStatus();
 	void setupStoryOutline(const QRect &geometry = QRect());
@@ -349,24 +324,6 @@ private:
 
 	base::unique_qptr<Ui::HorizontalFitContainer> _actions;
 	base::unique_qptr<Ui::RpWidget> _actionsShadow;
-
-	std::unique_ptr<Lottie::MultiPlayer> _lottiePlayer;
-	bool _lottieSingleLoop = false;
-	struct PinnedToTopGiftEntry {
-		Data::SavedStarGiftId manageId;
-		// QString slug;
-		Lottie::Animation *animation = nullptr;
-		std::shared_ptr<Data::DocumentMedia> media;
-		QImage bg;
-		QImage lastFrame;
-		int position = 0;
-		base::unique_qptr<Ui::AbstractButton> button;
-	};
-	bool _pinnedToTopGiftsFirstTimeShowed = false;
-	std::vector<PinnedToTopGiftEntry> _pinnedToTopGifts;
-	std::unique_ptr<Ui::Animations::Simple> _giftsAppearing;
-	std::unique_ptr<Ui::Animations::Simple> _giftsHiding;
-	rpl::lifetime _giftsLoadingLifetime;
 
 	QBrush _storyOutlineBrush;
 	std::vector<Ui::OutlineSegment> _storySegments;

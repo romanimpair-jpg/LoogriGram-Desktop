@@ -47,7 +47,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_unlock_passcode_box.h"
 #include "settings/sections/settings_calls.h"
 #include "settings/settings_common.h"
-#include "settings/settings_credits_graphics.h"
 #include "main/main_session.h"
 #include "apiwrap.h"
 #include "api/api_invite_links.h"
@@ -216,7 +215,6 @@ object_ptr<ShareBox> ShareInviteLinkBox(
 		return Data::CanSend(thread, ChatRestriction::SendOther);
 	};
 
-	const auto st = ::Settings::DarkCreditsEntryBoxStyle();
 	auto result = Box<ShareBox>(ShareBox::Descriptor{
 		.session = &peer->session(),
 		.copyCallback = std::move(copyCallback),
@@ -229,7 +227,7 @@ object_ptr<ShareBox> ShareInviteLinkBox(
 				: rpl::single(false)),
 			tr::lng_group_call_copy_speaker_link(),
 			tr::lng_group_call_copy_listener_link()),
-		.st = st.shareBox ? *st.shareBox : ShareBoxStyleOverrides(),
+		.st = DarkShareBoxStyle(),
 		.moneyRestrictionError = ShareMessageMoneyRestrictionError(),
 	});
 	*box = result.data();

@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "api/api_premium.h"
 #include "api/api_statistics.h"
-#include "boxes/gift_premium_box.h"
 #include "boxes/peers/edit_peer_invite_link.h"
 #include "data/data_peer.h"
 #include "data/data_session.h"
@@ -21,7 +20,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/statistics/info_statistics_inner_widget.h" // FillLoading.
 #include "info/statistics/info_statistics_list_controllers.h"
 #include "lang/lang_keys.h"
-#include "settings/settings_credits_graphics.h"
 #include "statistics/widgets/chart_header_widget.h"
 #include "ui/boxes/boost_box.h"
 #include "ui/controls/invite_link_label.h"
@@ -314,30 +312,17 @@ void InnerWidget::fill() {
 	const auto hasBoosts = (status.firstSliceBoosts.multipliedTotal > 0);
 	const auto hasGifts = (status.firstSliceGifts.multipliedTotal > 0);
 	if (hasBoosts || hasGifts) {
+		// LoogriGram: the list of who boosted this channel stays - that is
+		// arriving data - but three of the four rows opened a money box: a
+		// gift code's own box, a pending premium gift, or the credits entry
+		// for a boost bought with stars. A row with a user behind it opens
+		// that user; the rest say the boost is still pending.
 		auto boostClicked = [=](const Data::Boost &boost) {
-			if (!boost.giftCodeLink.slug.isEmpty()) {
-				ResolveGiftCode(_controller, boost.giftCodeLink.slug);
-			} else if (boost.userId) {
+			if (boost.userId) {
 				const auto user = _peer->owner().user(boost.userId);
-				if (boost.isGift || boost.isGiveaway) {
-					const auto d = Api::GiftCode{
-						.from = _peer->id,
-						.to = user->id,
-						.date = TimeId(boost.date.toSecsSinceEpoch()),
-						.days = boost.expiresAfterMonths * 30,
-					};
-					_show->showBox(Box(GiftCodePendingBox, _controller, d));
-				} else {
-					crl::on_main(this, [=] {
-						_controller->showPeerInfo(user);
-					});
-				}
-			} else if (boost.credits) {
-				_show->showBox(
-					Box(
-						::Settings::BoostCreditsBox,
-						_controller->parentController(),
-						boost));
+				crl::on_main(this, [=] {
+					_controller->showPeerInfo(user);
+				});
 			} else if (!boost.isUnclaimed) {
 				_show->showToast(tr::lng_boosts_list_pending_about(tr::now));
 			}

@@ -27,7 +27,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_context_menu.h" // CopyStoryLink.
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
-#include "settings/settings_credits_graphics.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/text/text_utilities.h"
 
@@ -207,15 +206,14 @@ namespace Media::Stories {
 			++state->requests;
 		}
 	};
-	const auto st = viewerStyle
-		? ::Settings::DarkCreditsEntryBoxStyle()
-		: ::Settings::CreditsEntryBoxStyleOverrides();
 	return Box<ShareBox>(ShareBox::Descriptor{
 		.session = session,
 		.copyCallback = std::move(copyLinkCallback),
 		.submitCallback = std::move(submitCallback),
 		.filterCallback = std::move(filterCallback),
-		.st = st.shareBox ? *st.shareBox : ShareBoxStyleOverrides(),
+		.st = (viewerStyle
+			? DarkShareBoxStyle()
+			: ShareBoxStyleOverrides()),
 		.moneyRestrictionError = ShareMessageMoneyRestrictionError(),
 	});
 }
@@ -276,7 +274,6 @@ object_ptr<Ui::BoxContent> PrepareShareAtTimeBox(
 	auto copyLinkCallback = canCopyLink
 		? Fn<void()>(std::move(copyCallback))
 		: Fn<void()>();
-	const auto st = ::Settings::DarkCreditsEntryBoxStyle();
 	return Box<ShareBox>(ShareBox::Descriptor{
 		.session = session,
 		.copyCallback = std::move(copyLinkCallback),
@@ -289,7 +286,7 @@ object_ptr<Ui::BoxContent> PrepareShareAtTimeBox(
 		.titleOverride = tr::lng_share_at_time_title(
 			lt_time,
 			rpl::single(FormatShareAtTime(videoTimestamp))),
-		.st = st.shareBox ? *st.shareBox : ShareBoxStyleOverrides(),
+		.st = DarkShareBoxStyle(),
 		.forwardOptions = {
 			.sendersCount = ItemsForwardSendersCount({ item }),
 			.captionsCount = ItemsForwardCaptionsCount({ item }),

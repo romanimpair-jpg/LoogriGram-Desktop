@@ -24,7 +24,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/stickers_lottie.h"
 #include "core/application.h"
 #include "core/shortcuts.h"
-#include "data/components/recent_shared_media_gifts.h"
 #include "data/data_birthday.h"
 #include "data/data_changes.h"
 #include "data/data_channel.h"
@@ -39,7 +38,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_photo.h"
 #include "data/data_saved_sublist.h"
 #include "data/data_session.h"
-#include "data/data_star_gift.h"
 #include "data/data_stories.h"
 #include "data/data_user.h"
 #include "data/stickers/data_custom_emoji.h"
@@ -62,7 +60,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lottie/lottie_multi_player.h"
 #include "main/main_session.h"
 #include "menu/menu_mute.h"
-#include "settings/settings_credits_graphics.h"
 #include "settings/sections/settings_information.h"
 #include "settings/sections/settings_premium.h"
 #include "ui/color_contrast.h"
@@ -522,44 +519,24 @@ TopBar::TopBar(
 		updateVideoUserpic();
 	}
 
+	// LoogriGram: a ring of the peer's pinned collectible gifts orbited the
+	// userpic here, requested on every pin or unpin. Tapping one opened the
+	// gift's own box, where it is for sale or for transfer. Only the
+	// collectible colour behind the userpic is left, which is a property of
+	// the profile rather than a thing to browse.
 	rpl::merge(
 		style::PaletteChanged(),
-		_peer->session().data().giftUpdates() | rpl::filter([=](
-				const Data::GiftUpdate &update) {
-			if (update.action == Data::GiftUpdate::Action::Pin) {
-				if (_peer->isSelf() && update.id.isUser()) {
-					return true;
-				}
-				if (_peer == update.id.chat()) {
-					return true;
-				}
-			}
-			if (update.action == Data::GiftUpdate::Action::Unpin) {
-				for (const auto &gift : _pinnedToTopGifts) {
-					if (gift.manageId == update.id) {
-						return true;
-					}
-				}
-			}
-			return false;
-		}) | rpl::to_empty,
 		_peer->session().changes().peerFlagsValue(
 			_peer,
 			Data::PeerUpdate::Flag::EmojiStatus
 				| Data::PeerUpdate::Flag::ColorProfile) | rpl::to_empty
 	) | rpl::on_next([=] {
-		if (_pinnedToTopGiftsFirstTimeShowed) {
-			_peer->session().recentSharedGifts().clearLastRequestTime(_peer);
-			setupPinnedToTopGifts(controller);
-		} else {
-			updateCollectibleStatus();
-		}
+		updateCollectibleStatus();
 	}, lifetime());
 
 	std::move(
 		descriptor.showFinished
 	) | rpl::take(1) | rpl::on_next([=] {
-		setupPinnedToTopGifts(controller);
 		setupBirthdayEffect();
 	}, lifetime());
 
@@ -708,7 +685,6 @@ void TopBar::updateCollectibleStatus() {
 	_lastUserpicRect = QRect();
 	_patternEmoji = nullptr;
 	_animatedPoints.clear();
-	_pinnedToTopGifts.clear();
 	const auto verifiedFg = [&]() -> std::optional<QColor> {
 		if (collectible) {
 			return Ui::BlendColors(
@@ -1640,10 +1616,6 @@ void TopBar::setRoundEdges(bool value) {
 	update();
 }
 
-void TopBar::setLottieSingleLoop(bool value) {
-	_lottieSingleLoop = value;
-}
-
 void TopBar::setColorProfileIndex(std::optional<uint8> index) {
 	_localColorProfileIndex = index;
 	updateCollectibleStatus();
@@ -1772,7 +1744,6 @@ void TopBar::updateLabelsPosition() {
 			_userpicButton->setGeometry(userpicGeometry());
 		}
 
-		updateGiftButtonsGeometry(progressCurrent, userpicRect);
 	}
 
 	updateRightButtonsPosition();
@@ -2558,28 +2529,6 @@ QRect TopBar::userpicGeometry() const {
 	return QRect(x, y, size, size);
 }
 
-void TopBar::updateGiftButtonsGeometry(
-		float64 progressCurrent,
-		const QRect &userpicRect) {
-	if (width() <= 0) {
-		return;
-	}
-	const auto sz = st::infoProfileTopBarGiftSize;
-	const auto halfSz = sz / 2.;
-	for (const auto &gift : _pinnedToTopGifts) {
-		if (gift.button) {
-			const auto giftPos = calculateGiftPosition(
-				gift.position,
-				progressCurrent,
-				userpicRect);
-			const auto buttonRect = QRect(
-				QPoint(giftPos.x() - halfSz, giftPos.y() - halfSz),
-				Size(sz));
-			gift.button->setGeometry(buttonRect);
-		}
-	}
-}
-
 void TopBar::paintUserpic(QPainter &p, const QRect &geometry) {
 	if (_topicIconView) {
 		_topicIconView->paintInRect(p, geometry);
@@ -2732,11 +2681,6 @@ void TopBar::paintEvent(QPaintEvent *e) {
 		paintAnimatedPattern(p, clipBounds, geometry);
 	}
 
-	if (clipBounds.bottom() >= geometry.top()
-		&& clipBounds.top() <= geometry.bottom()) {
-		paintPinnedToTopGifts(p, clipBounds, geometry);
-	}
-
 	if (clipBounds.intersects(geometry)) {
 		paintUserpic(p, geometry);
 		paintStoryOutline(p, geometry);
@@ -2761,7 +2705,6 @@ void TopBar::setupButtons(
 		const auto isLayer = (wrap == Wrap::Layer);
 		const auto isSide = (wrap == Wrap::Side);
 		setRoundEdges(isLayer);
-		setLottieSingleLoop(wrap == Wrap::Side);
 
 		_back = base::make_unique_q<Ui::FadeWrap<Ui::IconButton>>(
 			this,
@@ -3149,330 +3092,6 @@ void TopBar::paintAnimatedPattern(
 
 		p.setOpacity(alpha);
 		p.drawImage(target, _basePatternImage);
-	}
-	p.setOpacity(1.);
-}
-
-void TopBar::setupPinnedToTopGifts(
-		not_null<Window::SessionController*> controller) {
-	const auto requestDone = crl::guard(this, [=](
-			std::vector<Data::SavedStarGift> gifts) {
-		const auto shouldHideFirst = _pinnedToTopGiftsFirstTimeShowed
-			&& !_pinnedToTopGifts.empty();
-
-		if (shouldHideFirst) {
-			_giftsHiding = std::make_unique<Ui::Animations::Simple>();
-			_giftsHiding->start([=](float64 value) {
-				update();
-				if (value <= 0.) {
-					_giftsHiding = nullptr;
-					_pinnedToTopGifts.clear();
-					_giftsLoadingLifetime.destroy();
-					updateCollectibleStatus();
-					setupNewGifts(controller, gifts);
-				}
-			}, 1., 0., 300, anim::linear);
-			return;
-		}
-
-		_pinnedToTopGifts.clear();
-		_giftsLoadingLifetime.destroy();
-
-		updateCollectibleStatus();
-		setupNewGifts(controller, gifts);
-	});
-	_peer->session().recentSharedGifts().request(_peer, requestDone, true);
-}
-
-void TopBar::setupNewGifts(
-		not_null<Window::SessionController*> controller,
-		const std::vector<Data::SavedStarGift> &gifts) {
-	const auto emojiStatusId = _peer->emojiStatusId().collectible
-		? _peer->emojiStatusId().collectible->id
-		: CollectibleId(0);
-	auto filteredGifts = std::vector<Data::SavedStarGift>();
-	const auto subtract = emojiStatusId ? 1 : 0;
-	filteredGifts.reserve((gifts.size() > subtract)
-		? (gifts.size() - subtract)
-		: 0);
-	for (const auto &gift : gifts) {
-		if (const auto &unique = gift.info.unique) {
-			if (unique->id != emojiStatusId) {
-				filteredGifts.push_back(gift);
-			}
-		}
-	}
-
-	_pinnedToTopGifts.reserve(filteredGifts.size());
-	if (filteredGifts.empty()) {
-		_giftsAppearing = nullptr;
-		_lottiePlayer = nullptr;
-		_pinnedToTopGiftsFirstTimeShowed = true;
-	} else if (!_lottiePlayer) {
-		_lottiePlayer = std::make_unique<Lottie::MultiPlayer>(
-			Lottie::Quality::Default);
-		_lottiePlayer->updates() | rpl::on_next([=] {
-			update();
-		}, lifetime());
-	}
-
-	_giftsAppearing = std::make_unique<Ui::Animations::Simple>();
-
-	constexpr auto kMaxPinnedToTopGifts = 6;
-
-	auto positions = ranges::views::iota(
-		0,
-		kMaxPinnedToTopGifts) | ranges::to_vector;
-	ranges::shuffle(positions);
-
-	for (auto i = 0;
-		i < filteredGifts.size() && i < kMaxPinnedToTopGifts;
-		++i) {
-		const auto &gift = filteredGifts[i];
-		const auto document = _peer->owner().document(
-			gift.info.document->id);
-		auto entry = PinnedToTopGiftEntry();
-		entry.manageId = gift.manageId;
-		entry.media = document->createMediaView();
-		entry.media->checkStickerSmall();
-		if (const auto &unique = gift.info.unique) {
-			if (unique->backdrop.centerColor.isValid()
-				&& unique->backdrop.edgeColor.isValid()) {
-				entry.bg = Ui::CreateTopBgGradient(
-					Size(st::infoProfileTopBarGiftSize * 2),
-					unique->backdrop.centerColor,
-					anim::with_alpha(unique->backdrop.edgeColor, 0.0),
-					false);
-			}
-		}
-		entry.position = positions[i];
-		entry.button = base::make_unique_q<Ui::AbstractButton>(this);
-		entry.button->setAccessibleName([&] {
-			const auto base = tr::lng_profile_action_short_gift(tr::now);
-
-			if (const auto &unique = gift.info.unique) {
-				const auto name = Data::UniqueGiftName(*unique);
-				if (!name.isEmpty()) {
-					return base + ": " + name;
-				}
-			}
-
-			return base;
-		}());
-		entry.button->show();
-
-		entry.button->setClickedCallback([=, giftData = gift, peer = _peer] {
-			::Settings::ShowSavedStarGiftBox(controller, peer, giftData);
-		});
-
-		_pinnedToTopGifts.push_back(std::move(entry));
-	}
-	updateGiftButtonsGeometry(_progress.current(), userpicGeometry());
-
-	using namespace ChatHelpers;
-
-	rpl::single(
-		rpl::empty_value()
-	) | rpl::then(
-		_peer->session().downloaderTaskFinished()
-	) | rpl::on_next([=] {
-		auto allLoaded = true;
-		for (auto &entry : _pinnedToTopGifts) {
-			if (!entry.animation && !entry.lastFrame.isNull()) {
-				continue;
-			}
-			if (!entry.animation && entry.media->loaded()) {
-				entry.animation = LottieAnimationFromDocument(
-					_lottiePlayer.get(),
-					entry.media.get(),
-					StickerLottieSize::PinnedProfileUniqueGiftSize,
-					Size(st::infoProfileTopBarGiftSize)
-						* style::DevicePixelRatio());
-			} else if (!entry.media->loaded()) {
-				allLoaded = false;
-			}
-		}
-		if (allLoaded) {
-			_giftsLoadingLifetime.destroy();
-			_giftsAppearing->stop();
-			_giftsAppearing->start([=](float64 value) {
-				update();
-				if (value >= 1.) {
-					_giftsAppearing = nullptr;
-					_pinnedToTopGiftsFirstTimeShowed = true;
-					if (_lottieSingleLoop) {
-						auto allFramesCaptured = true;
-						for (const auto &entry : _pinnedToTopGifts) {
-							if (entry.animation || entry.lastFrame.isNull()) {
-								allFramesCaptured = false;
-								break;
-							}
-						}
-						if (allFramesCaptured) {
-							_lottiePlayer = nullptr;
-						}
-					}
-				}
-			}, 0., 1., 400, anim::easeOutQuint);
-		}
-	}, _giftsLoadingLifetime);
-}
-
-QPointF TopBar::calculateGiftPosition(
-		int position,
-		float64 progress,
-		const QRect &userpicRect) const {
-	const auto acx = userpicRect.x() + userpicRect.width() / 2.;
-	const auto acy = userpicRect.y() + userpicRect.height() / 2.;
-	const auto aw = userpicRect.width();
-	const auto ah = userpicRect.height();
-
-	auto giftPos = QPointF();
-	auto delayValue = 0.;
-	switch (position) {
-	case 0: // Left.
-		giftPos = QPointF(
-			acx / 2. - st::infoProfileTopBarGiftLeft.x(),
-			acy - st::infoProfileTopBarGiftLeft.y());
-		delayValue = 1.6;
-		break;
-	case 1: // Top left.
-		giftPos = QPointF(
-			acx * 2. / 3. - st::infoProfileTopBarGiftTopLeft.x(),
-			userpicRect.y() - st::infoProfileTopBarGiftTopLeft.y());
-		delayValue = 0.;
-		break;
-	case 2: // Bottom left.
-		giftPos = QPointF(
-			acx * 2. / 3. - st::infoProfileTopBarGiftBottomLeft.x(),
-			userpicRect.y() + ah - st::infoProfileTopBarGiftBottomLeft.y());
-		delayValue = 0.9;
-		break;
-	case 3: // Right.
-		giftPos = QPointF(
-			acx + aw / 2. + st::infoProfileTopBarGiftRight.x(),
-			acy - st::infoProfileTopBarGiftRight.y());
-		delayValue = 1.6;
-		break;
-	case 4: // Top right.
-		giftPos = QPointF(
-			acx + aw / 3. + st::infoProfileTopBarGiftTopRight.x(),
-			userpicRect.y() - st::infoProfileTopBarGiftTopRight.y());
-		delayValue = 0.9;
-		break;
-	default: // Bottom right.
-		giftPos = QPointF(
-			acx + aw / 3. + st::infoProfileTopBarGiftBottomRight.x(),
-			userpicRect.y() + ah - st::infoProfileTopBarGiftBottomRight.y());
-		delayValue = 0.;
-		break;
-	}
-
-	const auto delayFraction = 0.2;
-	const auto maxDelayFraction = 1.6 * delayFraction;
-	const auto intervalFraction = 1. - maxDelayFraction;
-	const auto delay = delayValue * delayFraction;
-	const auto collapse = (progress >= 1. - delay)
-		? 1.
-		: std::clamp((progress - maxDelayFraction + delay)
-			/ intervalFraction, 0., 1.);
-
-	if (collapse < 1.) {
-		const auto collapseX = 1. - std::pow(1. - collapse, 2.);
-		giftPos = QPointF(
-			acx + (giftPos.x() - acx) * collapseX,
-			acy + (giftPos.y() - acy) * collapse);
-	}
-
-	return giftPos;
-}
-
-void TopBar::paintPinnedToTopGifts(
-		QPainter &p,
-		const QRect &clip,
-		const QRect &userpicRect) {
-	if (_pinnedToTopGifts.empty() || _source == Source::Preview) {
-		return;
-	}
-
-	const auto progress = _giftsHiding
-		? _progress.current() * _giftsHiding->value(1.)
-		: (_giftsAppearing
-			? _progress.current() * _giftsAppearing->value(0.)
-			: _progress.current());
-
-	for (auto &gift : _pinnedToTopGifts) {
-		if (!gift.animation
-			&& (_lottieSingleLoop ? gift.lastFrame.isNull() : true)) {
-			continue;
-		}
-
-		const auto giftPos = calculateGiftPosition(
-			gift.position,
-			progress,
-			userpicRect);
-
-		const auto alpha = progress;
-		if (alpha <= 0.) {
-			continue;
-		}
-
-		p.setOpacity(alpha);
-		auto frameToRender = QImage();
-		if (_lottieSingleLoop && !gift.lastFrame.isNull()) {
-			frameToRender = gift.lastFrame;
-		} else if (gift.animation && gift.animation->ready()) {
-			frameToRender = gift.animation->frame();
-			frameToRender.setDevicePixelRatio(style::DevicePixelRatio());
-			if (_lottiePlayer) {
-				_lottiePlayer->markFrameShown();
-			}
-			if (_lottieSingleLoop && gift.animation->framesCount() > 0) {
-				const auto currentFrame = gift.animation->frameIndex();
-				const auto totalFrames = gift.animation->framesCount();
-				if (currentFrame >= totalFrames - 1) {
-					gift.lastFrame = frameToRender;
-					gift.animation = nullptr;
-
-					auto allDone = true;
-					for (const auto &entry : _pinnedToTopGifts) {
-						if (entry.animation) {
-							allDone = false;
-							break;
-						}
-					}
-					if (allDone) {
-						_lottiePlayer = nullptr;
-					}
-				}
-			}
-		}
-		if (!frameToRender.isNull()) {
-			const auto frameSize = frameToRender.width()
-				/ style::DevicePixelRatio();
-			const auto halfFrameSize = frameSize / 2.;
-			const auto resultPos = QPointF(
-				giftPos.x() - halfFrameSize,
-				giftPos.y() - halfFrameSize);
-			auto target = QRectF(resultPos, QSizeF(frameSize, frameSize));
-			auto bgPos = QPointF();
-			const auto bgSize = gift.bg.isNull()
-				? 0
-				: (gift.bg.width() / style::DevicePixelRatio());
-			if (bgSize > 0) {
-				bgPos = QPointF(
-					resultPos.x() + (frameSize - bgSize) / 2.,
-					resultPos.y() + (frameSize - bgSize) / 2.);
-				target = target.united(
-					QRectF(bgPos, QSizeF(bgSize, bgSize)));
-			}
-			if (target.intersects(QRectF(clip))) {
-				if (bgSize > 0) {
-					p.drawImage(bgPos, gift.bg);
-				}
-				p.drawImage(resultPos, frameToRender);
-			}
-		}
 	}
 	p.setOpacity(1.);
 }

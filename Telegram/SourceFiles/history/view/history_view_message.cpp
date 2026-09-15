@@ -5440,14 +5440,10 @@ void Message::updateViewButtonExistence() {
 		_viewButton = make(itemId);
 		return;
 	}
-	const auto media = item->media();
-	if (media && ViewButton::MediaHasViewButton(media)) {
-		if (_viewButton && _viewButton->matches(media)) {
-			return;
-		}
-		_viewButton = make(media);
-		return;
-	}
+	// LoogriGram: a giveaway message also carried one of these, reading
+	// "How this works" and opening the giveaway info box. Giveaways are
+	// deleted and the message is hidden at the view, so the rich-page
+	// button is the only kind left.
 	_viewButton = nullptr;
 }
 
