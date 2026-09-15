@@ -9,17 +9,14 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "settings/settings_type.h"
 
-namespace Shortcuts {
-enum class Command;
-} // namespace Shortcuts
-
 namespace Window {
 class SessionController;
 } // namespace Window
 
 namespace Settings {
 
+// LoogriGram: ShortcutsHighlightId went with the AI compose shortcut, the
+// only command a search result could highlight.
 [[nodiscard]] Type ShortcutsId();
-[[nodiscard]] QString ShortcutsHighlightId(::Shortcuts::Command command);
 
 } // namespace Settings

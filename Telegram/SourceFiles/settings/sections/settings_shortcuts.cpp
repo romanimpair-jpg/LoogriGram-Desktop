@@ -153,8 +153,7 @@ struct SetupShortcutsResult {
 
 [[nodiscard]] SetupShortcutsResult SetupShortcutsContent(
 		not_null<Window::SessionController*> controller,
-		not_null<Ui::VerticalLayout*> content,
-		HighlightRegistry *highlights) {
+		not_null<Ui::VerticalLayout*> content) {
 	const auto &defaults = S::KeysDefaults();
 	const auto &currents = S::KeysCurrents();
 
@@ -250,15 +249,6 @@ struct SetupShortcutsResult {
 						entry.inner,
 						rpl::duplicate(entry.label),
 						st::settingsButtonNoIcon));
-				if (highlights && index == 0) {
-					const auto id = ShortcutsHighlightId(entry.command);
-					if (!id.isEmpty()) {
-						highlights->push_back({
-							id,
-							{ widget, { .rippleShape = true } },
-						});
-					}
-				}
 				const auto keys = Ui::CreateChild<Ui::FlatLabel>(
 					widget,
 					st::settingsButtonNoIcon.rightLabel);
@@ -690,10 +680,7 @@ void Shortcuts::setupContent() {
 			.highlights = highlights,
 		});
 
-		auto result = SetupShortcutsContent(
-			controller,
-			container,
-			highlights);
+		auto result = SetupShortcutsContent(controller, container);
 		*save = std::move(result.save);
 		*resetButton = result.resetButton;
 		*applyFilter = std::move(result.applyFilter);
@@ -745,16 +732,6 @@ const auto kMeta = BuildHelper({
 
 Type ShortcutsId() {
 	return Shortcuts::Id();
-}
-
-QString ShortcutsHighlightId(::Shortcuts::Command command) {
-	switch (command) {
-	// LoogriGram: the AI compose shortcut was the only highlighted command.
-	// The switch stays so a future one has somewhere to go, and so the
-	// parameter is still used.
-	default:
-		return {};
-	}
 }
 
 namespace Builder {
