@@ -1854,8 +1854,6 @@ PRIVATE
     test/test_via_window.h
     test/test_widgets.cpp
     test/test_widgets.h
-    ui/boxes/edit_invite_link_session.cpp
-    ui/boxes/edit_invite_link_session.h
     ui/boxes/emoji_stake_box.cpp
     ui/boxes/emoji_stake_box.h
     ui/boxes/peer_qr_box.cpp

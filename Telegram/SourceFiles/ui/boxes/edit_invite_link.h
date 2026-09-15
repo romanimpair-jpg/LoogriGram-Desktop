@@ -18,7 +18,6 @@ struct InviteLinkFields {
 	QString label;
 	TimeId expireDate = 0;
 	int usageLimit = 0;
-	int subscriptionCredits = 0;
 	bool requestApproval = false;
 	bool isGroup = false;
 	bool isPublic = false;
@@ -27,20 +26,16 @@ struct InviteLinkFields {
 	QString guardBotLink;
 };
 
-struct InviteLinkSubscriptionToggle final {
-	not_null<Ui::SettingsButton*> button;
-	not_null<Ui::NumberInput*> amount;
-};
+// LoogriGram: an invite link could carry a monthly price in stars. No
+// money is taken through this client, so no link asks for any.
 
 void EditInviteLinkBox(
 	not_null<Ui::GenericBox*> box,
-	Fn<InviteLinkSubscriptionToggle()> fillSubscription,
 	const InviteLinkFields &data,
 	Fn<void(InviteLinkFields)> done);
 
 void CreateInviteLinkBox(
 	not_null<Ui::GenericBox*> box,
-	Fn<InviteLinkSubscriptionToggle()> fillSubscription,
 	bool isGroup,
 	bool isPublic,
 	bool globalRequestApproval,

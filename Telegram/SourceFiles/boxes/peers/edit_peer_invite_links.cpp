@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/session/session_show.h"
 #include "main/main_session.h"
 #include "api/api_invite_links.h"
-#include "settings/settings_credits_graphics.h"
 #include "ui/wrap/slide_wrap.h"
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/popup_menu.h"
@@ -65,12 +64,11 @@ struct InviteLinkAction {
 
 class Row;
 
-using SubscriptionRightLabel = Settings::SubscriptionRightLabel;
+// LoogriGram: an invite link could carry a monthly price in stars, and
+// each row showed it on the right. No link asks for money now.
 
 class RowDelegate {
 public:
-	virtual std::optional<SubscriptionRightLabel> rightLabel(
-		int credits) const = 0;
 	virtual void rowUpdateRow(not_null<Row*> row) = 0;
 	virtual void rowPaintIcon(
 		QPainter &p,
@@ -112,7 +110,6 @@ public:
 
 private:
 	const not_null<RowDelegate*> _delegate;
-	std::optional<SubscriptionRightLabel> _rightLabel;
 	InviteLinkData _data;
 	QString _status;
 	float64 _progressTillExpire = 0.;
@@ -246,13 +243,11 @@ Row::Row(
 , _data(data)
 , _progressTillExpire(ComputeProgress(data, now))
 , _color(ComputeColor(data, _progressTillExpire)) {
-	_rightLabel = _delegate->rightLabel(_data.subscription.credits);
 	setCustomStatus(ComputeStatus(data, now));
 }
 
 void Row::update(const InviteLinkData &data, TimeId now) {
 	_data = data;
-	_rightLabel = _delegate->rightLabel(_data.subscription.credits);
 	_progressTillExpire = ComputeProgress(data, now);
 	_color = ComputeColor(data, _progressTillExpire);
 	setCustomStatus(ComputeStatus(data, now));
@@ -323,22 +318,16 @@ PaintRoundImageCallback Row::generatePaintUserpicCallback(bool forceRound) {
 }
 
 QSize Row::rightActionSize() const {
-	if (_rightLabel) {
-		return _rightLabel->size;
-	}
 	return QSize(
 		st::inviteLinkThreeDotsIcon.width(),
 		st::inviteLinkThreeDotsIcon.height());
 }
 
 bool Row::rightActionDisabled() const {
-	return _rightLabel.has_value();
+	return false;
 }
 
 QMargins Row::rightActionMargins() const {
-	if (_rightLabel) {
-		return QMargins(0, 0, st::boxRowPadding.right(), 0);
-	}
 	return QMargins(
 		0,
 		(st::inviteLinkList.item.height - rightActionSize().height()) / 2,
@@ -353,9 +342,6 @@ void Row::rightActionPaint(
 		int outerWidth,
 		bool selected,
 		bool actionSelected) {
-	if (_rightLabel) {
-		return _rightLabel->draw(p, x, y, st::inviteLinkList.item.height);
-	}
 	(actionSelected
 		? st::inviteLinkThreeDotsIconOver
 		: st::inviteLinkThreeDotsIcon).paint(p, x, y, outerWidth);
@@ -385,7 +371,6 @@ public:
 		not_null<PeerListRow*> row) override;
 	Main::Session &session() const override;
 
-	std::optional<SubscriptionRightLabel> rightLabel(int) const override;
 	void rowUpdateRow(not_null<Row*> row) override;
 	void rowPaintIcon(
 		QPainter &p,
@@ -670,17 +655,6 @@ void LinksController::expiringProgressTimer() {
 	if (minimalIn) {
 		_updateExpiringTimer.callOnce(minimalIn);
 	}
-}
-
-std::optional<SubscriptionRightLabel> LinksController::rightLabel(
-		int credits) const {
-	if (credits > 0) {
-		return Settings::PaintSubscriptionRightLabelCallback(
-			&session(),
-			st::inviteLinkList.item,
-			credits);
-	}
-	return std::nullopt;
 }
 
 void LinksController::rowUpdateRow(not_null<Row*> row) {

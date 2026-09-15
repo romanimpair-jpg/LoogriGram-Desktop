@@ -16,7 +16,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/share_box.h"
 #include "core/application.h"
 #include "core/ui_integration.h" // TextContext
-#include "data/components/credits.h"
 #include "data/data_changes.h"
 #include "data/data_channel.h"
 #include "data/data_forum_topic.h"
@@ -33,10 +32,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "qr/qr_generate.h"
-#include "settings/settings_credits_graphics.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/boxes/edit_invite_link.h"
-#include "ui/boxes/edit_invite_link_session.h"
 #include "ui/boxes/peer_qr_box.h"
 #include "ui/controls/invite_link_buttons.h"
 #include "ui/controls/invite_link_label.h"
@@ -90,65 +87,9 @@ void ShowPeerInfoSync(not_null<PeerData*> peer) {
 	}
 }
 
-class SubscriptionRow final : public PeerListRow {
-public:
-	SubscriptionRow(
-		not_null<PeerData*> peer,
-		TimeId date,
-		Data::PeerSubscription subscription);
-
-	QSize rightActionSize() const override;
-	QMargins rightActionMargins() const override;
-	void rightActionPaint(
-		Painter &p,
-		int x,
-		int y,
-		int outerWidth,
-		bool selected,
-		bool actionSelected) override;
-
-private:
-	std::optional<Settings::SubscriptionRightLabel> _rightLabel;
-
-};
-
-SubscriptionRow::SubscriptionRow(
-	not_null<PeerData*> peer,
-	TimeId date,
-	Data::PeerSubscription subscription)
-: PeerListRow(peer) {
-	if (subscription) {
-		_rightLabel = Settings::PaintSubscriptionRightLabelCallback(
-			&peer->session(),
-			st::peerListBoxItem,
-			subscription.credits);
-	}
-	setCustomStatus(
-		tr::lng_group_invite_joined_status(
-			tr::now,
-			lt_date,
-			langDayOfMonthFull(base::unixtime::parse(date).date())));
-}
-
-QSize SubscriptionRow::rightActionSize() const {
-	return _rightLabel ? _rightLabel->size : QSize();
-}
-
-QMargins SubscriptionRow::rightActionMargins() const {
-	return QMargins(0, 0, st::boxRowPadding.right(), 0);
-}
-
-void SubscriptionRow::rightActionPaint(
-		Painter &p,
-		int x,
-		int y,
-		int outerWidth,
-		bool selected,
-		bool actionSelected) {
-	if (_rightLabel) {
-		return _rightLabel->draw(p, x, y, st::peerListBoxItem.height);
-	}
-}
+// LoogriGram: an invite link could charge a monthly price in stars, and
+// this row showed what each subscriber was paying. No money is taken
+// through this client, so no link asks for any.
 
 class RequestedRow final : public PeerListRow {
 public:
@@ -695,98 +636,6 @@ void Controller::setupAboveJoinedWidget() {
 	if (revoked || !current.permanent) {
 		addHeaderBlock(container);
 	}
-	if (current.subscription) {
-		const auto &st = st::peerListSingleRow.item;
-		Ui::AddSubsectionTitle(
-			container,
-			tr::lng_group_invite_subscription_info_subtitle());
-		const auto widget = container->add(
-			CreateSkipWidget(container, st.height));
-		const auto name = widget->lifetime().make_state<Ui::Text::String>();
-		auto userpic = QImage(
-			Size(st.photoSize) * style::DevicePixelRatio(),
-			QImage::Format_ARGB32_Premultiplied);
-		{
-			constexpr auto kGreenIndex = 3;
-			const auto colors = Ui::EmptyUserpic::UserpicColor(kGreenIndex);
-			auto emptyUserpic = Ui::EmptyUserpic(colors, {});
-
-			userpic.setDevicePixelRatio(style::DevicePixelRatio());
-			userpic.fill(Qt::transparent);
-
-			auto p = QPainter(&userpic);
-			emptyUserpic.paintCircle(p, 0, 0, st.photoSize, st.photoSize);
-
-			auto svg = QSvgRenderer(u":/gui/links_subscription.svg"_q);
-			const auto size = st.photoSize / 4. * 3.;
-			const auto r = QRectF(
-				(st.photoSize - size) / 2.,
-				(st.photoSize - size) / 2.,
-				size,
-				size);
-			p.setPen(st::historyPeerUserpicFg);
-			p.setBrush(Qt::NoBrush);
-			svg.render(&p, r);
-		}
-		name->setMarkedText(
-			st.nameStyle,
-			current.usage
-				? tr::lng_group_invite_subscription_info_title(
-					tr::now,
-					lt_emoji,
-					_creditsEmoji,
-					lt_price,
-					{ QString::number(current.subscription.credits) },
-					lt_multiplier,
-					TextWithEntities{ .text = QString(QChar(0x00D7)) },
-					lt_total,
-					{ QString::number(current.usage) },
-					tr::marked)
-				: tr::lng_group_invite_subscription_info_title_none(
-					tr::now,
-					lt_emoji,
-					_creditsEmoji,
-					lt_price,
-					{ QString::number(current.subscription.credits) },
-					tr::marked),
-			kMarkupTextOptions,
-			_emojiHelper.context([=] { widget->update(); }));
-		auto &lifetime = widget->lifetime();
-		const auto rateValue = lifetime.make_state<rpl::variable<float64>>(
-			session().credits().rateValue(_peer));
-		const auto currency = u"USD"_q;
-		const auto allCredits = current.subscription.credits * current.usage;
-		widget->paintRequest(
-		) | rpl::on_next([=] {
-			auto p = Painter(widget);
-			p.setBrush(Qt::NoBrush);
-			p.setPen(st.nameFg);
-			name->draw(p, {
-				.position = st.namePosition,
-				.outerWidth = widget->width() - name->maxWidth(),
-				.availableWidth = widget->width() - name->maxWidth(),
-			});
-
-			p.drawImage(st.photoPosition, userpic);
-
-			const auto rate = rateValue->current();
-			const auto status = (allCredits <= 0)
-				? tr::lng_group_invite_no_joined(tr::now)
-				: (rate > 0)
-				? tr::lng_group_invite_subscription_info_about(
-					tr::now,
-					lt_total,
-					Ui::FillAmountAndCurrency(allCredits * rate, currency))
-				: QString();
-			p.setPen(st.statusFg);
-			p.setFont(st::contactsStatusFont);
-			p.drawTextLeft(
-				st.statusPosition.x(),
-				st.statusPosition.y(),
-				widget->width() - st.statusPosition.x(),
-				status);
-		}, widget->lifetime());
-	}
 	Ui::AddSubsectionTitle(
 		container,
 		tr::lng_group_invite_created_by());
@@ -926,11 +775,6 @@ void Controller::appendSlice(const Api::JoinedByLinkSlice &slice) {
 		_lastUser = user;
 		auto row = (_role == Role::Requested)
 			? std::make_unique<RequestedRow>(user.user, user.date)
-			: (_data.current().subscription)
-			? std::make_unique<SubscriptionRow>(
-				user.user,
-				user.date,
-				_data.current().subscription)
 			: std::make_unique<PeerListRow>(user.user);
 		if (_role != Role::Requested && user.viaFilterLink) {
 			row->setCustomStatus(
@@ -948,104 +792,11 @@ void Controller::appendSlice(const Api::JoinedByLinkSlice &slice) {
 }
 
 void Controller::rowClicked(not_null<PeerListRow*> row) {
-	if (!_data.current().subscription) {
-		return ShowPeerInfoSync(row->peer());
-	}
-	const auto channel = _peer;
-	const auto data = _data.current();
-	const auto show = delegate()->peerListUiShow();
-	show->showBox(Box([=](not_null<Ui::GenericBox*> box) {
-		const auto w = Core::App().findWindow(box);
-		const auto controller = w ? w->sessionController() : nullptr;
-		if (!controller) {
-			return;
-		}
-
-		box->setStyle(st::giveawayGiftCodeBox);
-		box->setNoContentMargin(true);
-
-		const auto content = box->verticalLayout();
-		Ui::AddSkip(content);
-		Ui::AddSkip(content);
-		Ui::AddSkip(content);
-
-		const auto photoSize = st::boostReplaceUserpic.photoSize;
-		const auto session = &row->peer()->session();
-		content->add(
-			Settings::SubscriptionUserpic(content, channel, photoSize),
-			style::al_top);
-
-		Ui::AddSkip(content);
-		Ui::AddSkip(content);
-
-		box->addRow(
-			object_ptr<Ui::FlatLabel>(
-				box,
-				tr::lng_credits_box_subscription_title(),
-				st::creditsBoxAboutTitle),
-			style::al_top);
-
-		Ui::AddSkip(content);
-
-		const auto subtitle1 = box->addRow(
-			object_ptr<Ui::FlatLabel>(
-				box,
-				st::creditsTopupPrice),
-			style::al_top);
-		subtitle1->setMarkedText(
-			tr::lng_credits_subscription_subtitle(
-				tr::now,
-				lt_emoji,
-				_creditsEmoji,
-				lt_cost,
-				{ QString::number(data.subscription.credits) },
-				tr::marked),
-			_emojiHelper.context());
-		const auto subtitle2 = box->addRow(
-			object_ptr<Ui::FlatLabel>(
-				box,
-				st::creditsTopupPrice),
-			style::al_top);
-		session->credits().rateValue(
-			channel
-		) | rpl::on_next([=, currency = u"USD"_q](float64 rate) {
-			subtitle2->setText(
-				tr::lng_credits_subscriber_subtitle(
-					tr::now,
-					lt_total,
-					Ui::FillAmountAndCurrency(
-						data.subscription.credits * rate,
-						currency)));
-		}, subtitle2->lifetime());
-
-		Ui::AddSkip(content);
-		Ui::AddSkip(content);
-
-		const auto show = controller->uiShow();
-		AddSubscriberEntryTable(show, content, {}, row->peer(), data.date);
-
-		Ui::AddSkip(content);
-		Ui::AddSkip(content);
-
-		box->addRow(
-			object_ptr<Ui::FlatLabel>(
-				box,
-				tr::lng_credits_box_out_about(
-					lt_link,
-					tr::lng_payments_terms_link(tr::url(
-						tr::lng_credits_box_out_about_link(tr::now))),
-					tr::marked),
-				st::creditsBoxAboutDivider),
-			style::al_top);
-
-		box->addButton(tr::lng_box_ok(), [=] {
-			box->closeBox();
-		});
-	}));
+	ShowPeerInfoSync(row->peer());
 }
 
 void Controller::rowRightActionClicked(not_null<PeerListRow*> row) {
-	if (_role != Role::Requested || _data.current().subscription) {
+	if (_role != Role::Requested) {
 		return;
 	}
 	delegate()->peerListShowRowMenu(row, true);
@@ -1607,15 +1358,8 @@ object_ptr<Ui::BoxContent> EditLinkBox(
 				result.expireDate,
 				result.usageLimit,
 				result.requestApproval,
-				{ uint64(result.subscriptionCredits), period },
+				{},
 			});
-		} else if (result.subscriptionCredits) {
-			peer->session().api().inviteLinks().editTitle(
-				peer,
-				data.admin,
-				result.link,
-				result.label,
-				finish);
 		} else {
 			peer->session().api().inviteLinks().edit(
 				peer,
@@ -1641,15 +1385,9 @@ object_ptr<Ui::BoxContent> EditLinkBox(
 		? QString()
 		: peer->session().createInternalLink(guardBotUsername);
 	auto object = Box([=](not_null<Ui::GenericBox*> box) {
-		const auto fill = isGroup
-			? Fn<Ui::InviteLinkSubscriptionToggle()>(nullptr)
-			: [=] {
-				return Ui::FillCreateInviteLinkSubscriptionToggle(box, peer);
-			};
 		if (creating) {
 			Ui::CreateInviteLinkBox(
 				box,
-				fill,
 				isGroup,
 				isPublic,
 				globalRequestApproval,
@@ -1659,13 +1397,11 @@ object_ptr<Ui::BoxContent> EditLinkBox(
 		} else {
 			Ui::EditInviteLinkBox(
 				box,
-				fill,
 				Fields{
 					.link = data.link,
 					.label = data.label,
 					.expireDate = data.expireDate,
 					.usageLimit = data.usageLimit,
-					.subscriptionCredits = int(data.subscription.credits),
 					.requestApproval = data.requestApproval,
 					.isGroup = isGroup,
 					.isPublic = isPublic,

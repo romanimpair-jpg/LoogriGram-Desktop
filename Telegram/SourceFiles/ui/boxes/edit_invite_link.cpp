@@ -81,7 +81,6 @@ constexpr auto kMaxLabelLength = 32;
 
 void EditInviteLinkBox(
 		not_null<GenericBox*> box,
-		Fn<InviteLinkSubscriptionToggle()> fillSubscription,
 		const InviteLinkFields &data,
 		Fn<void(InviteLinkFields)> done) {
 	using namespace rpl::mappers;
@@ -92,7 +91,6 @@ void EditInviteLinkBox(
 	const auto globalRequestApproval = data.globalRequestApproval;
 	const auto guardBotUsername = data.guardBotUsername;
 	const auto guardBotLink = data.guardBotLink;
-	const auto subscriptionLocked = data.subscriptionCredits > 0;
 	const auto requestApprovalLocked = isPublic && !globalRequestApproval;
 	box->setTitle(link.isEmpty()
 		? tr::lng_group_invite_new_title()
@@ -152,39 +150,15 @@ void EditInviteLinkBox(
 		int expireValue = 0;
 		int usageValue = 0;
 		rpl::variable<bool> requestApproval = false;
-		rpl::variable<bool> subscription = false;
 	};
 	const auto state = box->lifetime().make_state<State>(State{
 		.expireValue = expire,
 		.usageValue = usage,
 		.requestApproval = data.requestApproval,
-		.subscription = false,
 	});
 
-	auto credits = (Ui::NumberInput*)(nullptr);
-	if (!isPublic && fillSubscription) {
-		Ui::AddSkip(container);
-		const auto &[subscription, input] = fillSubscription();
-		credits = input.get();
-		subscription->toggleOn(state->subscription.value(), true);
-		if (subscriptionLocked) {
-			input->setText(QString::number(data.subscriptionCredits));
-			input->setReadOnly(true);
-			state->subscription.force_assign(true);
-			state->requestApproval.force_assign(false);
-			subscription->setToggleLocked(true);
-			subscription->finishAnimating();
-		}
-		subscription->setClickedCallback([=, show = box->uiShow()] {
-			if (subscriptionLocked) {
-				show->showToast(
-					tr::lng_group_invite_subscription_toast(tr::now));
-				return;
-			}
-			state->subscription.force_assign(!subscription->toggled());
-			state->requestApproval.force_assign(false);
-		});
-	}
+	// LoogriGram: a toggle here put a monthly price in stars on the link.
+	// No money is taken through this client.
 
 	const auto addLabelField = [=] {
 		const auto result = container->add(
@@ -221,9 +195,6 @@ void EditInviteLinkBox(
 				.label = label,
 				.expireDate = expireDate,
 				.usageLimit = usageLimit,
-				.subscriptionCredits = credits
-					? credits->getLastText().toInt()
-					: 0,
 				.requestApproval = state->requestApproval.current(),
 				.isGroup = isGroup,
 				.isPublic = isPublic,
@@ -235,10 +206,6 @@ void EditInviteLinkBox(
 		box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
 	};
 
-	if (subscriptionLocked) {
-		addSaveButtons(addLabelField());
-		return;
-	}
 	addTitle(container, tr::lng_group_invite_expire_title());
 	const auto expiresWrap = container->add(
 		object_ptr<VerticalLayout>(container),
@@ -428,7 +395,6 @@ void EditInviteLinkBox(
 			return;
 		}
 		state->requestApproval.force_assign(!requestApproval->toggled());
-		state->subscription.force_assign(false);
 	});
 	addRichDivider(
 		container,
@@ -447,7 +413,6 @@ void EditInviteLinkBox(
 
 void CreateInviteLinkBox(
 		not_null<GenericBox*> box,
-		Fn<InviteLinkSubscriptionToggle()> fillSubscription,
 		bool isGroup,
 		bool isPublic,
 		bool globalRequestApproval,
@@ -456,7 +421,6 @@ void CreateInviteLinkBox(
 		Fn<void(InviteLinkFields)> done) {
 	EditInviteLinkBox(
 		box,
-		std::move(fillSubscription),
 		InviteLinkFields{
 			.isGroup = isGroup,
 			.isPublic = isPublic,
