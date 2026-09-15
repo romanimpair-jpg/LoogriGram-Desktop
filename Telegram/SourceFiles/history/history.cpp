@@ -1679,11 +1679,6 @@ void History::newItemAdded(not_null<HistoryItem*> item, NewAddType type) {
 				}
 			}
 		}
-		if (type == NewAddType::Outgoing
-			&& !item->isLocal()
-			&& media->diceGameOutcome().stakeNanoTon > 0) {
-			session().credits().tonLoad(true);
-		}
 	}
 }
 

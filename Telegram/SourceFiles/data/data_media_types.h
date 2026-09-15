@@ -133,19 +133,6 @@ struct GiveawayResults {
 	bool all = false;
 };
 
-struct DiceGameOptions {
-	QByteArray seedHash;
-	int64 previousSteakNanoTon = 0;
-	std::array<int, 6> milliRewards;
-	int jackpotMilliReward = 0;
-	int currentStreak = 0;
-	int playsLeft = 0;
-
-	explicit operator bool() const {
-		return !seedHash.isEmpty();
-	}
-};
-
 struct DiceGameOutcome {
 	int64 nanoTon = 0;
 	int64 stakeNanoTon = 0;

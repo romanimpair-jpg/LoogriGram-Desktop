@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_media_types.h"
 
 #include "base/random.h"
-#include "boxes/send_credits_box.h" // CreditsEmoji.
 #include "history/history.h"
 #include "history/history_item.h" // CreateMedia.
 #include "history/history_item_components.h"
@@ -37,7 +36,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/media/history_view_story_mention.h"
 #include "history/view/media/history_view_userpic_suggestion.h"
 #include "dialogs/ui/dialogs_message_view.h"
-#include "ui/boxes/emoji_stake_box.h"
 #include "ui/controls/ton_common.h"
 #include "ui/image/image.h"
 #include "ui/effects/spoiler_mess.h"
@@ -2643,9 +2641,6 @@ bool MediaDice::updateSentMedia(const MTPMessageMedia &media) {
 	} else {
 		_outcome = {};
 	}
-	if (parent()->out() && _outcome.stakeNanoTon > 0) {
-		parent()->history()->session().credits().tonLoad(true);
-	}
 	parent()->history()->owner().notifyItemDataChange(parent());
 	return true;
 }
@@ -2679,22 +2674,13 @@ ClickHandlerPtr MediaDice::MakeHandler(
 		}
 	};
 	return std::make_shared<LambdaClickHandler>([=](ClickContext context) {
-		const auto found = Ui::Emoji::Find(emoji);
-		const auto id = found ? found->id() : QString();
-		const auto game = (id == QString::fromUtf8("\xf0\x9f\x8e\xb2"));
 		const auto my = context.other.value<ClickHandlerContext>();
 		const auto weak = my.sessionWindow;
-		const auto sendWith = [=](const QByteArray &hash, int64 nanoTon) {
+		const auto sendWith = [=] {
 			auto message = Api::MessageToSend(
 				Api::SendAction(history));
 			message.textWithTags.text = emoji;
-
-			auto &action = message.action;
-			action.clearDraft = false;
-
-			auto &options = action.options;
-			options.stakeNanoTon = nanoTon;
-			options.stakeSeedHash = hash;
+			message.action.clearDraft = false;
 
 			Api::SendDice(message);
 
@@ -2726,54 +2712,19 @@ ClickHandlerPtr MediaDice::MakeHandler(
 						const ClickHandlerPtr &handler,
 						Qt::MouseButton button) {
 					if (button == Qt::LeftButton && !ShownToast.empty()) {
-						sendWith(QByteArray(), 0);
+						sendWith();
 					}
 					return false;
 				});
 			}
 			showToast(std::move(config));
 		};
-		if (!game || !sendAllowed) {
-			showSimple();
-		} else {
-			const auto pack = &history->session().diceStickersPacks();
-			pack->resolveGameOptions([=](
-					const Data::DiceGameOptions &options) {
-				const auto window = weak.get();
-				const auto seedHash = options.seedHash;
-				const auto sendWithStake = [=](int64 stakeNanoTon) {
-					if (stakeNanoTon > 0 && window) {
-						const auto session = &window->session();
-						const auto credits = &session->credits();
-						const auto required = CreditsAmount(
-							stakeNanoTon / Ui::kNanosInOne,
-							stakeNanoTon % Ui::kNanosInOne,
-							CreditsType::Ton);
-						if (credits->tonLoaded()
-							&& credits->tonBalance() < required) {
-							HideExisting();
-							window->uiShow()->show(Box(
-								Ui::InsufficientTonBox,
-								session,
-								required));
-							return;
-						}
-					}
-					sendWith(seedHash, stakeNanoTon);
-				};
-				if (!options || !window) {
-					showSimple();
-				} else {
-					showToast(Ui::MakeEmojiGameStakeToast(window->uiShow(), {
-						.session = &window->session(),
-						.currentStake = options.previousSteakNanoTon,
-						.milliRewards = options.milliRewards,
-						.jackpotMilliReward = options.jackpotMilliReward,
-						.submit = sendWithStake,
-					}));
-				}
-			});
-		}
+		// LoogriGram: tapping a dice emoji offered to stake TON on the roll,
+		// with a stake picker, a rewards table and a jackpot, and a
+		// "top up your TON" box when the balance was short. Betting money on
+		// an outcome is a money operation; the dice is sent unstaked, which
+		// is what every other emoji here already did.
+		showSimple();
 	});
 }
 

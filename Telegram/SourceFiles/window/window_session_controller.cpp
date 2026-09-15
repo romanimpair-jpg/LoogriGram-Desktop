@@ -116,7 +116,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/cloud_password/settings_cloud_password_start.h"
 #include "settings/cloud_password/settings_cloud_password_email_confirm.h"
 #include "settings/sections/settings_main.h"
-#include "settings/sections/settings_premium.h"
 #include "settings/sections/settings_privacy_security.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_window.h"

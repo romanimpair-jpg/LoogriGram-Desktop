@@ -2879,10 +2879,9 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 	case mtpc_updateStarGiftAuctionState: break;
 	case mtpc_updateStarGiftAuctionUserState: break;
 
-	case mtpc_updateEmojiGameInfo: {
-		const auto &data = update.c_updateEmojiGameInfo();
-		_session->diceStickersPacks().apply(data);
-	} break;
+	// LoogriGram: the terms of the dice game - the stake, the reward table
+	// and the jackpot. Staking TON on a roll is deleted; nothing reads them.
+	case mtpc_updateEmojiGameInfo: break;
 
 	}
 }

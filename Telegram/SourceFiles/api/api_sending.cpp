@@ -843,11 +843,6 @@ bool SendDice(MessageToSend &message) {
 
 	session->data().registerMessageRandomId(randomId, newId);
 
-	auto seed = QByteArray(32, Qt::Uninitialized);
-	base::RandomFill(bytes::make_detached_span(seed));
-	const auto stake = action.options.stakeSeedHash.isEmpty()
-		? 0
-		: action.options.stakeNanoTon;
 	history->addNewLocalMessage({
 		.id = newId.msg,
 		.flags = flags,
@@ -860,14 +855,12 @@ bool SendDice(MessageToSend &message) {
 		.effectId = action.options.effectId,
 		.suggest = HistoryMessageSuggestInfo(action.options),
 	}, TextWithEntities(), MTP_messageMediaDice(
-		MTP_flags(stake
-			? MTPDmessageMediaDice::Flag::f_game_outcome
-			: MTPDmessageMediaDice::Flag()),
+		MTP_flags(MTPDmessageMediaDice::Flag()),
 		MTP_int(0),
 		MTP_string(emoji),
 		MTP_messages_emojiGameOutcome(
-			MTP_bytes(seed),
-			MTP_long(stake),
+			MTP_bytes(QByteArray()),
+			MTP_long(0),
 			MTP_long(0))));
 	histories.sendPreparedMessage(
 		history,
@@ -877,12 +870,7 @@ bool SendDice(MessageToSend &message) {
 			MTP_flags(sendFlags),
 			peer->input(),
 			Data::Histories::ReplyToPlaceholder(),
-			(stake
-				? MTP_inputMediaStakeDice(
-					MTP_bytes(action.options.stakeSeedHash),
-					MTP_long(stake),
-					MTP_bytes(seed))
-				: MTP_inputMediaDice(MTP_string(emoji))),
+			MTP_inputMediaDice(MTP_string(emoji)),
 			MTP_string(),
 			MTP_long(randomId),
 			MTPReplyMarkup(),

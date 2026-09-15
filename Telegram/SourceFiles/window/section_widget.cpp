@@ -12,7 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/ui_utility.h"
 #include "ui/chat/chat_theme.h"
 #include "ui/painter.h"
-#include "boxes/premium_preview_box.h" // ShowStickerPreviewBox.
 #include "data/data_peer.h"
 #include "data/data_user.h"
 #include "data/data_document.h"
@@ -596,12 +595,11 @@ bool ShowSendPremiumError(
 bool ShowSendPremiumError(
 		std::shared_ptr<ChatHelpers::Show> show,
 		not_null<DocumentData*> document) {
-	if (!document->isPremiumSticker()
-		|| document->session().premium()) {
-		return false;
-	}
-	ShowStickerPreviewBox(std::move(show), document);
-	return true;
+	// LoogriGram: a premium sticker still cannot be sent without a
+	// subscription - the server refuses it - but the refusal opened the
+	// "Unlock Premium Stickers" pitch. It refuses quietly now, like the
+	// reaction cases below.
+	return document->isPremiumSticker() && !document->session().premium();
 }
 
 void ShowReactRestrictionToast(not_null<SessionController*> controller) {

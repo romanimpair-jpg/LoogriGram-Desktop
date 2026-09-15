@@ -81,7 +81,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peers/edit_participant_box.h"
 #include "boxes/delete_messages_box.h"
 #include "boxes/moderate_messages_box.h"
-#include "boxes/premium_preview_box.h"
 #include "boxes/send_gif_with_caption_box.h"
 #include "core/crash_reports.h"
 #include "data/data_session.h"

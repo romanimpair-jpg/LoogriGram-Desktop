@@ -85,7 +85,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session_settings.h"
 #include "main/main_account.h"
 #include "ui/boxes/confirm_box.h"
-#include "ui/boxes/emoji_stake_box.h"
 #include "ui/controls/ton_common.h"
 #include "boxes/sticker_set_box.h"
 #include "boxes/premium_limits_box.h"
@@ -594,30 +593,9 @@ void ApiWrap::sendMessageFail(
 				u"Payment requirements changed. Please, try again."_q);
 		}
 		peer->updateFull();
-	} else if (error == u"BALANCE_TOO_LOW"_q) {
-		const auto item = _session->data().message(itemId);
-		const auto stake = (item && item->media())
-			? item->media()->diceGameOutcome().stakeNanoTon
-			: int64(0);
-		if (stake > 0) {
-			const auto required = CreditsAmount(
-				stake / Ui::kNanosInOne,
-				stake % Ui::kNanosInOne,
-				CreditsType::Ton);
-			if (randomId) {
-				_session->data().unregisterMessageRandomId(randomId);
-			}
-			item->destroy();
-			if (show) {
-				show->show(Box(
-					Ui::InsufficientTonBox,
-					_session,
-					required));
-			}
-			return;
-		} else if (show) {
-			show->showToast(error);
-		}
+	// LoogriGram: a dice staked with TON that the balance could not cover
+	// was withdrawn here and a "top up your TON" box shown. Nothing is
+	// staked, so the error is reported like any other.
 	} else if (show) {
 		show->showToast(error);
 	}

@@ -18,7 +18,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/random.h"
 #include "ui/boxes/confirm_box.h"
 #include "boxes/delete_messages_box.h"
-#include "boxes/send_credits_box.h"
 #include "boxes/send_gif_with_caption_box.h"
 #include "boxes/send_files_box.h"
 #include "boxes/share_box.h"

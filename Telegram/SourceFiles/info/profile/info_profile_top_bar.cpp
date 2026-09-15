@@ -61,7 +61,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "menu/menu_mute.h"
 #include "settings/sections/settings_information.h"
-#include "settings/sections/settings_premium.h"
 #include "ui/color_contrast.h"
 #include "ui/controls/swipe_handler.h"
 #include "ui/controls/userpic_button.h"

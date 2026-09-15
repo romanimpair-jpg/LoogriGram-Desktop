@@ -18,7 +18,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "base/weak_ptr.h"
 #include "boxes/edit_caption_box.h"
-#include "boxes/premium_preview_box.h"
 #include "boxes/send_files_box.h"
 #include "boxes/send_gif_with_caption_box.h"
 #include "chat_helpers/compose/compose_show.h"

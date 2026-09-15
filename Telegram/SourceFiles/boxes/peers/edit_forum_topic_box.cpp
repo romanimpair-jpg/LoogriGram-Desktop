@@ -23,7 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/qt_signal_producer.h"
 #include "chat_helpers/emoji_list_widget.h"
 #include "chat_helpers/stickers_list_footer.h"
-#include "boxes/premium_preview_box.h"
 #include "main/main_session.h"
 #include "history/history.h"
 #include "history/view/history_view_chat_section.h"

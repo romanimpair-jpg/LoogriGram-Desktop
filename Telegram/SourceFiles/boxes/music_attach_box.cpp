@@ -1381,12 +1381,6 @@ void ApplySendOptions(
 	if (options.effectId != empty.effectId) {
 		base.effectId = options.effectId;
 	}
-	if (options.stakeSeedHash != empty.stakeSeedHash) {
-		base.stakeSeedHash = options.stakeSeedHash;
-	}
-	if (options.stakeNanoTon != empty.stakeNanoTon) {
-		base.stakeNanoTon = options.stakeNanoTon;
-	}
 	if (options.silent != empty.silent) {
 		base.silent = options.silent;
 	}

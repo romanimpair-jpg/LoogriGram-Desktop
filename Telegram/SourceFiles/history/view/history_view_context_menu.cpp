@@ -19,7 +19,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/qt/qt_key_modifiers.h"
 #include "base/unixtime.h"
 #include "history/view/history_view_list_widget.h"
-#include "history/view/controls/history_view_suggest_options.h"
 #include "history/view/history_view_cursor_state.h"
 #include "history/view/history_view_reaction_preview.h"
 #include "history/history.h"
