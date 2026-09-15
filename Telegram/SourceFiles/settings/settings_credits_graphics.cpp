@@ -44,7 +44,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item.h"
 #include "history/history_item_components.h" // HistoryServicePaymentRefund.
 #include "info/channel_statistics/boosts/giveaway/boost_badge.h" // InfiniteRadialAnimationWidget.
-#include "info/channel_statistics/earn/info_channel_earn_widget.h" // Info::ChannelEarn::Make.
 #include "info/channel_statistics/earn/earn_format.h"
 #include "info/channel_statistics/earn/earn_icons.h"
 #include "info/peer_gifts/info_peer_gifts_common.h"
@@ -259,11 +258,9 @@ void ConvertStarGift(
 		Api::InputSavedStarGiftId(savedId)
 	)).done([=] {
 		if (const auto window = show->resolveWindow()) {
-			if (const auto channel = savedId.chat()) {
-				window->showSection(Info::ChannelEarn::Make(channel));
-			} else {
-				window->showSettings(Settings::CreditsId());
-			}
+			// LoogriGram: converting a channel's gift opened that channel's
+			// earn page, which is deleted. The balance is the same balance.
+			window->showSettings(Settings::CreditsId());
 		}
 		show->showToast((savedId.chat()
 			? tr::lng_gift_channel_got

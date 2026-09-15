@@ -22,7 +22,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_filters_menu.h"
 #include "window/section_widget.h"
 #include "window/window_separate_id.h"
-#include "info/channel_statistics/earn/info_channel_earn_list.h"
 #include "info/peer_gifts/info_peer_gifts_widget.h"
 #include "info/stories/info_stories_widget.h"
 #include "info/info_memento.h"

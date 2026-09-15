@@ -22,11 +22,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_photo_media.h"
 #include "data/data_session.h"
 #include "data/data_user.h"
-#include "info/bot/earn/info_bot_earn_widget.h"
 #include "info/channel_statistics/boosts/giveaway/boost_badge.h"
 #include "info/channel_statistics/earn/earn_format.h"
 #include "info/channel_statistics/earn/earn_icons.h"
-#include "info/channel_statistics/earn/info_channel_earn_list.h"
 #include "info/info_memento.h"
 #include "info/settings/info_settings_widget.h"
 #include "info/statistics/info_statistics_list_controllers.h"
@@ -951,27 +949,8 @@ void BuildCreditsButtons(
 	const auto controller = builder.controller();
 	const auto self = session->user();
 
-	if (!isCurrency) {
-		auto statsShown = session->credits().loadedValue(
-		) | rpl::map([session] {
-			return session->credits().statsEnabled();
-		});
-		const auto stats = builder.addButton({
-			.id = u"stars/stats"_q,
-			.title = tr::lng_credits_stats_button(),
-			.st = &st::settingsCreditsButton,
-			.icon = { &st::menuIconStats },
-			.onClick = [controller, self] {
-				controller->parentController()->showSection(
-					Info::BotEarn::Make(self));
-			},
-			.keywords = { u"statistics"_q },
-			.shown = std::move(statsShown),
-		});
-		if (statsButton) {
-			*statsButton = stats;
-		}
-	}
+	// LoogriGram: a "Statistics" row opened the stars revenue page, and an
+	// "Earn" row the affiliate list. Both deleted.
 
 	if (!isCurrency) {
 		const auto gift = builder.addButton({

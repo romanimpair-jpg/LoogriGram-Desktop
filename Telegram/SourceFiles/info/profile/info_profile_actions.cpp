@@ -57,10 +57,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_helpers.h"
 #include "history/view/history_view_item_preview.h"
 #include "history/view/reactions/history_view_reactions_list.h"
-#include "info/bot/earn/info_bot_earn_widget.h"
-#include "info/channel_statistics/earn/earn_format.h"
-#include "info/channel_statistics/earn/earn_icons.h"
-#include "info/channel_statistics/earn/info_channel_earn_list.h"
 #include "info/profile/info_profile_icon.h"
 #include "info/profile/info_profile_phone_menu.h"
 #include "info/profile/info_profile_text.h"
@@ -104,7 +100,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_separate_id.h"
 #include "window/window_session_controller.h"
 #include "styles/style_boxes.h"
-#include "styles/style_channel_earn.h" // st::channelEarnCurrencyCommonMargins
 #include "styles/style_chat_helpers.h"
 #include "styles/style_info.h"
 #include "styles/style_info_profile_actions.h"
@@ -1072,169 +1067,8 @@ auto AddMainButton(
 	return button->entity();
 }
 
-rpl::producer<CreditsAmount> AddCurrencyAction(
-		not_null<UserData*> user,
-		not_null<Ui::VerticalLayout*> wrap,
-		not_null<Controller*> controller) {
-	struct State final {
-		rpl::variable<CreditsAmount> balance;
-		Ui::Text::CustomEmojiHelper helper;
-	};
-	const auto state = wrap->lifetime().make_state<State>();
-	const auto parentController = controller->parentController();
-	const auto wrapButton = AddActionButton(
-		wrap,
-		tr::lng_manage_peer_bot_balance_currency(),
-		state->balance.value(
-		) | rpl::map(rpl::mappers::_1 > CreditsAmount(0)),
-		[=] { parentController->showSection(Info::ChannelEarn::Make(user)); },
-		nullptr);
-	{
-		const auto button = wrapButton->entity();
-		const auto icon = Ui::CreateChild<Ui::RpWidget>(button);
-		icon->resize(st::infoIconReport.size());
-		const auto image = Ui::Earn::MenuIconCurrency(icon->size());
-		icon->paintRequest() | rpl::on_next([=] {
-			auto p = QPainter(icon);
-			p.drawImage(0, 0, image);
-		}, icon->lifetime());
-
-		button->sizeValue(
-		) | rpl::on_next([=](const QSize &size) {
-			icon->move(st::infoEarnCurrencyIconPosition);
-		}, icon->lifetime());
-	}
-	const auto balance = user->session().credits().balanceCurrency(user->id);
-	if (balance) {
-		state->balance = balance;
-	}
-	{
-		const auto weak = base::make_weak(wrap);
-		const auto currencyLoadLifetime
-			= std::make_shared<rpl::lifetime>();
-		const auto currencyLoad
-			= currencyLoadLifetime->make_state<Api::EarnStatistics>(user);
-		const auto done = [=](CreditsAmount balance) {
-			if ([[maybe_unused]] const auto strong = weak.get()) {
-				state->balance = balance;
-				currencyLoadLifetime->destroy();
-			}
-		};
-		currencyLoad->request() | rpl::on_error_done(
-			[=](const QString &error) {
-				done(CreditsAmount(0, CreditsType::Ton));
-			},
-			[=] { done(currencyLoad->data().currentBalance); },
-			*currencyLoadLifetime);
-	}
-	const auto &st = st::infoSharedMediaButton;
-	const auto button = wrapButton->entity();
-	const auto name = Ui::CreateChild<Ui::FlatLabel>(button, st.rightLabel);
-	const auto icon = state->helper.paletteDependent({ .factory = [=] {
-		return Ui::Earn::IconCurrencyColored(
-			st.rightLabel.style.font,
-			st.rightLabel.textFg->c);
-	}, .margin = st::channelEarnCurrencyCommonMargins });
-	name->show();
-	rpl::combine(
-		button->widthValue(),
-		tr::lng_manage_peer_bot_balance_currency(),
-		state->balance.value()
-	) | rpl::on_next([=, &st](
-			int width,
-			const QString &button,
-			CreditsAmount balance) {
-		const auto available = width
-			- rect::m::sum::h(st.padding)
-			- st.style.font->width(button)
-			- st::settingsButtonRightSkip;
-		name->setMarkedText(
-			base::duplicate(icon)
-				.append(QChar(' '))
-				.append(Info::ChannelEarn::MajorPart(balance))
-				.append(Info::ChannelEarn::MinorPart(balance)),
-			state->helper.context());
-		name->resizeToNaturalWidth(available);
-		name->moveToRight(st::settingsButtonRightSkip, st.padding.top());
-	}, name->lifetime());
-	name->setAttribute(Qt::WA_TransparentForMouseEvents);
-	wrapButton->finishAnimating();
-	return state->balance.value();
-}
-
-rpl::producer<CreditsAmount> AddCreditsAction(
-		not_null<UserData*> user,
-		not_null<Ui::VerticalLayout*> wrap,
-		not_null<Controller*> controller) {
-	struct State final {
-		rpl::variable<CreditsAmount> balance;
-	};
-	const auto state = wrap->lifetime().make_state<State>();
-	const auto parentController = controller->parentController();
-	const auto wrapButton = AddActionButton(
-		wrap,
-		tr::lng_manage_peer_bot_balance_credits(),
-		state->balance.value(
-		) | rpl::map(rpl::mappers::_1 > CreditsAmount(0)),
-		[=] { parentController->showSection(Info::BotEarn::Make(user)); },
-		nullptr);
-	{
-		const auto button = wrapButton->entity();
-		const auto icon = Ui::CreateChild<Ui::RpWidget>(button);
-		const auto image = Ui::Earn::MenuIconCredits();
-		icon->resize(image.size() / style::DevicePixelRatio());
-		icon->paintRequest() | rpl::on_next([=] {
-			auto p = QPainter(icon);
-			p.drawImage(0, 0, image);
-		}, icon->lifetime());
-
-		button->sizeValue(
-		) | rpl::on_next([=](const QSize &size) {
-			icon->move(st::infoEarnCreditsIconPosition);
-		}, icon->lifetime());
-	}
-	if (const auto balance = user->session().credits().balance(user->id)) {
-		state->balance = balance;
-	}
-	{
-		const auto api = wrap->lifetime().make_state<Api::CreditsStatus>(
-			user);
-		api->request({}, [=](Data::CreditsStatusSlice data) {
-			state->balance = data.balance;
-		});
-	}
-	const auto &st = st::infoSharedMediaButton;
-	const auto button = wrapButton->entity();
-	const auto name = Ui::CreateChild<Ui::FlatLabel>(button, st.rightLabel);
-
-	auto helper = Ui::Text::CustomEmojiHelper();
-	const auto icon = helper.paletteDependent(Ui::Earn::IconCreditsEmoji());
-	const auto context = helper.context([=] { name->update(); });
-	name->show();
-	rpl::combine(
-		button->widthValue(),
-		tr::lng_manage_peer_bot_balance_credits(),
-		state->balance.value()
-	) | rpl::on_next([=, &st](
-			int width,
-			const QString &button,
-			CreditsAmount balance) {
-		const auto available = width
-			- rect::m::sum::h(st.padding)
-			- st.style.font->width(button)
-			- st::settingsButtonRightSkip;
-		name->setMarkedText(
-			base::duplicate(icon)
-				.append(QChar(' '))
-				.append(Lang::FormatCreditsAmountDecimal(balance)),
-			context);
-		name->resizeToNaturalWidth(available);
-		name->moveToRight(st::settingsButtonRightSkip, st.padding.top());
-	}, name->lifetime());
-	name->setAttribute(Qt::WA_TransparentForMouseEvents);
-	wrapButton->finishAnimating();
-	return state->balance.value();
-}
+// LoogriGram: a bot owner's TON and stars revenue balances were built
+// here, each row a link into the earn section. Both deleted with it.
 
 class DetailsFiller {
 public:
@@ -1292,7 +1126,6 @@ public:
 	object_ptr<Ui::RpWidget> fill();
 
 private:
-	void addBalanceActions(not_null<UserData*> user);
 	void addInviteToGroupAction(not_null<UserData*> user);
 	void addShareContactAction(not_null<UserData*> user);
 	void addEditContactAction(not_null<UserData*> user);
@@ -2774,26 +2607,6 @@ ActionsFiller::ActionsFiller(
 // commission in stars for referring users to it. Deleted with the rest
 // of the affiliate module.
 
-void ActionsFiller::addBalanceActions(not_null<UserData*> user) {
-	const auto wrap = _wrap->add(
-		object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-			_wrap.data(),
-			object_ptr<Ui::VerticalLayout>(_wrap.data())));
-	const auto inner = wrap->entity();
-	Ui::AddSubsectionTitle(inner, tr::lng_manage_peer_bot_balance());
-	auto currencyBalance = AddCurrencyAction(user, inner, _controller);
-	auto creditsBalance = AddCreditsAction(user, inner, _controller);
-	Ui::AddSkip(inner);
-	Ui::AddDivider(inner);
-	Ui::AddSkip(inner);
-	wrap->toggleOn(
-		rpl::combine(
-			std::move(currencyBalance),
-			std::move(creditsBalance)
-		) | rpl::map((rpl::mappers::_1 > CreditsAmount(0))
-			|| (rpl::mappers::_2 > CreditsAmount(0))));
-}
-
 void ActionsFiller::addInviteToGroupAction(not_null<UserData*> user) {
 	const auto notEmpty = [](const QString &value) {
 		return !value.isEmpty();
@@ -3077,7 +2890,6 @@ void ActionsFiller::addJoinChannelAction(
 
 void ActionsFiller::fillUserActions(not_null<UserData*> user) {
 	if (user->isBot()) {
-		addBalanceActions(user);
 		addInviteToGroupAction(user);
 	}
 	addShareContactAction(user);
@@ -3258,96 +3070,8 @@ object_ptr<Ui::RpWidget> SetupChannelMembersAndManage(
 		st::menuIconAdmin,
 		st::infoChannelAdminsIconPosition);
 
-	const auto canViewBalance = false
-		|| (channel->flags() & ChannelDataFlag::CanViewRevenue)
-		|| (channel->flags() & ChannelDataFlag::CanViewCreditsRevenue)
-		|| (channel->loadedStatus() != ChannelData::LoadedStatus::Full);
-	if (canViewBalance) {
-		const auto balanceWrap = result->entity()->add(
-			object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-				result->entity(),
-				object_ptr<Ui::VerticalLayout>(result->entity())));
-		auto refreshed = channel->session().credits().refreshedByPeerId(
-			channel->id);
-		auto creditsValue = rpl::single(
-			rpl::empty_value()
-		) | rpl::then(rpl::duplicate(refreshed)) | rpl::map([=] {
-			return channel->session().credits().balance(channel->id);
-		});
-		auto currencyValue = rpl::single(
-			rpl::empty_value()
-		) | rpl::then(rpl::duplicate(refreshed)) | rpl::map([=] {
-			return channel->session().credits().balanceCurrency(channel->id);
-		});
-		const auto emptyAmount = CreditsAmount(0);
-		balanceWrap->toggleOn(
-			rpl::combine(
-				rpl::duplicate(creditsValue),
-				rpl::duplicate(currencyValue)
-			) | rpl::map(rpl::mappers::_1 > emptyAmount
-				|| rpl::mappers::_2 > emptyAmount),
-			anim::type::normal);
-		balanceWrap->finishAnimating();
-
-		const auto &st = st::infoSharedMediaButton;
-
-		auto customEmojiFactory = [height = st.style.font->height,
-				font = st.rightLabel.style.font,
-				color = st.rightLabel.textFg->c](
-			QStringView data,
-			const Ui::Text::MarkedContext &context
-		) -> std::unique_ptr<Ui::Text::CustomEmoji> {
-			return (data == Ui::kCreditsCurrency)
-				? Ui::MakeCreditsIconEmoji(height, 1)
-				: MakeWrappedEmoji<Ui::Text::ShiftedEmoji>(
-					Ui::Earn::MakeCurrencyIconEmoji(font, color),
-					QPoint(0, st::channelEarnCurrencyCommonMargins.top()));
-		};
-		const auto context = Ui::Text::MarkedContext{
-			.customEmojiFactory = std::move(customEmojiFactory),
-		};
-
-		const auto balance = balanceWrap->entity();
-		const auto button = AddActionButton(
-			balance,
-			tr::lng_manage_peer_bot_balance(),
-			rpl::single(true),
-			[=] { controller->showSection(Info::ChannelEarn::Make(peer)); },
-			nullptr);
-
-		::Settings::CreateRightLabel(
-			button->entity(),
-			rpl::combine(
-				std::move(creditsValue),
-				std::move(currencyValue)
-			) | rpl::map([](CreditsAmount credits, CreditsAmount currency) {
-				auto creditsText = (credits > CreditsAmount(0))
-					? Ui::MakeCreditsIconEntity()
-						.append(QChar(' '))
-						.append(Info::ChannelEarn::MajorPart(credits))
-						.append(credits.nano()
-							? Info::ChannelEarn::MinorPart(credits)
-							: QString())
-					: TextWithEntities();
-				auto currencyText = (currency > CreditsAmount(0))
-					? Ui::Text::SingleCustomEmoji("_")
-						.append(QChar(' '))
-						.append(Info::ChannelEarn::MajorPart(currency))
-						.append(Info::ChannelEarn::MinorPart(currency))
-					: TextWithEntities();
-				return currencyText
-					.append(QChar(' '))
-					.append(std::move(creditsText));
-			}),
-			st,
-			tr::lng_manage_peer_bot_balance(),
-			context);
-
-		object_ptr<FloatingIcon>(
-			balance,
-			st::menuIconEarn,
-			st::infoChannelAdminsIconPosition);
-	}
+	// LoogriGram: a channel's own TON and stars revenue balance was shown
+	// here, linking into the earn section. Deleted with it.
 
 	result->setDuration(st::infoSlideDuration)->toggleOn(
 		rpl::combine(

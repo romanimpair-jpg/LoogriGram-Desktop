@@ -16,11 +16,6 @@ class Show;
 
 namespace Api {
 
-void RestrictSponsored(
-	not_null<ChannelData*> channel,
-	bool restricted,
-	Fn<void(QString)> failed);
-
 struct RewardReceiver final {
 	PeerData *currencyReceiver = nullptr;
 	PeerData *creditsReceiver = nullptr;

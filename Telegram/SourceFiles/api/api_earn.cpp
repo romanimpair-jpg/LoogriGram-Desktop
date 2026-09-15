@@ -20,19 +20,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace Api {
 
-void RestrictSponsored(
-		not_null<ChannelData*> channel,
-		bool restricted,
-		Fn<void(QString)> failed) {
-	channel->session().api().request(MTPchannels_RestrictSponsoredMessages(
-		channel->inputChannel(),
-		MTP_bool(restricted))
-	).done([=](const MTPUpdates &updates) {
-		channel->session().api().applyUpdates(updates);
-	}).fail([=](const MTP::Error &error) {
-		failed(error.type());
-	}).send();
-}
+// LoogriGram: a channel owner could pay a subscription to stop ads being
+// shown in their channel. The toggle lived on the earn page, which is
+// deleted, and this client shows no ads to anyone in the first place.
 
 void HandleWithdrawalButton(
 		RewardReceiver receiver,
