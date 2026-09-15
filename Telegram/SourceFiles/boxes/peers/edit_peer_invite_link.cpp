@@ -1323,8 +1323,6 @@ object_ptr<Ui::BoxContent> InviteLinkQrBox(
 object_ptr<Ui::BoxContent> EditLinkBox(
 		not_null<PeerData*> peer,
 		const Api::InviteLink &data) {
-	constexpr auto kPeriod = 3600 * 24 * 30;
-	constexpr auto kTestModePeriod = 300;
 	const auto creating = data.link.isEmpty();
 	const auto box = std::make_shared<base::weak_qptr<Ui::GenericBox>>();
 	using Fields = Ui::InviteLinkFields;
@@ -1340,9 +1338,6 @@ object_ptr<Ui::BoxContent> EditLinkBox(
 		};
 		if (creating) {
 			Assert(data.admin->isSelf());
-			const auto period = peer->session().isTestMode()
-				? kTestModePeriod
-				: kPeriod;
 			peer->session().api().inviteLinks().create({
 				peer,
 				finish,

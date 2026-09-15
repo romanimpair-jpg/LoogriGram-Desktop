@@ -2267,9 +2267,6 @@ void InnerWidget::selectByMouse(QPoint globalPosition) {
 			if (peerSearchSelected < 0 || peerSearchSelected >= _peerSearchResults.size()) {
 				peerSearchSelected = -1;
 			}
-			const auto mappedY = (peerSearchSelected >= 0)
-				? mouseY - skip - (peerSearchSelected * st::dialogsRowHeight)
-				: 0;
 			const auto selectedRightButton = (peerSearchSelected >= 0)
 				? false
 				: _selectedRightButton;

@@ -411,7 +411,6 @@ void SendMusicSelectionBatch(
 	const auto peer = history->peer;
 	const auto session = &history->session();
 	const auto api = &session->api();
-	const auto actionPtr = &action;
 	const auto multi = (items.size() > 1);
 	const auto groupId = multi ? base::RandomValue<uint64>() : uint64(0);
 

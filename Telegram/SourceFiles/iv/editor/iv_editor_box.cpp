@@ -2014,7 +2014,6 @@ void WindowHost::Impl::layout() {
 	_bottomFade->setGeometry(0, height - bottomHeight, editorWidth, bottomHeight);
 	_bottom->setGeometry(0, height - bottomHeight, editorWidth, bottomHeight);
 	const auto right = editorWidth - padding.right();
-	const auto left = padding.left();
 	const auto leftPill = _discard
 		? _discard.data()
 		: _cancel.data();
