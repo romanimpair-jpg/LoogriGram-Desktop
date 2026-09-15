@@ -368,9 +368,10 @@ showOrShowButton: RoundButton(defaultActiveButton) {
 showOrLabel: FlatLabel(boostText) {
 	textFg: windowSubTextFg;
 }
-showOrLineWidth: 190px;
-showOrLabelSkip: 7px;
-showOrLineTop: 10px;
+// LoogriGram: the three metrics that drew the rule either side of the "or"
+// label went with MakeShowOrLabel, whose last caller was the premium half
+// of the forbidden-invite cover. showOrLabel itself is still read by the
+// community requests list.
 // LoogriGram: showOrLabelPadding and showOrPremiumAboutPadding went with
 // ShowOrPremiumBox. The rest of this group has other readers - the denied
 // unconfirmed-auth box, the community requests list and window_peer_menu.

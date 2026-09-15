@@ -393,8 +393,6 @@ PRIVATE
     ui/boxes/rate_call_box.h
     ui/boxes/report_box_graphics.cpp
     ui/boxes/report_box_graphics.h
-    ui/boxes/show_or_premium_box.cpp
-    ui/boxes/show_or_premium_box.h
     ui/boxes/single_choice_box.cpp
     ui/boxes/single_choice_box.h
     ui/boxes/time_picker_box.cpp

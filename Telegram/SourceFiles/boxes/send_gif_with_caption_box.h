@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 class PeerData;
 class DocumentData;
-enum class PremiumFeature;
 
 namespace Api {
 struct SendOptions;

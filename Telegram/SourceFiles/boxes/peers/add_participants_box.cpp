@@ -12,7 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_premium.h"
 #include "boxes/peers/edit_participant_box.h"
 #include "boxes/peers/edit_peer_type_box.h"
-#include "boxes/peers/replace_boost_box.h"
 #include "boxes/max_invite_box.h"
 #include "chat_helpers/message_field.h"
 #include "lang/lang_keys.h"
@@ -27,7 +26,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_helpers.h"
 #include "dialogs/dialogs_indexed_list.h"
 #include "ui/boxes/confirm_box.h"
-#include "ui/boxes/show_or_premium_box.h"
 #include "ui/effects/premium_graphics.h"
 #include "ui/text/text_utilities.h" // tr::rich
 #include "ui/toast/toast.h"
@@ -39,7 +37,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "main/main_session.h"
 #include "mtproto/mtproto_config.h"
-#include "settings/sections/settings_premium.h"
 #include "window/window_session_controller.h"
 #include "info/profile/info_profile_icon.h"
 #include "apiwrap.h"
@@ -52,7 +49,6 @@ namespace {
 
 constexpr auto kParticipantsFirstPageCount = 16;
 constexpr auto kParticipantsPerPage = 200;
-constexpr auto kUserpicsLimit = 3;
 
 class ForbiddenRow final : public PeerListRow {
 public:
@@ -130,7 +126,6 @@ private:
 		Api::SendOptions options);
 
 	void setSimpleCover();
-	void setComplexCover();
 
 	const not_null<PeerData*> _peer;
 	const ForbiddenInvites _forbidden;
@@ -159,125 +154,13 @@ base::flat_set<not_null<UserData*>> GetAlreadyInFromPeer(PeerData *peer) {
 	return {};
 }
 
-void FillUpgradeToPremiumCover(
-		not_null<Ui::VerticalLayout*> container,
-		std::shared_ptr<Main::SessionShow> show,
-		not_null<PeerData*> peer,
-		const ForbiddenInvites &forbidden) {
-	const auto noneCanSend = (forbidden.premiumAllowsWrite.size()
-		== forbidden.users.size());
-	const auto &userpicUsers = (forbidden.premiumAllowsInvite.empty()
-		|| noneCanSend)
-		? forbidden.premiumAllowsWrite
-		: forbidden.premiumAllowsInvite;
-	Assert(!userpicUsers.empty());
-
-	auto userpicPeers = userpicUsers | ranges::views::transform([](auto u) {
-		return not_null<PeerData*>(u);
-	}) | ranges::to_vector;
-	container->add(object_ptr<Ui::PaddingWrap<>>(
-		container,
-		CreateUserpicsWithMoreBadge(
-			container,
-			rpl::single(std::move(userpicPeers)),
-			st::boostReplaceUserpicsRow,
-			kUserpicsLimit),
-		st::inviteForbiddenUserpicsPadding)
-	)->entity()->setAttribute(Qt::WA_TransparentForMouseEvents);
-
-	const auto users = int(userpicUsers.size());
-	const auto names = std::min(users, kUserpicsLimit);
-	const auto remaining = std::max(users - kUserpicsLimit, 0);
-	auto text = TextWithEntities();
-	for (auto i = 0; i != names; ++i) {
-		const auto name = userpicUsers[i]->shortName();
-		if (text.empty()) {
-			text = tr::bold(name);
-		} else if (i == names - 1 && !remaining) {
-			text = tr::lng_invite_upgrade_users_few(
-				tr::now,
-				lt_users,
-				text,
-				lt_last,
-				tr::bold(name),
-				tr::rich);
-		} else {
-			text.append(", ").append(tr::bold(name));
-		}
-	}
-	if (remaining > 0) {
-		text = tr::lng_invite_upgrade_users_many(
-			tr::now,
-			lt_count,
-			remaining,
-			lt_users,
-			text,
-			tr::rich);
-	}
-	const auto inviteOnly = !forbidden.premiumAllowsInvite.empty()
-		&& (forbidden.premiumAllowsWrite.size() != forbidden.users.size());
-	text = (peer->isBroadcast()
-		? (inviteOnly
-			? tr::lng_invite_upgrade_channel_invite
-			: tr::lng_invite_upgrade_channel_write)
-		: (inviteOnly
-			? tr::lng_invite_upgrade_group_invite
-			: tr::lng_invite_upgrade_group_write))(
-				tr::now,
-				lt_count,
-				int(userpicUsers.size()),
-				lt_users,
-				text,
-				tr::rich);
-	container->add(
-		object_ptr<Ui::FlatLabel>(
-			container,
-			rpl::single(text),
-			st::inviteForbiddenInfo),
-		st::inviteForbiddenInfoPadding,
-		style::al_top);
-}
-
-void SimpleForbiddenBox(
-		not_null<Ui::GenericBox*> box,
-		not_null<PeerData*> peer,
-		const ForbiddenInvites &forbidden) {
-	box->setTitle(tr::lng_invite_upgrade_title());
-	box->setWidth(st::boxWideWidth);
-	box->addTopButton(st::boxTitleClose, [=] {
-		box->closeBox();
-	});
-
-	auto sshow = Main::MakeSessionShow(box->uiShow(), &peer->session());
-	const auto container = box->verticalLayout();
-	FillUpgradeToPremiumCover(container, sshow, peer, forbidden);
-
-	const auto &stButton = st::premiumGiftBox;
-	box->setStyle(stButton);
-	auto raw = Settings::CreateSubscribeButton(
-		sshow,
-		ChatHelpers::ResolveWindowDefault(),
-		{
-			.parent = container,
-			.computeRef = [] { return u"invite_privacy"_q; },
-			.text = tr::lng_messages_privacy_premium_button(),
-			.showPromo = true,
-		});
-	auto button = object_ptr<Ui::GradientButton>::fromRaw(raw);
-	button->resizeToWidth(st::boxWideWidth
-		- stButton.buttonPadding.left()
-		- stButton.buttonPadding.right());
-	box->setShowFinishedCallback([raw = button.data()] {
-		raw->startGlareAnimation();
-	});
-	box->addButton(std::move(button));
-
-	Data::AmPremiumValue(
-		&peer->session()
-	) | rpl::skip(1) | rpl::on_next([=] {
-		box->closeBox();
-	}, box->lifetime());
-}
+// LoogriGram: FillUpgradeToPremiumCover and SimpleForbiddenBox stood
+// here. Between them they were the whole of this flow's premium half: a
+// row of the userpics of the people whose privacy settings refuse you,
+// a line naming them, and a gradient Subscribe button under it, in a box
+// that closed itself the moment you became a subscriber. What is left is
+// upstream's own plain answer - who cannot be added, and the invite link
+// that can reach them instead.
 
 InviteForbiddenController::InviteForbiddenController(
 	not_null<PeerData*> peer,
@@ -489,71 +372,6 @@ void InviteForbiddenController::setSimpleCover() {
 		st::boxRowPadding));
 }
 
-void InviteForbiddenController::setComplexCover() {
-	delegate()->peerListSetTitle(tr::lng_invite_upgrade_title());
-
-	auto cover = object_ptr<Ui::VerticalLayout>((QWidget*)nullptr);
-	const auto container = cover.data();
-	const auto show = delegate()->peerListUiShow();
-	FillUpgradeToPremiumCover(container, show, _peer, _forbidden);
-
-	container->add(
-		object_ptr<Ui::GradientButton>::fromRaw(
-			Settings::CreateSubscribeButton(
-				show,
-				ChatHelpers::ResolveWindowDefault(),
-				{
-					.parent = container,
-					.computeRef = [] { return u"invite_privacy"_q; },
-					.text = tr::lng_messages_privacy_premium_button(),
-				})),
-				st::inviteForbiddenSubscribePadding);
-
-	if (_forbidden.users.size() > _forbidden.premiumAllowsWrite.size()) {
-		if (_can) {
-			container->add(
-				MakeShowOrLabel(container, tr::lng_invite_upgrade_or()),
-				st::inviteForbiddenOrLabelPadding,
-				style::al_justify);
-		}
-		container->add(
-			object_ptr<Ui::FlatLabel>(
-				container,
-				(_can
-					? tr::lng_invite_upgrade_via_title()
-					: tr::lng_via_link_cant()),
-				st::inviteForbiddenTitle),
-			st::inviteForbiddenTitlePadding,
-			style::al_top);
-
-		const auto about = _can
-			? (_peer->isBroadcast()
-				? tr::lng_invite_upgrade_via_channel_about
-				: tr::lng_invite_upgrade_via_group_about)(
-					tr::now,
-					tr::marked)
-			: (_forbidden.users.size() == 1
-				? tr::lng_via_link_cant_one(
-					tr::now,
-					lt_user,
-					TextWithEntities{ _forbidden.users.front()->shortName() },
-					tr::rich)
-				: tr::lng_via_link_cant_many(
-					tr::now,
-					lt_count,
-					int(_forbidden.users.size()),
-					tr::rich));
-		container->add(
-			object_ptr<Ui::FlatLabel>(
-				container,
-				rpl::single(about),
-				st::inviteForbiddenInfo),
-			st::inviteForbiddenInfoPadding,
-			style::al_top);
-	}
-	delegate()->peerListSetAboveWidget(std::move(cover));
-}
-
 void InviteForbiddenController::prepare() {
 	session().api().premium().someMessageMoneyRestrictionsResolved(
 	) | rpl::on_next([=] {
@@ -579,13 +397,7 @@ void InviteForbiddenController::prepare() {
 		}
 	}, lifetime());
 
-	if (session().premium()
-		|| (_forbidden.premiumAllowsInvite.empty()
-			&& _forbidden.premiumAllowsWrite.empty())) {
-		setSimpleCover();
-	} else {
-		setComplexCover();
-	}
+	setSimpleCover();
 
 	for (const auto &user : _users) {
 		appendRow(user);
@@ -1122,13 +934,12 @@ bool ChatInviteForbidden(
 		std::shared_ptr<Ui::Show> show,
 		not_null<PeerData*> peer,
 		ForbiddenInvites forbidden) {
+	// LoogriGram: a small enough set of people who would accept a message
+	// from a subscriber used to get SimpleForbiddenBox, which was nothing but
+	// the offer to become one. Every case now goes to the list below, which
+	// says who cannot be added and offers the invite link.
 	if (forbidden.empty() || !show || !show->valid()) {
 		return false;
-	} else if (forbidden.users.size() <= kUserpicsLimit
-		&& (forbidden.premiumAllowsWrite.size()
-			== forbidden.users.size())) {
-		show->show(Box(SimpleForbiddenBox, peer, forbidden));
-		return true;
 	}
 	auto controller = std::make_unique<InviteForbiddenController>(
 		peer,
