@@ -763,15 +763,13 @@ void BackgroundPreviewBox::applyForPeer() {
 	});
 	// LoogriGram: this was a padlocked button that answered a non-subscriber
 	// with the wallpaper pitch. It could not be reached by one: the overlay
-	// it sits in is only built when premium(), which is premium()
-	// here, so the lock was never engaged and the pitch never shown. Plain
-	// button, one thing it does.
+	// it sits in is only built when premium() is true, so the lock was never
+	// engaged and the pitch never shown. Plain button, one thing it does.
 	const auto forBoth = CreateChild<RoundButton>(
 		overlay,
 		tr::lng_background_apply_both(
-			tr::now,
 			lt_user,
-			_forPeer->shortName()),
+			rpl::single(_forPeer->shortName())),
 		st::backgroundConfirm);
 	forBoth->setClickedCallback([=] {
 		applyForPeer(true);
