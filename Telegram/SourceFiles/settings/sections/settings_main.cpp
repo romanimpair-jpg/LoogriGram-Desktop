@@ -19,7 +19,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/call_delayed.h"
 #include "base/platform/base_platform_info.h"
 #include "boxes/language_box.h"
-#include "boxes/star_gift_box.h"
 #include "boxes/username_box.h"
 #include "core/application.h"
 #include "core/click_handler_types.h"
@@ -66,6 +65,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/power_saving.h"
 #include "ui/rect.h"
 #include "ui/text/format_values.h"
+#include "ui/text/text_custom_emoji.h"
 #include "ui/text/text_utilities.h"
 #include "ui/toast/toast.h"
 #include "ui/vertical_list.h"
@@ -523,15 +523,8 @@ void BuildPremiumSection(SectionBuilder &builder) {
 	// replies, opening hours, a location, chatbots - every one of which is
 	// sold with a subscription. The section is deleted, so is the row.
 
-	if (session->premiumCanBuy()) {
-		builder.addButton({
-			.id = u"main/send-gift"_q,
-			.title = tr::lng_settings_gift_premium(),
-			.icon = { .icon = &st::menuIconGiftPremium, .newBadge = true },
-			.onClick = [=] { Ui::ChooseStarGiftRecipient(controller); },
-			.keywords = { u"present"_q, u"send"_q },
-		});
-	}
+	// LoogriGram: a "Send a Gift" row opened a recipient picker and then the
+	// send-a-gift box. Gifts are not sent from this client.
 
 	builder.addSkip();
 }

@@ -1027,20 +1027,19 @@ historyComposeButton: FlatButton {
 		color: historyComposeButtonBgRipple;
 	}
 }
-historyGiftToChannel: IconButton(defaultIconButton) {
+// LoogriGram: historyGiftToChannel was the gift button in a channel's
+// bottom bar and the base for this one. The button is deleted, so its
+// values live here instead.
+historyDirectMessage: IconButton(defaultIconButton) {
 	width: 46px;
 	height: 46px;
 
-	icon: icon{{ "menu/gift_premium", windowActiveTextFg }};
-	iconOver: icon{{ "menu/gift_premium", windowActiveTextFg }};
+	icon: icon{{ "menu/chat_discuss", windowActiveTextFg }};
+	iconOver: icon{{ "menu/chat_discuss", windowActiveTextFg }};
 
 	rippleAreaPosition: point(3px, 3px);
 	rippleAreaSize: 40px;
 	ripple: universalRippleAnimation;
-}
-historyDirectMessage: IconButton(historyGiftToChannel) {
-	icon: icon{{ "menu/chat_discuss", windowActiveTextFg }};
-	iconOver: icon{{ "menu/chat_discuss", windowActiveTextFg }};
 }
 historyUnblock: FlatButton(historyComposeButton) {
 	color: attentionButtonFg;
@@ -1351,10 +1350,6 @@ historyScheduledToggle: IconButton(historyAttach) {
 		{ "chat/input_scheduled", historyComposeIconFgOver },
 		{ "chat/input_scheduled_dot", attentionButtonFg }
 	};
-}
-historyGiftToUser: IconButton(historyAttach) {
-	icon: icon {{ "chat/input_gift", historyComposeIconFg }};
-	iconOver: icon {{ "chat/input_gift", historyComposeIconFgOver }};
 }
 historySuggestPostToggle: IconButton(historyAttach) {
 	icon: icon{{ "chat/input_paid", historyComposeIconFg }};

@@ -417,7 +417,6 @@ HistoryWidget::HistoryWidget(
 	_botStart->addClickHandler([=] { sendBotStartCommand(); });
 	_joinChannel->addClickHandler([=] { joinChannel(); });
 	_muteUnmute->addClickHandler([=] { toggleMuteUnmute(); });
-	setupGiftToChannelButton();
 	setupDirectMessageButton();
 	_reportMessages->addClickHandler([=] { reportSelectedMessages(); });
 	_field->submits(
@@ -531,9 +530,6 @@ HistoryWidget::HistoryWidget(
 		}
 		if (_ttlInfo) {
 			_ttlInfo->setVisible(!hide);
-		}
-		if (_giftToUser) {
-			_giftToUser->setVisible(!hide);
 		}
 		if (_scheduled) {
 			_scheduled->setVisible(!hide);
@@ -918,8 +914,7 @@ HistoryWidget::HistoryWidget(
 			return true;
 		} else if (update.peer->isSelf()
 			&& (update.flags & PeerUpdateFlag::GiftSettings)) {
-			refreshSendGiftToggle();
-			updateControlsVisibility();
+					updateControlsVisibility();
 			updateControlsGeometry();
 		}
 		return false;
@@ -961,8 +956,7 @@ HistoryWidget::HistoryWidget(
 			updateSendButtonType();
 		}
 		if (flags & PeerUpdateFlag::GiftSettings) {
-			refreshSendGiftToggle();
-		}
+				}
 		if (flags & (PeerUpdateFlag::BotStartToken
 			| PeerUpdateFlag::GiftSettings)) {
 			updateControlsVisibility();
@@ -1185,16 +1179,6 @@ void HistoryWidget::refreshJoinChannelText() {
 			? tr::lng_profile_apply_to_join_group(tr::now)
 			: tr::lng_profile_join_group(tr::now)).toUpper());
 	}
-}
-
-void HistoryWidget::refreshGiftToChannelShown() {
-	if (!_giftToChannel || !_peer) {
-		return;
-	}
-	const auto channel = _peer->asChannel();
-	_giftToChannel->setVisible(channel
-		&& channel->isBroadcast()
-		&& channel->stargiftsAvailable());
 }
 
 void HistoryWidget::refreshDirectMessageShown() {
@@ -2654,33 +2638,8 @@ void HistoryWidget::setupShortcuts() {
 	}, lifetime());
 }
 
-void HistoryWidget::setupGiftToChannelButton() {
-	_giftToChannel = Ui::CreateChild<Ui::IconButton>(
-		_muteUnmute.data(),
-		st::historyGiftToChannel);
-	_giftToChannel->setAccessibleName(tr::lng_gift_channel_title(tr::now));
-	widthValue() | rpl::on_next([=](int width) {
-		_giftToChannel->moveToRight(0, 0, width);
-	}, _giftToChannel->lifetime());
-	_giftToChannel->setClickedCallback([=] {
-		Ui::ShowStarGiftBox(controller(), _peer);
-	});
-	rpl::combine(
-		_muteUnmute->shownValue(),
-		_joinChannel->shownValue()
-	) | rpl::on_next([=](bool muteUnmute, bool joinChannel) {
-		const auto newParent = (muteUnmute && !joinChannel)
-			? _muteUnmute.data()
-			: (joinChannel && !muteUnmute)
-			? _joinChannel.data()
-			: nullptr;
-		if (newParent) {
-			_giftToChannel->setParent(newParent);
-			_giftToChannel->moveToRight(0, 0);
-			refreshGiftToChannelShown();
-		}
-	}, _giftToChannel->lifetime());
-}
+// LoogriGram: a gift button sat in the channel's bottom bar and opened the
+// send-a-gift box. Gifts are not sent from this client.
 
 void HistoryWidget::setupDirectMessageButton() {
 	_directMessage = Ui::CreateChild<Ui::IconButton>(
@@ -3158,7 +3117,6 @@ void HistoryWidget::showHistory(
 			updateControlsGeometry();
 		}, _contactStatus->bar().lifetime());
 
-		refreshGiftToChannelShown();
 		refreshDirectMessageShown();
 		if (const auto user = _peer->asUser()) {
 			_paysStatus = std::make_unique<PaysStatus>(
@@ -3231,8 +3189,7 @@ void HistoryWidget::showHistory(
 		}
 		refreshSuggestPostToggle();
 		refreshScheduledToggle();
-		refreshSendGiftToggle();
-		refreshSendAsToggle();
+			refreshSendAsToggle();
 
 		if (_showAtMsgId == ShowAtUnreadMsgId) {
 			if (_history->scrollTopItem) {
@@ -3333,8 +3290,7 @@ void HistoryWidget::showHistory(
 				) | rpl::flatten_latest(
 				) | rpl::distinct_until_changed(
 				) | rpl::on_next([=] {
-					refreshSendGiftToggle();
-					updateControlsVisibility();
+									updateControlsVisibility();
 					updateControlsGeometry();
 				}, _list->lifetime());
 			}
@@ -3766,35 +3722,9 @@ void HistoryWidget::refreshScheduledToggle() {
 	}
 }
 
-void HistoryWidget::refreshSendGiftToggle() {
-	using Type = Api::DisallowedGiftType;
-	const auto user = _peer ? _peer->asUser() : nullptr;
-	const auto disallowed = user ? user->disallowedGiftTypes() : Type();
-	const auto all = Type::Premium
-		| Type::Unlimited
-		| Type::Limited
-		| Type::Unique;
-	const auto has = user
-		&& _canSendMessages
-		&& !user->isServiceUser()
-		&& !user->isSelf()
-		&& !user->isBot()
-		&& ((disallowed & Type::SendHide)
-			|| (session().user()->disallowedGiftTypes() & Type::SendHide)
-			|| Data::IsBirthdayToday(user->birthday()))
-		&& ((disallowed & all) != all);
-	if (!_giftToUser && has) {
-		_giftToUser.create(this, st::historyGiftToUser);
-		_giftToUser->setAccessibleName(tr::lng_gift_send_title(tr::now));
-		_giftToUser->show();
-		_giftToUser->addClickHandler([=] {
-			Ui::ShowStarGiftBox(controller(), _peer);
-		});
-		orderWidgets(); // Raise drag areas to the top.
-	} else if (_giftToUser && !has) {
-		_giftToUser.destroy();
-	}
-}
+// LoogriGram: a gift button appeared beside the message field on a
+// contact's birthday, or when they had asked to be sent gifts. Gifts
+// are not sent from this client.
 
 void HistoryWidget::applySuggestOptions(
 		SuggestOptions suggest,
@@ -4018,9 +3948,6 @@ void HistoryWidget::updateControlsVisibility() {
 		if (_toggleSuggestPost) {
 			_toggleSuggestPost->hide();
 		}
-		if (_giftToUser) {
-			_giftToUser->hide();
-		}
 		if (_ttlInfo) {
 			_ttlInfo->hide();
 		}
@@ -4151,14 +4078,6 @@ void HistoryWidget::updateControlsVisibility() {
 					rightButtonsChanged = true;
 				}
 			}
-			if (_giftToUser) {
-				const auto was = _giftToUser->isVisible();
-				const auto now = (!_editMsgId) && (!hideExtra);
-				if (was != now) {
-					_giftToUser->setVisible(now);
-					rightButtonsChanged = true;
-				}
-			}
 			if (_ttlInfo) {
 				const auto was = _ttlInfo->isVisible();
 				const auto now = (!_editMsgId) && (!hideExtra);
@@ -4212,9 +4131,6 @@ void HistoryWidget::updateControlsVisibility() {
 		}
 		if (_toggleSuggestPost) {
 			_toggleSuggestPost->hide();
-		}
-		if (_giftToUser) {
-			_giftToUser->hide();
 		}
 		if (_ttlInfo) {
 			_ttlInfo->hide();
@@ -7115,7 +7031,7 @@ void HistoryWidget::moveFieldControls() {
 	}
 
 // (_botMenu.button) (_attachToggle|_replaceMedia) (_sendAs) ---- _inlineResults ------------------------------ _tabbedPanel ------ _fieldBarCancel
-// (_attachDocument|_attachPhoto) _field (_ttlInfo) (_scheduled) (_giftToUser) (_silent|_cmdStart|_kbShow) (_toggleSuggestPost) (_kbHide|_tabbedSelectorToggle) _send
+// (_attachDocument|_attachPhoto) _field (_ttlInfo) (_scheduled) (_silent|_cmdStart|_kbShow) (_toggleSuggestPost) (_kbHide|_tabbedSelectorToggle) _send
 // (_botStart|_unblock|_joinChannel|_muteUnmute|_reportMessages)
 
 	auto buttonsBottom = bottom - _attachToggle->height();
@@ -7160,10 +7076,6 @@ void HistoryWidget::moveFieldControls() {
 	if (_toggleSuggestPost) {
 		_toggleSuggestPost->moveToRight(right, buttonsBottom);
 		right += _toggleSuggestPost->width();
-	}
-	if (_giftToUser) {
-		_giftToUser->moveToRight(right, buttonsBottom);
-		right += _giftToUser->width();
 	}
 	if (_scheduled) {
 		_scheduled->moveToRight(right, buttonsBottom);
@@ -7230,9 +7142,6 @@ void HistoryWidget::updateFieldSize() {
 	}
 	if (_toggleSuggestPost && !_toggleSuggestPost->isHidden()) {
 		fieldWidth -= _toggleSuggestPost->width();
-	}
-	if (_giftToUser && !_giftToUser->isHidden()) {
-		fieldWidth -= _giftToUser->width();
 	}
 	if (_scheduled && !_scheduled->isHidden()) {
 		fieldWidth -= _scheduled->width();
@@ -10266,7 +10175,6 @@ void HistoryWidget::fullInfoUpdated() {
 		if (readyForBotStart && clearMaybeSendStart() && hasNonEmpty) {
 			sendBotStartCommand();
 		}
-		refreshGiftToChannelShown();
 		refreshDirectMessageShown();
 	}
 	if (updateCmdStartShown()) {
@@ -10356,7 +10264,6 @@ bool HistoryWidget::updateCanSendMessage() {
 	}
 	refreshSuggestPostToggle();
 	refreshScheduledToggle();
-	refreshSendGiftToggle();
 	refreshSilentToggle();
 	return true;
 }

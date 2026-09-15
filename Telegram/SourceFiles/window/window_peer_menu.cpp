@@ -12,7 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "menu/menu_mark_as_read.h"
 #include "boxes/about_box.h"
 #include "boxes/share_box.h"
-#include "boxes/star_gift_box.h"
 #include "chat_helpers/compose/compose_show.h"
 #include "chat_helpers/message_field.h"
 #include "chat_helpers/share_message_phrase_factory.h"
@@ -333,7 +332,6 @@ private:
 	void addNewMembers();
 	void addDeleteContact();
 	void addTTLSubmenu(bool addSeparator);
-	void addSendGift();
 	void addCreateTopic();
 	void addViewAsMessages();
 	void addViewAsTopics();
@@ -1634,32 +1632,8 @@ void Filler::addTTLSubmenu(bool addSeparator) {
 	}
 }
 
-void Filler::addSendGift() {
-	const auto user = _peer->asUser();
-	const auto channel = _peer->asBroadcast();
-	if (!user && !channel) {
-		return;
-	} else if (user
-		&& (user->isInaccessible()
-			|| user->isSelf()
-			|| user->isBot()
-			|| user->isServiceUser()
-			|| user->isNotificationsUser()
-			|| user->isRepliesChat()
-			|| user->isVerifyCodes()
-			|| !user->session().premiumCanBuy())) {
-		return;
-	} else if (channel
-		&& (channel->isForbidden() || !channel->stargiftsAvailable())) {
-		return;
-	}
-
-	const auto peer = _peer;
-	const auto navigation = _controller;
-	_addAction(tr::lng_profile_gift_premium(tr::now), [=] {
-		Ui::ShowStarGiftBox(navigation, peer);
-	}, &st::menuIconGiftPremium);
-}
+// LoogriGram: a "Send a gift" item in the peer menu opened the send-a-gift
+// box. Gifts are not sent from this client.
 
 void Filler::fill() {
 	if (_folder) {
@@ -1914,7 +1888,6 @@ void Filler::fillProfileActions() {
 	addEditContact();
 	addBotToGroup();
 	addNewMembers();
-	addSendGift();
 	addViewStatistics();
 	addStoryArchive();
 	addManageChat();

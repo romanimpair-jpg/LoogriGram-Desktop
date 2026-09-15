@@ -50,7 +50,6 @@ struct ActivateArgs {
 enum class Priority : int {
 	UserpicSetup     = 1,
 	BirthdaySetup    = 3,
-	BirthdayContacts = 4,
 	LowCreditsSubs   = 5,
 	CustomPromo      = 7,
 	GiftAuctions     = 8,
@@ -66,7 +65,6 @@ struct Spec {
 
 [[nodiscard]] std::vector<Spec> AllSpecs();
 
-[[nodiscard]] Spec MakeBirthdayContactsSpec();
 [[nodiscard]] Spec MakeBirthdaySetupSpec();
 [[nodiscard]] Spec MakeCustomPromoSpec();
 [[nodiscard]] Spec MakeGiftAuctionsSpec();

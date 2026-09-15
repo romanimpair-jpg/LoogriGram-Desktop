@@ -1874,15 +1874,7 @@ void FillContextMenuItems(
 				const auto out = view->data()->out();
 				const auto outgoingGift = isGift
 					&& (starGiftUpgrade ? !out : out);
-				if (outgoingGift
-					&& gift->type != Data::GiftType::BirthdaySuggest) {
-					result->addAction(
-						tr::lng_context_gift_send(tr::now),
-						crl::guard(controller, [=] {
-							Ui::ShowStarGiftBox(controller, peer);
-						}),
-						&st::menuIconGiftPremium);
-				}
+				// LoogriGram: "Send a gift" stood here. Gifts are not sent.
 			}
 		}
 		if (const auto document = media ? media->getDocument() : nullptr) {

@@ -118,7 +118,6 @@ void BottomControls::applyPeerUpdate(Data::PeerUpdate::Flags flags) {
 		| Flag::Rights
 		| Flag::ChannelAmIn
 		| Flag::StarsPerMessage)) {
-		refreshGiftToChannelShown();
 		refreshDirectMessageShown();
 	}
 	if (flags & Flag::Notifications) {
@@ -265,10 +264,8 @@ void BottomControls::setupButtons() {
 		_reportMessages->setClickedCallback([=] {
 			_actionRequests.fire(BottomControlsAction::Report);
 		});
-		setupGiftToChannelButton();
 		setupDirectMessageButton();
 		refreshJoinChannelText();
-		refreshGiftToChannelShown();
 		refreshDirectMessageShown();
 		refreshMuteUnmuteText();
 		refreshUnblockText();
@@ -287,18 +284,8 @@ void BottomControls::setupButtons() {
 	}
 }
 
-void BottomControls::setupGiftToChannelButton() {
-	_giftToChannel = Ui::CreateChild<Ui::IconButton>(
-		_muteUnmute.get(),
-		st::historyGiftToChannel);
-	_giftToChannel->setAccessibleName(tr::lng_gift_channel_title(tr::now));
-	_giftToChannel->setClickedCallback([=] {
-		Ui::ShowStarGiftBox(_controller, _peer);
-	});
-	setupOverlayIconButton(_giftToChannel, true, [=] {
-		refreshGiftToChannelShown();
-	});
-}
+// LoogriGram: a gift button sat in the channel's bottom bar and opened the
+// send-a-gift box. Gifts are not sent from this client.
 
 void BottomControls::setupDirectMessageButton() {
 	_directMessage = Ui::CreateChild<Ui::IconButton>(
@@ -471,16 +458,6 @@ void BottomControls::refreshMuteUnmuteText() {
 	_muteUnmute->setText((_history->muted()
 		? tr::lng_channel_unmute(tr::now)
 		: tr::lng_channel_mute(tr::now)).toUpper());
-}
-
-void BottomControls::refreshGiftToChannelShown() {
-	if (!_giftToChannel) {
-		return;
-	}
-	const auto channel = _peer->asChannel();
-	_giftToChannel->setVisible(channel
-		&& channel->isBroadcast()
-		&& channel->stargiftsAvailable());
 }
 
 void BottomControls::refreshDirectMessageShown() {

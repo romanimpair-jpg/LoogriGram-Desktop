@@ -843,7 +843,6 @@ PRIVATE
     dialogs/dialogs_top_bar_suggestion_test.cpp
     dialogs/suggestions/suggestion.cpp
     dialogs/suggestions/suggestion.h
-    dialogs/suggestions/suggestion_birthday_contacts.cpp
     dialogs/suggestions/suggestion_birthday_setup.cpp
     dialogs/suggestions/suggestion_custom_promo.cpp
     dialogs/suggestions/suggestion_gift_auctions.cpp

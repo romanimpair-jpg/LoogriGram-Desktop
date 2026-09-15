@@ -445,7 +445,6 @@ private:
 	void refreshTopBarActiveChat();
 
 	void refreshJoinChannelText();
-	void refreshGiftToChannelShown();
 	void refreshDirectMessageShown();
 	void requestMessageData(MsgId msgId);
 	void messageDataReceived(not_null<PeerData*> peer, MsgId msgId);
@@ -606,7 +605,6 @@ private:
 	}
 
 	void setupShortcuts();
-	void setupGiftToChannelButton();
 	void setupDirectMessageButton();
 
 	void handlePeerMigration();
@@ -753,7 +751,6 @@ private:
 
 	void setupScheduledToggle();
 	void refreshScheduledToggle();
-	void refreshSendGiftToggle();
 	void refreshSuggestPostToggle();
 	void applySuggestOptions(
 		SuggestOptions suggest,
@@ -894,7 +891,6 @@ private:
 	object_ptr<Ui::FlatButton> _botStart;
 	object_ptr<Ui::FlatButton> _joinChannel;
 	object_ptr<Ui::FlatButton> _muteUnmute;
-	QPointer<Ui::IconButton> _giftToChannel;
 	QPointer<Ui::IconButton> _directMessage;
 	rpl::lifetime _directMessageLifetime;
 	object_ptr<Ui::FlatButton> _reportMessages;
@@ -911,7 +907,6 @@ private:
 	object_ptr<Ui::IconButton> _botKeyboardHide;
 	object_ptr<Ui::IconButton> _botCommandStart;
 	object_ptr<Ui::IconButton> _toggleSuggestPost = { nullptr };
-	object_ptr<Ui::IconButton> _giftToUser = { nullptr };
 	object_ptr<Ui::SilentToggle> _silent = { nullptr };
 	object_ptr<Ui::IconButton> _scheduled = { nullptr };
 	std::unique_ptr<HistoryView::Controls::TTLButton> _ttlInfo;

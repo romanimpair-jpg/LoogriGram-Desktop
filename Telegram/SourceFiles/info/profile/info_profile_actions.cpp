@@ -28,7 +28,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peers/verify_peers_box.h"
 #include "boxes/report_messages_box.h"
 #include "boxes/share_box.h"
-#include "boxes/star_gift_box.h"
 #include "boxes/translate_box.h"
 #include "core/application.h"
 #include "core/click_handler_types.h"
@@ -907,7 +906,6 @@ void DeleteContactNote(
 
 [[nodiscard]] object_ptr<Ui::SlideWrap<>> CreateBirthday(
 		not_null<QWidget*> parent,
-		not_null<Window::SessionController*> controller,
 		not_null<UserData*> user) {
 	using namespace Data;
 
@@ -938,32 +936,11 @@ void DeleteContactNote(
 		rpl::duplicate(birthday)
 	) | rpl::map(tr::marked);
 
-	const auto giftIcon = Ui::CreateChild<Ui::RpWidget>(layout);
-	giftIcon->resize(st::birthdayTodayIcon.size());
-	layout->sizeValue() | rpl::on_next([=](QSize size) {
-		giftIcon->moveToRight(
-			0,
-			(size.height() - giftIcon->height()) / 2,
-			size.width());
-	}, giftIcon->lifetime());
-	giftIcon->paintRequest() | rpl::on_next([=] {
-		auto p = QPainter(giftIcon);
-		st::birthdayTodayIcon.paint(p, 0, 0, giftIcon->width());
-	}, giftIcon->lifetime());
-
-	rpl::duplicate(
-		birthday
-	) | rpl::map([](Data::Birthday value) {
-		return Data::IsBirthdayTodayValue(value);
-	}) | rpl::flatten_latest(
-	) | rpl::distinct_until_changed(
-	) | rpl::on_next([=](bool today) {
-		const auto disable = !today && user->session().premiumCanBuy();
-		button->setDisabled(disable);
-		button->setAttribute(Qt::WA_TransparentForMouseEvents, disable);
-		button->clearState();
-		giftIcon->setVisible(!disable);
-	}, result->lifetime());
+	// LoogriGram: on the day itself this row grew a gift icon and became a
+	// button that opened the send-a-gift box. Gifts are not sent from here
+	// any more, so the birthday is a plain label all year round.
+	button->setDisabled(true);
+	button->setAttribute(Qt::WA_TransparentForMouseEvents, true);
 
 	BirthdayValueText(
 		rpl::duplicate(birthday),
@@ -1002,12 +979,6 @@ void DeleteContactNote(
 	result->finishAnimating();
 
 	Ui::ResizeFitChild(button, outer);
-
-	button->setClickedCallback([=] {
-		if (!button->isDisabled()) {
-			Ui::ShowStarGiftBox(controller, user);
-		}
-	});
 
 	return result;
 }
@@ -1563,7 +1534,7 @@ Section DetailsFiller::makeInfo() {
 
 		if (!user->isBot()) {
 			tracker.track(result->add(
-				CreateBirthday(result, controller, user),
+				CreateBirthday(result, user),
 				{},
 				style::al_justify));
 			tracker.track(result->add(

@@ -20,7 +20,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peers/manage_community_box.h"
 #include "boxes/moderate_messages_box.h"
 #include "boxes/report_messages_box.h"
-#include "boxes/star_gift_box.h"
 #include "calls/calls_instance.h"
 #include "chat_helpers/stickers_lottie.h"
 #include "core/application.h"
@@ -1111,38 +1110,8 @@ void TopBar::setupActions(not_null<Window::SessionController*> controller) {
 	if (chechMax()) {
 		return;
 	}
-	{
-		const auto channel = peer->asBroadcast();
-		if (!user && !channel) {
-		} else if (user
-			&& (user->isInaccessible()
-				|| user->isSelf()
-				|| user->isBot()
-				|| user->isServiceUser()
-				|| user->isNotificationsUser()
-				|| user->isRepliesChat()
-				|| user->isVerifyCodes()
-				|| !user->session().premiumCanBuy())) {
-		} else if (channel
-			&& (channel->isForbidden()
-				|| !channel->stargiftsAvailable()
-				|| channel->amCreator())) {
-		} else {
-			const auto giftButton = Ui::CreateChild<TopBarActionButton>(
-				this,
-				tr::lng_profile_action_short_gift(tr::now),
-				st::infoProfileTopBarActionGift);
-			giftButton->setClickedCallback([=] {
-				Ui::ShowStarGiftBox(controller, peer);
-			});
-			giftButton->setAccessibleName(tr::lng_profile_action_short_gift(tr::now));
-			_actions->add(giftButton);
-			buttons.push_back(giftButton);
-		}
-	}
-	if (chechMax()) {
-		return;
-	}
+	// LoogriGram: a "Gift" action sat among the profile's top buttons and
+	// opened the send-a-gift box. Gifts are not sent from this client.
 	if (!topic
 		&& canJoin
 		&& ((chat && !chat->amCreator() && !chat->hasAdminRights())
