@@ -1320,7 +1320,6 @@ CreatePollBox::CreatePollBox(
 	not_null<PeerData*> peer,
 	PollData::Flags chosen,
 	PollData::Flags disabled,
-	rpl::producer<int> starsRequired,
 	Api::SendType sendType,
 	SendMenu::Details sendMenuDetails)
 : _controller(controller)
@@ -1328,8 +1327,7 @@ CreatePollBox::CreatePollBox(
 , _chosen(chosen)
 , _disabled(disabled)
 , _sendType(sendType)
-, _sendMenuDetails([result = sendMenuDetails] { return result; })
-, _starsRequired(std::move(starsRequired)) {
+, _sendMenuDetails([result = sendMenuDetails] { return result; }) {
 }
 
 rpl::producer<CreatePollBox::Result> CreatePollBox::submitRequests() const {
@@ -3399,9 +3397,9 @@ object_ptr<Ui::RpWidget> CreatePollBox::setupContent() {
 	const auto submit = addButton(
 		tr::lng_polls_create_button(),
 		[=] { isNormal ? send({}) : schedule(); });
-	submit->setText(PaidSendButtonText(_starsRequired.value(), isNormal
+	submit->setText(isNormal
 		? tr::lng_polls_create_button()
-		: tr::lng_schedule_button()));
+		: tr::lng_schedule_button());
 	const auto sendMenuDetails = [=] {
 		collectError();
 		return (state->error) ? SendMenu::Details() : _sendMenuDetails();

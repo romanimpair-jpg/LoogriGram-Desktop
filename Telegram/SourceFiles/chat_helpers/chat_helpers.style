@@ -181,7 +181,6 @@ SendButton {
 	sendIconPosition: point;
 	sendIconFillPadding: pixels;
 	inner: IconButton;
-	stars: RoundButton;
 	recordSize: size;
 	sendDisabledFg: color;
 	sendIconFg: color;
@@ -1477,12 +1476,6 @@ historySend: SendButton {
 	inner: IconButton(historyAttach) {
 		icon: historySendIcon;
 		iconOver: historySendIconOver;
-	}
-	stars: RoundButton(defaultActiveButton) {
-		height: 28px;
-		padding: margins(0px, 0px, 6px, 0px);
-		textTop: 5px;
-		width: -8px;
 	}
 	recordSize: size(26px, 26px);
 	sendDisabledFg: historyComposeIconFg;

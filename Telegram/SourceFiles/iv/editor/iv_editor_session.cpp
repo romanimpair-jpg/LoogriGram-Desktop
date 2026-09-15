@@ -1033,25 +1033,6 @@ private:
 		return _session->ephemeralMessages().wouldSend(message);
 	}
 
-	[[nodiscard]] bool submitPaymentChecked(
-			const std::optional<TextWithEntities> &simple,
-			Fn<void(int)> resend) {
-		if (_mode != Mode::Compose
-			|| !_composeAction
-			|| _submitOptions.scheduled
-			|| welcomeTemplatesCompose()
-			|| submitWouldBeEphemeral(simple)) {
-			return true;
-		}
-		const auto show = resolveShow();
-		return !show || _sendPayment.check(
-			show,
-			_peer,
-			_submitOptions,
-			1,
-			std::move(resend));
-	}
-
 	[[nodiscard]] bool submitRequested() {
 		if (_submittedPage || _submitApiRequested) {
 			return false;
@@ -1076,18 +1057,7 @@ private:
 			return false;
 		}
 		auto simple = SerializeAsSimple(_state->richPage(), _session);
-		const auto weak = base::make_weak(this);
-		const auto withPaymentApproved = [weak](int approved) {
-			if (const auto strong = weak.get()) {
-				auto options = strong->_submitOptions;
-				options.starsApproved = approved;
-				strong->requestSubmit(std::move(options));
-			}
-		};
 		if (simple) {
-			if (!submitPaymentChecked(simple, withPaymentApproved)) {
-				return false;
-			}
 			return submitSimpleText(std::move(*simple));
 		}
 		if (!CanUseRichMessages(_session)) {
@@ -1210,20 +1180,6 @@ private:
 
 	void submitWithoutFormatting(RichPage page) {
 		auto plain = FlattenRichPageToSimpleText(page);
-		const auto weak = base::make_weak(this);
-		const auto withPaymentApproved = [weak, page](int approved) {
-			if (const auto strong = weak.get()) {
-				strong->_submitOptions.starsApproved = approved;
-				if (strong->_composeAction) {
-					strong->_composeAction->options
-						= strong->_submitOptions;
-				}
-				strong->submitWithoutFormatting(page);
-			}
-		};
-		if (!submitPaymentChecked(plain, withPaymentApproved)) {
-			return;
-		}
 		if (submitSimpleText(std::move(plain)) && _windowHost) {
 			_windowHost->close();
 		}
@@ -1310,9 +1266,6 @@ private:
 			&& submitWouldBeEphemeral(std::nullopt)) {
 			flags |= MessageFlag::Ephemeral;
 		}
-		const auto starsPaid = std::min(
-			peer->starsPerMessageChecked(),
-			action.options.starsApproved);
 		return history->addNewLocalMessage({
 			.id = _articleId.msg,
 			.flags = flags,
@@ -1321,7 +1274,6 @@ private:
 			.date = NewMessageDate(action.options),
 			.scheduleRepeatPeriod = action.options.scheduleRepeatPeriod,
 			.shortcutId = action.options.shortcutId,
-			.starsPaid = starsPaid,
 			.postAuthor = NewMessagePostAuthor(action),
 			.effectId = action.options.effectId,
 			.suggest = HistoryMessageSuggestInfo(action.options),
@@ -4274,7 +4226,6 @@ private:
 	const RichMessageLimits _limits;
 	const std::shared_ptr<State> _state;
 	Api::SendOptions _submitOptions;
-	SendPaymentHelper _sendPayment;
 	std::shared_ptr<ChatHelpers::Show> _editorShow;
 	QPointer<Ui::RpWidget> _submitButton;
 	QPointer<Widget> _editor;
@@ -4908,17 +4859,6 @@ bool SessionPremium(not_null<Main::Session*> session) {
 
 rpl::producer<bool> AmPremiumValue(not_null<Main::Session*> session) {
 	return ::Data::AmPremiumValue(session);
-}
-
-rpl::producer<int> StarsPerMessageValue(
-		not_null<Main::Session*> session,
-		not_null<PeerData*> peer) {
-	return session->changes().peerFlagsValue(
-		peer,
-		::Data::PeerUpdate::Flag::StarsPerMessage
-	) | rpl::map([=] {
-		return peer->starsPerMessageChecked();
-	});
 }
 
 bool IsEmojiDocument(not_null<DocumentData*> document) {

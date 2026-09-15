@@ -887,13 +887,11 @@ void Tasks::checkLastTask() {
 EditTodoListBox::EditTodoListBox(
 	QWidget*,
 	not_null<Window::SessionController*> controller,
-	rpl::producer<int> starsRequired,
 	Api::SendType sendType,
 	SendMenu::Details sendMenuDetails)
 : _controller(controller)
 , _sendType(sendType)
 , _sendMenuDetails([result = sendMenuDetails] { return result; })
-, _starsRequired(std::move(starsRequired))
 , _titleLimit(controller->session().appConfig().todoListTitleLimit()) {
 }
 
@@ -1182,11 +1180,11 @@ object_ptr<Ui::RpWidget> EditTodoListBox::setupContent() {
 			? tr::lng_settings_save()
 			: tr::lng_todo_create_button()),
 		[=] { isNormal ? send({}) : schedule(); });
-	submit->setText(PaidSendButtonText(_starsRequired.value(), _editingItem
+	submit->setText(_editingItem
 		? tr::lng_settings_save()
 		: isNormal
 		? tr::lng_todo_create_button()
-		: tr::lng_schedule_button()));
+		: tr::lng_schedule_button());
 	const auto sendMenuDetails = [=] {
 		collectError();
 		return (*error) ? SendMenu::Details() : _sendMenuDetails();

@@ -118,13 +118,11 @@ struct RecipientMoneyRestrictionError {
 
 struct RestrictionBadgeCache {
 	int paletteVersion = 0;
-	int stars = 0;
 	QImage badge;
 };
 void PaintRestrictionBadge(
 	Painter &p,
 	not_null<const style::PeerListItem*> st,
-	int stars,
 	RestrictionBadgeCache &cache,
 	int x,
 	int y,

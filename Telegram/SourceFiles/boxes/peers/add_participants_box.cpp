@@ -104,10 +104,6 @@ public:
 	[[nodiscard]] rpl::producer<int> selectedValue() const {
 		return _selected.value();
 	}
-	[[nodiscard]] rpl::producer<int> starsToSend() const {
-		return _starsToSend.value();
-	}
-
 	void send(
 		std::vector<not_null<PeerData*>> list,
 		Ui::ShowPtr show,
@@ -119,12 +115,6 @@ private:
 		not_null<UserData*> user) const;
 	[[nodiscard]] bool canInvite(not_null<PeerData*> peer) const;
 
-	void send(
-		std::vector<not_null<PeerData*>> list,
-		Ui::ShowPtr show,
-		Fn<void()> close,
-		Api::SendOptions options);
-
 	void setSimpleCover();
 
 	const not_null<PeerData*> _peer;
@@ -132,10 +122,7 @@ private:
 	const std::vector<not_null<UserData*>> &_users;
 	const bool _can = false;
 	rpl::variable<int> _selected;
-	rpl::variable<int> _starsToSend;
 	bool _sending = false;
-
-	rpl::lifetime _paymentCheckLifetime;
 
 };
 
@@ -277,7 +264,7 @@ Api::MessageMoneyRestriction ForbiddenRow::restriction() const {
 }
 
 void ForbiddenRow::setRestriction(Api::MessageMoneyRestriction restriction) {
-	if (!restriction || !restriction.starsPerMessage) {
+	if (!restriction) {
 		_restriction = nullptr;
 		return;
 	} else if (!_restriction) {
@@ -296,7 +283,6 @@ void ForbiddenRow::paintUserpicOverlay(
 		PaintRestrictionBadge(
 			p,
 			_lockSt,
-			r->value.starsPerMessage,
 			r->cache,
 			x,
 			y,
@@ -311,7 +297,7 @@ bool ForbiddenRow::refreshLock() {
 	} else if (const auto user = peer()->asUser()) {
 		using Restriction = Api::MessageMoneyRestriction;
 		auto r = Api::ResolveMessageMoneyRestrictions(user, nullptr);
-		if (!r || !r.starsPerMessage) {
+		if (!r) {
 			r = Restriction();
 		}
 		if ((_restriction ? _restriction->value : Restriction()) != r) {
@@ -375,21 +361,16 @@ void InviteForbiddenController::setSimpleCover() {
 void InviteForbiddenController::prepare() {
 	session().api().premium().someMessageMoneyRestrictionsResolved(
 	) | rpl::on_next([=] {
-		auto stars = 0;
 		const auto process = [&](not_null<PeerListRow*> raw) {
 			const auto row = static_cast<ForbiddenRow*>(raw.get());
 			if (row->refreshLock()) {
 				delegate()->peerListUpdateRow(raw);
-			}
-			if (const auto r = row->restriction()) {
-				stars += r.starsPerMessage;
 			}
 		};
 		auto count = delegate()->peerListFullRowsCount();
 		for (auto i = 0; i != count; ++i) {
 			process(delegate()->peerListRowAt(i));
 		}
-		_starsToSend = stars;
 
 		count = delegate()->peerListSearchRowsCount();
 		for (auto i = 0; i != count; ++i) {
@@ -420,11 +401,6 @@ void InviteForbiddenController::rowClicked(not_null<PeerListRow*> row) {
 	const auto checked = row->checked();
 	delegate()->peerListSetRowChecked(row, !checked);
 	_selected = _selected.current() + (checked ? -1 : 1);
-	const auto r = static_cast<ForbiddenRow*>(row.get())->restriction();
-	if (r.starsPerMessage) {
-		_starsToSend = _starsToSend.current()
-			+ (checked ? -r.starsPerMessage : r.starsPerMessage);
-	}
 }
 
 void InviteForbiddenController::appendRow(not_null<UserData*> user) {
@@ -434,9 +410,6 @@ void InviteForbiddenController::appendRow(not_null<UserData*> user) {
 		delegate()->peerListAppendRow(std::move(row));
 		if (canInvite(user)) {
 			delegate()->peerListSetRowChecked(raw, true);
-			if (const auto r = raw->restriction()) {
-				_starsToSend = _starsToSend.current() + r.starsPerMessage;
-			}
 		}
 	}
 }
@@ -445,67 +418,11 @@ void InviteForbiddenController::send(
 		std::vector<not_null<PeerData*>> list,
 		Ui::ShowPtr show,
 		Fn<void()> close) {
-	send(list, show, close, {});
-}
-
-void InviteForbiddenController::send(
-		std::vector<not_null<PeerData*>> list,
-		Ui::ShowPtr show,
-		Fn<void()> close,
-		Api::SendOptions options) {
-	if (list.empty()) {
-		return;
-	}
-	_paymentCheckLifetime.destroy();
-
-	const auto withPaymentApproved = [=](int approved) {
-		auto copy = options;
-		copy.starsApproved = approved;
-		send(list, show, close, copy);
-	};
-	const auto messagesCount = 1;
-	const auto alreadyApproved = options.starsApproved;
-	auto paid = std::vector<not_null<PeerData*>>();
-	auto waiting = base::flat_set<not_null<PeerData*>>();
-	auto totalStars = 0;
-	for (const auto &peer : list) {
-		const auto details = ComputePaymentDetails(peer, messagesCount);
-		if (!details) {
-			waiting.emplace(peer);
-		} else if (details->stars > 0) {
-			totalStars += details->stars;
-			paid.push_back(peer);
-		}
-	}
-	if (!waiting.empty()) {
-		session().changes().peerUpdates(
-			Data::PeerUpdate::Flag::FullInfo
-		) | rpl::on_next([=](const Data::PeerUpdate &update) {
-			if (waiting.contains(update.peer)) {
-				withPaymentApproved(alreadyApproved);
-			}
-		}, _paymentCheckLifetime);
-
-		if (!session().credits().loaded()) {
-			session().credits().loadedValue(
-			) | rpl::filter(
-				rpl::mappers::_1
-			) | rpl::take(1) | rpl::on_next([=] {
-				withPaymentApproved(alreadyApproved);
-			}, _paymentCheckLifetime);
-		}
-		return;
-	} else if (totalStars > alreadyApproved) {
-		const auto sessionShow = Main::MakeSessionShow(show, &session());
-		ShowSendPaidConfirm(sessionShow, paid, SendPaymentDetails{
-			.messages = messagesCount,
-			.stars = totalStars,
-		}, [=] { withPaymentApproved(totalStars); });
-		return;
-	} else if (_sending) {
+	if (list.empty() || _sending) {
 		return;
 	}
 	_sending = true;
+	const auto options = Api::SendOptions();
 	const auto chat = _peer->asChat();
 	const auto channel = _peer->asChannel();
 	const auto sendLink = [=] {
@@ -513,15 +430,9 @@ void InviteForbiddenController::send(
 		if (link.isEmpty()) {
 			return false;
 		}
-		auto full = options;
 		auto &api = _peer->session().api();
 		for (const auto &to : list) {
-			auto copy = full;
-			copy.starsApproved = std::min(
-				to->starsPerMessageChecked(),
-				full.starsApproved);
-			full.starsApproved -= copy.starsApproved;
-
+			const auto copy = options;
 			const auto history = to->owner().history(to);
 			auto message = Api::MessageToSend(
 				Api::SendAction(history, copy));
@@ -960,15 +871,12 @@ bool ChatInviteForbidden(
 		) | rpl::on_next([=](bool has) {
 			box->clearButtons();
 			if (has) {
-				const auto send = box->addButton(tr::lng_via_link_send(), [=] {
+				box->addButton(tr::lng_via_link_send(), [=] {
 					weak->send(
 						box->collectSelectedRows(),
 						box->uiShow(),
 						crl::guard(box, [=] { box->closeBox(); }));
 				});
-				send->setText(PaidSendButtonText(
-					weak->starsToSend(),
-					tr::lng_via_link_send()));
 			}
 			box->addButton(tr::lng_create_group_skip(), [=] {
 				box->closeBox();

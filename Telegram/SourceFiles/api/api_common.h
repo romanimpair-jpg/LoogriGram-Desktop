@@ -31,7 +31,6 @@ struct SendOptions {
 	EffectId effectId = 0;
 	QByteArray stakeSeedHash;
 	int64 stakeNanoTon = 0;
-	int starsApproved = 0;
 	bool silent = false;
 	bool handleSupportSwitch = false;
 	bool invertCaption = false;

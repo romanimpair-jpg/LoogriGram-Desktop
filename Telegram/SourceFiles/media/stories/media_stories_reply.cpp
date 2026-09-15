@@ -46,7 +46,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "media/stories/media_stories_stealth.h"
 #include "media/view/media_view_video_stream.h"
 #include "menu/menu_send.h"
-#include "settings/settings_credits_graphics.h" // DarkCreditsEntryBoxStyle
 #include "storage/localimageloader.h"
 #include "storage/storage_account.h"
 #include "storage/storage_media_prepare.h"
@@ -278,21 +277,6 @@ bool ReplyArea::send(
 		return false;
 	}
 
-	if (!message.action.options.scheduled) {
-		const auto withPaymentApproved = [=](int approved) {
-			auto copy = message;
-			copy.action.options.starsApproved = approved;
-			send(copy);
-		};
-		const auto checked = checkSendPayment(
-			request.messagesCount,
-			message.action.options,
-			withPaymentApproved);
-		if (!checked) {
-			return false;
-		}
-	}
-
 	session().api().sendMessage(std::move(message));
 
 	finishSending(skipToast);
@@ -300,41 +284,8 @@ bool ReplyArea::send(
 	return true;
 }
 
-bool ReplyArea::checkSendPayment(
-		int messagesCount,
-		Api::SendOptions options,
-		Fn<void(int)> withPaymentApproved) {
-	const auto st1 = ::Settings::DarkCreditsEntryBoxStyle();
-	const auto st2 = st1.shareBox.get();
-	const auto st3 = st2 ? st2->scheduleBox.get() : nullptr;
-	return _data.peer
-		&& _sendPayment.check(
-			_controller->uiShow(),
-			_data.peer,
-			options,
-			messagesCount,
-			std::move(withPaymentApproved),
-			{
-				.label = st3 ? st3->chooseDateTimeArgs.labelStyle : nullptr,
-				.checkbox = st2 ? st2->checkbox : nullptr,
-			});
-}
-
 void ReplyArea::sendVoice(const VoiceToSend &data) {
 	auto action = prepareSendAction(data.options);
-
-	const auto withPaymentApproved = [=](int approved) {
-		auto copy = data;
-		copy.options.starsApproved = approved;
-		sendVoice(copy);
-	};
-	const auto checked = checkSendPayment(
-		1,
-		action.options,
-		withPaymentApproved);
-	if (!checked) {
-		return;
-	}
 
 	session().api().sendVoiceMessage(
 		data.bytes,
@@ -364,19 +315,6 @@ bool ReplyArea::sendExistingDocument(
 		|| Window::ShowSendPremiumError(show, document)) {
 		return false;
 	}
-	const auto withPaymentApproved = [=](int approved) {
-		auto copy = messageToSend;
-		copy.action.options.starsApproved = approved;
-		sendExistingDocument(document, std::move(copy), localId);
-	};
-	const auto checked = checkSendPayment(
-		1,
-		messageToSend.action.options,
-		withPaymentApproved);
-	if (!checked) {
-		return false;
-	}
-
 	Api::SendExistingDocument(std::move(messageToSend), document, localId);
 
 	_controls->clearFieldAfterStickerSend();
@@ -406,19 +344,6 @@ bool ReplyArea::sendExistingPhoto(
 	}
 	const auto action = prepareSendAction(options);
 
-	const auto withPaymentApproved = [=](int approved) {
-		auto copy = options;
-		copy.starsApproved = approved;
-		sendExistingPhoto(photo, copy);
-	};
-	const auto checked = checkSendPayment(
-		1,
-		action.options,
-		withPaymentApproved);
-	if (!checked) {
-		return false;
-	}
-
 	Api::SendExistingPhoto(Api::MessageToSend(action), photo);
 
 	_controls->cancelReplyMessage();
@@ -444,19 +369,6 @@ void ReplyArea::sendInlineResult(
 		std::optional<MsgId> localMessageId) {
 	auto action = prepareSendAction(options);
 	action.generateLocal = true;
-
-	const auto withPaymentApproved = [=](int approved) {
-		auto copy = options;
-		copy.starsApproved = approved;
-		sendInlineResult(result, bot, copy, localMessageId);
-	};
-	const auto checked = checkSendPayment(
-		1,
-		action.options,
-		withPaymentApproved);
-	if (!checked) {
-		return;
-	}
 
 	session().api().sendInlineResult(
 		bot,
@@ -664,19 +576,6 @@ void ReplyArea::sendingFilesConfirmed(
 	const auto type = compress ? SendMediaType::Photo : SendMediaType::File;
 	auto action = prepareSendAction(options);
 	action.clearDraft = false;
-
-	const auto withPaymentApproved = [=](int approved) {
-		auto copy = options;
-		copy.starsApproved = approved;
-		sendingFilesConfirmed(bundle, copy);
-	};
-	const auto checked = checkSendPayment(
-		bundle->totalCount,
-		action.options,
-		withPaymentApproved);
-	if (!checked) {
-		return;
-	}
 
 	auto &api = session().api();
 	for (auto &group : bundle->groups) {

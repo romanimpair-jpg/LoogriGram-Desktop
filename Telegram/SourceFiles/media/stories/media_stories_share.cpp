@@ -82,12 +82,8 @@ namespace Media::Stories {
 	auto copyLinkCallback = canCopyLink
 		? Fn<void()>(std::move(copyCallback))
 		: Fn<void()>();
-	auto countMessagesCallback = [=](const TextWithTags &comment) {
-		return (shareJustLink || comment.text.isEmpty()) ? 1 : 2;
-	};
 	auto submitCallback = [=](
 			std::vector<not_null<Data::Thread*>> &&result,
-			Fn<bool()> checkPaid,
 			TextWithTags &&comment,
 			Api::SendOptions options,
 			Data::ForwardOptions forwardOptions) {
@@ -104,8 +100,6 @@ namespace Media::Stories {
 			{ .story = shareJustLink ? nullptr : story, .text = &comment });
 		if (error.error) {
 			show->showBox(MakeSendErrorBox(error, result.size() > 1));
-			return;
-		} else if (!checkPaid()) {
 			return;
 		} else if (shareJustLink) {
 			const auto url = session->api().exportDirectStoryLink(story);
@@ -172,13 +166,6 @@ namespace Media::Stories {
 			if (options.invertCaption) {
 				sendFlags |= SendFlag::f_invert_media;
 			}
-			const auto starsPaid = std::min(
-				threadHistory->peer->starsPerMessageChecked(),
-				options.starsApproved);
-			if (starsPaid) {
-				options.starsApproved -= starsPaid;
-				sendFlags |= SendFlag::f_allow_paid_stars;
-			}
 			const auto done = [=] {
 				if (!--state->requests) {
 					if (show->valid()) {
@@ -205,7 +192,7 @@ namespace Media::Stories {
 					MTP_inputPeerEmpty(),
 					Data::ShortcutIdToMTP(session, options.shortcutId),
 					MTP_long(options.effectId),
-					MTP_long(starsPaid),
+					MTP_long(0),
 					Api::SuggestToMTP(options.suggest)
 				), [=](
 						const MTPUpdates &result,
@@ -226,7 +213,6 @@ namespace Media::Stories {
 	return Box<ShareBox>(ShareBox::Descriptor{
 		.session = session,
 		.copyCallback = std::move(copyLinkCallback),
-		.countMessagesCallback = std::move(countMessagesCallback),
 		.submitCallback = std::move(submitCallback),
 		.filterCallback = std::move(filterCallback),
 		.st = st.shareBox ? *st.shareBox : ShareBoxStyleOverrides(),
@@ -294,9 +280,6 @@ object_ptr<Ui::BoxContent> PrepareShareAtTimeBox(
 	return Box<ShareBox>(ShareBox::Descriptor{
 		.session = session,
 		.copyCallback = std::move(copyLinkCallback),
-		.countMessagesCallback = ShareBox::DefaultForwardCountMessages(
-			history,
-			{ id }),
 		.submitCallback = ShareBox::DefaultForwardCallback(
 			show,
 			history,

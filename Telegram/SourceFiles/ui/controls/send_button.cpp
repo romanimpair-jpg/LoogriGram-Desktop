@@ -70,16 +70,6 @@ void SendButton::setState(State state) {
 			? u"%1:%2"_q.arg(minutes).arg(seconds % 60, 2, 10, QChar('0'))
 			: QString();
 	}
-	if (!state.starsToSend || state.type != Type::Send) {
-		_starsToSendText = Text::String();
-	} else if (_starsToSendText.isEmpty()
-		|| _state.starsToSend != state.starsToSend) {
-		_starsToSendText.setMarkedText(
-			_st.stars.style,
-			Text::IconEmoji(&st::starIconEmoji).append(
-				Lang::FormatCountToShort(state.starsToSend).string),
-			kMarkupTextOptions);
-	}
 	_state = state;
 
 	const auto newShape = currentRippleShape();
@@ -208,13 +198,7 @@ void SendButton::paintEvent(QPaintEvent *e) {
 	case Type::Round: paintRound(p, over); break;
 	case Type::Save: paintSave(p, over); break;
 	case Type::Cancel: paintCancel(p, over); break;
-	case Type::Send:
-		if (_starsToSendText.isEmpty()) {
-			paintSend(p, over);
-		} else {
-			paintStarsToSend(p, over);
-		}
-		break;
+	case Type::Send: paintSend(p, over); break;
 	case Type::Stop: paintStop(p, over); break;
 	case Type::Schedule: paintSchedule(p, over); break;
 	case Type::Slowmode: paintSlowmode(p); break;
@@ -345,28 +329,6 @@ void SendButton::paintStop(QPainter &p, bool over) {
 	p.drawRoundedRect(inner, _st.stopRadius, _st.stopRadius);
 }
 
-void SendButton::paintStarsToSend(QPainter &p, bool over) {
-	const auto geometry = starsGeometry();
-	{
-		PainterHighQualityEnabler hq(p);
-		p.setPen(Qt::NoPen);
-		p.setBrush(over ? _st.stars.textBgOver : _st.stars.textBg);
-		const auto radius = geometry.rounded.height() / 2;
-		p.drawRoundedRect(geometry.rounded, radius, radius);
-	}
-	if (!isDisabled()) {
-		auto color = _st.stars.textFg->c;
-		color.setAlpha(25);
-		paintRipple(p, geometry.rounded.topLeft(), &color);
-	}
-	p.setPen(over ? _st.stars.textFgOver : _st.stars.textFg);
-	_starsToSendText.draw(p, {
-		.position = geometry.inner.topLeft(),
-		.outerWidth = width(),
-		.availableWidth = geometry.inner.width(),
-	});
-}
-
 void SendButton::paintSchedule(QPainter &p, bool over) {
 	const auto ellipse = scheduleEllipseRect();
 	{
@@ -395,41 +357,12 @@ void SendButton::paintSlowmode(QPainter &p) {
 		style::al_center);
 }
 
-SendButton::StarsGeometry SendButton::starsGeometry() const {
-	const auto &st = _st.stars;
-	const auto inner = QRect(
-		0,
-		0,
-		_starsToSendText.maxWidth(),
-		st.style.font->height);
-	const auto rounded = inner.marginsAdded(QMargins(
-		st.padding.left() - st.width / 2,
-		st.padding.top() + st.textTop,
-		st.padding.right() - st.width / 2,
-		st.height - st.padding.top() - st.textTop - st.style.font->height));
-	const auto add = (_st.inner.height - rounded.height()) / 2;
-	const auto outer = rounded.marginsAdded(QMargins(
-		add,
-		add,
-		add,
-		_st.inner.height - add - rounded.height()));
-	const auto shift = -outer.topLeft();
-	return {
-		.inner = inner.translated(shift),
-		.rounded = rounded.translated(shift),
-		.outer = outer.translated(shift),
-	};
-}
-
 SendButton::RippleShape SendButton::currentRippleShape() const {
 	switch (_state.type) {
 	case Type::Send:
-		if (!_starsToSendText.isEmpty()) {
-			return RippleShape::StarsRoundRect;
-		} else if (_st.sendIconFillPadding > 0) {
-			return RippleShape::SendEllipse;
-		}
-		return RippleShape::InnerEllipse;
+		return (_st.sendIconFillPadding > 0)
+			? RippleShape::SendEllipse
+			: RippleShape::InnerEllipse;
 	case Type::Schedule:
 		return RippleShape::ScheduleEllipse;
 	case Type::Save:
@@ -473,9 +406,7 @@ QRect SendButton::scheduleEllipseRect() const {
 }
 
 void SendButton::updateSize() {
-	const auto finalWidth = _starsToSendText.isEmpty()
-		? _st.inner.width
-		: starsGeometry().outer.width();
+	const auto finalWidth = _st.inner.width;
 	const auto progress = _stateChangeAnimation.value(1.);
 	resize(
 		anim::interpolate(_stateChangeFromWidth, finalWidth, progress),
@@ -508,11 +439,6 @@ QImage SendButton::prepareRippleMask() const {
 		const auto r = sendEllipseRect();
 		return RippleAnimation::EllipseMask(r.size());
 	}
-	case RippleShape::StarsRoundRect: {
-		const auto r = starsGeometry().rounded;
-		const auto radius = r.height() / 2;
-		return RippleAnimation::RoundRectMask(r.size(), radius);
-	}
 	case RippleShape::ScheduleEllipse: {
 		const auto r = scheduleEllipseRect();
 		return RippleAnimation::EllipseMask(r.size());
@@ -531,8 +457,6 @@ QPoint SendButton::prepareRippleStartPosition() const {
 	}
 	case RippleShape::SendEllipse:
 		return real - sendEllipseRect().topLeft();
-	case RippleShape::StarsRoundRect:
-		return real - starsGeometry().rounded.topLeft();
 	case RippleShape::ScheduleEllipse:
 		return real - scheduleEllipseRect().topLeft();
 	}

@@ -277,7 +277,6 @@ private:
 	void addPreparedAsyncFile(Ui::PreparedFile &&file);
 
 	void checkCharsLimitation();
-	void refreshMessagesCount();
 
 	void requestToTakeTextWithTags();
 	bool validateLength(const QString &text) const;
@@ -298,7 +297,6 @@ private:
 
 	Ui::PreparedList _list;
 	std::optional<int> _removingIndex;
-	rpl::variable<int> _messagesCount;
 
 	SendFilesLimits _limits = {};
 	Fn<MenuDetails()> _sendMenuDetails;

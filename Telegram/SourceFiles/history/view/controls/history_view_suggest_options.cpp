@@ -324,7 +324,6 @@ void ChooseSuggestPriceBox(
 	state->price = args.value.price();
 
 	const auto peer = args.peer;
-	[[maybe_unused]] const auto details = ComputePaymentDetails(peer, 1);
 
 	const auto mode = args.mode;
 	const auto gift = (mode == SuggestMode::Gift);

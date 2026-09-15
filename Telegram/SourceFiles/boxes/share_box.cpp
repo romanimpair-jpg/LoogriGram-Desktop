@@ -633,9 +633,6 @@ void ShareBox::createButtons() {
 				showMenu(send);
 			}
 		}, send->lifetime());
-		send->setText(PaidSendButtonText(
-			_starsToSend.value(),
-			tr::lng_share_confirm()));
 	} else if (_descriptor.copyCallback) {
 		addButton(_copyLinkText.value(), [=] { copyLink(); });
 	}
@@ -688,67 +685,6 @@ void ShareBox::submit(Api::SendOptions options) {
 	const auto weak = base::make_weak(this);
 	const auto field = _comment->entity();
 	auto comment = field->getTextWithAppliedMarkdown();
-	const auto checkPaid = [=] {
-		if (!_descriptor.countMessagesCallback) {
-			return true;
-		}
-		const auto withPaymentApproved = crl::guard(weak, [=](int approved) {
-			auto copy = options;
-			copy.starsApproved = approved;
-			submit(copy);
-		});
-		const auto messagesCount = _descriptor.countMessagesCallback(
-			comment);
-		const auto alreadyApproved = options.starsApproved;
-		auto paid = std::vector<not_null<PeerData*>>();
-		auto waiting = base::flat_set<not_null<PeerData*>>();
-		auto totalStars = 0;
-		for (const auto &thread : threads) {
-			const auto peer = thread->peer();
-			const auto details = ComputePaymentDetails(peer, messagesCount);
-			if (!details) {
-				waiting.emplace(peer);
-			} else if (details->stars > 0) {
-				totalStars += details->stars;
-				paid.push_back(peer);
-			}
-		}
-		if (!waiting.empty()) {
-			_descriptor.session->changes().peerUpdates(
-				Data::PeerUpdate::Flag::FullInfo
-			) | rpl::on_next([=](const Data::PeerUpdate &update) {
-				if (waiting.contains(update.peer)) {
-					withPaymentApproved(alreadyApproved);
-				}
-			}, _submitLifetime);
-
-			if (!_descriptor.session->credits().loaded()) {
-				_descriptor.session->credits().loadedValue(
-				) | rpl::filter(
-					rpl::mappers::_1
-				) | rpl::take(1) | rpl::on_next([=] {
-					withPaymentApproved(alreadyApproved);
-				}, _submitLifetime);
-			}
-			return false;
-		} else if (totalStars > alreadyApproved) {
-			const auto show = uiShow();
-			const auto session = _descriptor.session;
-			const auto sessionShow = Main::MakeSessionShow(show, session);
-			const auto scheduleBoxSt = _descriptor.st.scheduleBox.get();
-			ShowSendPaidConfirm(sessionShow, paid, SendPaymentDetails{
-				.messages = messagesCount,
-				.stars = totalStars,
-			}, [=] { withPaymentApproved(totalStars); }, PaidConfirmStyles{
-				.label = (scheduleBoxSt
-					? scheduleBoxSt->chooseDateTimeArgs.labelStyle
-					: nullptr),
-				.checkbox = _descriptor.st.checkbox,
-			});
-			return false;
-		}
-		return true;
-	};
 	if (const auto onstack = _descriptor.submitCallback) {
 		const auto forwardOptions = !_descriptor.forwardOptions.show
 			? Data::ForwardOptions::PreserveInfo
@@ -760,7 +696,6 @@ void ShareBox::submit(Api::SendOptions options) {
 			: Data::ForwardOptions::PreserveInfo;
 		onstack(
 			std::move(threads),
-			checkPaid,
 			std::move(comment),
 			options,
 			forwardOptions);
@@ -781,21 +716,7 @@ void ShareBox::selectedChanged() {
 		_comment->toggle(_hasSelected, anim::type::normal);
 		_comment->resizeToWidth(st::boxWideWidth);
 	}
-	computeStarsCount();
 	update();
-}
-
-void ShareBox::computeStarsCount() {
-	auto perMessage = 0;
-	for (const auto &thread : _inner->selected()) {
-		perMessage += thread->peer()->starsPerMessageChecked();
-	}
-	const auto messagesCount = _descriptor.countMessagesCallback
-		? _descriptor.countMessagesCallback(_comment
-			? _comment->entity()->getTextWithTags()
-			: TextWithTags())
-		: 0;
-	_starsToSend = perMessage * messagesCount;
 }
 
 void ShareBox::scrollTo(Ui::ScrollToRequest request) {
@@ -1203,7 +1124,6 @@ void ShareBox::Inner::paintChat(
 		PaintRestrictionBadge(
 			p,
 			&_st.item,
-			chat->restriction.starsPerMessage,
 			chat->badgeCache,
 			x + photoLeft,
 			y + photoTop,
@@ -1771,15 +1691,6 @@ void ShowForwardedMessageToast(
 	});
 }
 
-ShareBox::CountMessagesCallback ShareBox::DefaultForwardCountMessages(
-		not_null<History*> history,
-		MessageIdsList msgIds) {
-	return [=](const TextWithTags &comment) {
-		const auto items = history->owner().idsToItems(msgIds);
-		return int(items.size()) + (comment.empty() ? 0 : 1);
-	};
-}
-
 ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 		std::shared_ptr<Ui::Show> show,
 		not_null<History*> history,
@@ -1793,7 +1704,6 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 	const auto state = std::make_shared<State>();
 	return [=](
 			std::vector<not_null<Data::Thread*>> &&result,
-			Fn<bool()> checkPaid,
 			TextWithTags comment,
 			Api::SendOptions options,
 			Data::ForwardOptions forwardOptions) {
@@ -1819,8 +1729,6 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 			{ .forward = &items, .text = &comment });
 		if (error.error) {
 			show->showBox(MakeSendErrorBox(error, result.size() > 1));
-			return;
-		} else if (!checkPaid()) {
 			return;
 		}
 
@@ -1938,12 +1846,6 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 					continue;
 				}
 				const auto msgCount = int(mtpMsgIds.size());
-				const auto starsPaid = std::min(
-					options.starsApproved,
-					msgCount * peer->starsPerMessageChecked());
-				if (starsPaid) {
-					options.starsApproved -= starsPaid;
-				}
 				const auto sendFlags = commonSendFlags
 					| (ShouldSendSilent(peer, options)
 						? Flag::f_silent
@@ -1951,7 +1853,6 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 					| (options.shortcutId
 						? Flag::f_quick_reply_shortcut
 						: Flag(0))
-					| (starsPaid ? Flag::f_allow_paid_stars : Flag())
 					| (sublistPeer ? Flag::f_reply_to : Flag())
 					| (options.suggest ? Flag::f_suggested_post : Flag())
 					| (options.effectId ? Flag::f_effect : Flag())
@@ -1997,7 +1898,7 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 							options.shortcutId),
 						MTP_long(options.effectId),
 						MTP_int(videoTimestamp.value_or(0)),
-						MTP_long(starsPaid),
+						MTP_long(0),
 						Api::SuggestToMTP(options.suggest));
 				};
 				const auto requestKey = ++state->nextRequestKey;
@@ -2132,9 +2033,6 @@ void FastShareMessage(
 	show->show(Box<ShareBox>(ShareBox::Descriptor{
 		.session = session,
 		.copyCallback = std::move(copyLinkCallback),
-		.countMessagesCallback = ShareBox::DefaultForwardCountMessages(
-			history,
-			msgIds),
 		.submitCallback = ShareBox::DefaultForwardCallback(
 			show,
 			history,
@@ -2213,12 +2111,8 @@ void FastShareLink(
 			.iconLottieSize = st::toastLottieIconSize,
 		});
 	};
-	auto countMessagesCallback = [=](const TextWithTags &comment) {
-		return 1;
-	};
 	auto submitCallback = [=](
 			std::vector<not_null<::Data::Thread*>> &&result,
-			Fn<bool()> checkPaid,
 			TextWithTags &&comment,
 			Api::SendOptions options,
 			::Data::ForwardOptions) {
@@ -2234,8 +2128,6 @@ void FastShareLink(
 				weak->getDelegate()->show(
 					MakeSendErrorBox(error, result.size() > 1));
 			}
-			return;
-		} else if (!checkPaid()) {
 			return;
 		}
 
@@ -2274,7 +2166,6 @@ void FastShareLink(
 		Box<ShareBox>(ShareBox::Descriptor{
 			.session = &show->session(),
 			.copyCallback = std::move(copyCallback),
-			.countMessagesCallback = std::move(countMessagesCallback),
 			.submitCallback = std::move(submitCallback),
 			.filterCallback = std::move(filterCallback),
 			.st = st,

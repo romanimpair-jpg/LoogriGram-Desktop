@@ -40,7 +40,6 @@ public:
 	EditTodoListBox(
 		QWidget*,
 		not_null<Window::SessionController*> controller,
-		rpl::producer<int> starsRequired,
 		Api::SendType sendType,
 		SendMenu::Details sendMenuDetails);
 	EditTodoListBox(
@@ -73,7 +72,6 @@ private:
 	const Api::SendType _sendType = Api::SendType();
 	const Fn<SendMenu::Details()> _sendMenuDetails;
 	HistoryItem *_editingItem = nullptr;
-	rpl::variable<int> _starsRequired;
 	base::unique_qptr<ChatHelpers::TabbedPanel> _emojiPanel;
 	Fn<void()> _setInnerFocus;
 	Fn<rpl::producer<bool>()> _dataIsValidValue;

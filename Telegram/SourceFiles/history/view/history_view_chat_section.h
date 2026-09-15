@@ -284,11 +284,6 @@ private:
 	void checkActivation() override;
 	void doSetInnerFocus() override;
 
-	[[nodiscard]] bool checkSendPayment(
-		int messagesCount,
-		Api::SendOptions options,
-		Fn<void(int)> withPaymentApproved);
-
 	void markLoaded();
 	void requestMessageData(MsgId msgId);
 	void messageDataReceived(not_null<PeerData*> peer, MsgId msgId);
@@ -579,8 +574,6 @@ private:
 
 	Ui::Controls::SwipeContextData _gestureHorizontal;
 	Ui::Controls::SwipeBackResult _swipeBackData;
-
-	SendPaymentHelper _sendPayment;
 
 	int _lastScrollTop = 0;
 	int _scrollTopDelta = 0;

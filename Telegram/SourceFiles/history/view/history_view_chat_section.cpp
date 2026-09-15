@@ -2046,18 +2046,6 @@ bool ChatWidget::confirmSendingFiles(
 	return true;
 }
 
-bool ChatWidget::checkSendPayment(
-		int messagesCount,
-		Api::SendOptions options,
-		Fn<void(int)> withPaymentApproved) {
-	return _sendPayment.check(
-		controller(),
-		_peer,
-		options,
-		messagesCount,
-		std::move(withPaymentApproved));
-}
-
 void ChatWidget::sendingFilesConfirmed(
 		std::shared_ptr<Ui::PreparedBundle> bundle,
 		Api::SendOptions options) {
@@ -2074,21 +2062,6 @@ void ChatWidget::sendingFilesConfirmed(
 
 	auto action = prepareSendAction(options);
 	action.clearDraft = false;
-	if (!ephemeralReply) {
-		const auto withPaymentApproved = [=](int approved) {
-			auto copy = options;
-			copy.starsApproved = approved;
-			sendingFilesConfirmed(bundle, copy);
-		};
-		const auto checked = checkSendPayment(
-			bundle->totalCount,
-			action.options,
-			withPaymentApproved);
-		if (!checked) {
-			return;
-		}
-	}
-
 	const auto compress = bundle->way.sendImagesAsPhotos();
 	const auto type = compress ? SendMediaType::Photo : SendMediaType::File;
 	auto &api = session().api();
@@ -2283,19 +2256,7 @@ void ChatWidget::send() {
 }
 
 void ChatWidget::sendVoice(const ComposeControls::VoiceToSend &data) {
-	const auto withPaymentApproved = [=](int approved) {
-		auto copy = data;
-		copy.options.starsApproved = approved;
-		sendVoice(copy);
-	};
 	auto action = prepareSendAction(data.options);
-	const auto checked = checkSendPayment(
-		1 + int(_composeControls->forwardItems().size()),
-		action.options,
-		withPaymentApproved);
-	if (!checked) {
-		return;
-	}
 
 	session().api().sendVoiceMessage(
 		data.bytes,
@@ -2445,20 +2406,6 @@ void ChatWidget::sendRichDraft(
 		return;
 	}
 	auto action = prepareSendAction(options);
-	if (!options.scheduled && !ephemeral) {
-		const auto withPaymentApproved = [=](int approved) {
-			auto copy = options;
-			copy.starsApproved = approved;
-			sendRichDraft(page, copy);
-		};
-		const auto checked = checkSendPayment(
-			request.messagesCount,
-			action.options,
-			withPaymentApproved);
-		if (!checked) {
-			return;
-		}
-	}
 
 	session().api().sendRichMessage(
 		page,
@@ -2527,24 +2474,6 @@ void ChatWidget::sendTextWithTags(
 		if (error) {
 			Data::ShowSendErrorToast(controller(), _peer, error);
 			return;
-		}
-		if (!ephemeral) {
-			const auto withPaymentApproved = [=](int approved) {
-				auto copy = options;
-				copy.starsApproved = approved;
-				sendTextWithTags(
-					textWithTags,
-					useCurrentWebPageDraft,
-					copy,
-					done);
-			};
-			const auto checked = checkSendPayment(
-				request.messagesCount,
-				message.action.options,
-				withPaymentApproved);
-			if (!checked) {
-				return;
-			}
 		}
 	}
 
@@ -2669,25 +2598,6 @@ void ChatWidget::edit(
 		})();
 		return true;
 	};
-
-	if (item->computeSuggestionActions()
-		== SuggestionActions::AcceptAndDecline) {
-		const auto fullId = item->fullId();
-		const auto withPaymentApproved = [=](int approved) {
-			if (const auto item = session().data().message(fullId)) {
-				auto copy = options;
-				copy.starsApproved = approved;
-				edit(item, copy, saveEditMsgRequestId, spoilered, videoCover);
-			}
-		};
-		const auto checked = checkSendPayment(
-			1 + int(_composeControls->forwardItems().size()),
-			options,
-			withPaymentApproved);
-		if (!checked) {
-			return;
-		}
-	}
 
 	// Not guarded by 'this': 'done' and 'fail' check the weak pointer
 	// themselves and still clear the local edit draft if we're already gone.
@@ -3070,21 +2980,6 @@ bool ChatWidget::sendExistingDocument(
 		|| ShowSendPremiumError(controller(), document)) {
 		return false;
 	}
-	if (!ephemeralReply) {
-		const auto withPaymentApproved = [=](int approved) {
-			auto copy = messageToSend;
-			copy.action.options.starsApproved = approved;
-			sendExistingDocument(document, std::move(copy), localId);
-		};
-		const auto checked = checkSendPayment(
-			1,
-			messageToSend.action.options,
-			withPaymentApproved);
-		if (!checked) {
-			return false;
-		}
-	}
-
 	Api::SendExistingDocument(
 		std::move(messageToSend),
 		document,
@@ -3116,20 +3011,6 @@ bool ChatWidget::sendExistingPhoto(
 	}
 
 	const auto action = prepareSendAction(options);
-	if (!ephemeralReply) {
-		const auto withPaymentApproved = [=](int approved) {
-			auto copy = options;
-			copy.starsApproved = approved;
-			sendExistingPhoto(photo, copy);
-		};
-		const auto checked = checkSendPayment(
-			1,
-			action.options,
-			withPaymentApproved);
-		if (!checked) {
-			return false;
-		}
-	}
 
 	Api::SendExistingPhoto(
 		Api::MessageToSend(action),
@@ -3173,19 +3054,6 @@ void ChatWidget::sendInlineResult(
 	}
 	auto action = prepareSendAction(options);
 	action.generateLocal = true;
-	const auto withPaymentApproved = [=](int approved) {
-		auto copy = options;
-		copy.starsApproved = approved;
-		sendInlineResult(result, bot, copy, localMessageId);
-	};
-	const auto checked = checkSendPayment(
-		1,
-		action.options,
-		withPaymentApproved);
-	if (!checked) {
-		return;
-	}
-
 	session().api().sendInlineResult(
 		bot,
 		result.get(),
@@ -5141,20 +5009,6 @@ void ChatWidget::sendBotCommand(
 	const auto ephemeral = session().ephemeralMessages().wouldSend(message);
 	if (!ephemeral && showSlowmodeError()) {
 		return;
-	}
-	if (!ephemeral) {
-		const auto withPaymentApproved = [=, request = request](int approved) {
-			auto copy = options;
-			copy.starsApproved = approved;
-			sendBotCommand(request, copy);
-		};
-		const auto checked = checkSendPayment(
-			1,
-			message.action.options,
-			withPaymentApproved);
-		if (!checked) {
-			return;
-		}
 	}
 	session().api().sendMessage(std::move(message));
 	if (request.replyTo) {

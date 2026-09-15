@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "base/weak_ptr.h"
-#include "history/history_item_helpers.h"
 
 class History;
 enum class SendMediaType;
@@ -108,11 +107,6 @@ private:
 		Api::MessageToSend message,
 		bool skipToast = false);
 
-	[[nodiscard]] bool checkSendPayment(
-		int messagesCount,
-		Api::SendOptions options,
-		Fn<void(int)> withPaymentApproved);
-
 	void uploadFile(const QByteArray &fileContent, SendMediaType type);
 	bool confirmSendingFiles(
 		QImage &&image,
@@ -178,8 +172,6 @@ private:
 	base::has_weak_ptr _shownPeerGuard;
 	bool _chooseAttachRequest = false;
 	rpl::variable<bool> _choosingAttach;
-
-	SendPaymentHelper _sendPayment;
 
 	rpl::lifetime _lifetime;
 

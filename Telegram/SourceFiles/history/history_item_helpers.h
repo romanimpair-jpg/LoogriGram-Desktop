@@ -182,69 +182,6 @@ struct SendingErrorRequest {
 	not_null<Data::Thread*> thread,
 	SendingErrorRequest request);
 
-struct SendPaymentDetails {
-	int messages = 0;
-	int stars = 0;
-};
-[[nodiscard]] std::optional<SendPaymentDetails> ComputePaymentDetails(
-	not_null<PeerData*> peer,
-	int messagesCount);
-
-[[nodiscard]] bool SuggestPaymentDataReady(
-	not_null<PeerData*> peer,
-	SuggestOptions suggest);
-
-struct PaidConfirmStyles {
-	const style::FlatLabel *label = nullptr;
-	const style::Checkbox *checkbox = nullptr;
-};
-void ShowSendPaidConfirm(
-	not_null<Window::SessionNavigation*> navigation,
-	not_null<PeerData*> peer,
-	SendPaymentDetails details,
-	Fn<void()> confirmed,
-	PaidConfirmStyles styles = {},
-	int suggestStarsPrice = 0);
-void ShowSendPaidConfirm(
-	std::shared_ptr<Main::SessionShow> show,
-	not_null<PeerData*> peer,
-	SendPaymentDetails details,
-	Fn<void()> confirmed,
-	PaidConfirmStyles styles = {},
-	int suggestStarsPrice = 0);
-void ShowSendPaidConfirm(
-	std::shared_ptr<Main::SessionShow> show,
-	const std::vector<not_null<PeerData*>> &peers,
-	SendPaymentDetails details,
-	Fn<void()> confirmed,
-	PaidConfirmStyles styles = {},
-	int suggestStarsPrice = 0);
-
-class SendPaymentHelper final {
-public:
-	[[nodiscard]] bool check(
-		not_null<Window::SessionNavigation*> navigation,
-		not_null<PeerData*> peer,
-		Api::SendOptions options,
-		int messagesCount,
-		Fn<void(int)> resend,
-		PaidConfirmStyles styles = {});
-	[[nodiscard]] bool check(
-		std::shared_ptr<Main::SessionShow> show,
-		not_null<PeerData*> peer,
-		Api::SendOptions options,
-		int messagesCount,
-		Fn<void(int)> resend,
-		PaidConfirmStyles styles = {});
-
-	void clear();
-
-private:
-	Fn<void()> _resend;
-	rpl::lifetime _lifetime;
-
-};
-
 [[nodiscard]] Data::SendErrorWithThread GetErrorForSending(
 	const std::vector<not_null<Data::Thread*>> &threads,
 	SendingErrorRequest request);

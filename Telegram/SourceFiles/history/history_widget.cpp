@@ -3047,7 +3047,6 @@ void HistoryWidget::showHistory(
 		setHistory(nullptr);
 		_list = nullptr;
 		_peer = nullptr;
-		_sendPayment.clear();
 		_topicsRequested.clear();
 		_canSendMessages = false;
 		_canSendTexts = false;
@@ -5137,22 +5136,6 @@ void HistoryWidget::saveEditMessage(Api::SendOptions options) {
 	options.invertCaption = _mediaEditManager.invertCaption();
 	options.suggest = SuggestOptions();
 
-	if (item->computeSuggestionActions()
-		== SuggestionActions::AcceptAndDecline) {
-		const auto withPaymentApproved = [=](int approved) {
-			auto copy = options;
-			copy.starsApproved = approved;
-			saveEditMessage(copy);
-		};
-		const auto checked = checkSendPayment(
-			1 + int(_forwardPanel->items().size()),
-			options,
-			withPaymentApproved);
-		if (!checked) {
-			return;
-		}
-	}
-
 	_saveEditMsgRequestId = Api::EditTextMessage(
 		item,
 		sending,
@@ -5262,19 +5245,7 @@ void HistoryWidget::sendVoice(const VoiceToSend &data) {
 		return;
 	}
 
-	const auto withPaymentApproved = [=](int approved) {
-		auto copy = data;
-		copy.options.starsApproved = approved;
-		sendVoice(copy);
-	};
 	auto action = prepareSendAction(data.options);
-	const auto checked = checkSendPayment(
-		1 + int(_forwardPanel->items().size()),
-		action.options,
-		withPaymentApproved);
-	if (!checked) {
-		return;
-	}
 
 	session().api().sendVoiceMessage(
 		data.bytes,
@@ -5358,19 +5329,7 @@ void HistoryWidget::sendRichDraft(
 	}
 
 	auto action = prepareSendAction(options);
-	auto withPaymentApproved = Fn<void(int)>();
-	if (!options.scheduled) {
-		withPaymentApproved = [=](int approved) {
-			auto copy = options;
-			copy.starsApproved = approved;
-			sendRichDraft(page, copy);
-		};
-	}
-	if (showSendRichDraftError(
-			options.scheduled != 0,
-			std::move(withPaymentApproved),
-			action.options,
-			ephemeral)) {
+	if (showSendRichDraftError(options.scheduled != 0, ephemeral)) {
 		return;
 	}
 
@@ -5456,16 +5415,9 @@ void HistoryWidget::sendTextWithTags(
 	}
 
 	const auto ignoreSlowmodeCountdown = (options.scheduled != 0);
-	const auto withPaymentApproved = [=](int approved) {
-		auto copy = options;
-		copy.starsApproved = approved;
-		sendTextWithTags(textWithTags, useWebPageDraft, copy, done);
-	};
 	if (showSendMessageError(
 			message.textWithTags,
 			ignoreSlowmodeCountdown,
-			withPaymentApproved,
-			message.action.options,
 			ephemeral)) {
 		return;
 	}
@@ -5827,19 +5779,6 @@ FullMsgId HistoryWidget::cornerButtonsCurrentId() {
 		: FullMsgId();
 }
 
-bool HistoryWidget::checkSendPayment(
-		int messagesCount,
-		Api::SendOptions options,
-		Fn<void(int)> withPaymentApproved) {
-	return _peer
-		&& _sendPayment.check(
-			controller(),
-			_peer,
-			options,
-			messagesCount,
-			std::move(withPaymentApproved));
-}
-
 void HistoryWidget::checkSuggestToGigagroup() {
 	const auto group = _peer ? _peer->asMegagroup() : nullptr;
 	if (!group || !group->owner().suggestToGigagroup(group)) {
@@ -6073,21 +6012,6 @@ void HistoryWidget::sendBotCommand(
 	if (!ephemeral && showSlowmodeError()) {
 		return;
 	}
-	if (!ephemeral) {
-		const auto withPaymentApproved = [=](int approved) {
-			auto copy = options;
-			copy.starsApproved = approved;
-			sendBotCommand(request, copy);
-		};
-		const auto checked = checkSendPayment(
-			1,
-			action.options,
-			withPaymentApproved);
-		if (!checked) {
-			return;
-		}
-	}
-
 	const auto forMsgId = _keyboard->forMsgId();
 	const auto lastKeyboardUsed = (forMsgId == request.replyTo.messageId)
 		&& (forMsgId == FullMsgId(_peer->id, _history->lastKeyboardId));
@@ -6351,30 +6275,14 @@ void HistoryWidget::updateSendButtonType() {
 			? _peer->slowmodeSecondsLeft()
 			: 0;
 	}();
-	const auto ephemeralReply = session().ephemeralMessages()
-		.isEphemeralBotReply(replyTo().messageId);
-	const auto perMessage = (_peer && !ephemeralReply)
-		? _peer->starsPerMessageChecked()
-		: 0;
 	const auto richPage = shownRichMessage();
 	const auto richMessage = (richPage != nullptr);
 	_sendLockBadge.fire(richMessage
 		&& !session().premium()
 		&& Iv::RichPageUsesPremiumFormatting(*richPage));
-	const auto messages = !_peer
-		? 0
-		: _voiceRecordBar->isListenState()
-		? 1
-		: ComputeSendingMessagesCount(_history, {
-			.forward = &_forwardPanel->items(),
-			.text = richMessage ? nullptr : &_field->getTextWithTags(),
-			.richMessage = richMessage,
-		});
-	const auto stars = perMessage ? (perMessage * messages) : 0;
 	_send->setState({
 		.type = (delay > 0) ? Type::Slowmode : type,
 		.slowmodeDelay = delay,
-		.starsToSend = stars,
 		.forbidden = forbidden,
 	});
 	_send->setDisabled(disabledBySlowmode
@@ -7262,8 +7170,6 @@ Data::ForumTopic *HistoryWidget::resolveReplyToTopic() {
 bool HistoryWidget::showSendMessageError(
 		const TextWithTags &textWithTags,
 		bool ignoreSlowmodeCountdown,
-		Fn<void(int starsApproved)> withPaymentApproved,
-		Api::SendOptions options,
 		bool ephemeral) {
 	if (!_canSendMessages) {
 		return false;
@@ -7282,19 +7188,11 @@ bool HistoryWidget::showSendMessageError(
 		Data::ShowSendErrorToast(controller(), _peer, error);
 		return true;
 	}
-
-	return withPaymentApproved
-		&& !ephemeral
-		&& !checkSendPayment(
-			request.messagesCount,
-			options,
-			withPaymentApproved);
+	return false;
 }
 
 bool HistoryWidget::showSendRichDraftError(
 		bool ignoreSlowmodeCountdown,
-		Fn<void(int starsApproved)> withPaymentApproved,
-		Api::SendOptions options,
 		bool ephemeral) {
 	if (!_canSendMessages || !_history || !_peer) {
 		return false;
@@ -7314,13 +7212,7 @@ bool HistoryWidget::showSendRichDraftError(
 		Data::ShowSendErrorToast(controller(), _peer, error);
 		return true;
 	}
-
-	return withPaymentApproved
-		&& !ephemeral
-		&& !checkSendPayment(
-			request.messagesCount,
-			options,
-			withPaymentApproved);
+	return false;
 }
 
 bool HistoryWidget::confirmSendingFiles(const QStringList &files) {
@@ -7424,21 +7316,6 @@ void HistoryWidget::sendingFilesConfirmed(
 	const auto type = compress ? SendMediaType::Photo : SendMediaType::File;
 	auto action = prepareSendAction(options);
 	action.clearDraft = false;
-
-	if (!ephemeralReply) {
-		const auto withPaymentApproved = [=](int approved) {
-			auto copy = options;
-			copy.starsApproved = approved;
-			sendingFilesConfirmed(bundle, copy);
-		};
-		const auto checked = checkSendPayment(
-			bundle->totalCount,
-			action.options,
-			withPaymentApproved);
-		if (!checked) {
-			return;
-		}
-	}
 
 	auto &api = session().api();
 	for (auto &group : bundle->groups) {
@@ -8819,22 +8696,8 @@ void HistoryWidget::sendInlineResult(InlineBots::ResultSelected result) {
 		return;
 	}
 
-	const auto withPaymentApproved = [=](int approved) {
-		auto copy = result;
-		copy.options.starsApproved = approved;
-		sendInlineResult(copy);
-	};
-
 	auto action = prepareSendAction(result.options);
 	action.generateLocal = true;
-
-	const auto checked = checkSendPayment(
-		1,
-		action.options,
-		withPaymentApproved);
-	if (!checked) {
-		return;
-	}
 
 	controller()->sendingAnimation().appendSending(
 		result.messageSendingFrom);
@@ -9368,21 +9231,6 @@ bool HistoryWidget::sendExistingDocument(
 		|| ShowSendPremiumError(controller(), document)) {
 		return false;
 	}
-	if (!ephemeralReply) {
-		const auto withPaymentApproved = [=](int approved) {
-			auto copy = messageToSend;
-			copy.action.options.starsApproved = approved;
-			sendExistingDocument(document, std::move(copy), localId);
-		};
-		const auto checked = checkSendPayment(
-			1,
-			messageToSend.action.options,
-			withPaymentApproved);
-		if (!checked) {
-			return false;
-		}
-	}
-
 	Api::SendExistingDocument(
 		std::move(messageToSend),
 		document,
@@ -9419,21 +9267,6 @@ bool HistoryWidget::sendExistingPhoto(
 		return false;
 	}
 	const auto action = prepareSendAction(options);
-
-	if (!ephemeralReply) {
-		const auto withPaymentApproved = [=](int approved) {
-			auto copy = options;
-			copy.starsApproved = approved;
-			sendExistingPhoto(photo, copy);
-		};
-		const auto checked = checkSendPayment(
-			1,
-			action.options,
-			withPaymentApproved);
-		if (!checked) {
-			return false;
-		}
-	}
 
 	Api::SendExistingPhoto(Api::MessageToSend(action), photo);
 

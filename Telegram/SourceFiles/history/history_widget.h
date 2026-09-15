@@ -390,11 +390,6 @@ private:
 	bool cornerButtonsUnreadMayBeShown() override;
 	bool cornerButtonsHas(HistoryView::CornerButtonType type) override;
 
-	[[nodiscard]] bool checkSendPayment(
-		int messagesCount,
-		Api::SendOptions options,
-		Fn<void(int)> withPaymentApproved);
-
 	void checkSuggestToGigagroup();
 	void processReply();
 	void setReplyFieldsFromProcessing();
@@ -524,13 +519,9 @@ private:
 	bool showSendMessageError(
 		const TextWithTags &textWithTags,
 		bool ignoreSlowmodeCountdown,
-		Fn<void(int starsApproved)> withPaymentApproved = nullptr,
-		Api::SendOptions options = {},
 		bool ephemeral = false);
 	bool showSendRichDraftError(
 		bool ignoreSlowmodeCountdown,
-		Fn<void(int starsApproved)> withPaymentApproved = nullptr,
-		Api::SendOptions options = {},
 		bool ephemeral = false);
 
 	void sendingFilesConfirmed(
@@ -974,8 +965,6 @@ private:
 	bool _inGrab = false;
 
 	int _topDelta = 0;
-
-	SendPaymentHelper _sendPayment;
 
 	rpl::event_stream<> _cancelRequests;
 

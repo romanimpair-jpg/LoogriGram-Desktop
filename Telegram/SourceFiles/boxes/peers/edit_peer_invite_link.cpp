@@ -1246,12 +1246,8 @@ object_ptr<Ui::BoxContent> ShareInviteLinkBox(
 			});
 		}
 	};
-	auto countMessagesCallback = [=](const TextWithTags &comment) {
-		return 1;
-	};
 	auto submitCallback = [=](
 			std::vector<not_null<Data::Thread*>> &&result,
-			Fn<bool()> checkPaid,
 			TextWithTags &&comment,
 			Api::SendOptions options,
 			Data::ForwardOptions) {
@@ -1268,8 +1264,6 @@ object_ptr<Ui::BoxContent> ShareInviteLinkBox(
 					errorWithThread,
 					result.size() > 1));
 			}
-			return;
-		} else if (!checkPaid()) {
 			return;
 		}
 
@@ -1307,7 +1301,6 @@ object_ptr<Ui::BoxContent> ShareInviteLinkBox(
 	auto object = Box<ShareBox>(ShareBox::Descriptor{
 		.session = session,
 		.copyCallback = std::move(copyCallback),
-		.countMessagesCallback = std::move(countMessagesCallback),
 		.submitCallback = std::move(submitCallback),
 		.filterCallback = std::move(filterCallback),
 		.moneyRestrictionError = ShareMessageMoneyRestrictionError(),

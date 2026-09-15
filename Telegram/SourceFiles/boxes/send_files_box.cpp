@@ -999,10 +999,6 @@ void SendFilesBox::openDialogToAddFileToAlbum() {
 		crl::guard(this, callback));
 }
 
-void SendFilesBox::refreshMessagesCount() {
-	_messagesCount = _list.files.size();
-}
-
 void SendFilesBox::refreshButtons() {
 	clearButtons();
 
@@ -1011,17 +1007,6 @@ void SendFilesBox::refreshButtons() {
 			? tr::lng_send_button()
 			: tr::lng_create_group_next()),
 		[=] { send({}); });
-	refreshMessagesCount();
-
-	const auto ephemeralReply = _show->session().ephemeralMessages()
-		.isEphemeralBotReply(_replyTo.messageId);
-	const auto perMessage = ephemeralReply
-		? 0
-		: _toPeer->starsPerMessageChecked();
-	if (perMessage > 0) {
-		_send->setText(PaidSendButtonText(_messagesCount.value(
-		) | rpl::map(rpl::mappers::_1 * perMessage)));
-	}
 	if (_sendType == Api::SendType::Normal) {
 		SendMenu::SetupMenuAndShortcuts(
 			_send,
@@ -2069,7 +2054,6 @@ void SendFilesBox::setupCaption() {
 		_caption->changes()
 	) | rpl::on_next([=] {
 		checkCharsLimitation();
-		refreshMessagesCount();
 	}, _caption->lifetime());
 }
 

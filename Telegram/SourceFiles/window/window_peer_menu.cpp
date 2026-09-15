@@ -2260,7 +2260,6 @@ void PeerMenuShareContactBox(
 		struct State {
 			base::weak_ptr<Data::Thread> weak;
 			Fn<void(Api::SendOptions)> share;
-			SendPaymentHelper sendPayment;
 		};
 		const auto state = std::make_shared<State>();
 		state->weak = thread;
@@ -2274,22 +2273,6 @@ void PeerMenuShareContactBox(
 			auto action = Api::SendAction(strong, options);
 			action.clearDraft = false;
 
-			const auto withPaymentApproved = [=](int stars) {
-				if (const auto onstack = state->share) {
-					auto copy = options;
-					copy.starsApproved = stars;
-					onstack(copy);
-				}
-			};
-			const auto checked = state->sendPayment.check(
-				navigation,
-				peer,
-				action.options,
-				1,
-				withPaymentApproved);
-			if (!checked) {
-				return;
-			}
 			navigation->showThread(
 				strong,
 				ShowAtTheEndMsgId,
@@ -2347,24 +2330,15 @@ void PeerMenuCreatePoll(
 		chosen &= ~PollData::Flag::OpenAnswers;
 		disabled |= PollData::Flag::OpenAnswers;
 	}
-	auto starsRequired = peer->session().changes().peerFlagsValue(
-		peer,
-		Data::PeerUpdate::Flag::FullInfo
-		| Data::PeerUpdate::Flag::StarsPerMessage
-	) | rpl::map([=] {
-		return peer->starsPerMessageChecked();
-	});
 	auto box = Box<CreatePollBox>(
 		controller,
 		peer,
 		chosen,
 		disabled,
-		std::move(starsRequired),
 		sendType,
 		sendMenuDetails);
 	struct State {
 		Fn<void(const CreatePollBox::Result &)> create;
-		SendPaymentHelper sendPayment;
 		bool lock = false;
 	};
 	const auto weak = base::make_weak(box);
@@ -2382,20 +2356,7 @@ void PeerMenuCreatePoll(
 			return;
 		}
 
-		const auto withPaymentApproved = crl::guard(weak, [=](int stars) {
-			if (const auto onstack = state->create) {
-				auto copy = result;
-				copy.options.starsApproved = stars;
-				onstack(copy);
-			}
-		});
-		const auto checked = state->sendPayment.check(
-			controller,
-			peer,
-			action.options,
-			1,
-			withPaymentApproved);
-		if (!checked || std::exchange(state->lock, true)) {
+		if (std::exchange(state->lock, true)) {
 			return;
 		}
 
@@ -2482,33 +2443,17 @@ void PeerMenuCreateTodoList(
 		PeerMenuTodoWantsPremium(TodoWantsPremium::Create);
 		return;
 	}
-	auto starsRequired = peer->session().changes().peerFlagsValue(
-		peer,
-		Data::PeerUpdate::Flag::FullInfo
-		| Data::PeerUpdate::Flag::StarsPerMessage
-	) | rpl::map([=] {
-		return peer->starsPerMessageChecked();
-	});
 	auto box = Box<EditTodoListBox>(
 		controller,
-		std::move(starsRequired),
 		sendType,
 		sendMenuDetails);
 	struct State {
 		Fn<void(const EditTodoListBox::Result &)> create;
-		SendPaymentHelper sendPayment;
 		bool lock = false;
 	};
 	const auto weak = base::make_weak(box);
 	const auto state = box->lifetime().make_state<State>();
 	state->create = [=](const EditTodoListBox::Result &result) {
-		const auto withPaymentApproved = crl::guard(weak, [=](int stars) {
-			if (const auto onstack = state->create) {
-				auto copy = result;
-				copy.options.starsApproved = stars;
-				onstack(copy);
-			}
-		});
 		auto action = Api::SendAction(
 			peer->owner().history(peer),
 			result.options);
@@ -2521,13 +2466,7 @@ void PeerMenuCreateTodoList(
 			return;
 		}
 
-		const auto checked = state->sendPayment.check(
-			controller,
-			peer,
-			action.options,
-			1,
-			withPaymentApproved);
-		if (!checked || std::exchange(state->lock, true)) {
+		if (std::exchange(state->lock, true)) {
 			return;
 		}
 
@@ -2898,77 +2837,16 @@ object_ptr<Ui::BoxContent> PrepareChooseRecipientBox(
 
 	struct State {
 		Fn<void(Api::SendOptions)> submit;
-		rpl::variable<int> starsToSend;
-		Fn<void()> refreshStarsToSend;
-		rpl::lifetime submitLifetime;
 	};
 	const auto state = std::make_shared<State>();
 	auto initBox = [=](not_null<PeerListBox*> box) {
-		state->refreshStarsToSend = [=] {
-			auto perMessage = 0;
-			for (const auto &peer : box->collectSelectedRows()) {
-				perMessage += peer->starsPerMessageChecked();
-			}
-			state->starsToSend = perMessage;
-		};
 		raw->selectionChanges(
 		) | rpl::on_next([=] {
 			box->clearButtons();
-			state->refreshStarsToSend();
 			const auto shown = raw->hasSelected();
 			if (shown) {
-				const auto weak = base::make_weak(box);
 				state->submit = [=](Api::SendOptions options) {
-					state->submitLifetime.destroy();
-					const auto show = box->peerListUiShow();
 					const auto peers = box->collectSelectedRows();
-					const auto withPaymentApproved = crl::guard(weak, [=](
-							int approved) {
-						auto copy = options;
-						copy.starsApproved = approved;
-						if (const auto onstack = state->submit) {
-							onstack(copy);
-						}
-					});
-
-					const auto alreadyApproved = options.starsApproved;
-					auto paid = std::vector<not_null<PeerData*>>();
-					auto waiting = base::flat_set<not_null<PeerData*>>();
-					auto totalStars = 0;
-					for (const auto &peer : peers) {
-						const auto details = ComputePaymentDetails(peer, 1);
-						if (!details) {
-							waiting.emplace(peer);
-						} else if (details->stars > 0) {
-							totalStars += details->stars;
-							paid.push_back(peer);
-						}
-					}
-					if (!waiting.empty()) {
-						session->changes().peerUpdates(
-							Data::PeerUpdate::Flag::FullInfo
-						) | rpl::on_next([=](const Data::PeerUpdate &update) {
-							if (waiting.contains(update.peer)) {
-								withPaymentApproved(alreadyApproved);
-							}
-						}, state->submitLifetime);
-
-						if (!session->credits().loaded()) {
-							session->credits().loadedValue(
-							) | rpl::filter(
-								rpl::mappers::_1
-							) | rpl::take(1) | rpl::on_next([=] {
-								withPaymentApproved(alreadyApproved);
-							}, state->submitLifetime);
-						}
-						return;
-					} else if (totalStars > alreadyApproved) {
-						ShowSendPaidConfirm(show, paid, SendPaymentDetails{
-							.messages = 1,
-							.stars = totalStars,
-						}, [=] { withPaymentApproved(totalStars); });
-						return;
-					}
 					state->submit = nullptr;
 
 					sendMany(ranges::views::all(
@@ -2978,16 +2856,13 @@ object_ptr<Ui::BoxContent> PrepareChooseRecipientBox(
 						return peer->owner().history(peer);
 					}) | ranges::to_vector, options);
 				};
-				const auto send = box->addButton(
+				box->addButton(
 					tr::lng_send_button(),
 					[=] {
 						if (const auto onstack = state->submit) {
 							onstack({});
 						}
 					});
-				send->setText(PaidSendButtonText(
-					state->starsToSend.value(),
-					tr::lng_send_button()));
 			}
 			box->addButton(tr::lng_cancel(), [=] {
 				box->closeBox();
@@ -3336,9 +3211,6 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 		not_null<Controller*> controller;
 		base::unique_qptr<Ui::PopupMenu> menu;
 		Fn<void(Api::SendOptions options)> submit;
-		rpl::variable<int> starsToSend;
-		Fn<void()> refreshStarsToSend;
-		rpl::lifetime submitLifetime;
 	};
 
 	const auto applyFilter = [=](not_null<ListBox*> box, FilterId id) {
@@ -3492,69 +3364,12 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 		show,
 		history,
 		msgIds);
-	const auto countMessages = ShareBox::DefaultForwardCountMessages(
-		history,
-		msgIds);
 
-	const auto weak = base::make_weak(state->box);
 	const auto field = comment->entity();
 	state->submit = [=](Api::SendOptions options) {
 		const auto peers = state->box->collectSelectedRows();
 		auto comment = field->getTextWithAppliedMarkdown();
-		const auto checkPaid = [=] {
-			const auto withPaymentApproved = crl::guard(weak, [=](
-					int approved) {
-				auto copy = options;
-				copy.starsApproved = approved;
-				if (const auto onstack = state->submit) {
-					onstack(copy);
-				}
-			});
-
-			const auto alreadyApproved = options.starsApproved;
-			const auto messagesCount = countMessages(comment);
-			auto paid = std::vector<not_null<PeerData*>>();
-			auto waiting = base::flat_set<not_null<PeerData*>>();
-			auto totalStars = 0;
-			for (const auto &peer : peers) {
-				const auto details = ComputePaymentDetails(
-					peer,
-					messagesCount);
-				if (!details) {
-					waiting.emplace(peer);
-				} else if (details->stars > 0) {
-					totalStars += details->stars;
-					paid.push_back(peer);
-				}
-			}
-			if (!waiting.empty()) {
-				session->changes().peerUpdates(
-					Data::PeerUpdate::Flag::FullInfo
-				) | rpl::on_next([=](const Data::PeerUpdate &update) {
-					if (waiting.contains(update.peer)) {
-						withPaymentApproved(alreadyApproved);
-					}
-				}, state->submitLifetime);
-
-				if (!session->credits().loaded()) {
-					session->credits().loadedValue(
-					) | rpl::filter(
-						rpl::mappers::_1
-					) | rpl::take(1) | rpl::on_next([=] {
-						withPaymentApproved(alreadyApproved);
-					}, state->submitLifetime);
-				}
-				return false;
-			} else if (totalStars > alreadyApproved) {
-				ShowSendPaidConfirm(show, paid, SendPaymentDetails{
-					.messages = messagesCount,
-					.stars = totalStars,
-				}, [=] { withPaymentApproved(totalStars); });
-				return false;
-			}
-			state->submit = nullptr;
-			return true;
-		};
+		state->submit = nullptr;
 		auto forwardOptions = HistoryView::Controls::NormalizeForwardOptions(
 			session,
 			itemsList,
@@ -3566,7 +3381,6 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 					not_null<PeerData*> peer) -> Controller::Chosen {
 				return peer->owner().history(peer);
 			}) | ranges::to_vector,
-			checkPaid,
 			std::move(comment),
 			options,
 			forwardOptions);
@@ -3649,15 +3463,6 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 		}
 	};
 
-	state->refreshStarsToSend = [=] {
-		auto perMessage = 0;
-		for (const auto &peer : state->box->collectSelectedRows()) {
-			perMessage += peer->starsPerMessageChecked();
-		}
-		state->starsToSend = perMessage
-			* countMessages(field->getTextWithTags());
-	};
-
 	comment->hide(anim::type::instant);
 	comment->toggleOn(state->controller->selectionChanges(
 	) | rpl::map([=] {
@@ -3689,9 +3494,6 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 		},
 	});
 	field->setSubmitSettings(Core::App().settings().sendSubmitWay());
-	field->changes() | rpl::on_next([=] {
-		state->refreshStarsToSend();
-	}, field->lifetime());
 
 	Ui::SendPendingMoveResizeEvents(comment);
 
@@ -3707,7 +3509,6 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 		const auto shown = state->controller->hasSelected();
 
 		state->box->clearButtons();
-		state->refreshStarsToSend();
 		if (shown) {
 			const auto send = state->box->addButton(
 				tr::lng_send_button(),
@@ -3723,9 +3524,6 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 					showMenu(send);
 				}
 			}, send->lifetime());
-			send->setText(PaidSendButtonText(
-				state->starsToSend.value(),
-				tr::lng_send_button()));
 		}
 		state->box->addButton(tr::lng_cancel(), [=] {
 			state->box->closeBox();

@@ -1390,9 +1390,6 @@ void ApplySendOptions(
 	if (options.stakeNanoTon != empty.stakeNanoTon) {
 		base.stakeNanoTon = options.stakeNanoTon;
 	}
-	if (options.starsApproved != empty.starsApproved) {
-		base.starsApproved = options.starsApproved;
-	}
 	if (options.silent != empty.silent) {
 		base.silent = options.silent;
 	}
@@ -1749,7 +1746,6 @@ void MusicAttachBox(
 		std::optional<int> yourChatsFullCount;
 		std::optional<QString> yourChatsFullCountQuery;
 		GeometryState geometry;
-		SendPaymentHelper paymentHelper;
 		Fn<void(
 			std::shared_ptr<Ui::PreparedBundle>,
 			Api::SendOptions,
@@ -1774,23 +1770,11 @@ void MusicAttachBox(
 		action.clearDraft = false;
 		action.replyTo = replyTo;
 
-		const auto resend = [=](int approved) {
-			auto copy = options;
-			copy.starsApproved = approved;
-			state->sendPreparedMusic(bundle, copy, replyTo);
-		};
 		const auto ephemeralReply = controller->session().ephemeralMessages()
 			.isEphemeralBotReply(replyTo.messageId);
 		if (ephemeralReply && bundle->totalCount > 1) {
 			controller->showToast(
 				tr::lng_ephemeral_reply_single_message(tr::now));
-			return;
-		} else if (!ephemeralReply && !state->paymentHelper.check(
-				show,
-				peer,
-				action.options,
-				bundle->totalCount,
-				resend)) {
 			return;
 		}
 
@@ -1856,20 +1840,6 @@ void MusicAttachBox(
 			}, false));
 			return;
 		}
-		const auto resend = [=](int approved) {
-			auto copy = options;
-			copy.starsApproved = approved;
-			state->sendSelected(copy);
-		};
-		if (!ephemeralReply && !state->paymentHelper.check(
-				show,
-				peer,
-				action.options,
-				int(items.size()),
-				resend)) {
-			return;
-		}
-
 		auto message = Api::MessageToSend(action);
 		message.textWithTags = std::move(text);
 		Api::SendMusicSelection(std::move(message), std::move(items));

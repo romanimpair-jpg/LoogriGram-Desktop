@@ -140,27 +140,6 @@ void SessionController::sendDrawToReplyFiles(
 		showToast(tr::lng_ephemeral_reply_single_message(tr::now));
 		return;
 	}
-	if (!ephemeralReply) {
-		const auto payment = std::make_shared<SendPaymentHelper>();
-		const auto weak = base::make_weak(thread);
-		const auto withPaymentApproved = crl::guard(this, [=](int approved) {
-			payment->clear();
-			if (const auto thread = weak.get()) {
-				auto copy = options;
-				copy.starsApproved = approved;
-				sendDrawToReplyFiles(thread, replyTo, bundle, copy);
-			}
-		});
-		const auto checked = payment->check(
-			this,
-			thread->peer(),
-			options,
-			bundle->totalCount,
-			withPaymentApproved);
-		if (!checked) {
-			return;
-		}
-	}
 	const auto type = bundle->way.sendImagesAsPhotos()
 		? SendMediaType::Photo
 		: SendMediaType::File;

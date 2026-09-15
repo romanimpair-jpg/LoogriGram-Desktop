@@ -1800,7 +1800,6 @@ void WebViewInstance::botSendPreparedMessage(
 			base::weak_qptr<Ui::BoxContent> choose;
 			rpl::event_stream<not_null<Data::Thread*>> recipient;
 			Fn<void(Api::SendOptions)> send;
-			SendPaymentHelper sendPayment;
 			bool sent = false;
 		};
 		const auto state = std::make_shared<State>();
@@ -1880,22 +1879,6 @@ void WebViewInstance::botSendPreparedMessage(
 				const auto strong = weak.get();
 				if (!strong) {
 					state->send = nullptr;
-					return;
-				}
-				const auto withPaymentApproved = [=](int stars) {
-					if (const auto onstack = state->send) {
-						auto copy = options;
-						copy.starsApproved = stars;
-						onstack(copy);
-					}
-				};
-				const auto checked = state->sendPayment.check(
-					show,
-					strong->peer(),
-					options,
-					1,
-					withPaymentApproved);
-				if (!checked) {
 					return;
 				}
 				[[maybe_unused]] const auto ongoing = base::take(state->send);
@@ -2735,39 +2718,16 @@ void ChooseAndSendLocation(
 		not_null<Window::SessionController*> controller,
 		const Ui::LocationPickerConfig &config,
 		Api::SendAction action) {
-	const auto weak = base::make_weak(controller);
 	const auto session = &controller->session();
 	if (const auto picker = session->locationPickers().lookup(action)) {
 		picker->activate();
 		return;
 	}
 	struct State {
-		SendPaymentHelper sendPayment;
 		Fn<void(Data::InputVenue, Api::SendAction)> send;
 	};
 	const auto state = std::make_shared<State>();
 	state->send = [=](Data::InputVenue venue, Api::SendAction action) {
-		const auto strong = weak.get();
-		const auto ephemeralReply = session->ephemeralMessages()
-			.isEphemeralBotReply(action.replyTo.messageId);
-		if (strong && !ephemeralReply) {
-			const auto withPaymentApproved = [=](int stars) {
-				if (const auto onstack = state->send) {
-					auto copy = action;
-					copy.options.starsApproved = stars;
-					onstack(venue, copy);
-				}
-			};
-			const auto checked = state->sendPayment.check(
-				strong,
-				action.history->peer,
-				action.options,
-				1,
-				withPaymentApproved);
-			if (!checked) {
-				return;
-			}
-		}
 		state->send = nullptr;
 		if (venue.justLocation()) {
 			Api::SendLocation(action, venue.lat, venue.lon);

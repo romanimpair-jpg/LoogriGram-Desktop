@@ -4242,30 +4242,9 @@ void ComposeControls::updateSendButtonType() {
 			? _slowmodeSecondsLeft.current()
 			: 0;
 	}();
-	const auto ephemeralReply = session().ephemeralMessages()
-		.isEphemeralBotReply(replyingToMessage().messageId);
-	const auto starsToSend = [&] {
-		const auto perMessage = _history
-			? _history->peer->starsPerMessageChecked()
-			: 0;
-		if (!perMessage) {
-			return 0;
-		}
-		const auto richPage = shownRichMessage();
-		const auto richMessage = (richPage != nullptr);
-		const auto messages = _voiceRecordBar->isListenState()
-			? 1
-			: ComputeSendingMessagesCount(_history, {
-				.forward = &forwardItems(),
-				.text = richMessage ? nullptr : &_field->getTextWithTags(),
-				.richMessage = richMessage,
-			});
-		return perMessage * messages;
-	}();
 	_send->setState({
 		.type = type,
 		.slowmodeDelay = delay,
-		.starsToSend = ephemeralReply ? 0 : starsToSend,
 		.forbidden = forbidden,
 	});
 	_send->setDisabled(_sendDisabledBySlowmode.current()

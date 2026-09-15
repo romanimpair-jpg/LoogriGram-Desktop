@@ -244,9 +244,6 @@ void Polls::create(
 		history->startSavingCloudDraft(topicRootId, monoforumPeerId);
 	}
 	const auto silentPost = ShouldSendSilent(peer, action.options);
-	const auto starsPaid = std::min(
-		peer->starsPerMessageChecked(),
-		action.options.starsApproved);
 	if (silentPost) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_silent;
 	}
@@ -264,10 +261,6 @@ void Polls::create(
 	}
 	if (action.options.suggest) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
-	}
-	if (starsPaid) {
-		action.options.starsApproved -= starsPaid;
-		sendFlags |= MTPmessages_SendMedia::Flag::f_allow_paid_stars;
 	}
 	const auto sendAs = action.options.sendAs;
 	if (sendAs) {
@@ -300,7 +293,7 @@ void Polls::create(
 			(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
 			Data::ShortcutIdToMTP(_session, action.options.shortcutId),
 			MTP_long(action.options.effectId),
-			MTP_long(starsPaid),
+			MTP_long(0),
 			SuggestToMTP(action.options.suggest)
 		), [=](const MTPUpdates &result, const MTP::Response &response) {
 		if (clearCloudDraft) {

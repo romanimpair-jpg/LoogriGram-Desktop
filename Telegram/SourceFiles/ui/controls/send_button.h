@@ -43,7 +43,6 @@ public:
 	struct State {
 		Type type = Type::Send;
 		int slowmodeDelay = 0;
-		int starsToSend = 0;
 		bool forbidden = false;
 
 		friend inline bool operator==(State, State) = default;
@@ -64,22 +63,14 @@ protected:
 	QPoint prepareRippleStartPosition() const override;
 
 private:
-	struct StarsGeometry {
-		QRect inner;
-		QRect rounded;
-		QRect outer;
-	};
 	enum class RippleShape : uchar {
 		InnerEllipse,
 		SendEllipse,
-		StarsRoundRect,
 		ScheduleEllipse,
 	};
 
 	[[nodiscard]] QPixmap grabContent();
 	void updateSize();
-
-	[[nodiscard]] StarsGeometry starsGeometry() const;
 
 	[[nodiscard]] RippleShape currentRippleShape() const;
 	[[nodiscard]] QRect sendEllipseRect() const;
@@ -93,7 +84,6 @@ private:
 	void paintStop(QPainter &p, bool over);
 	void paintSchedule(QPainter &p, bool over);
 	void paintSlowmode(QPainter &p);
-	void paintStarsToSend(QPainter &p, bool over);
 
 	void initVoiceRoundIcon(int index);
 	void paintVoiceRoundIcon(QPainter &p, bool over);
@@ -109,7 +99,6 @@ private:
 	int _stateChangeFromWidth = 0;
 
 	QString _slowmodeDelayText;
-	Ui::Text::String _starsToSendText;
 
 	std::array<std::unique_ptr<Lottie::Icon>, 2> _voiceRoundIcons;
 	bool _voiceRoundAnimating = false;

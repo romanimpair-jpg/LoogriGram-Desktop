@@ -1808,22 +1808,6 @@ void WindowHost::Impl::setupWindow(ShowWindowDescriptor &&descriptor) {
 		descriptor.setupSubmitButton(
 			not_null<Ui::RpWidget*>(raw));
 	}
-	if (!save) {
-		const auto session = descriptor.session;
-		const auto peer = descriptor.peer;
-		StarsPerMessageValue(
-			session,
-			peer
-		) | rpl::on_next([=](int stars) {
-			raw->setState({
-				.starsToSend = stars,
-			});
-		}, raw->lifetime());
-		raw->finishAnimating();
-		raw->widthValue() | rpl::skip(1) | rpl::on_next([=] {
-			layout();
-		}, raw->lifetime());
-	}
 	{
 		const auto lockIcon = &st::ivEditorSendLockIcon;
 		const auto lockPadding = st::ivEditorSendLockBadgePadding;

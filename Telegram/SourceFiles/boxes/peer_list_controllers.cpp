@@ -352,7 +352,6 @@ void RecipientRow::paintUserpicOverlay(
 		PaintRestrictionBadge(
 			p,
 			_maybeLockedSt,
-			r->value.starsPerMessage,
 			r->cache,
 			x,
 			y,
@@ -1567,74 +1566,9 @@ auto ChooseCommunityChatBoxController::createRow(not_null<History*> history)
 	return result;
 }
 
-// LoogriGram: this drew the star badge on a paid reaction, and lived in the
-// paid reaction box. That box is deleted; the badge is still wanted for the
-// rows of people who charge stars to receive a message, so it lives here.
-[[nodiscard]] QImage GenerateSmallBadgeImage(
-		QString text,
-		const style::icon &icon,
-		QColor bg,
-		QColor fg,
-		const style::RoundCheckbox *borderSt) {
-	const auto length = st::chatSimilarBadgeFont->width(text);
-	const auto contents = st::chatSimilarLockedIconPosition.x()
-		+ icon.width()
-		+ st::paidReactTopStarSkip
-		+ length;
-	const auto badge = QRect(
-		st::chatSimilarBadgePadding.left(),
-		st::chatSimilarBadgePadding.top(),
-		contents,
-		st::chatSimilarBadgeFont->height);
-	const auto rect = badge.marginsAdded(st::chatSimilarBadgePadding);
-	const auto add = borderSt ? borderSt->width : 0;
-	const auto ratio = style::DevicePixelRatio();
-	auto result = QImage(
-		(rect + QMargins(add, add, add, add)).size() * ratio,
-		QImage::Format_ARGB32_Premultiplied);
-	result.setDevicePixelRatio(ratio);
-	result.fill(Qt::transparent);
-	auto q = QPainter(&result);
-
-	const auto &font = st::chatSimilarBadgeFont;
-	const auto textTop = badge.y() + font->ascent;
-	const auto position = st::chatSimilarLockedIconPosition;
-
-	auto hq = PainterHighQualityEnabler(q);
-	q.translate(add, add);
-	q.setBrush(bg);
-	if (borderSt) {
-		q.setPen(QPen(borderSt->border->c, borderSt->width));
-	} else {
-		q.setPen(Qt::NoPen);
-	}
-	const auto radius = rect.height() / 2.;
-	const auto shift = add / 2.;
-	q.drawRoundedRect(
-		QRectF(rect) + QMarginsF(shift, shift, shift, shift),
-		radius,
-		radius);
-
-	auto textLeft = 0;
-	icon.paint(
-		q,
-		badge.x() + position.x(),
-		badge.y() + position.y(),
-		rect.width());
-	textLeft += position.x() + icon.width() + st::paidReactTopStarSkip;
-
-	q.setFont(font);
-	q.setPen(fg);
-	q.drawText(textLeft, textTop, text);
-	q.end();
-
-	return result;
-}
-
 void PaintRestrictionBadge(
 		Painter &p,
 		not_null<const style::PeerListItem*> st,
-		int stars,
 		RestrictionBadgeCache &cache,
 		int x,
 		int y,
@@ -1642,50 +1576,36 @@ void PaintRestrictionBadge(
 		int size) {
 	const auto paletteVersion = style::PaletteVersion();
 	const auto good = !cache.badge.isNull()
-		&& (cache.stars == stars)
 		&& (cache.paletteVersion == paletteVersion);
 	const auto &check = st->checkbox.check;
 	const auto add = check.width;
 	if (!good) {
-		cache.stars = stars;
 		cache.paletteVersion = paletteVersion;
-		if (stars) {
-			const auto text = (stars >= 1000)
-				? (QString::number(stars / 1000) + 'K')
-				: QString::number(stars);
-			cache.badge = GenerateSmallBadgeImage(
-				text,
-				st::paidReactTopStarIcon,
-				check.bgActive->c,
-				st::premiumButtonFg->c,
-				&check);
-		} else {
-			auto hq = PainterHighQualityEnabler(p);
-			const auto &icon = st::stickersPremiumLock;
-			const auto width = icon.width();
-			const auto height = icon.height();
-			const auto rect = QRect(
-				QPoint(x + size - width, y + size - height),
-				icon.size());
-			const auto added = QMargins(add, add, add, add);
-			const auto ratio = style::DevicePixelRatio();
-			cache.badge = QImage(
-				(rect + added).size() * ratio,
-				QImage::Format_ARGB32_Premultiplied);
-			cache.badge.setDevicePixelRatio(ratio);
-			cache.badge.fill(Qt::transparent);
-			const auto inner = QRect(add, add, rect.width(), rect.height());
-			auto q = QPainter(&cache.badge);
-			auto pen = check.border->p;
-			pen.setWidthF(check.width);
-			q.setPen(pen);
-			q.setBrush(st::premiumButtonBg2);
-			q.drawEllipse(inner);
-			icon.paintInCenter(q, inner);
-		}
+		auto hq = PainterHighQualityEnabler(p);
+		const auto &icon = st::stickersPremiumLock;
+		const auto width = icon.width();
+		const auto height = icon.height();
+		const auto rect = QRect(
+			QPoint(x + size - width, y + size - height),
+			icon.size());
+		const auto added = QMargins(add, add, add, add);
+		const auto ratio = style::DevicePixelRatio();
+		cache.badge = QImage(
+			(rect + added).size() * ratio,
+			QImage::Format_ARGB32_Premultiplied);
+		cache.badge.setDevicePixelRatio(ratio);
+		cache.badge.fill(Qt::transparent);
+		const auto inner = QRect(add, add, rect.width(), rect.height());
+		auto q = QPainter(&cache.badge);
+		auto pen = check.border->p;
+		pen.setWidthF(check.width);
+		q.setPen(pen);
+		q.setBrush(st::premiumButtonBg2);
+		q.drawEllipse(inner);
+		icon.paintInCenter(q, inner);
 	}
 	const auto cached = cache.badge.size() / cache.badge.devicePixelRatio();
 	const auto left = x + size + add - cached.width();
-	const auto top = stars ? (y - add) : (y + size + add - cached.height());
+	const auto top = y + size + add - cached.height();
 	p.drawImage(left, top, cache.badge);
 }

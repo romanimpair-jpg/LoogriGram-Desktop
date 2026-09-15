@@ -74,9 +74,6 @@ void ShowRichMessagesUnavailableToast(
 [[nodiscard]] bool SessionPremium(not_null<Main::Session*> session);
 [[nodiscard]] rpl::producer<bool> AmPremiumValue(
 	not_null<Main::Session*> session);
-[[nodiscard]] rpl::producer<int> StarsPerMessageValue(
-	not_null<Main::Session*> session,
-	not_null<PeerData*> peer);
 [[nodiscard]] bool IsEmojiDocument(not_null<DocumentData*> document);
 [[nodiscard]] bool PremiumEmojiForbidden(
 	not_null<Main::Session*> session,
