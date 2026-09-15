@@ -614,24 +614,6 @@ auto AppConfig::groupCallColorings() const -> std::vector<StarsColoring> {
 							} else {
 								return _groupCallColorings.pop_back();
 							}
-						} else if (key == "pin_period"_q) {
-							if (const auto n = number()) {
-								entry.secondsPin = *n;
-							} else {
-								return _groupCallColorings.pop_back();
-							}
-						} else if (key == "text_length_max"_q) {
-							if (const auto n = number()) {
-								entry.charactersMax = *n;
-							} else {
-								return _groupCallColorings.pop_back();
-							}
-						} else if (key == "emoji_max"_q) {
-							if (const auto n = number()) {
-								entry.emojiLimit = *n;
-							} else {
-								return _groupCallColorings.pop_back();
-							}
 						} else if (key == "color1"_q) {
 							if (const auto c = color()) {
 								entry.bgLight = *c;
@@ -652,21 +634,21 @@ auto AppConfig::groupCallColorings() const -> std::vector<StarsColoring> {
 	});
 	if (_groupCallColorings.empty()) {
 		_groupCallColorings = std::vector<StarsColoring>{
-			{ 0x955CDB, 0x49079B, 0, 30, 30, 0 }, // purple
-			{ 0x955CDB, 0x49079B, 10, 60, 60, 1 }, // still purple
-			{ 0x46A3EB, 0x00508E, 50, 120, 80, 2 }, // blue
-			{ 0x40A920, 0x176200, 100, 300, 110, 3 }, // green
-			{ 0xE29A09, 0x9A3E00, 250, 600, 150, 4 }, // yellow
-			{ 0xED771E, 0x9B3100, 500, 900, 200, 7 }, // orange
-			{ 0xE14542, 0x8B0503, 2'000, 1800, 280, 10 }, // red
-			{ 0x596473, 0x252C36, 10'000, 3600, 400, 20 }, // silver
+			{ .bgLight = 0x955CDB, .bgDark = 0x49079B, .fromStars = 0 },
+			{ .bgLight = 0x955CDB, .bgDark = 0x49079B, .fromStars = 10 },
+			{ .bgLight = 0x46A3EB, .bgDark = 0x00508E, .fromStars = 50 },
+			{ .bgLight = 0x40A920, .bgDark = 0x176200, .fromStars = 100 },
+			{ .bgLight = 0xE29A09, .bgDark = 0x9A3E00, .fromStars = 250 },
+			{ .bgLight = 0xED771E, .bgDark = 0x9B3100, .fromStars = 500 },
+			{ .bgLight = 0xE14542, .bgDark = 0x8B0503, .fromStars = 2'000 },
+			{ .bgLight = 0x596473, .bgDark = 0x252C36, .fromStars = 10'000 },
 		};
 	} else {
 		const auto proj = &StarsColoring::fromStars;
 		if (!ranges::contains(_groupCallColorings, 0, proj)) {
 			_groupCallColorings.insert(
 				begin(_groupCallColorings),
-				{ 0x955CDB, 0x49079B, 0, 30, 30, 0 });
+				{ .bgLight = 0x955CDB, .bgDark = 0x49079B, .fromStars = 0 });
 		}
 		ranges::sort(_groupCallColorings, ranges::less(), proj);
 	}

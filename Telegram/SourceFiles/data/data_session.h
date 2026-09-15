@@ -451,10 +451,6 @@ public:
 	[[nodiscard]] rpl::producer<not_null<History*>> historyAccessLost() const;
 	void notifyHistoryChangeDelayed(not_null<History*> history);
 	[[nodiscard]] rpl::producer<not_null<History*>> historyChanged() const;
-	void notifyViewPaidReactionSent(not_null<const ViewElement*> view);
-	[[nodiscard]] rpl::producer<not_null<const ViewElement*>> viewPaidReactionSent() const;
-	void notifyCallPaidReactionSent(not_null<Calls::GroupCall*> call);
-	[[nodiscard]] rpl::producer<not_null<Calls::GroupCall*>> callPaidReactionSent() const;
 	void sendHistoryChangeNotifications();
 
 	void notifyPinnedDialogsOrderUpdated();
@@ -1238,8 +1234,6 @@ private:
 	rpl::event_stream<std::vector<not_null<HistoryItem*>>> _itemsAboutToBeDestroyed;
 	rpl::event_stream<ViewRemoval> _viewAboutToBeRemoved;
 	rpl::event_stream<not_null<const ViewElement*>> _viewRemoved;
-	rpl::event_stream<not_null<const ViewElement*>> _viewPaidReactionSent;
-	rpl::event_stream<not_null<Calls::GroupCall*>> _callPaidReactionSent;
 	rpl::event_stream<not_null<const History*>> _historyUnloaded;
 	rpl::event_stream<not_null<const History*>> _historyCleared;
 	rpl::event_stream<not_null<History*>> _historyAccessLost;

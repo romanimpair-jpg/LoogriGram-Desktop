@@ -51,7 +51,6 @@ using SharedMediaTypesMask = base::enum_mask<SharedMediaType>;
 namespace Data {
 struct MessagePosition;
 struct RecentReaction;
-struct MessageReactionsTopPaid;
 struct ReactionId;
 class Media;
 struct MessageReaction;
@@ -60,7 +59,6 @@ class ForumTopic;
 class Thread;
 class Story;
 class SavedSublist;
-struct PaidReactionSend;
 struct SendError;
 struct FileOriginCloudDraft;
 } // namespace Data
@@ -508,25 +506,13 @@ public:
 	bool removeReactionsFromParticipant(
 		not_null<PeerData*> participant,
 		const Data::ReactionId &reaction);
-	void addPaidReaction(int count, std::optional<PeerId> shownPeer = {});
-	void cancelScheduledPaidReaction();
-	[[nodiscard]] Data::PaidReactionSend startPaidReactionSending();
-	void finishPaidReactionSending(
-		Data::PaidReactionSend send,
-		bool success);
 	void updateReactionsUnknown();
 	[[nodiscard]] auto reactions() const
 		-> const std::vector<Data::MessageReaction> &;
-	[[nodiscard]] auto reactionsWithLocal() const
-		-> std::vector<Data::MessageReaction>;
 	[[nodiscard]] auto recentReactions() const
 		-> const base::flat_map<
 			Data::ReactionId,
 			std::vector<Data::RecentReaction>> &;
-	[[nodiscard]] auto topPaidReactionsWithLocal() const
-		-> std::vector<Data::MessageReactionsTopPaid>;
-	[[nodiscard]] int reactionsPaidScheduled() const;
-	[[nodiscard]] PeerId reactionsLocalShownPeer() const;
 	[[nodiscard]] bool canViewReactions() const;
 	[[nodiscard]] std::vector<Data::ReactionId> chosenReactions() const;
 	[[nodiscard]] Data::ReactionId lookupUnreadReaction(

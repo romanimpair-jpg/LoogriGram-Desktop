@@ -646,7 +646,7 @@ void ReactionsSettingsBox(
 	}
 
 	const auto allowed = [=](const Data::ReactionId &id) {
-		return id && !id.paid() && (premium || !id.custom());
+		return id && (premium || !id.custom());
 	};
 	const auto selectedIds = [=] {
 		auto result = std::vector<Data::ReactionId>();

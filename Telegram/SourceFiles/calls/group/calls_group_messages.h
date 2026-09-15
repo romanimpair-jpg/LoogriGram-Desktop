@@ -16,7 +16,6 @@ class GroupCall;
 
 namespace Data {
 class GroupCall;
-struct PaidReactionSend;
 } // namespace Data
 
 namespace Main {
@@ -33,10 +32,8 @@ namespace Calls::Group {
 struct Message {
 	MsgId id = 0;
 	TimeId date = 0;
-	TimeId pinFinishDate = 0;
 	not_null<PeerData*> peer;
 	TextWithEntities text;
-	int stars = 0;
 	bool failed = false;
 	bool admin = false;
 	bool mine = false;
@@ -54,31 +51,16 @@ struct MessageDeleteRequest {
 	bool reportSpam = false;
 };
 
-struct StarsDonor {
-	PeerData *peer = nullptr;
-	int stars = 0;
-	bool my = false;
-
-	friend inline bool operator==(
-		const StarsDonor &,
-		const StarsDonor &) = default;
-};
-
-struct StarsTop {
-	std::vector<StarsDonor> topDonors;
-	int total = 0;
-
-	friend inline bool operator==(
-		const StarsTop &,
-		const StarsTop &) = default;
-};
+// LoogriGram: paying stars bought a live stream comment colour, a pin at
+// the top and a place in a donor leaderboard. All of it is deleted, so the
+// donor list, the running total and the price on a message go too.
 
 class Messages final : public base::has_weak_ptr {
 public:
 	Messages(not_null<GroupCall*> call, not_null<MTP::Sender*> api);
 	~Messages();
 
-	void send(TextWithTags text, int stars);
+	void send(TextWithTags text);
 
 	void setApplyingInitial(bool value);
 	void received(const MTPDupdateGroupCallMessage &data);
@@ -88,25 +70,6 @@ public:
 
 	[[nodiscard]] rpl::producer<std::vector<Message>> listValue() const;
 	[[nodiscard]] rpl::producer<MessageIdUpdate> idUpdates() const;
-
-	[[nodiscard]] int reactionsPaidScheduled() const;
-	[[nodiscard]] PeerId reactionsLocalShownPeer() const;
-	void reactionsPaidAdd(int count);
-	void reactionsPaidScheduledCancel();
-	void reactionsPaidSend();
-	void undoScheduledPaidOnDestroy();
-
-	struct PaidLocalState {
-		int total = 0;
-		int my = 0;
-	};
-	[[nodiscard]] PaidLocalState starsLocalState() const;
-	[[nodiscard]] rpl::producer<StarsDonor> starsValueChanges() const {
-		return _paidChanges.events();
-	}
-	[[nodiscard]] const StarsTop &starsTop() const {
-		return _paid.top;
-	}
 
 	void requestHiddenShow() {
 		_hiddenShowRequests.fire({});
@@ -120,18 +83,6 @@ public:
 private:
 	struct Pending {
 		TextWithTags text;
-		int stars = 0;
-	};
-	struct Paid {
-		StarsTop top;
-		PeerId scheduledShownPeer = 0;
-		PeerId sendingShownPeer = 0;
-		uint32 scheduled : 30 = 0;
-		uint32 scheduledFlag : 1 = 0;
-		uint32 scheduledPrivacySet : 1 = 0;
-		uint32 sending : 30 = 0;
-		uint32 sendingFlag : 1 = 0;
-		uint32 sendingPrivacySet : 1 = 0;
 	};
 
 	[[nodiscard]] bool ready() const;
@@ -144,22 +95,13 @@ private:
 		const MTPPeer &from,
 		const MTPTextWithEntities &message,
 		TimeId date,
-		int stars,
 		bool fromAdmin,
 		bool checkCustomEmoji = false);
 	void sent(uint64 randomId, const MTP::Response &response);
 	void sent(uint64 randomId, MsgId realId);
 	void failed(uint64 randomId, const MTP::Response &response);
 
-	[[nodiscard]] bool skipMessage(
-		const TextWithEntities &text,
-		int stars) const;
-	[[nodiscard]] Data::PaidReactionSend startPaidReactionSending();
-	void finishPaidSending(
-		Data::PaidReactionSend send,
-		bool success);
-	void addStars(not_null<PeerData*> from, int stars, bool mine);
-	void requestStarsStats();
+	[[nodiscard]] bool skipMessage(const TextWithEntities &text) const;
 
 	const not_null<GroupCall*> _call;
 	const not_null<Main::Session*> _session;
@@ -181,16 +123,10 @@ private:
 	rpl::event_stream<MessageIdUpdate> _idUpdates;
 	bool _applyingInitial = false;
 
-	mtpRequestId _starsTopRequestId = 0;
-	Paid _paid;
-	rpl::event_stream<StarsDonor> _paidChanges;
-	bool _paidSendingPending = false;
-
 	TimeId _ttl = 0;
 	bool _changesScheduled = false;
 
 	rpl::event_stream<> _hiddenShowRequests;
-	base::Timer _starsStatsTimer;
 
 	rpl::lifetime _lifetime;
 

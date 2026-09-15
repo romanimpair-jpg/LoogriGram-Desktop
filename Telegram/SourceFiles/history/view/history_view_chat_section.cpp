@@ -16,7 +16,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/controls/history_view_suggest_options.h"
 #include "history/view/history_view_about_view.h"
 #include "history/view/history_view_group_members_widget.h"
-#include "history/view/history_view_paid_reaction_toast.h"
 #include "history/view/history_view_top_bar_widget.h"
 #include "history/view/history_view_schedule_box.h"
 #include "history/view/history_view_sticker_toast.h"
@@ -394,18 +393,6 @@ ChatWidget::ChatWidget(
 , _topBar(this, controller)
 , _topBarShadow(this)
 , _membersDropdownShowTimer([=] { showMembersDropdown(); })
-, _paidReactionToast(std::make_unique<HistoryView::PaidReactionToast>(
-	this,
-	&session().data(),
-	rpl::single(0),
-	[=](not_null<const HistoryView::Element*> view) {
-		return _inner
-			&& (view->delegate().get() == _inner.data())
-			&& !_inner->elementIntersectsRange(
-				view,
-				std::numeric_limits<int>::lowest(),
-				0);
-	}))
 , _composeControls(std::make_unique<ComposeControls>(
 	this,
 	ComposeControlsDescriptor{

@@ -96,7 +96,7 @@ void SelfForwardsTagger::showSelectorForMessages(
 		return;
 	}
 	using namespace Reactions;
-	const auto reactions = Data::LookupPossibleReactions(item, true);
+	const auto reactions = Data::LookupPossibleReactions(item);
 	if (reactions.recent.empty()) {
 		return;
 	}

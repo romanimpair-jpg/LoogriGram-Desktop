@@ -46,7 +46,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "media/stories/media_stories_stealth.h"
 #include "media/view/media_view_video_stream.h"
 #include "menu/menu_send.h"
-#include "payments/ui/payments_reaction_box.h" // MaxTopPaidDonorsShown
 #include "settings/settings_credits_graphics.h" // DarkCreditsEntryBoxStyle
 #include "storage/localimageloader.h"
 #include "storage/storage_account.h"
@@ -128,7 +127,6 @@ namespace {
 		.autocompleteMentions = false,
 		.autocompleteCommands = false,
 		.recordMediaMessage = !videoStream,
-		.editMessageStars = videoStream,
 		.emojiOnlyPanel = videoStream,
 		.richEditor = false,
 	};
@@ -243,29 +241,11 @@ bool ReplyArea::sendReaction(const Data::ReactionId &id) {
 
 void ReplyArea::send(Api::SendOptions options) {
 	auto text = _controls->getTextWithAppliedMarkdown();
-	const auto stars = _controls->chosenStarsForMessage();
 	if (const auto stream = _videoStream.get()) {
-		if (stars > 0) {
-			const auto weak = _videoStream;
-			const auto done = [=](Settings::SmallBalanceResult result) {
-				if (result == Settings::SmallBalanceResult::Success
-					|| result == Settings::SmallBalanceResult::Already) {
-					if (const auto strong = weak.get()) {
-						strong->messages()->send(text, stars);
-						_controls->clear();
-					}
-				}
-			};
-			using namespace Settings;
-			MaybeRequestBalanceIncrease(
-				_controller->uiShow(),
-				stars,
-				SmallBalanceVideoStream{ stream->peer()->id },
-				crl::guard(this, done));
-		} else {
-			stream->messages()->send(std::move(text), stars);
-			_controls->clear();
-		}
+		// LoogriGram: a comment could carry a price in stars, which bought
+		// it colour and a pin at the top. Every comment is a plain comment.
+		stream->messages()->send(std::move(text));
+		_controls->clear();
 		return;
 	}
 	const auto webPageDraft = _controls->webPageDraft();
@@ -598,18 +578,7 @@ Fn<SendMenu::Details()> ReplyArea::sendMenuDetails() const {
 		return SendMenu::Details{
 			.type = (!_data.videoStream
 				? SendMenu::Type::SilentOnly
-				: !call
-				? SendMenu::Type::Disabled
-				: SendMenu::Type::EditCommentPrice),
-			.commentStreamerName = (call
-				? call->peer()->shortName()
-				: QString()),
-			.price = (_data.videoStream
-				? uint64(_controls->chosenStarsForMessage())
-				: std::optional<uint64>()),
-			.commentPriceMin = (call
-				? uint64(call->canManage() ? call->messagesMinPrice() : 0)
-				: std::optional<uint64>()),
+				: SendMenu::Type::Disabled),
 			.effectsPan = &st::storiesReactionsPan,
 			.effectAllowed = (!_data.videoStream
 				&& _data.peer
@@ -839,15 +808,6 @@ void ReplyArea::show(
 		_controller->setCommentsShownToggles(
 			_controls->commentsShownToggles());
 	}
-	using Controls = HistoryView::ComposeControls;
-	_controls->setStarsReactionCounter(
-		stream ? _controller->starsReactionsValue() : nullptr,
-		stream ? _controller->starsReactionsEffects() : nullptr);
-	_controller->setStarsReactionIncrements(
-		_controls->starsReactionIncrements(
-		) | rpl::map([](Controls::StarReactionIncrement increment) {
-			return increment.count;
-		}));
 	_starsForMessage = starsPerMessageValue();
 	if (!peerChanged) {
 		if (_data.peer) {
@@ -907,9 +867,6 @@ void ReplyArea::show(
 		) | rpl::map([](const Data::ReactionId &id) {
 			return !id.empty();
 		}),
-		.minStarsCount = (stream
-			? _starsForMessage.value()
-			: rpl::producer<int>()),
 		.writeRestriction = std::move(writeRestriction),
 	});
 	_controls->clear();
@@ -960,7 +917,6 @@ rpl::producer<int> ReplyArea::starsPerMessageValue() const {
 void ReplyArea::updateVideoStream(not_null<Calls::GroupCall*> videoStream) {
 	_type = ReplyAreaType::VideoStreamComment;
 	_videoStream = videoStream;
-	_controls->setStarsReactionTop(View::TopVideoStreamDonors(videoStream));
 }
 
 bool ReplyArea::showSlowmodeError() {

@@ -43,7 +43,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "spellcheck/spellcheck_highlight_syntax.h"
 #include "chat_helpers/stickers_emoji_pack.h"
-#include "payments/payments_reaction_process.h" // TryAddingPaidReaction.
 #include "window/window_session_controller.h"
 #include "window/section_widget.h"
 #include "ui/chat/chat_style.h"
@@ -2845,18 +2844,7 @@ void Element::refreshReactions() {
 					}
 					return;
 				}
-				if (id.paid()) {
-					if (!controller) {
-						return;
-					}
-					Payments::TryAddingPaidReaction(
-						item,
-						weak.get(),
-						1,
-						std::nullopt,
-						controller->uiShow());
-					return;
-				} else if (!wasChosen
+				if (!wasChosen
 					&& controller
 					&& Window::ShowReactPremiumError(controller, item, id)) {
 					return;
@@ -2866,7 +2854,7 @@ void Element::refreshReactions() {
 				}
 				if (const auto now = weak.get()) {
 					const auto chosen = now->data()->chosenReactions();
-					if (id.paid() || ranges::contains(chosen, id)) {
+					if (ranges::contains(chosen, id)) {
 						now->animateReaction({
 							.id = id,
 						});

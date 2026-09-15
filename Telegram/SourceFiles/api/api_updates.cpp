@@ -2871,11 +2871,9 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 		_session->credits().apply(data);
 	} break;
 
-	case mtpc_updatePaidReactionPrivacy: {
-		const auto &data = update.c_updatePaidReactionPrivacy();
-		_session->api().globalPrivacy().updatePaidReactionShownPeer(
-			Api::ParsePaidReactionShownPeer(_session, data.vprivate()));
-	} break;
+	// LoogriGram: an update telling us which peer our paid reactions would be
+	// shown as coming from. Paid reactions are deleted, so it is ignored.
+	case mtpc_updatePaidReactionPrivacy: break;
 
 	case mtpc_updateStarGiftAuctionState: {
 		const auto &data = update.c_updateStarGiftAuctionState();

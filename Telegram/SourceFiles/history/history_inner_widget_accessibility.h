@@ -59,7 +59,6 @@ enum class MessageSubItem : int {
 	Factcheck,
 	ForwardDate,
 	ForwardAuthor,
-	PaidReactions,
 
 	Count,
 };

@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/event_filter.h"
 #include "base/unixtime.h"
 #include "boxes/abstract_box.h"
-#include "calls/group/calls_group_stars_box.h"
 #include "chat_helpers/compose/compose_show.h"
 #include "chat_helpers/stickers_emoji_pack.h"
 #include "core/shortcuts.h"
@@ -647,43 +646,9 @@ FillMenuResult AttachSendMenuEffect(
 	return FillMenuResult::Prepared;
 }
 
-FillMenuResult FillEditCommentPriceMenu(
-		not_null<Ui::PopupMenu*> menu,
-		std::shared_ptr<ChatHelpers::Show> show,
-		Details details,
-		Fn<void(Action, Details)> action,
-		const style::ComposeIcons *iconsOverride,
-		std::optional<QPoint> desiredPositionOverride) {
-	Expects(show != nullptr);
-
-	const auto &icons = iconsOverride
-		? *iconsOverride
-		: st::defaultComposeIcons;
-	menu->addAction(tr::lng_video_stream_edit_stars(tr::now), [=] {
-		show->show(Calls::Group::MakeVideoStreamStarsBox({
-			.show = show,
-			.min = int(details.commentPriceMin.value_or(1)),
-			.current = int(details.price.value_or(1)),
-			.save = [=](int count) {
-				auto copy = details;
-				copy.price = count;
-				action({ {}, Action::Type::ChangePrice }, copy);
-			},
-			.name = details.commentStreamerName,
-			//.preview = details.commentPreview,
-		}));
-	}, &icons.menuEditStars);
-	if (details.price.value_or(0) > details.commentPriceMin.value_or(0)) {
-		auto copy = details;
-		copy.price = details.commentPriceMin.value_or(0);
-		menu->addAction(tr::lng_video_stream_remove_stars(tr::now), [=] {
-			action({ {}, Action::Type::ChangePrice }, copy);
-		}, &icons.menuGifRemove);
-	}
-	const auto position = desiredPositionOverride.value_or(QCursor::pos());
-	menu->prepareGeometryFor(position);
-	return FillMenuResult::Prepared;
-}
+// LoogriGram: a send menu let you set a price in stars for your comment in
+// a live stream, so it would be shown in colour and pinned. Deleted with the
+// rest of paying to be seen.
 
 FillMenuResult FillSendMenu(
 		not_null<Ui::PopupMenu*> menu,
@@ -702,14 +667,6 @@ FillMenuResult FillSendMenu(
 		&& !details.price.has_value();
 	if (empty || !action) {
 		return FillMenuResult::Skipped;
-	} else if (type == Type::EditCommentPrice) {
-		return FillEditCommentPriceMenu(
-			menu,
-			maybeShow,
-			details,
-			action,
-			iconsOverride,
-			desiredPositionOverride);
 	}
 	const auto &icons = iconsOverride
 		? *iconsOverride

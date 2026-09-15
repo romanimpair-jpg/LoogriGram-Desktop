@@ -51,7 +51,6 @@ class DraftKey;
 class PhotoMedia;
 class GroupCall;
 struct WebPageDraft;
-struct MessageReactionsTopPaid;
 } // namespace Data
 
 namespace InlineBots {
@@ -74,7 +73,6 @@ class SilentToggle;
 class DropdownMenu;
 struct PreparedBundle;
 struct PreparedList;
-struct SendStarButtonState;
 class ReactionFlyAnimation;
 class ChatStyle;
 } // namespace Ui
@@ -165,7 +163,6 @@ public:
 	using FieldHistoryAction = Ui::InputField::HistoryAction;
 	using Mode = ComposeControlsMode;
 	using ToggleCommentsState = Controls::ToggleCommentsState;
-	using SendStarButtonEffect = Controls::SendStarButtonEffect;
 
 	ComposeControls(
 		not_null<Ui::RpWidget*> parent,
@@ -194,18 +191,6 @@ public:
 	void setupCommentsShownNewDot();
 	void setToggleCommentsButton(rpl::producer<ToggleCommentsState> state);
 	[[nodiscard]] rpl::producer<> commentsShownToggles() const;
-	void setStarsReactionCounter(
-		rpl::producer<Ui::SendStarButtonState> count,
-		rpl::producer<SendStarButtonEffect> effects);
-	using StarReactionTop = Data::MessageReactionsTopPaid;
-	void setStarsReactionTop(
-		rpl::producer<std::vector<StarReactionTop>> top);
-	struct StarReactionIncrement {
-		int count = 0;
-		bool fromBox = false;
-	};
-	[[nodiscard]] auto starsReactionIncrements() const
-		-> rpl::producer<StarReactionIncrement>;
 
 	bool focus();
 	[[nodiscard]] bool focused() const;
@@ -299,9 +284,6 @@ public:
 	void hidePanelsAnimated();
 	void clearListenState();
 
-	void clearChosenStarsForMessage();
-	[[nodiscard]] int chosenStarsForMessage() const;
-
 	void hide();
 	void show();
 
@@ -334,7 +316,6 @@ public:
 	void undoFieldChange();
 
 private:
-	struct StarEffect;
 	enum class TextUpdateEvent {
 		SaveDraft = (1 << 0),
 		SendTyping = (1 << 1),
@@ -364,7 +345,6 @@ private:
 	void initVoiceRecordBar();
 	void initKeyHandler();
 	void initLikeButton();
-	void initEditStarsButton();
 	void updateControlsParents();
 	void updateSubmitSettings();
 	void updateSendButtonType();
@@ -415,7 +395,6 @@ private:
 
 	[[nodiscard]] auto sendContentRequests(
 		SendRequestType requestType = SendRequestType::Text) const;
-	void editStarsFrom(int selected = 0);
 
 	void orderControls();
 	void updateFieldPlaceholder();
@@ -430,7 +409,6 @@ private:
 	void setTabbedPanel(std::unique_ptr<ChatHelpers::TabbedPanel> panel);
 
 	[[nodiscard]] bool showRecordButton() const;
-	[[nodiscard]] bool showEditStarsButton() const;
 	[[nodiscard]] bool showStopButton() const;
 	[[nodiscard]] int shownStarsPerMessage() const;
 	bool updateBotCommandShown();
@@ -448,11 +426,6 @@ private:
 	void inlineBotChanged();
 
 	[[nodiscard]] bool hasSilentBroadcastToggle() const;
-	[[nodiscard]] bool editStarsButtonShown() const;
-	void startStarsSendEffect();
-	void setupStarsSendEffectsCanvas();
-	void startStarsEffect(SendStarButtonEffect event);
-	void setupStarsEffectsCanvas();
 
 	// Look in the _field for the inline bot and query string.
 	[[nodiscard]] InlineBotQuery parseInlineBotQuery() const;
@@ -545,19 +518,11 @@ private:
 	Ui::IconButton * const _sendAsFile = nullptr;
 	Ui::IconButton * const _expand = nullptr;
 	Ui::IconButton * const _discardRichDraft = nullptr;
-	Ui::IconButton *_editStars = nullptr;
 	Ui::IconButton *_like = nullptr;
-	rpl::variable<int> _minStarsCount;
-	std::optional<int> _chosenStarsCount;
 	Ui::IconButton *_commentsShown = nullptr;
 	rpl::variable<bool> _commentsShownHidden;
 	Ui::RpWidget *_commentsShownNewDot = nullptr;
 	Ui::IconButton *_attachToggle = nullptr;
-	Ui::AbstractButton *_starsReaction = nullptr;
-	std::vector<std::unique_ptr<Ui::ReactionFlyAnimation>> _starSendEffects;
-	std::unique_ptr<Ui::RpWidget> _starSendEffectsCanvas;
-	std::vector<std::unique_ptr<StarEffect>> _starEffects;
-	std::unique_ptr<Ui::RpWidget> _starEffectsCanvas;
 	std::unique_ptr<Ui::IconButton> _replaceMedia;
 	const not_null<Ui::EmojiButton*> _tabbedSelectorToggle;
 	rpl::variable<QString> _fieldCustomPlaceholder;
@@ -626,8 +591,6 @@ private:
 	rpl::event_stream<> _suggestPostToggleClicks;
 	rpl::event_stream<> _botKeyboardToggleClicks;
 	rpl::event_stream<> _commentsShownToggles;
-	rpl::event_stream<StarReactionIncrement> _starsReactionIncrements;
-	rpl::variable<std::vector<StarReactionTop>> _starsReactionTop;
 	rpl::variable<bool> _recording;
 	rpl::variable<bool> _hasSendText;
 

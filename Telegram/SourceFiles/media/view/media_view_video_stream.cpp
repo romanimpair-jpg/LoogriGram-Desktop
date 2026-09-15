@@ -18,7 +18,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/compose/compose_show.h"
 #include "core/application.h"
 #include "core/core_settings.h"
-#include "payments/ui/payments_reaction_box.h"
 #include "ui/effects/path_shift_gradient.h"
 #include "ui/painter.h"
 #include "styles/style_calls.h"
@@ -61,47 +60,8 @@ private:
 
 };
 
-auto TopVideoStreamDonors(not_null<Calls::GroupCall*> call)
--> rpl::producer<std::vector<Data::MessageReactionsTopPaid>> {
-	const auto messages = call->messages();
-	return rpl::single(rpl::empty) | rpl::then(
-		messages->starsValueChanges() | rpl::to_empty
-	) | rpl::map([=] {
-		const auto &list = messages->starsTop().topDonors;
-		auto still = Ui::MaxTopPaidDonorsShown();
-		auto result = std::vector<Data::MessageReactionsTopPaid>();
-		result.reserve(list.size());
-		for (const auto &item : list) {
-			result.push_back({
-				.peer = item.peer,
-				.count = uint32(item.stars),
-				.my = item.my ? 1U : 0U,
-			});
-			if (!item.my && !--still) {
-				break;
-			}
-		}
-		return result;
-	});
-}
-
-auto TopDonorPlaces(not_null<Calls::GroupCall*> call)
--> rpl::producer<std::vector<not_null<PeerData*>>> {
-	return TopVideoStreamDonors(
-		call
-	) | rpl::map([=](const std::vector<Data::MessageReactionsTopPaid> &lst) {
-		auto result = std::vector<not_null<PeerData*>>();
-		auto left = Ui::MaxTopPaidDonorsShown();
-		result.reserve(lst.size());
-		for (const auto &donor : lst) {
-			result.push_back(donor.peer);
-			if (!--left) {
-				break;
-			}
-		}
-		return result;
-	});
-}
+// LoogriGram: the top stars donors of a stream were listed here to be
+// ranked with a crown in its chat. Deleted with the paid comments.
 
 VideoStream::Delegate::Delegate(Fn<void()> close)
 : _close(std::move(close)) {
@@ -234,7 +194,6 @@ VideoStream::VideoStream(
 		_show,
 		Calls::Group::MessagesMode::VideoStream,
 		_call->messages()->listValue(),
-		TopDonorPlaces(_call.get()),
 		_call->messages()->idUpdates(),
 		_call->canManageValue(),
 		_commentsShown.value())) {

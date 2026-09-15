@@ -22,8 +22,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/premium_preview_box.h"
 #include "boxes/send_files_box.h"
 #include "boxes/send_gif_with_caption_box.h"
-#include "calls/group/ui/calls_group_stars_coloring.h"
-#include "calls/group/calls_group_stars_box.h"
 #include "chat_helpers/compose/compose_show.h"
 #include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/message_field.h"
@@ -152,11 +150,6 @@ constexpr auto kMouseEvents = {
 };
 constexpr auto kRefreshSlowmodeLabelTimeout = crl::time(200);
 constexpr auto kMaxStarSendEffects = 4;
-constexpr auto kMaxStarEffects = 4;
-constexpr auto kStarEffectDuration = 2 * crl::time(1000);
-constexpr auto kStarEffectRotationMax = 12;
-constexpr auto kStarEffectScaleMin = 0.3;
-constexpr auto kStarEffectScaleMax = 0.7;
 
 constexpr auto kCommonModifiers = 0
 	| Qt::ShiftModifier
@@ -1114,86 +1107,9 @@ SendMenu::Details FieldHeader::saveMenuDetails(bool hasSendText) const {
 		: SendMenu::Details();
 }
 
-struct ComposeControls::StarEffect {
-	StarEffect(
-		not_null<Ui::RpWidget*> canvas,
-		SendStarButtonEffect effect);
-
-	Ui::ReactionFlyAnimation around;
-	Ui::PeerUserpicView userpic;
-	QImage badge;
-	not_null<PeerData*> from;
-	crl::time start = 0;
-	float64 shift = 0.;
-	float64 progress = 0.;
-	int stars = 0;
-};
-
-ComposeControls::StarEffect::StarEffect(
-	not_null<Ui::RpWidget*> canvas,
-	SendStarButtonEffect effect)
-: around(
-	&effect.from->owner().reactions(),
-	Ui::ReactionFlyAnimationArgs{
-		.id = Data::ReactionId::Paid(),
-		.effectOnly = true,
-	},
-	[canvas] { canvas->update(); },
-	st::reactionInlineImage)
-, from(effect.from)
-, start(crl::now())
-, stars(effect.stars) {
-	auto price = Ui::Text::String(
-		st::whoReadDateStyle,
-		Ui::Text::IconEmoji(
-			&st::starIconEmojiSmall
-		).append(Lang::FormatCountDecimal(stars)),
-		kMarkupTextOptions);
-	const auto padding = st::groupCallEffectPadding;
-	const auto priceHeight = st::whoReadDateStyle.font->height;
-	const auto priceTop = padding.top();
-	const auto height = priceTop + priceHeight + padding.bottom();
-
-	const auto userpicPadding = st::groupCallEffectUserpicPadding;
-	const auto userpicSize = height
-		- userpicPadding.top()
-		- userpicPadding.bottom();
-
-	const auto leftSkip = userpicPadding.left()
-		+ userpicSize
-		+ userpicPadding.right();
-	const auto widthSkip = leftSkip + padding.right();
-
-	const auto width = widthSkip + price.maxWidth();
-	const auto priceLeft = leftSkip;
-
-	const auto ratio = style::DevicePixelRatio();
-	badge = QImage(
-		QSize(width, height) * ratio,
-		QImage::Format_ARGB32_Premultiplied);
-	badge.fill(Qt::transparent);
-	badge.setDevicePixelRatio(ratio);
-
-	auto p = QPainter(&badge);
-	auto hq = PainterHighQualityEnabler(p);
-	const auto bg = Ui::ColorFromSerialized(StarsColoringForCount(
-		from->session().appConfig().groupCallColorings(),
-		stars).bgLight);
-	p.setPen(Qt::NoPen);
-	p.setBrush(bg);
-	p.drawRoundedRect(0, 0, width, height, height / 2., height / 2.);
-	from->paintUserpic(p, userpic, PaintUserpicContext{
-		.position = QPoint(userpicPadding.left(), userpicPadding.top()),
-		.size = userpicSize,
-		.shape = Ui::PeerUserpicShape::Circle,
-	});
-	p.setPen(st::white);
-	price.draw(p, {
-		.position = QPoint(priceLeft, priceTop),
-		.availableWidth = price.maxWidth(),
-	});
-	shift = base::RandomIndex(360) / 360.;
-}
+// LoogriGram: a flying userpic-and-price badge marked someone paying to
+// have their live stream comment shown in colour. Deleted with the rest
+// of paying to be seen.
 
 ComposeControls::ComposeControls(
 	not_null<Ui::RpWidget*> parent,
@@ -1242,7 +1158,6 @@ ComposeControls::ComposeControls(
 , _like(_features.likes
 	? Ui::CreateChild<Ui::IconButton>(_wrap.get(), _st.like)
 	: nullptr)
-, _chosenStarsCount(_features.editMessageStars ? 0 : std::optional<int>())
 , _attachToggle(_features.attachments
 	? Ui::CreateChild<Ui::IconButton>(_wrap.get(), _st.attach)
 	: nullptr)
@@ -1498,9 +1413,6 @@ void ComposeControls::setHistory(SetHistoryArgs &&args) {
 	_canSendTexts = args.canSendTexts
 		? std::move(args.canSendTexts)
 		: rpl::single(true);
-	_minStarsCount = args.minStarsCount
-		? std::move(args.minStarsCount)
-		: rpl::single(0);
 	const auto history = *args.history;
 	if (_history == history) {
 		return;
@@ -1567,47 +1479,8 @@ void ComposeControls::initLikeButton() {
 	}
 }
 
-void ComposeControls::initEditStarsButton() {
-	if (!editStarsButtonShown()) {
-		delete base::take(_editStars);
-		if (_chosenStarsCount) {
-			_chosenStarsCount = std::nullopt;
-			updateSendButtonType();
-		}
-		return;
-	}
-	if (_chosenStarsCount.value_or(0) < _minStarsCount.current()) {
-		_chosenStarsCount = _minStarsCount.current();
-		updateSendButtonType();
-	}
-	if (_editStars) {
-		return;
-	}
-	_editStars = Ui::CreateChild<Ui::IconButton>(
-		_wrap.get(),
-		_st.editStars);
-	_editStars->show();
-	_editStars->setClickedCallback([=] {
-		editStarsFrom();
-	});
-}
-
-void ComposeControls::editStarsFrom(int selected) {
-	const auto min = _minStarsCount.current();
-	if (!selected) {
-		selected = _chosenStarsCount.value_or(0);
-	}
-	_show->show(Calls::Group::MakeVideoStreamStarsBox({
-		.show = _show,
-		.min = min,
-		.current = std::max(selected, min),
-		.save = crl::guard(_editStars, [=](int count) {
-			_chosenStarsCount = count;
-			updateSendButtonType();
-		}),
-		.name = _history ? _history->peer->shortName() : QString(),
-	}));
-}
+// LoogriGram: a button beside the field set a price in stars for your
+// live stream comment. Deleted with the rest of paying to be seen.
 
 void ComposeControls::updateControlsParents() {
 	const auto toggle = [&](auto &&control, bool inRestriction) {
@@ -1629,7 +1502,6 @@ void ComposeControls::updateControlsParents() {
 	const auto &restriction = _writeRestriction.current();
 	toggle(_like, restriction.type == Type::PremiumRequired);
 	toggle(_commentsShown, restriction.type != Type::None);
-	toggle(_starsReaction, restriction.type != Type::None);
 }
 
 void ComposeControls::updateFeatures(ChatHelpers::ComposeFeatures features) {
@@ -1648,13 +1520,6 @@ void ComposeControls::updateFeatures(ChatHelpers::ComposeFeatures features) {
 			}
 		}
 		changed = true;
-	}
-	if (was.editMessageStars != features.editMessageStars) {
-		initEditStarsButton();
-		changed = true;
-	}
-	if (was.recordMediaMessage != features.recordMediaMessage) {
-		clearChosenStarsForMessage();
 	}
 	if (was.attachments != features.attachments) {
 		if (!features.attachments) {
@@ -1837,253 +1702,9 @@ rpl::producer<> ComposeControls::commentsShownToggles() const {
 	return _commentsShownToggles.events();
 }
 
-void ComposeControls::setStarsReactionCounter(
-		rpl::producer<Ui::SendStarButtonState> count,
-		rpl::producer<SendStarButtonEffect> effects) {
-	if (!count) {
-		delete base::take(_starsReaction);
-		updateControlsGeometry(_wrap->size());
-	} else {
-		_starsReaction = Ui::CreateChild<Ui::SendStarButton>(
-			_wrap.get(),
-			_st.attach,
-			_st.starsReactionCounter,
-			std::move(count));
-		updateControlsParents();
-		updateControlsVisibility();
-
-		_starsReaction->widthValue(
-		) | rpl::on_next([=](int width) {
-			updateControlsGeometry(_wrap->size());
-		}, _starsReaction->lifetime());
-
-		_starsReaction->setAcceptBoth();
-		_starsReaction->clicks(
-		) | rpl::on_next([=](Qt::MouseButton button) {
-			if (_chosenStarsCount && button == Qt::LeftButton) {
-				_starsReactionIncrements.fire({ .count = 1 });
-				startStarsSendEffect();
-			} else {
-				_show->show(Calls::Group::MakeVideoStreamStarsBox({
-					.show = _show,
-					.top = _starsReactionTop.current(),
-					.current = 0,
-					.sending = true,
-					.admin = !_chosenStarsCount,
-					.save = crl::guard(_starsReaction, [=](int count) {
-						_starsReactionIncrements.fire({
-							.count = count,
-							.fromBox = true,
-						});
-					}),
-					.name = _history ? _history->peer->shortName() : QString(),
-				}));
-			}
-		}, _starsReaction->lifetime());
-
-		std::move(
-			effects
-		) | rpl::on_next([=](const SendStarButtonEffect &event) {
-			startStarsEffect(event);
-		}, _starsReaction->lifetime());
-	}
-}
-
-void ComposeControls::startStarsSendEffect() {
-	if (!_starSendEffectsCanvas) {
-		setupStarsSendEffectsCanvas();
-	}
-	while (_starSendEffects.size() >= kMaxStarSendEffects) {
-		_starSendEffects.erase(begin(_starSendEffects));
-	}
-	_starSendEffects.push_back(std::make_unique<Ui::ReactionFlyAnimation>(
-		&_show->session().data().reactions(),
-		Ui::ReactionFlyAnimationArgs{
-			.id = Data::ReactionId::Paid(),
-			.effectOnly = true,
-		},
-		[raw = _starSendEffectsCanvas.get()] { raw->update(); },
-		st::reactionInlineImage));
-}
-
-void ComposeControls::setupStarsSendEffectsCanvas() {
-	_starSendEffectsCanvas = std::make_unique<Ui::RpWidget>(_parent);
-
-	const auto raw = _starSendEffectsCanvas.get();
-	raw->show();
-	raw->setAttribute(Qt::WA_TransparentForMouseEvents);
-
-	const auto effectSize = st::reactionInlineImage * 2;
-
-	rpl::combine(
-		_wrap->geometryValue(),
-		_writeRestricted->geometryValue(),
-		_starsReaction->geometryValue()
-	) | rpl::on_next([=](QRect wrap, QRect restriction, QRect star) {
-		const auto parent = (_starsReaction->parentWidget() == _wrap.get())
-			? wrap
-			: restriction;
-		const auto adjusted = star.translated(parent.topLeft());
-
-		raw->setGeometry(
-			adjusted.x() + (adjusted.width() - effectSize) / 2,
-			adjusted.y() + (adjusted.height() - effectSize) / 2,
-			effectSize,
-			effectSize);
-	}, raw->lifetime());
-
-	raw->paintRequest() | rpl::on_next([=] {
-		for (auto i = begin(_starSendEffects); i != end(_starSendEffects);) {
-			if ((*i)->finished()) {
-				i = _starSendEffects.erase(i);
-			} else {
-				++i;
-			}
-		}
-		if (_starSendEffects.empty()) {
-			crl::on_main(raw, [=] {
-				if (_starSendEffectsCanvas.get() == raw
-					&& _starSendEffects.empty()) {
-					_starSendEffectsCanvas = nullptr;
-				}
-			});
-			return;
-		}
-		auto p = QPainter(raw);
-		const auto now = crl::now();
-		const auto size = raw->width();
-		const auto color = st::radialFg->c;
-		const auto skip = (size - st::reactionInlineImage) / 2;
-		const auto target = QRect(
-			QPoint(skip, skip),
-			QSize(st::reactionInlineImage, st::reactionInlineImage));
-		for (const auto &animation : _starSendEffects) {
-			animation->paintGetArea(p, {}, target, color, {}, now);
-		}
-	}, raw->lifetime());
-}
-
-void ComposeControls::startStarsEffect(SendStarButtonEffect event) {
-	if (!_starEffectsCanvas) {
-		setupStarsEffectsCanvas();
-	}
-	while (_starEffects.size() >= kMaxStarEffects) {
-		_starEffects.erase(begin(_starEffects));
-	}
-	_starEffects.push_back(std::make_unique<StarEffect>(
-		_starEffectsCanvas.get(),
-		event));
-}
-
-void ComposeControls::setupStarsEffectsCanvas() {
-	_starEffectsCanvas = std::make_unique<Ui::RpWidget>(_parent);
-
-	const auto raw = _starEffectsCanvas.get();
-	raw->show();
-	raw->setAttribute(Qt::WA_TransparentForMouseEvents);
-
-	raw->lifetime().make_state<Ui::Animations::Basic>([=] {
-		raw->update();
-	})->start();
-
-	const auto effectSize = st::reactionInlineImage * 2;
-	const auto width = effectSize * 2;
-	const auto height = effectSize * 4;
-
-	rpl::combine(
-		_wrap->geometryValue(),
-		_writeRestricted->geometryValue(),
-		_starsReaction->geometryValue()
-	) | rpl::on_next([=](QRect wrap, QRect restriction, QRect star) {
-		const auto parent = (_starsReaction->parentWidget() == _wrap.get())
-			? wrap
-			: restriction;
-		const auto adjusted = star.translated(parent.topLeft());
-
-		raw->setGeometry(
-			adjusted.x() + (adjusted.width() - width) / 2,
-			adjusted.y() + adjusted.height() - height,
-			width,
-			height);
-	}, raw->lifetime());
-
-	raw->paintRequest() | rpl::on_next([=] {
-		const auto now = crl::now();
-		for (auto i = begin(_starEffects); i != end(_starEffects);) {
-			const auto progress = float64(now - (*i)->start)
-				/ kStarEffectDuration;
-			if (progress >= 1.) {
-				i = _starEffects.erase(i);
-			} else {
-				(*i)->progress = progress;
-				++i;
-			}
-		}
-		if (_starEffects.empty()) {
-			crl::on_main(raw, [=] {
-				if (_starEffectsCanvas.get() == raw
-					&& _starEffects.empty()) {
-					_starEffectsCanvas = nullptr;
-				}
-			});
-			return;
-		}
-		auto p = QPainter(raw);
-		auto hq = PainterHighQualityEnabler(p);
-		const auto color = st::radialFg->c;
-		const auto skip = (effectSize - st::reactionInlineImage) / 2;
-		for (const auto &animation : _starEffects) {
-			const auto progress = animation->progress;
-			const auto left = anim::interpolate(
-				0,
-				width - effectSize,
-				animation->shift);
-			const auto top = anim::interpolate(
-				height - effectSize,
-				0,
-				progress);
-			const auto opacity = (progress < 0.125) ?
-				(progress / 0.125) :
-				(progress > 0.875) ?
-				(1. - progress) / 0.125
-				: 1.;
-			const auto scale = kStarEffectScaleMin
-				+ (kStarEffectScaleMax - kStarEffectScaleMin) * opacity;
-
-			const auto rotation = qSin(-M_PI_2
-				+ M_PI * (animation->shift + animation->progress)
-			) * kStarEffectRotationMax;
-			const auto target = QRect(
-				QPoint(left + skip, top + skip),
-				QSize(st::reactionInlineImage, st::reactionInlineImage));
-			const auto size = animation->badge.size()
-				/ animation->badge.devicePixelRatio();
-			const auto dx = (target.width() - size.width()) / 2;
-			const auto dy = (target.height() - size.height()) / 2;
-
-			p.save();
-			p.translate(target.center());
-			p.rotate(rotation);
-			p.scale(scale, scale);
-			p.translate(-target.center());
-			p.setOpacity(opacity);
-			p.drawImage(target.topLeft() + QPoint(dx, dy), animation->badge);
-			p.restore();
-
-			animation->around.paintGetArea(p, {}, target, color, {}, now);
-		}
-	}, raw->lifetime());
-}
-
-void ComposeControls::setStarsReactionTop(
-		rpl::producer<std::vector<StarReactionTop>> top) {
-	_starsReactionTop = std::move(top);
-}
-
-auto ComposeControls::starsReactionIncrements() const
--> rpl::producer<StarReactionIncrement> {
-	return _starsReactionIncrements.events();
-}
+// LoogriGram: a star counter button sent paid reactions during a live
+// stream, with a flying badge for each one and a box for buying more.
+// All deleted.
 
 bool ComposeControls::focus() {
 	if (_wrap->isHidden() || _field->isHidden()) {
@@ -2186,26 +1807,10 @@ rpl::producer<Api::SendOptions> ComposeControls::scrollToMaxRequests() const {
 	return _scrollToMaxRequests.events();
 }
 
+// LoogriGram: a long live stream comment cost more stars, so sending one
+// could bounce back into the price box. Nothing is priced now.
 rpl::producer<Api::SendOptions> ComposeControls::sendRequests() const {
-	return sendContentRequests(
-		SendRequestType::Text
-	) | rpl::filter([=] {
-		if (!_chosenStarsCount) {
-			return true;
-		}
-		using namespace Calls::Group::Ui;
-		const auto count = *_chosenStarsCount;
-		const auto &appConfig = _show->session().appConfig();
-		const auto &colorings = appConfig.groupCallColorings();
-		const auto required = StarsRequiredForMessage(
-			colorings,
-			getTextWithAppliedMarkdown());
-		if (required <= count) {
-			return true;
-		}
-		const_cast<ComposeControls*>(this)->editStarsFrom(required);
-		return false;
-	});
+	return sendContentRequests(SendRequestType::Text);
 }
 
 rpl::producer<VoiceToSend> ComposeControls::sendVoiceRequests() const {
@@ -2457,7 +2062,6 @@ void ComposeControls::clear(bool keepReply) {
 	if (!keepReply) {
 		cancelReplyMessage();
 	}
-	clearChosenStarsForMessage();
 	if (_preview) {
 		_preview->apply({ .removed = true });
 	}
@@ -2719,12 +2323,6 @@ void ComposeControls::init() {
 	initWriteRestriction();
 	initVoiceRecordBar();
 	initKeyHandler();
-	initEditStarsButton();
-	_minStarsCount.changes() | rpl::on_next([=] {
-		initEditStarsButton();
-		updateControlsGeometry(_wrap->size());
-	}, _wrap->lifetime());
-
 	_hidden.changes(
 	) | rpl::on_next([=] {
 		updateWrappingVisibility();
@@ -2933,39 +2531,12 @@ bool ComposeControls::showRecordButton() const {
 		&& !isEditingMessage();
 }
 
-bool ComposeControls::showEditStarsButton() const {
-	return editStarsButtonShown()
-		&& !hasSendableContent()
-		&& !readyToForward()
-		&& !isEditingMessage()
-		&& !shownStarsPerMessage();
-}
-
 int ComposeControls::shownStarsPerMessage() const {
-	return _chosenStarsCount.value_or(
-		_history ? _history->peer->starsPerMessageChecked() : 0);
+	return _history ? _history->peer->starsPerMessageChecked() : 0;
 }
 
 void ComposeControls::clearListenState() {
 	_voiceRecordBar->clearListenState();
-}
-
-void ComposeControls::clearChosenStarsForMessage() {
-	const auto empty = editStarsButtonShown()
-		? _minStarsCount.current()
-		: std::optional<int>();
-	if (_chosenStarsCount != empty) {
-		_chosenStarsCount = empty;
-		updateSendButtonType();
-	}
-}
-
-bool ComposeControls::editStarsButtonShown() const {
-	return _features.editMessageStars && !_videoStreamAdmin.current();
-}
-
-int ComposeControls::chosenStarsForMessage() const {
-	return _chosenStarsCount.value_or(0);
 }
 
 void ComposeControls::initKeyHandler() {
@@ -3987,10 +3558,7 @@ void ComposeControls::setupSendMenu(
 		Fn<void(Api::SendOptions)> send) {
 	using namespace SendMenu;
 	const auto sendAction = [=](Action action, Details details) {
-		if (action.type == ActionType::ChangePrice) {
-			_chosenStarsCount = details.price.value_or(0);
-			updateSendButtonType();
-		} else if (action.type == ActionType::CaptionUp
+		if (action.type == ActionType::CaptionUp
 			|| action.type == ActionType::CaptionDown
 			|| action.type == ActionType::SpoilerOn
 			|| action.type == ActionType::SpoilerOff
@@ -4244,7 +3812,6 @@ void ComposeControls::initWriteRestriction() {
 	};
 	rescue(_like);
 	rescue(_commentsShown);
-	rescue(_starsReaction);
 	if (!_history) {
 		const auto was = base::take(_writeRestricted);
 		updateWrappingVisibility();
@@ -4700,8 +4267,6 @@ auto ComposeControls::computeSendButtonType() const {
 		return (video && _recordAvailability == both)
 			? Type::Round
 			: Type::Record;
-	} else if (showEditStarsButton()) {
-		return Type::EditPrice;
 	}
 	return baseSendButtonType();
 }
@@ -4781,12 +4346,7 @@ void ComposeControls::updateSendButtonType() {
 	}();
 	const auto ephemeralReply = session().ephemeralMessages()
 		.isEphemeralBotReply(replyingToMessage().messageId);
-	using namespace Calls::Group::Ui;
-	const auto &appConfig = _show->session().appConfig();
 	const auto starsToSend = [&] {
-		if (_chosenStarsCount) {
-			return *_chosenStarsCount;
-		}
 		const auto perMessage = _history
 			? _history->peer->starsPerMessageChecked()
 			: 0;
@@ -4806,11 +4366,6 @@ void ComposeControls::updateSendButtonType() {
 	}();
 	_send->setState({
 		.type = type,
-		.fillBgOverride = (_chosenStarsCount.value_or(0)
-			? Ui::ColorFromSerialized(StarsColoringForCount(
-				appConfig.groupCallColorings(),
-				*_chosenStarsCount).bgLight)
-			: QColor()),
 		.slowmodeDelay = delay,
 		.starsToSend = ephemeralReply ? 0 : starsToSend,
 		.forbidden = forbidden,
@@ -4835,7 +4390,7 @@ void ComposeControls::finishAnimating() {
 }
 
 void ComposeControls::updateControlsGeometry(QSize size) {
-	// (_commentsShown) (_attachToggle|_replaceMedia) (_sendAs) -- _inlineResults ------ _tabbedPanel -- _fieldBarCancel (_starsReaction)
+	// (_commentsShown) (_attachToggle|_replaceMedia) (_sendAs) -- _inlineResults ------ _tabbedPanel -- _fieldBarCancel
 	// (_attachDocument|_attachPhoto) _field (_ttlInfo) (_scheduled) (_silent|_botCommandStart) _tabbedSelectorToggle _send
 
 	const auto oldComposeHeight = composeFieldHeight();
@@ -4855,7 +4410,6 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		- (_sendAs ? _sendAs->width() : 0)
 		- _st.padding.right()
 		- _send->width()
-		- (_editStars ? _editStars->width() : 0)
 		- (_tabbedSelectorToggle->isHidden()
 			? 0
 			: _tabbedSelectorToggle->width())
@@ -4871,10 +4425,7 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 			: 0)
 		- (_botKeyboardShow ? _botKeyboardShow->width() : 0)
 		- (_botKeyboardHide ? _botKeyboardHide->width() : 0)
-		- ((_ttlInfo && _ttlInfo->isVisible()) ? _ttlInfo->width() : 0)
-		- (_starsReaction
-			? (_st.starsSkip + _starsReaction->width())
-			: 0);
+		- ((_ttlInfo && _ttlInfo->isVisible()) ? _ttlInfo->width() : 0);
 	{
 		_field->resizeToWidth(fieldWidth);
 		if (_richDraftPreview) {
@@ -4931,18 +4482,9 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		0,
 		fieldTop - _st.padding.top() - _header->height());
 
-	auto right = 0;
-	if (_starsReaction) {
-		_starsReaction->moveToRight(right, buttonsTop);
-		right += _starsReaction->width() + _st.starsSkip;
-	}
-	right += _st.padding.right();
+	auto right = _st.padding.right();
 	_send->moveToRight(right, buttonsTop);
 	right += _send->width();
-	if (_editStars) {
-		_editStars->moveToRight(right, buttonsTop);
-		right += _editStars->width();
-	}
 	_tabbedSelectorToggle->moveToRight(right, buttonsTop);
 	if (!_tabbedSelectorToggle->isHidden()) {
 		right += _tabbedSelectorToggle->width();
@@ -5021,9 +4563,6 @@ void ComposeControls::updateControlsVisibility() {
 	if (_like) {
 		_like->setVisible(_likeShown);
 	}
-	if (_editStars) {
-		_editStars->show();
-	}
 	if (_ttlInfo) {
 		_ttlInfo->setVisible(!hide);
 	}
@@ -5050,9 +4589,6 @@ void ComposeControls::updateControlsVisibility() {
 	}
 	if (_commentsShown) {
 		_commentsShown->setVisible(!_commentsShownHidden.current());
-	}
-	if (_starsReaction) {
-		_starsReaction->show();
 	}
 	updateSendAsFileVisibility();
 	updateExpandButtonVisibility();
@@ -5396,8 +4932,6 @@ bool ComposeControls::updateSendAsButton(
 	if (videoStream) {
 		Ui::SetupSendAsButton(_sendAs.get(), st, videoStream, _show);
 		_videoStreamAdmin = videoStream->creator();
-		initEditStarsButton();
-		updateControlsGeometry(_wrap->size());
 	} else {
 		Ui::SetupSendAsButton(_sendAs.get(), st, rpl::single(peer), _show);
 		_videoStreamAdmin = false;
@@ -5453,11 +4987,6 @@ void ComposeControls::paintBackground(QPainter &p, QRect full, QRect clip) {
 			full.setLeft(full.left()
 				+ _commentsShown->width()
 				+ _st.commentsSkip);
-		}
-		if (_starsReaction) {
-			full.setWidth(full.width()
-				- _starsReaction->width()
-				- _st.starsSkip);
 		}
 		p.drawRoundedRect(full, _st.radius, _st.radius);
 	} else {

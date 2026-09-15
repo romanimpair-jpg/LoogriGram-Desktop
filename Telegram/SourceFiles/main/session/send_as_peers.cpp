@@ -71,9 +71,6 @@ void SendAsPeers::refresh(SendAsKey key, bool force) {
 	}
 	_lastRequestTime[key] = now;
 	request(key);
-	if (key.type == SendAsType::Message) {
-		request({ key.peer, SendAsType::PaidReaction });
-	}
 }
 
 const std::vector<SendAsPeer> &SendAsPeers::list(SendAsKey key) const {
@@ -147,9 +144,7 @@ not_null<PeerData*> SendAsPeers::ResolveChosen(
 void SendAsPeers::request(SendAsKey key) {
 	using Flag = MTPchannels_GetSendAs::Flag;
 	key.peer->session().api().request(MTPchannels_GetSendAs(
-		MTP_flags((key.type == SendAsType::PaidReaction)
-			? Flag::f_for_paid_reactions
-			: (key.type == SendAsType::VideoStream)
+		MTP_flags((key.type == SendAsType::VideoStream)
 			? Flag::f_for_live_stories
 			: Flag()),
 		key.peer->input()

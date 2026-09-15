@@ -36,10 +36,6 @@ inline constexpr bool is_flag_type(DisallowedGiftType) { return true; }
 
 using DisallowedGiftTypes = base::flags<DisallowedGiftType>;
 
-[[nodiscard]] PeerId ParsePaidReactionShownPeer(
-	not_null<Main::Session*> session,
-	const MTPPaidReactionPrivacy &value);
-
 class GlobalPrivacy final {
 public:
 	explicit GlobalPrivacy(not_null<ApiWrap*> api);
@@ -75,11 +71,6 @@ public:
 		-> rpl::producer<DisallowedGiftTypes>;
 	void updateDisallowedGiftTypes(DisallowedGiftTypes types);
 
-	void loadPaidReactionShownPeer();
-	void updatePaidReactionShownPeer(PeerId shownPeer);
-	[[nodiscard]] PeerId paidReactionShownPeerCurrent() const;
-	[[nodiscard]] rpl::producer<PeerId> paidReactionShownPeer() const;
-
 private:
 	void apply(const MTPGlobalPrivacySettings &settings);
 
@@ -102,9 +93,7 @@ private:
 	rpl::variable<bool> _newRequirePremium = false;
 	rpl::variable<int> _newChargeStars = 0;
 	rpl::variable<DisallowedGiftTypes> _disallowedGiftTypes;
-	rpl::variable<PeerId> _paidReactionShownPeer = false;
 	std::vector<Fn<void()>> _callbacks;
-	bool _paidReactionShownPeerLoaded = false;
 
 };
 

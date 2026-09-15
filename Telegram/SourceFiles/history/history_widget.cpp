@@ -126,7 +126,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_schedule_box.h"
 #include "history/view/history_view_top_bar_widget.h"
 #include "history/view/history_view_contact_status.h"
-#include "history/view/history_view_paid_reaction_toast.h"
 #include "history/view/history_view_pinned_tracker.h"
 #include "history/view/history_view_pinned_section.h"
 #include "history/view/history_view_pinned_bar.h"
@@ -356,13 +355,6 @@ HistoryWidget::HistoryWidget(
 	})
 , _saveDraftTimer([=] { saveDraft(); })
 , _saveCloudDraftTimer([=] { saveCloudDraft(); })
-, _paidReactionToast(std::make_unique<HistoryView::PaidReactionToast>(
-	this,
-	&session().data(),
-	rpl::single(0),
-	[=](not_null<const HistoryView::Element*> view) {
-		return _list && _list->itemTop(view) >= 0;
-	}))
 , _topShadow(this) {
 	setAcceptDrops(true);
 	setVisualTabOrder(true);
@@ -1017,10 +1009,6 @@ HistoryWidget::HistoryWidget(
 			updateSendButtonType();
 			if (_peer->starsPerMessageChecked()) {
 				session().credits().load();
-			} else if (const auto channel = _peer->asChannel()) {
-				if (channel->allowedReactions().paidEnabled) {
-					session().credits().load();
-				}
 			}
 		}
 	}, lifetime());

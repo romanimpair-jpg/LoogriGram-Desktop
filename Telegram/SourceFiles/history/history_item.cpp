@@ -3527,53 +3527,18 @@ bool HistoryItem::canReact() const {
 		: true;
 }
 
-void HistoryItem::addPaidReaction(
-		int count,
-		std::optional<PeerId> shownPeer) {
-	Expects(count >= 0);
-	Expects(_history->peer->isBroadcast() || isDiscussionPost());
-
-	if (!_reactions) {
-		_reactions = std::make_unique<Data::MessageReactions>(this);
-	}
-	_reactions->scheduleSendPaid(count, shownPeer);
-	if (count > 0) {
-		_history->owner().notifyItemDataChange(this);
-	}
-}
-
-void HistoryItem::cancelScheduledPaidReaction() {
-	if (_reactions) {
-		_reactions->cancelScheduledPaid();
-		_history->owner().notifyItemDataChange(this);
-	}
-}
-
-Data::PaidReactionSend HistoryItem::startPaidReactionSending() {
-	return _reactions
-		? _reactions->startPaidSending()
-		: Data::PaidReactionSend();
-}
-
-void HistoryItem::finishPaidReactionSending(
-		Data::PaidReactionSend send,
-		bool success) {
-	Expects(_reactions != nullptr);
-
-	_reactions->finishPaidSending(send, success);
-	_history->owner().notifyItemDataChange(this);
-}
+// LoogriGram: a paid reaction was accumulated on the item, scheduled and
+// then sent as a batch. All deleted.
 
 void HistoryItem::toggleReaction(
 		const Data::ReactionId &reaction,
 		HistoryReactionSource source) {
-	Expects(!reaction.paid());
 
 	const auto addToRecent = (source == HistoryReactionSource::Selector);
 	if (_reactions
 		&& ranges::contains(_reactions->chosen(), reaction)) {
 		_reactions->remove(reaction);
-		if (_reactions->empty() && !_reactions->localPaidData()) {
+		if (_reactions->empty()) {
 			_reactions = nullptr;
 			_flags &= ~MessageFlag::CanViewReactions;
 		}
@@ -3603,7 +3568,7 @@ bool HistoryItem::removeReactionsFromParticipant(
 	if (!_reactions->removeFromParticipant(participant, reaction)) {
 		return false;
 	}
-	if (_reactions->empty() && !_reactions->localPaidData()) {
+	if (_reactions->empty()) {
 		_reactions = nullptr;
 		_flags &= ~MessageFlag::CanViewReactions;
 	}
@@ -3623,44 +3588,8 @@ const std::vector<Data::MessageReaction> &HistoryItem::reactions() const {
 	return _reactions ? _reactions->list() : kEmpty;
 }
 
-std::vector<Data::MessageReaction> HistoryItem::reactionsWithLocal() const {
-	if (!_reactions) {
-		return {};
-	}
-	auto result = _reactions->list();
-	const auto i = ranges::find(
-		result,
-		Data::ReactionId::Paid(),
-		&Data::MessageReaction::id);
-	if (const auto local = _reactions->localPaidCount()) {
-		if (i != end(result)) {
-			i->my = true;
-			i->count += local;
-			if (i != begin(result)) {
-				std::rotate(begin(result), i, i + 1);
-			}
-		} else {
-			result.insert(begin(result), Data::MessageReaction{
-				.id = Data::ReactionId::Paid(),
-				.count = local,
-				.my = true,
-			});
-		}
-	} else if (i != end(result) && i != begin(result)) {
-		std::rotate(begin(result), i, i + 1);
-	}
-	return result;
-}
-
-int HistoryItem::reactionsPaidScheduled() const {
-	return _reactions ? _reactions->scheduledPaid() : 0;
-}
-
-PeerId HistoryItem::reactionsLocalShownPeer() const {
-	return _reactions
-		? _reactions->localPaidShownPeer()
-		: _history->session().userPeerId();
-}
+// LoogriGram: the paid reaction was merged into the list from local state
+// so it could be shown before the server confirmed it. Nothing local now.
 
 bool HistoryItem::reactionsAreTags() const {
 	return _flags & MessageFlag::ReactionsAreTags;
@@ -3674,44 +3603,6 @@ auto HistoryItem::recentReactions() const
 		Data::ReactionId,
 		std::vector<Data::RecentReaction>>();
 	return _reactions ? _reactions->recent() : kEmpty;
-}
-
-auto HistoryItem::topPaidReactionsWithLocal() const
--> std::vector<Data::MessageReactionsTopPaid> {
-	if (!_reactions) {
-		return {};
-	}
-	using TopPaid = Data::MessageReactionsTopPaid;
-	auto result = _reactions->topPaid();
-	const auto i = ranges::find_if(
-		result,
-		[](const TopPaid &entry) { return entry.my != 0; });
-	const auto peerForMine = [&] {
-		const auto peerId = _reactions->localPaidShownPeer();
-		return peerId ? history()->owner().peer(peerId).get() : nullptr;
-	};
-	if (const auto local = _reactions->localPaidCount()) {
-		const auto top = [&](int mine) {
-			return ranges::count_if(result, [&](const TopPaid &entry) {
-				return !entry.my && entry.count >= mine;
-			}) < 3;
-		};
-		if (i != end(result)) {
-			i->count += local;
-			i->peer = peerForMine();
-			i->top = top(i->count) ? 1 : 0;
-		} else {
-			result.push_back({
-				.peer = peerForMine(),
-				.count = uint32(local),
-				.top = uint32(top(local) ? 1 : 0),
-				.my = uint32(1),
-			});
-		}
-	} else if (i != end(result)) {
-		i->peer = peerForMine();
-	}
-	return result;
 }
 
 bool HistoryItem::canViewReactions() const {
@@ -5239,11 +5130,9 @@ bool HistoryItem::changeReactions(const MTPMessageReactions *reactions) {
 	const auto changeToEmpty = [&] {
 		if (!_reactions) {
 			return false;
-		} else if (!_reactions->localPaidData()) {
-			_reactions = nullptr;
-			return true;
 		}
-		return _reactions->clearCloudData();
+		_reactions = nullptr;
+		return true;
 	};
 	if (!reactions) {
 		_flags &= ~MessageFlag::CanViewReactions;

@@ -39,7 +39,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_inner_widget_accessibility.h"
 #include "history/history_item_components.h"
 #include "history/history_item_text.h"
-#include "payments/payments_reaction_process.h"
 #include "ui/widgets/menu/menu_add_action_callback_factory.h"
 #include "ui/widgets/menu/menu_multiline_action.h"
 #include "ui/widgets/popup_menu.h"
@@ -543,13 +542,6 @@ HistoryInner::HistoryInner(
 void HistoryInner::reactionChosen(const ChosenReaction &reaction) {
 	const auto item = session().data().message(reaction.context);
 	if (!item) {
-		return;
-	} else if (reaction.id.paid()) {
-		Payments::ShowPaidReactionDetails(
-			_controller,
-			item,
-			viewByItem(item),
-			HistoryReactionSource::Selector);
 		return;
 	} else if (Window::ShowReactPremiumError(
 			_controller,
@@ -2843,15 +2835,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 	const auto session = &this->session();
 	_whoReactedMenuLifetime.destroy();
 	if (!clickedReaction.empty() && leaderOrSelf) {
-		if (clickedReaction.paid()) {
-			Payments::ShowPaidReactionDetails(
-				_controller,
-				leaderOrSelf,
-				viewByItem(leaderOrSelf),
-				HistoryReactionSource::Selector);
-			e->accept();
-			return;
-		} else if (Api::WhoReactedExists(
+		if (Api::WhoReactedExists(
 				leaderOrSelf,
 				Api::WhoReactedList::One)) {
 			HistoryView::ShowWhoReactedMenu(

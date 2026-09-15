@@ -45,7 +45,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "history/history_item.h"
 #include "dialogs/dialogs_main_list.h"
-#include "payments/ui/payments_reaction_box.h"
 #include "ui/effects/outline_segments.h"
 #include "ui/wrap/slide_wrap.h"
 #include "window/window_separate_id.h"
@@ -53,6 +52,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "styles/style_boxes.h"
 #include "styles/style_dialogs.h"
+#include "styles/style_chat.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_menu_icons.h"
 #include "styles/style_premium.h"
@@ -1567,6 +1567,70 @@ auto ChooseCommunityChatBoxController::createRow(not_null<History*> history)
 	return result;
 }
 
+// LoogriGram: this drew the star badge on a paid reaction, and lived in the
+// paid reaction box. That box is deleted; the badge is still wanted for the
+// rows of people who charge stars to receive a message, so it lives here.
+[[nodiscard]] QImage GenerateSmallBadgeImage(
+		QString text,
+		const style::icon &icon,
+		QColor bg,
+		QColor fg,
+		const style::RoundCheckbox *borderSt) {
+	const auto length = st::chatSimilarBadgeFont->width(text);
+	const auto contents = st::chatSimilarLockedIconPosition.x()
+		+ icon.width()
+		+ st::paidReactTopStarSkip
+		+ length;
+	const auto badge = QRect(
+		st::chatSimilarBadgePadding.left(),
+		st::chatSimilarBadgePadding.top(),
+		contents,
+		st::chatSimilarBadgeFont->height);
+	const auto rect = badge.marginsAdded(st::chatSimilarBadgePadding);
+	const auto add = borderSt ? borderSt->width : 0;
+	const auto ratio = style::DevicePixelRatio();
+	auto result = QImage(
+		(rect + QMargins(add, add, add, add)).size() * ratio,
+		QImage::Format_ARGB32_Premultiplied);
+	result.setDevicePixelRatio(ratio);
+	result.fill(Qt::transparent);
+	auto q = QPainter(&result);
+
+	const auto &font = st::chatSimilarBadgeFont;
+	const auto textTop = badge.y() + font->ascent;
+	const auto position = st::chatSimilarLockedIconPosition;
+
+	auto hq = PainterHighQualityEnabler(q);
+	q.translate(add, add);
+	q.setBrush(bg);
+	if (borderSt) {
+		q.setPen(QPen(borderSt->border->c, borderSt->width));
+	} else {
+		q.setPen(Qt::NoPen);
+	}
+	const auto radius = rect.height() / 2.;
+	const auto shift = add / 2.;
+	q.drawRoundedRect(
+		QRectF(rect) + QMarginsF(shift, shift, shift, shift),
+		radius,
+		radius);
+
+	auto textLeft = 0;
+	icon.paint(
+		q,
+		badge.x() + position.x(),
+		badge.y() + position.y(),
+		rect.width());
+	textLeft += position.x() + icon.width() + st::paidReactTopStarSkip;
+
+	q.setFont(font);
+	q.setPen(fg);
+	q.drawText(textLeft, textTop, text);
+	q.end();
+
+	return result;
+}
+
 void PaintRestrictionBadge(
 		Painter &p,
 		not_null<const style::PeerListItem*> st,
@@ -1589,7 +1653,7 @@ void PaintRestrictionBadge(
 			const auto text = (stars >= 1000)
 				? (QString::number(stars / 1000) + 'K')
 				: QString::number(stars);
-			cache.badge = Ui::GenerateSmallBadgeImage(
+			cache.badge = GenerateSmallBadgeImage(
 				text,
 				st::paidReactTopStarIcon,
 				check.bgActive->c,

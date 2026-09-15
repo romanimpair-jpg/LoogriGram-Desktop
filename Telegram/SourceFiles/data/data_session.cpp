@@ -2497,21 +2497,8 @@ rpl::producer<not_null<const ViewElement*>> Session::viewRemoved() const {
 	return _viewRemoved.events();
 }
 
-void Session::notifyViewPaidReactionSent(not_null<const ViewElement*> view) {
-	_viewPaidReactionSent.fire_copy(view);
-}
-
-rpl::producer<not_null<const ViewElement*>> Session::viewPaidReactionSent() const {
-	return _viewPaidReactionSent.events();
-}
-
-void Session::notifyCallPaidReactionSent(not_null<Calls::GroupCall*> call) {
-	_callPaidReactionSent.fire_copy(call);
-}
-
-rpl::producer<not_null<Calls::GroupCall*>> Session::callPaidReactionSent() const {
-	return _callPaidReactionSent.events();
-}
+// LoogriGram: a sent paid reaction was announced here so its toast could
+// count up. Paid reactions are deleted.
 
 void Session::notifyHistoryUnloaded(not_null<const History*> history) {
 	_historyUnloaded.fire_copy(history);

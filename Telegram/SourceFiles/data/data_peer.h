@@ -137,7 +137,6 @@ struct AllowedReactions {
 	std::vector<ReactionId> some;
 	int maxCount = 0;
 	AllowedReactionsType type = AllowedReactionsType::Some;
-	bool paidEnabled = false;
 
 	friend inline bool operator==(
 		const AllowedReactions &,
@@ -146,8 +145,7 @@ struct AllowedReactions {
 
 [[nodiscard]] AllowedReactions Parse(
 	const MTPChatReactions &value,
-	int maxCount,
-	bool paidEnabled);
+	int maxCount);
 [[nodiscard]] PeerData *PeerFromInputMTP(
 	not_null<Session*> owner,
 	const MTPInputPeer &input);

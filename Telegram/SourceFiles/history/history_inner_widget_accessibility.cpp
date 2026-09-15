@@ -464,8 +464,6 @@ QString MessageSubItemLabel(MessageSubItem item) {
 		return tr::lng_sr_message_column_forward_date(tr::now);
 	case MessageSubItem::ForwardAuthor:
 		return tr::lng_sr_message_column_forward_author(tr::now);
-	case MessageSubItem::PaidReactions:
-		return tr::lng_sr_message_column_paid_reactions(tr::now);
 	case MessageSubItem::Count:
 		break;
 	}
@@ -1132,15 +1130,6 @@ QString MessageSubItemValue(
 		}
 		if (fwd->imported) {
 			return u"Imported"_q;
-		}
-		return {};
-	}
-	case MessageSubItem::PaidReactions: {
-		const auto &reactions = data->reactions();
-		for (const auto &reaction : reactions) {
-			if (reaction.id.paid() && reaction.count > 0) {
-				return QString::number(reaction.count);
-			}
 		}
 		return {};
 	}

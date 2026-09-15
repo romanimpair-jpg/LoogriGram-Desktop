@@ -108,9 +108,7 @@ namespace {
 		QStringList reactionParts;
 		for (const auto &reaction : reactions) {
 			QString reactionText;
-			if (reaction.id.paid()) {
-				reactionText = tr::lng_sr_chat_reaction_star(tr::now);
-			} else if (const auto emoji = reaction.id.emoji(); !emoji.isEmpty()) {
+			if (const auto emoji = reaction.id.emoji(); !emoji.isEmpty()) {
 				reactionText = emoji;
 			} else {
 				reactionText = tr::lng_sr_chat_reaction_custom(tr::now);
@@ -473,9 +471,7 @@ QString SubItemValue(
 		QStringList reactionParts;
 		for (const auto &reaction : reactions) {
 			QString reactionText;
-			if (reaction.id.paid()) {
-				reactionText = tr::lng_sr_chat_reaction_star(tr::now);
-			} else if (const auto emoji = reaction.id.emoji(); !emoji.isEmpty()) {
+			if (const auto emoji = reaction.id.emoji(); !emoji.isEmpty()) {
 				reactionText = emoji;
 			} else {
 				reactionText = tr::lng_sr_chat_reaction_custom(tr::now);

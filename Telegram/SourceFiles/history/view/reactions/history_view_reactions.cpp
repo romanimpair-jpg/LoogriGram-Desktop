@@ -192,11 +192,7 @@ void InlineList::layoutButtons() {
 				not_null<const MessageReaction*> b) {
 			const auto acount = a->count - (a->my ? 1 : 0);
 			const auto bcount = b->count - (b->my ? 1 : 0);
-			if (b->id.paid()) {
-				return false;
-			} else if (a->id.paid()) {
-				return true;
-			} else if (acount > bcount) {
+			if (acount > bcount) {
 				return true;
 			} else if (acount < bcount) {
 				return false;
@@ -247,7 +243,7 @@ InlineList::Dimension InlineList::countDimension(int width) const {
 }
 
 InlineList::Button InlineList::prepareButtonWithId(const ReactionId &id) {
-	auto result = Button{ .id = id, .paid = id.paid()};
+	auto result = Button{ .id = id };
 	if (const auto customId = id.custom()) {
 		result.custom = _owner->owner().customEmojiManager().create(
 			customId,
@@ -512,18 +508,14 @@ void InlineList::paint(
 				} else if (!bubbleReady) {
 					opacity = bubbleProgress;
 				}
-				color = button.paid
-					? st->creditsBg3()->c
-					: stm->msgFileBg->c;
+				color = stm->msgFileBg->c;
 			} else {
 				if (!bubbleReady) {
 					opacity = bubbleProgress;
 				}
-				color = (!chosen
-					? st->msgServiceBg()
-					: button.paid
-					? st->creditsBg2()
-					: st->msgServiceFg())->c;
+				color = (chosen
+					? st->msgServiceFg()
+					: st->msgServiceBg())->c;
 			}
 
 			const auto fill = geometry.marginsAdded({
@@ -546,7 +538,7 @@ void InlineList::paint(
 				? QPen(AdaptChosenServiceFg(st->msgServiceBg()->c))
 				: st->msgServiceFg())
 			: !chosen
-			? (button.paid ? st->creditsFg() : stm->msgServiceFg)
+			? stm->msgServiceFg
 			: context.outbg
 			? (context.selected()
 				? st->historyFileOutIconFgSelected()
@@ -914,17 +906,9 @@ InlineListData InlineListDataFromMessage(not_null<Element*> view) {
 	using Flag = InlineListData::Flag;
 	const auto item = view->data();
 	auto result = InlineListData();
-	result.reactions = item->reactionsWithLocal();
-
-	// LoogriGram: no star counts on posts, including our own channels'. The
-	// empty "add a paid reaction" button is not added, and any paid reaction
-	// the server reports on a message is dropped before layout, so a post that
-	// other clients show covered in stars just shows its ordinary reactions.
-	result.reactions.erase(
-		ranges::remove_if(
-			result.reactions,
-			[](const MessageReaction &r) { return r.id.paid(); }),
-		end(result.reactions));
+	// LoogriGram: paid reactions used to be merged in here from local state
+	// and then filtered back out. Neither happens now - they are deleted.
+	result.reactions = item->reactions();
 	if (const auto user = item->history()->peer->asUser()) {
 		// Always show userpics, we have all information.
 		result.recent.reserve(result.reactions.size());

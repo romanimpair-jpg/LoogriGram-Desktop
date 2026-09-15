@@ -1192,13 +1192,9 @@ PeerId ChannelData::groupCallDefaultJoinAs() const {
 
 void ChannelData::setAllowedReactions(Data::AllowedReactions value) {
 	if (_allowedReactions != value) {
-		if (value.paidEnabled) {
-			session().api().globalPrivacy().loadPaidReactionShownPeer();
-		}
 		const auto enabled = [](const Data::AllowedReactions &allowed) {
 			return (allowed.type != Data::AllowedReactionsType::Some)
-				|| !allowed.some.empty()
-				|| allowed.paidEnabled;
+				|| !allowed.some.empty();
 		};
 		const auto was = enabled(_allowedReactions);
 		_allowedReactions = std::move(value);
@@ -1512,16 +1508,10 @@ void ApplyChannelUpdate(
 
 	const auto reactionsLimit = update.vreactions_limit().value_or_empty();
 	if (const auto allowed = update.vavailable_reactions()) {
-		auto parsed = Data::Parse(
-			*allowed,
-			reactionsLimit,
-			update.is_paid_reactions_available());
+		auto parsed = Data::Parse(*allowed, reactionsLimit);
 		channel->setAllowedReactions(std::move(parsed));
 	} else {
-		channel->setAllowedReactions({
-			.maxCount = reactionsLimit,
-			.paidEnabled = update.is_paid_reactions_available(),
-		});
+		channel->setAllowedReactions({ .maxCount = reactionsLimit });
 	}
 	channel->setBotVerifyDetails(
 		ParseBotVerifyDetails(update.vbot_verification()));

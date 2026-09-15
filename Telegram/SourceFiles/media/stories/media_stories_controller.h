@@ -35,7 +35,6 @@ class DocumentMedia;
 
 namespace HistoryView::Controls {
 enum class ToggleCommentsState;
-struct SendStarButtonEffect;
 } // namespace HistoryView::Controls
 
 namespace HistoryView::Reactions {
@@ -44,14 +43,12 @@ enum class AttachSelectorResult;
 } // namespace HistoryView::Reactions
 
 namespace HistoryView {
-class PaidReactionToast;
 } // namespace HistoryView
 
 namespace Ui {
 class RpWidget;
 class BoxContent;
 class PopupMenu;
-struct SendStarButtonState;
 } // namespace Ui
 
 namespace Ui::Toast {
@@ -86,8 +83,6 @@ class StoryAreaView;
 struct RepostClickHandler;
 
 using CommentsState = HistoryView::Controls::ToggleCommentsState;
-using PaidReactionToast = HistoryView::PaidReactionToast;
-using SendStarButtonEffect = HistoryView::Controls::SendStarButtonEffect;
 
 enum class HeaderLayout {
 	Normal,
@@ -186,11 +181,6 @@ public:
 
 	[[nodiscard]] rpl::producer<CommentsState> commentsStateValue() const;
 	void setCommentsShownToggles(rpl::producer<> toggles);
-	[[nodiscard]] auto starsReactionsValue() const
-		-> rpl::producer<Ui::SendStarButtonState>;
-	[[nodiscard]] auto starsReactionsEffects() const
-		-> rpl::producer<SendStarButtonEffect>;
-	void setStarsReactionIncrements(rpl::producer<int> increments);
 
 	void unfocusReply();
 	void shareRequested();
@@ -297,7 +287,6 @@ private:
 	[[nodiscard]] int repostSkipTop() const;
 	void updateAreas(Data::Story *story);
 	bool reactionChosen(ReactionsMode mode, ChosenReaction chosen);
-	[[nodiscard]] rpl::producer<int> paidReactionToastTopValue() const;
 	void clearVideoStreamCall();
 
 	const not_null<Delegate*> _delegate;
@@ -317,7 +306,6 @@ private:
 
 	std::shared_ptr<Data::GroupCall> _videoStream;
 	base::weak_ptr<Calls::GroupCall> _videoStreamCall;
-	std::unique_ptr<PaidReactionToast> _paidReactionToast;
 	rpl::lifetime _videoStreamLifetime;
 
 	Ui::Animations::Simple _contentFadeAnimation;
@@ -356,9 +344,6 @@ private:
 	rpl::variable<CommentsHas> _commentsHas;
 	MsgId _commentsLastReadId = 0;
 	MsgId _commentsLastId = 0;
-	rpl::variable<int> _starsReactions;
-	rpl::variable<bool> _starsReactionHighlighted;
-	rpl::event_stream<SendStarButtonEffect> _starsReactionEffects;
 
 	std::vector<CachedSource> _cachedSourcesList;
 	int _cachedSourceIndex = -1;

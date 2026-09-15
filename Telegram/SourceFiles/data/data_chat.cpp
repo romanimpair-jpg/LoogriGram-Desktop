@@ -300,8 +300,7 @@ void ChatData::setAllowedReactions(Data::AllowedReactions value) {
 	if (_allowedReactions != value) {
 		const auto enabled = [](const Data::AllowedReactions &allowed) {
 			return (allowed.type != Data::AllowedReactionsType::Some)
-				|| !allowed.some.empty()
-				|| allowed.paidEnabled;
+				|| !allowed.some.empty();
 		};
 		const auto was = enabled(_allowedReactions);
 		_allowedReactions = std::move(value);
@@ -527,8 +526,7 @@ void ApplyChatUpdate(not_null<ChatData*> chat, const MTPDchatFull &update) {
 	chat->setTranslationDisabled(update.is_translations_disabled());
 	const auto reactionsLimit = update.vreactions_limit().value_or_empty();
 	if (const auto allowed = update.vavailable_reactions()) {
-		const auto paidEnabled = false;
-		auto parsed = Data::Parse(*allowed, reactionsLimit, paidEnabled);
+		auto parsed = Data::Parse(*allowed, reactionsLimit);
 		chat->setAllowedReactions(std::move(parsed));
 	} else {
 		chat->setAllowedReactions({ .maxCount = reactionsLimit });

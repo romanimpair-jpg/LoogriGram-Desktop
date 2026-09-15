@@ -8,10 +8,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "base/object_ptr.h"
-#include "calls/group/ui/calls_group_stars_coloring.h"
 
 namespace style {
-struct RoundCheckbox;
 struct MediaSlider;
 } // namespace style
 
@@ -28,53 +26,12 @@ namespace Ui {
 class AbstractButton;
 class BoxContent;
 class GenericBox;
-class DynamicImage;
+class RpWidget;
 class VerticalLayout;
 
-struct PaidReactionTop {
-	QString name;
-	std::shared_ptr<DynamicImage> photo;
-	uint64 barePeerId = 0;
-	int count = 0;
-	Fn<void()> click;
-	bool my = false;
-};
-
-struct PaidReactionBoxArgs {
-	int min = 0;
-	int explicitlyAllowed = 0;
-	int chosen = 0;
-	int max = 0;
-
-	std::vector<PaidReactionTop> top;
-
-	not_null<Main::Session*> session;
-	QString name;
-	Fn<rpl::producer<TextWithEntities>(rpl::producer<int> amount)> submit;
-	std::vector<Calls::Group::Ui::StarsColoring> colorings;
-	rpl::producer<CreditsAmount> balanceValue;
-	Fn<void(int, uint64)> send;
-	bool videoStreamChoosing = false;
-	bool videoStreamSending = false;
-	bool videoStreamAdmin = false;
-	bool dark = false;
-};
-
-void PaidReactionsBox(
-	not_null<GenericBox*> box,
-	PaidReactionBoxArgs &&args);
-
-[[nodiscard]] object_ptr<BoxContent> MakePaidReactionBox(
-	PaidReactionBoxArgs &&args);
-
-[[nodiscard]] int MaxTopPaidDonorsShown();
-
-[[nodiscard]] QImage GenerateSmallBadgeImage(
-	QString text,
-	const style::icon &icon,
-	QColor bg,
-	QColor fg,
-	const style::RoundCheckbox *borderSt = nullptr);
+// LoogriGram: the paid reaction box and its top-payers leaderboard were
+// declared here. Deleted; what remains is the amount-of-stars picker they
+// were built from, still used by the gift auction.
 
 struct StarSelectDiscreter {
 	Fn<int(float64)> ratioToValue;

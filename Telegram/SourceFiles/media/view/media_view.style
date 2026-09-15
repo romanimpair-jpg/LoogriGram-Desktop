@@ -533,10 +533,6 @@ storiesLike: IconButton(storiesAttach) {
 	icon: icon {{ "chat/input_like", storiesComposeGrayIcon }};
 	iconOver: icon {{ "chat/input_like", storiesComposeGrayIcon }};
 }
-storiesEditStars: IconButton(storiesAttach) {
-	icon: icon{{ "chat/input_paid", storiesComposeGrayIcon }};
-	iconOver: icon{{ "chat/input_paid", storiesComposeGrayIcon }};
-}
 storiesRemoveSet: IconButton(stickerPanRemoveSet) {
 	icon: icon {{ "simple_close", storiesComposeGrayIcon }};
 	iconOver: icon {{ "simple_close", storiesComposeGrayIcon }};
@@ -713,7 +709,6 @@ storiesEmojiPan: EmojiPan(defaultEmojiPan) {
 		menuCover: icon {{ "menu/edit", storiesComposeWhiteText }};
 		menuCoverRemove: icon {{ "menu/cancel", storiesComposeWhiteText }};
 		menuPrice: icon {{ "menu/earn", storiesComposeWhiteText }};
-		menuEditStars: icon {{ "chat/input_paid", storiesComposeWhiteText, point(-8px, -8px) }};
 
 		stripBubble: icon{
 			{ "chat/reactions_bubble_shadow", windowShadowFg },
@@ -786,7 +781,6 @@ storiesComposeControls: ComposeControls(defaultComposeControls) {
 	emoji: storiesAttachEmoji;
 	like: storiesLike;
 	liked: icon{};
-	editStars: storiesEditStars;
 	commentsShow: IconButton(storiesAttach) {
 		icon: icon {{ "chat/input_comments_expand", storiesComposeGrayIcon }};
 		iconOver: icon {{ "chat/input_comments_expand", storiesComposeGrayIcon }};
@@ -796,20 +790,6 @@ storiesComposeControls: ComposeControls(defaultComposeControls) {
 	commentsUnreadSize: 6px;
 	commentsUnreadMargin: 2px;
 	commentsUnreadPosition: point(24px, 8px);
-	starsReactionCounter: RoundButton(defaultActiveButton) {
-		style: TextStyle(semiboldTextStyle) {
-			font: font(9px semibold);
-		}
-		textFg: storiesComposeGrayIcon;
-		textFgOver: storiesComposeGrayIcon;
-		textBg: storiesComposeBg;
-		textBgOver: storiesComposeBg;
-		numbersSkip: 2px;
-		padding: margins(4px, 0px, 4px, 1px);
-		textTop: 1px;
-		ripple: storiesComposeRippleLight;
-	}
-	starsSkip: 8px;
 	suggestions: EmojiSuggestions(defaultEmojiSuggestions) {
 		dropdown: InnerDropdown(emojiSuggestionsDropdown) {
 			animation: PanelAnimation(defaultPanelAnimation) {

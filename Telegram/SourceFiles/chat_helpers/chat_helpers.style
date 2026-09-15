@@ -84,7 +84,6 @@ ComposeIcons {
 	menuCover: icon;
 	menuCoverRemove: icon;
 	menuPrice: icon;
-	menuEditStars: icon;
 
 	stripBubble: icon;
 	stripExpandPanel: icon;
@@ -259,15 +258,12 @@ ComposeControls {
 	emoji: EmojiButton;
 	like: IconButton;
 	liked: icon;
-	editStars: IconButton;
 	commentsShow: IconButton;
 	commentsShown: icon;
 	commentsSkip: pixels;
 	commentsUnreadSize: pixels;
 	commentsUnreadMargin: pixels;
 	commentsUnreadPosition: point;
-	starsReactionCounter: RoundButton;
-	starsSkip: pixels;
 	suggestions: EmojiSuggestions;
 	tabbed: EmojiPan;
 	tabbedHeightMin: pixels;

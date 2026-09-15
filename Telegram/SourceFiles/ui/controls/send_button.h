@@ -39,11 +39,9 @@ public:
 		Round,
 		Cancel,
 		Slowmode,
-		EditPrice,
 	};
 	struct State {
 		Type type = Type::Send;
-		QColor fillBgOverride;
 		int slowmodeDelay = 0;
 		int starsToSend = 0;
 		bool forbidden = false;
@@ -119,38 +117,7 @@ private:
 
 };
 
-struct SendStarButtonState {
-	int count = 0;
-	bool highlight = false;
-};
-
-class SendStarButton final : public RippleButton {
-public:
-	SendStarButton(
-		QWidget *parent,
-		const style::IconButton &st,
-		const style::RoundButton &counterSt,
-		rpl::producer<SendStarButtonState> state);
-
-protected:
-	void paintEvent(QPaintEvent *e) override;
-
-	QImage prepareRippleMask() const override;
-	QPoint prepareRippleStartPosition() const override;
-
-private:
-	void setCount(int count);
-	void highlight(bool enabled);
-
-	const style::IconButton &_st;
-	const style::RoundButton &_counterSt;
-
-	QImage _frame;
-	Ui::Text::String _starsText;
-	Ui::Animations::Simple _highlight;
-	int _count = 0;
-	bool _highlighted = false;
-
-};
+// LoogriGram: SendStarButton was the paid reaction counter beside the
+// live stream comment field. Deleted with paid reactions.
 
 } // namespace Ui

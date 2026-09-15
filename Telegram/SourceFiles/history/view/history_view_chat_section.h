@@ -92,7 +92,6 @@ class SelfForwardsTagger;
 class SuggestOptionsBar;
 class AboutView;
 class BottomControls;
-class PaidReactionToast;
 class PullToNextChannel;
 enum class SuggestMode;
 
@@ -550,7 +549,6 @@ private:
 	object_ptr<Ui::PlainShadow> _topBarShadow;
 	object_ptr<Ui::InnerDropdown> _membersDropdown = { nullptr };
 	base::Timer _membersDropdownShowTimer;
-	std::unique_ptr<HistoryView::PaidReactionToast> _paidReactionToast;
 	std::unique_ptr<HistoryView::TopControls> _topControls;
 	rpl::variable<bool> _suggestPostToggleShown = false;
 	rpl::variable<bool> _suggestPostToggleActive = false;

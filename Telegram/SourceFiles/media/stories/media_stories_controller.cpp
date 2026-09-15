@@ -30,7 +30,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_stories.h"
 #include "history/view/controls/compose_controls_common.h"
 #include "history/view/reactions/history_view_reactions_strip.h"
-#include "history/view/history_view_paid_reaction_toast.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "media/stories/media_stories_caption_full_view.h"
@@ -47,7 +46,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "media/stories/media_stories_view.h"
 #include "media/audio/media_audio.h"
 #include "info/stories/info_stories_common.h"
-#include "payments/payments_reaction_process.h"
 #include "settings/settings_credits_graphics.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/boxes/report_box_graphics.h"
@@ -303,13 +301,6 @@ Controller::Controller(not_null<Delegate*> delegate)
 , _replyArea(std::make_unique<ReplyArea>(this))
 , _reactions(std::make_unique<Reactions>(this))
 , _recentViews(std::make_unique<RecentViews>(this))
-, _paidReactionToast(std::make_unique<PaidReactionToast>(
-	_wrap,
-	&delegate->storiesShow()->session().data(),
-	paidReactionToastTopValue(),
-	[=](not_null<Calls::GroupCall*> call) {
-		return _videoStreamCall.get() == call;
-	}))
 , _weatherInCelsius(ResolveWeatherInCelsius()){
 	initLayout();
 
@@ -674,18 +665,6 @@ bool Controller::reactionChosen(ReactionsMode mode, ChosenReaction chosen) {
 	}
 	unfocusReply();
 	return result;
-}
-
-rpl::producer<int> Controller::paidReactionToastTopValue() const {
-	return _layout.value(
-	) | rpl::map([](const std::optional<Layout> &layout) {
-		const auto base = !layout
-			? 0
-			: (layout->headerLayout == HeaderLayout::Normal)
-			? (layout->header.y() + layout->header.height())
-			: layout->content.y();
-		return base + st::storiesHeaderMargin.bottom();
-	});
 }
 
 void Controller::showFullCaption() {
@@ -1771,31 +1750,8 @@ void Controller::setCommentsShownToggles(rpl::producer<> toggles) {
 		_commentsStateShowFromPinned.events());
 }
 
-auto Controller::starsReactionsValue() const
--> rpl::producer<Ui::SendStarButtonState> {
-	return rpl::combine(
-		_starsReactions.value(),
-		_starsReactionHighlighted.value()
-	) | rpl::map([=](int stars, bool highlighted) {
-		return Ui::SendStarButtonState{ stars, highlighted };
-	});
-}
-
-auto Controller::starsReactionsEffects() const
--> rpl::producer<SendStarButtonEffect> {
-	return _starsReactionEffects.events();
-}
-
-void Controller::setStarsReactionIncrements(rpl::producer<int> increments) {
-	std::move(
-		increments
-	) | rpl::on_next([=](int count) {
-		if (const auto call = _videoStreamCall.get()) {
-			const auto show = _delegate->storiesShow();
-			Payments::TryAddingPaidReaction(call, count, show);
-		}
-	}, _videoStreamLifetime);
-}
+// LoogriGram: a star counter in the live stream comment bar reported what
+// had been paid and sent more. Deleted with the rest of paying to be seen.
 
 void Controller::shareRequested() {
 	const auto show = _delegate->storiesShow();
@@ -1932,29 +1888,11 @@ void Controller::updateVideoStream(not_null<Calls::GroupCall*> videoStream) {
 		_commentsStateShowFromPinned,
 		_videoStreamLifetime);
 
-	_starsReactions = rpl::single(Calls::Group::StarsDonor()) | rpl::then(
-		videoStream->messages()->starsValueChanges()
-	) | rpl::map([=](const Calls::Group::StarsDonor &donor) {
-		if (const auto peer = donor.peer) {
-			_starsReactionEffects.fire({
-				.from = peer,
-				.stars = donor.stars,
-			});
-		}
-		return videoStream->messages()->starsLocalState().total;
-	});
-	_paidReactionToast->shownForCall(
-	) | rpl::on_next([=](Calls::GroupCall *call) {
-		_starsReactionHighlighted = (call == videoStream);
-	}, _videoStreamLifetime);
-
 	_replyArea->updateVideoStream(videoStream);
 }
 
 void Controller::clearVideoStreamCall() {
 	_videoStreamCall = nullptr;
-	_starsReactionHighlighted = false;
-	_starsReactions = 0;
 	_videoStreamLifetime.destroy();
 }
 

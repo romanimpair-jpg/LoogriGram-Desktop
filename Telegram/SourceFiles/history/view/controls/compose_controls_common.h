@@ -84,7 +84,6 @@ struct SetHistoryArgs {
 	rpl::producer<int> slowmodeSecondsLeft;
 	rpl::producer<bool> sendDisabledBySlowmode;
 	rpl::producer<bool> liked;
-	rpl::producer<int> minStarsCount;
 	rpl::producer<WriteRestriction> writeRestriction;
 	rpl::producer<bool> canSendTexts;
 };
@@ -105,9 +104,7 @@ enum class ToggleCommentsState {
 	WithNew,
 };
 
-struct SendStarButtonEffect {
-	not_null<PeerData*> from;
-	int stars = 0;
-};
+// LoogriGram: this announced someone paying stars to have their live stream
+// comment highlighted, so a badge could fly across. Deleted.
 
 } // namespace HistoryView::Controls

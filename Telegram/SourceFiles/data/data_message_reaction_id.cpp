@@ -76,15 +76,15 @@ ReactionId ReactionFromMTP(const MTPReaction &reaction) {
 	}, [](const MTPDreactionCustomEmoji &data) {
 		return ReactionId{ DocumentId(data.vdocument_id().v) };
 	}, [](const MTPDreactionPaid &) {
-		return ReactionId::Paid();
+		// LoogriGram: paid reactions are deleted; one that arrives is read
+		// as an empty reaction, which every caller already ignores.
+		return ReactionId{ QString() };
 	});
 }
 
 MTPReaction ReactionToMTP(ReactionId id) {
 	if (!id) {
 		return MTP_reactionEmpty();
-	} else if (id.paid()) {
-		return MTP_reactionPaid();
 	} else if (const auto custom = id.custom()) {
 		return MTP_reactionCustomEmoji(MTP_long(custom));
 	} else {
