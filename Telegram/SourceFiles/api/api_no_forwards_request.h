@@ -9,21 +9,16 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 class ClickHandler;
 
-namespace Main {
-class SessionShow;
-} // namespace Main
-
 namespace Api {
 
+// LoogriGram: this was api_suggest_post, which offered a channel a price in
+// stars or TON to publish your post and let an admin approve, decline or
+// counter-offer. All of that is deleted. What is left is the other thing
+// those buttons do: answering a request to allow forwarding from a chat,
+// which costs nothing and is nobody's purchase.
 [[nodiscard]] std::shared_ptr<ClickHandler> AcceptClickHandler(
 	not_null<HistoryItem*> item);
 [[nodiscard]] std::shared_ptr<ClickHandler> DeclineClickHandler(
 	not_null<HistoryItem*> item);
-[[nodiscard]] std::shared_ptr<ClickHandler> SuggestChangesClickHandler(
-	not_null<HistoryItem*> item);
-
-void AddOfferToMessage(
-	std::shared_ptr<Main::SessionShow> show,
-	FullMsgId itemId);
 
 } // namespace Api

@@ -95,7 +95,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "apiwrap.h"
 #include "api/api_attached_stickers.h"
-#include "api/api_suggest_post.h"
 #include "api/api_stickers_creator.h"
 #include "api/api_toggling_media.h"
 #include "media/player/media_player_instance.h"
@@ -3402,11 +3401,6 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 						forwardItem(itemId);
 					}, &st::menuIconForward);
 				}
-				if (HistoryView::CanAddOfferToMessage(item)) {
-					_menu->addAction(tr::lng_context_add_offer(tr::now), [=] {
-						Api::AddOfferToMessage(_controller->uiShow(), itemId);
-					}, &st::menuIconTagSell);
-				}
 				if (item->canDelete()) {
 					const auto callback = [=] { deleteItem(itemId); };
 					if (item->isUploading()) {
@@ -3671,11 +3665,6 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 					_menu->addAction(tr::lng_context_forward_msg(tr::now), [=] {
 						forwardAsGroup(itemId);
 					}, &st::menuIconForward);
-				}
-				if (HistoryView::CanAddOfferToMessage(item)) {
-					_menu->addAction(tr::lng_context_add_offer(tr::now), [=] {
-						Api::AddOfferToMessage(_controller->uiShow(), itemId);
-					}, &st::menuIconTagSell);
 				}
 				if (canDelete) {
 					const auto callback = [=] {

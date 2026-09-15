@@ -10,7 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "api/api_cloud_password.h"
 #include "api/api_send_progress.h"
-#include "api/api_suggest_post.h"
+#include "api/api_no_forwards_request.h"
 #include "boxes/peers/choose_peer_box.h"
 #include "boxes/peers/create_managed_bot_box.h"
 #include "boxes/passcode_box.h"
@@ -565,12 +565,9 @@ void ActivateBotButton(ClickHandlerContext context, BotButtonLookup lookup) {
 		});
 	} break;
 
-	case ButtonType::SuggestChange: {
-		Api::SuggestChangesClickHandler(item)->onClick(ClickContext{
-			Qt::LeftButton,
-			QVariant::fromValue(context),
-		});
-	} break;
+	// LoogriGram: "Suggest changes" reopened the price and date box for a
+	// paid post. Paying a channel to publish is deleted.
+	case ButtonType::SuggestChange: break;
 
 	case ButtonType::CreateBot: {
 		HideSingleUseKeyboard(controller, item);

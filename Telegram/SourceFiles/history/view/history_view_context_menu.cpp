@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_transcribes.h"
 #include "api/api_who_reacted.h"
 #include "api/api_stickers_creator.h"
-#include "api/api_suggest_post.h"
 #include "api/api_toggling_media.h" // Api::ToggleFavedSticker
 #include "base/qt/qt_key_modifiers.h"
 #include "base/unixtime.h"
@@ -625,22 +624,8 @@ void AddForwardAction(
 	AddForwardMessageAction(menu, request, list);
 }
 
-void AddOfferAction(
-		not_null<Ui::PopupMenu*> menu,
-		const ContextMenuRequest &request,
-		not_null<ListWidget*> list) {
-	const auto item = request.item;
-	if (!request.selectedItems.empty()) {
-		return;
-	} else if (!item || !CanAddOfferToMessage(item)) {
-		return;
-	}
-	const auto controller = list->controller();
-	const auto itemId = item->fullId();
-	menu->addAction(tr::lng_context_add_offer(tr::now), crl::guard(controller, [=] {
-		Api::AddOfferToMessage(controller->uiShow(), itemId);
-	}), &st::menuIconTagSell);
-}
+// LoogriGram: "Offer a price" put money on someone else's post so a
+// channel would publish it. Paying to be published is deleted.
 
 bool AddSendNowSelectedAction(
 		not_null<Ui::PopupMenu*> menu,
@@ -1400,7 +1385,6 @@ void AddMessageActions(
 		not_null<ListWidget*> list) {
 	AddPostLinkAction(menu, request);
 	AddForwardAction(menu, request, list);
-	AddOfferAction(menu, request, list);
 	AddSendNowAction(menu, request, list);
 	AddDeleteAction(menu, request, list);
 	AddDownloadFilesAction(menu, request, list);

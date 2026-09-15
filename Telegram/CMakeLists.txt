@@ -191,8 +191,8 @@ PRIVATE
     api/api_statistics_sender.h
     api/api_stickers_creator.cpp
     api/api_stickers_creator.h
-    api/api_suggest_post.cpp
-    api/api_suggest_post.h
+    api/api_no_forwards_request.cpp
+    api/api_no_forwards_request.h
     api/api_text_entities.cpp
     api/api_text_entities.h
     api/api_rich_tasks.cpp

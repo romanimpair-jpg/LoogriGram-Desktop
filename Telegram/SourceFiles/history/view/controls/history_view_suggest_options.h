@@ -91,8 +91,6 @@ void ChooseSuggestPriceBox(
 
 [[nodiscard]] bool CanEditSuggestedMessage(not_null<HistoryItem*> item);
 
-[[nodiscard]] bool CanAddOfferToMessage(not_null<HistoryItem*> item);
-
 [[nodiscard]] CreditsAmount PriceAfterCommission(
 	not_null<Main::Session*> session,
 	CreditsAmount price);

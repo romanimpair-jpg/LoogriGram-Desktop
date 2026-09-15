@@ -29,7 +29,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_message_reactions.h"
 #include "data/data_session.h"
 #include "data/data_user.h"
-#include "history/view/controls/history_view_suggest_options.h"
 #include "info/channel_statistics/earn/earn_icons.h"
 #include "info/peer_gifts/info_peer_gifts_common.h"
 #include "lang/lang_keys.h"

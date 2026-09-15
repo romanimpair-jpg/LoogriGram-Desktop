@@ -802,18 +802,8 @@ bool CanEditSuggestedMessage(not_null<HistoryItem*> item) {
 	return !media || media->allowsEditCaption();
 }
 
-bool CanAddOfferToMessage(not_null<HistoryItem*> item) {
-	const auto history = item->history();
-	const auto broadcast = history->peer->monoforumBroadcast();
-	return broadcast
-		&& !history->amMonoforumAdmin()
-		&& !item->Get<HistoryMessageSuggestion>()
-		&& !item->groupId()
-		&& item->isRegular()
-		&& !item->isService()
-		&& !item->errorTextForForwardIgnoreRights(
-			history->owner().history(broadcast)).has_value();
-}
+// LoogriGram: CanAddOfferToMessage gated a context menu item that put a
+// price on someone else's post. That item is deleted.
 
 CreditsAmount PriceAfterCommission(
 		not_null<Main::Session*> session,
