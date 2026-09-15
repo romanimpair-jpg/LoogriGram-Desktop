@@ -176,7 +176,7 @@ void PostsSearch::requestSearch(const QString &query) {
 		(entry.offsetPeer ? entry.offsetPeer->input() : MTP_inputPeerEmpty()),
 		MTP_int(entry.offsetId),
 		MTP_int(kPerPage),
-		MTP_long(useStars)
+		MTP_long(0) // allow_paid_stars, never flagged
 	)).done([=](const MTPmessages_Messages &result) {
 		auto &entry = _entries[query];
 		entry.searchId = 0;

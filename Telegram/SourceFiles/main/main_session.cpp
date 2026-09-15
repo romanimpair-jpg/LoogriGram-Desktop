@@ -116,8 +116,6 @@ Session::Session(
 , _sendAsPeers(std::make_unique<SendAsPeers>(this))
 , _attachWebView(std::make_unique<InlineBots::AttachWebView>(this))
 , _recentPeers(std::make_unique<Data::RecentPeers>(this))
-, _recentSharedGifts(std::make_unique<Data::RecentSharedMediaGifts>(this))
-, _giftAuctions(std::make_unique<Data::GiftAuctions>(this))
 , _scheduledMessages(std::make_unique<Data::ScheduledMessages>(this))
 , _welcomeMessages(std::make_unique<Data::WelcomeMessages>(this))
 , _ephemeralMessages(std::make_unique<Data::EphemeralMessages>(this))

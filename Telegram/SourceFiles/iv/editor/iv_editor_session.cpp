@@ -1057,6 +1057,7 @@ private:
 			return false;
 		}
 		auto simple = SerializeAsSimple(_state->richPage(), _session);
+		const auto weak = base::make_weak(this);
 		if (simple) {
 			return submitSimpleText(std::move(*simple));
 		}
@@ -1094,10 +1095,6 @@ private:
 				== SerializeInputRichMessageStatus::EmptyContent) {
 			_submittedPage = nullptr;
 			showEmptySubmittedPageToast();
-			return false;
-		}
-		if (!submitPaymentChecked(simple, withPaymentApproved)) {
-			_submittedPage = nullptr;
 			return false;
 		}
 		if (!applySubmittedLocalState(page)) {

@@ -840,8 +840,6 @@ void AboutView::make(Data::ChatIntro data, bool preview) {
 	const auto sendIntroSticker = [=](not_null<DocumentData*> sticker) {
 		_sendIntroSticker.fire_copy(sticker);
 	};
-	owned->data()->setCustomServiceLink(
-		std::make_shared<LambdaClickHandler>(handler));
 	owned->overrideMedia(std::make_unique<HistoryView::MediaGeneric>(
 		owned.get(),
 		GenerateChatIntro(

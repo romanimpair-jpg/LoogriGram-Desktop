@@ -785,8 +785,7 @@ ChatWidget::ChatWidget(
 				if (mode() == Mode::History) {
 					showAtEnd();
 				}
-				if ((cancelledReply || cancelledSuggest)
-					&& !action.clearDraft) {
+				if (cancelledReply && !action.clearDraft) {
 					session().api().saveCurrentDraftToCloud();
 				}
 			}

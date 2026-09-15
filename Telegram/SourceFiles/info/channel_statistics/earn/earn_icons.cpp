@@ -68,7 +68,7 @@ namespace {
 // star emoji below. That file is deleted, so they live here with the rest of
 // the money icons.
 [[nodiscard]] QByteArray CreditsIconSvg(int strokeWidth) {
-	auto colorized = qs(Premium::ColorizedSvg(
+	auto colorized = QString::fromUtf8(Premium::ColorizedSvg(
 		Premium::CreditsIconGradientStops()));
 	colorized.replace(
 		u"stroke=\"none\""_q,

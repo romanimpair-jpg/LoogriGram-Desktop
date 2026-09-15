@@ -20,6 +20,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_document_media.h"
 #include "data/data_group_call.h"
 #include "data/data_session.h"
+#include "data/data_user.h"
 #include "history/view/media/history_view_sticker_player.h"
 #include "lang/lang_tag.h"
 #include "tde2e/tde2e_api.h"
