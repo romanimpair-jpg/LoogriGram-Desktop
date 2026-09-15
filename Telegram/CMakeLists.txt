@@ -1145,10 +1145,6 @@ PRIVATE
     history/history_view_swipe_back_session.h
     history/history_widget.cpp
     history/history_widget.h
-    info/channel_statistics/boosts/create_giveaway_box.cpp
-    info/channel_statistics/boosts/create_giveaway_box.h
-    info/channel_statistics/boosts/giveaway/giveaway_list_controllers.cpp
-    info/channel_statistics/boosts/giveaway/giveaway_list_controllers.h
     info/channel_statistics/boosts/info_boosts_inner_widget.cpp
     info/channel_statistics/boosts/info_boosts_inner_widget.h
     info/channel_statistics/boosts/info_boosts_widget.cpp

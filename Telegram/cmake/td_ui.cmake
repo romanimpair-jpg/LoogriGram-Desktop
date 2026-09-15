@@ -227,8 +227,6 @@ PRIVATE
 
     info/channel_statistics/boosts/giveaway/boost_badge.cpp
     info/channel_statistics/boosts/giveaway/boost_badge.h
-    info/channel_statistics/boosts/giveaway/giveaway_type_row.cpp
-    info/channel_statistics/boosts/giveaway/giveaway_type_row.h
     info/channel_statistics/boosts/giveaway/select_countries_box.cpp
     info/channel_statistics/boosts/giveaway/select_countries_box.h
 
