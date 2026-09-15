@@ -1098,7 +1098,6 @@ void ShowTrialTranscribesToast(int left, TimeId until) {
 			tr::marked);
 	window->uiShow()->showToast(Ui::Toast::Config{
 		.text = text,
-		.filter = filter,
 		.duration = kToastDuration,
 	});
 }
