@@ -8,7 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "statistics/statistics_graphics.h"
 
 #include "data/data_statistics_chart.h"
-#include "ui/effects/credits_graphics.h" // GenerateStars.
+#include "info/channel_statistics/earn/earn_icons.h" // GenerateStars.
 #include "ui/painter.h"
 #include "styles/style_statistics.h"
 
@@ -34,7 +34,7 @@ QImage ChartCurrencyIcon(
 			}
 		}
 	} else if (chartData.currency == Data::StatisticalCurrency::Credits) {
-		return Ui::GenerateStars(iconSize.height(), 1);
+		return Ui::Earn::GenerateStars(iconSize.height(), 1);
 	}
 	return result;
 }

@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/chat/choose_theme_controller.h"
 
 #include "boxes/background_box.h"
-#include "boxes/transfer_gift_box.h"
 #include "ui/dynamic_image.h"
 #include "ui/dynamic_thumbnails.h"
 #include "ui/rp_widget.h"
@@ -47,12 +46,10 @@ const auto kDisableElement = [] { return u"disable"_q; };
 
 struct Preview {
 	QImage preview;
-	QRect userpic;
 };
 
 [[nodiscard]] Preview GeneratePreview(
 		not_null<Ui::ChatTheme*> theme,
-		const std::shared_ptr<Ui::DynamicImage> &takenUserpic,
 		QSize size = st::chatThemePreviewSize) {
 	const auto &background = theme->background();
 	const auto &colors = background.colors;
@@ -85,7 +82,6 @@ struct Preview {
 			QRect(QPoint(), size * style::DevicePixelRatio()),
 			small);
 	};
-	auto userpic = QRect();
 	const auto fullsize = size * style::DevicePixelRatio();
 	auto result = background.waitingForNegativePattern()
 		? QImage(
@@ -134,27 +130,8 @@ struct Preview {
 		p.setBrush(theme->palette()->msgInBg()->c);
 		p.drawRoundedRect(received, radius, radius);
 
-		if (takenUserpic) {
-			const auto border = 2 * st::lineWidth;
-			const auto inner = received.marginsRemoved(
-				{ border, border, border, border });
-			userpic = inner;
-			userpic.setWidth(userpic.height());
-
-			st::chatThemeGiftTaken.paintInCenter(
-				p,
-				QRect(
-					inner.x() + inner.width() - inner.height() - border,
-					inner.y(),
-					inner.height(),
-					inner.height()),
-				theme->palette()->msgFileInBg()->c);
-		}
 	}
-	return {
-		.preview = Images::Round(std::move(result), ImageRoundRadius::Large),
-		.userpic = userpic,
-	};
+	return { Images::Round(std::move(result), ImageRoundRadius::Large) };
 }
 
 [[nodiscard]] QImage GenerateEmptyPreview() {
@@ -176,6 +153,43 @@ struct Preview {
 			style::al_top);
 	}
 	return Images::Round(std::move(result), ImageRoundRadius::Large);
+}
+
+// LoogriGram: SetPeerTheme lived in transfer_gift_box.cpp, a box for buying
+// and moving gifts, because a unique gift can carry a chat theme. This is
+// the plain half - set the theme this picker chose - and the gift branch,
+// which looked the token up as a collectible and sent it as a gift theme,
+// is gone with the rest of gifts.
+void SetPeerTheme(
+		not_null<Window::SessionController*> controller,
+		not_null<PeerData*> peer,
+		const QString &token,
+		const std::shared_ptr<ChatTheme> &theme) {
+	peer->setThemeToken(token);
+	if (peer->wallPaper()) {
+		peer->setWallPaper({});
+	}
+	if (theme) {
+		// Remember while changes propagate through event loop.
+		controller->pushLastUsedChatTheme(theme);
+	}
+	const auto api = &peer->session().api();
+	api->request(MTPmessages_SetChatWallPaper(
+		MTP_flags(0),
+		peer->input(),
+		MTPInputWallPaper(),
+		MTPWallPaperSettings(),
+		MTPint()
+	)).afterDelay(10).done([=](const MTPUpdates &result) {
+		api->applyUpdates(result);
+	}).send();
+
+	api->request(MTPmessages_SetChatTheme(
+		peer->input(),
+		MTP_inputChatTheme(MTP_string(token))
+	)).done([=](const MTPUpdates &result) {
+		api->applyUpdates(result);
+	}).send();
 }
 
 } // namespace
@@ -205,12 +219,8 @@ struct ChooseThemeController::Entry {
 	Ui::ChatThemeKey key;
 	std::shared_ptr<Ui::ChatTheme> theme;
 	std::shared_ptr<Data::DocumentMedia> media;
-	std::shared_ptr<Data::UniqueGift> gift;
-	std::shared_ptr<Ui::DynamicImage> takenUserpic;
-	std::unique_ptr<Ui::Text::CustomEmoji> custom;
 	EmojiPtr emoji = nullptr;
 	QImage preview;
-	QRect userpic;
 	QRect geometry;
 	bool chosen = false;
 };
@@ -237,11 +247,10 @@ ChooseThemeController::~ChooseThemeController() {
 void ChooseThemeController::init(rpl::producer<QSize> outer) {
 	using namespace rpl::mappers;
 
+	// LoogriGram: a unique gift can carry a chat theme, and those were loaded
+	// and offered in this picker beside the ordinary emoji ones. Gifts are
+	// deleted, so only the emoji themes are listed.
 	const auto themes = &_controller->session().data().cloudThemes();
-	if (themes->myGiftThemesTokens().empty()) {
-		themes->myGiftThemesLoadMore();
-	}
-
 	const auto &list = themes->chatThemes();
 	if (!list.empty()) {
 		fill(list);
@@ -349,38 +358,12 @@ void ChooseThemeController::initButtons() {
 		SetPeerTheme(_controller, _peer, token, theme);
 		_controller->toggleChooseChatTheme(_peer);
 	});
-	const auto confirmTakeGiftTheme = crl::guard(apply, [=](
-			const QString &token,
-			const std::shared_ptr<Ui::ChatTheme> &theme,
-			not_null<PeerData*> nowHasTheme) {
-		_controller->show(Box([=](not_null<Ui::GenericBox*> box) {
-			const auto confirmed = [=](Fn<void()> close) {
-				setTheme(token, theme);
-				close();
-			};
-			Ui::ConfirmBox(box, {
-				.text = tr::lng_chat_theme_gift_replace(
-					lt_name,
-					rpl::single(tr::bold(nowHasTheme->shortName())),
-					tr::marked),
-				.confirmed = confirmed,
-				.confirmText = tr::lng_box_yes(),
-			});
-		}));
-	});
 	apply->setClickedCallback([=] {
 		if (const auto chosen = findChosen()) {
 			const auto was = _peer->themeToken();
 			const auto now = chosen->key ? _chosen.current() : QString();
-			const auto user = chosen->gift
-				? chosen->gift->themeUser
-				: nullptr;
 			if (was != now) {
-				if (!user || user == _peer) {
-					setTheme(now, chosen->theme);
-				} else {
-					confirmTakeGiftTheme(now, chosen->theme, user);
-				}
+				setTheme(now, chosen->theme);
 			} else {
 				_controller->toggleChooseChatTheme(_peer);
 			}
@@ -396,14 +379,6 @@ void ChooseThemeController::initButtons() {
 void ChooseThemeController::paintEntry(QPainter &p, const Entry &entry) {
 	const auto geometry = entry.geometry;
 	p.drawImage(geometry, entry.preview);
-	if (const auto userpic = entry.takenUserpic.get()) {
-		userpic->subscribeToUpdates([=] {
-			_inner->update();
-		});
-		p.drawImage(
-			entry.userpic.translated(geometry.topLeft()),
-			userpic->image(entry.userpic.height()));
-	}
 
 	const auto size = Ui::Emoji::GetSizeLarge();
 	const auto factor = style::DevicePixelRatio();
@@ -413,16 +388,8 @@ void ChooseThemeController::paintEntry(QPainter &p, const Entry &entry) {
 		+ geometry.height()
 		- esize
 		- st::chatThemeEmojiBottom;
-	const auto customSize = Ui::Text::AdjustCustomEmojiSize(esize);
-	const auto customSkip = (esize - customSize) / 2;
-
 	if (const auto emoji = entry.emoji) {
 		Ui::Emoji::Draw(p, emoji, size, emojiLeft, emojiTop);
-	} else if (const auto custom = entry.custom.get()) {
-		custom->paint(p, {
-			.textColor = st::windowFg->c,
-			.position = { emojiLeft + customSkip, emojiTop + customSkip },
-		});
 	}
 
 	if (entry.chosen) {
@@ -578,10 +545,6 @@ void ChooseThemeController::updateInnerLeft(int now) {
 		? (skip / 2)
 		: std::clamp(now, skip, 0);
 	_inner->move(clamped, 0);
-	const auto visibleTill = -clamped + _content->width();
-	if (_giftsFinishAt - visibleTill < _content->width()) {
-		_peer->owner().cloudThemes().myGiftThemesLoadMore();
-	}
 }
 
 void ChooseThemeController::close() {
@@ -634,15 +597,7 @@ void ChooseThemeController::fill(
 	}
 
 	const auto cloudThemes = &_controller->session().data().cloudThemes();
-	rpl::combine(
-		_dark.value(),
-		rpl::single(
-			rpl::empty
-		) | rpl::then(cloudThemes->myGiftThemesUpdated())
-	) | rpl::on_next([=](bool dark, auto) {
-		if (!cloudThemes->myGiftThemesReady()) {
-			return;
-		}
+	_dark.value() | rpl::on_next([=](bool dark) {
 		clearCurrentBackgroundState();
 		if (_chosen.current().isEmpty() && !initial.isEmpty()) {
 			_chosen = initial;
@@ -669,8 +624,6 @@ void ChooseThemeController::fill(
 
 		x += single.width() + skip;
 
-		const auto owner = &_controller->session().data();
-		const auto manager = &owner->customEmojiManager();
 		const auto push = [&](
 				const Data::CloudTheme &theme,
 				const QString &token) {
@@ -679,22 +632,9 @@ void ChooseThemeController::fill(
 			}
 			const auto key = ChatThemeKey{ theme.id, dark };
 			const auto isChosen = (_chosen.current() == token);
-			const auto themeUser = theme.unique
-				? theme.unique->themeUser
-				: nullptr;
 			_entries.push_back({
 				.token = token,
 				.key = key,
-				.gift = theme.unique,
-				.takenUserpic = (themeUser
-					? Ui::MakeUserpicThumbnail(themeUser, true)
-					: nullptr),
-				.custom = (theme.unique
-					? manager->create(
-						theme.unique->model.document,
-						[=] { _inner->update(); },
-						Data::CustomEmojiSizeTag::Large)
-					: nullptr),
 				.emoji = (theme.emoticon.isEmpty()
 					? nullptr
 					: Ui::Emoji::Find(theme.emoticon)),
@@ -718,9 +658,8 @@ void ChooseThemeController::fill(
 				const auto theme = data.get();
 				const auto token = i->token;
 				i->theme = std::move(data);
-				auto generated = GeneratePreview(theme, i->takenUserpic);
+				auto generated = GeneratePreview(theme);
 				i->preview = std::move(generated.preview);
-				i->userpic = generated.userpic;
 				if (_chosen.current() == token) {
 					_controller->overridePeerTheme(_peer, i->theme, token);
 				}
@@ -747,26 +686,16 @@ void ChooseThemeController::fill(
 					if (i == end(_entries)) {
 						return;
 					}
-					auto generated = GeneratePreview(theme, i->takenUserpic);
+					auto generated = GeneratePreview(theme);
 					i->preview = std::move(generated.preview);
-					i->userpic = generated.userpic;
 					_inner->update();
 				}, _cachingLifetime);
 			}, _cachingLifetime);
 			x += single.width() + skip;
 		};
 
-		_giftsFinishAt = 0;
 		if (const auto now = cloudThemes->themeForToken(initial)) {
 			push(*now, initial);
-		}
-		for (const auto &token : cloudThemes->myGiftThemesTokens()) {
-			if (const auto found = cloudThemes->themeForToken(token)) {
-				if (token != initial) {
-					push(*found, token);
-					_giftsFinishAt = x;
-				}
-			}
 		}
 		for (const auto &theme : themes) {
 			if (const auto emoji = Ui::Emoji::Find(theme.emoticon)) {

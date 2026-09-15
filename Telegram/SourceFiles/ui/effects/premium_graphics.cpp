@@ -11,7 +11,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "ui/abstract_button.h"
 #include "ui/effects/animations.h"
-#include "ui/effects/credits_graphics.h"
+#include "info/channel_statistics/earn/earn_icons.h"
 #include "ui/effects/gradient.h"
 #include "ui/effects/numbers_animation.h"
 #include "ui/effects/premium_bubble.h"
@@ -937,7 +937,7 @@ void AddGiftOptions(
 		const auto &costPerMonthFont = st::shareBoxListItem.nameStyle.font;
 		const auto &costPerYearFont = st::normalFont;
 		const auto costPerMonthIcon = info.costPerMonth.startsWith(kStar)
-			? GenerateStars(costPerMonthFont->height, 1)
+			? Earn::GenerateStars(costPerMonthFont->height, 1)
 			: QImage();
 		auto leftText = TextWithEntities();
 		if (!info.costNoDiscount.isEmpty()) {
@@ -963,7 +963,7 @@ void AddGiftOptions(
 				return QImage();
 			}
 			const auto text = removedStar(rightText);
-			const auto icon = GenerateStars(costPerYearFont->height, 1);
+			const auto icon = Earn::GenerateStars(costPerYearFont->height, 1);
 			auto result = QImage(
 				QSize(costPerYearFont->spacew + costPerYearFont->width(text), 0)
 					* style::DevicePixelRatio()

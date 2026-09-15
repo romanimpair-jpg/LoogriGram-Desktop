@@ -15,6 +15,10 @@ class CustomEmoji;
 
 namespace Ui::Earn {
 
+[[nodiscard]] QImage GenerateStars(int height, int count, int ratio = 0);
+[[nodiscard]] TextWithEntities CreditsEmoji();
+[[nodiscard]] TextWithEntities CreditsEmojiSmall();
+
 [[nodiscard]] QImage IconCurrencyColored(int size, const QColor &c);
 [[nodiscard]] QImage IconCurrencyColored(
 	const style::font &font,

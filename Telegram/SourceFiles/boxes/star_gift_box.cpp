@@ -5029,7 +5029,7 @@ void SendGiftBox(
 				? data.cost
 				: 0;
 			if (stars) {
-				return CreditsEmojiSmall().append(
+				return Ui::Earn::CreditsEmojiSmall().append(
 					Lang::FormatCountDecimal(std::abs(stars)));
 			}
 			return TextWithEntities{
@@ -5038,7 +5038,7 @@ void SendGiftBox(
 		}, [&](const GiftTypeStars &data) {
 			const auto amount = std::abs(data.info.stars)
 				+ (details.upgraded ? data.info.starsToUpgrade : 0);
-			return CreditsEmojiSmall().append(
+			return Ui::Earn::CreditsEmojiSmall().append(
 				Lang::FormatCountDecimal(amount));
 		});
 	});

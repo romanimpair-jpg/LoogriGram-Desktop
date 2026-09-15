@@ -152,12 +152,12 @@ Credits::Credits(
 	CreditsType type)
 : Section(parent, controller)
 , _creditsType(type)
-, _star(Ui::GenerateStars(st::creditsTopupButton.height, 1))
+, _star(Ui::Earn::GenerateStars(st::creditsTopupButton.height, 1))
 , _balanceStar((_creditsType == CreditsType::Ton)
 		? Ui::Earn::IconCurrencyColored(
 			st::tonFieldIconSize,
 			st::currencyFg->c)
-		: Ui::GenerateStars(st::creditsBalanceStarHeight, 1)) {
+		: Ui::Earn::GenerateStars(st::creditsBalanceStarHeight, 1)) {
 	controller->session().giftBoxStickersPacks().tonLoad();
 	setupContent();
 	setupSwipeBack();

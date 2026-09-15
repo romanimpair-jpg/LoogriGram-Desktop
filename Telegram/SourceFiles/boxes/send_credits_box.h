@@ -37,9 +37,7 @@ void SendCreditsBox(
 	std::shared_ptr<Payments::CreditsFormData> data,
 	Fn<void(Settings::SmallBalanceResult)> sent);
 
-[[nodiscard]] TextWithEntities CreditsEmoji();
 
-[[nodiscard]] TextWithEntities CreditsEmojiSmall();
 
 not_null<FlatLabel*> SetButtonMarkedLabel(
 	not_null<RpWidget*> button,

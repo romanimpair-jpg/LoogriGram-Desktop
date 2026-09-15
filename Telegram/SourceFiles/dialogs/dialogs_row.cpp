@@ -9,7 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "ui/chat/chat_theme.h" // CountAverageColor.
 #include "ui/color_contrast.h"
-#include "ui/effects/credits_graphics.h"
+#include "info/channel_statistics/earn/earn_icons.h"
 #include "ui/effects/outline_segments.h"
 #include "ui/effects/ripple_animation.h"
 #include "ui/effects/ttl_icon.h"
@@ -118,7 +118,7 @@ constexpr auto kBlurRadius = 24;
 	const auto ratio = style::DevicePixelRatio();
 	const auto skip = SubscriptionCutSkip();
 	const auto size = st::dialogsSubscriptionBadgeSize + 2 * skip;
-	const auto star = Ui::GenerateStars(
+	const auto star = Ui::Earn::GenerateStars(
 		st::dialogsSubscriptionBadgeSize,
 		1,
 		ratio * kSupersample);
@@ -169,7 +169,7 @@ constexpr auto kBlurRadius = 24;
 	if (!starImage.isNull()) {
 		return starImage;
 	}
-	starImage = Ui::GenerateStars(st::dialogsSubscriptionBadgeSize, 1);
+	starImage = Ui::Earn::GenerateStars(st::dialogsSubscriptionBadgeSize, 1);
 	return starImage;
 }
 

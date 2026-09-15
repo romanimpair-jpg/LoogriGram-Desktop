@@ -5,6 +5,7 @@ the official desktop application for the Telegram messaging service.
 For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
+#include "info/channel_statistics/earn/earn_icons.h"
 #include "data/data_media_types.h"
 
 #include "base/random.h"
@@ -2341,7 +2342,7 @@ ItemPreview MediaInvoice::toPreview(ToPreviewOptions options) const {
 			? parent()->translatedText()
 			: parent()->originalText());
 	const auto hasMiniImages = !images.empty();
-	auto nice = Ui::Text::Colorized(Ui::CreditsEmojiSmall());
+	auto nice = Ui::Text::Colorized(Ui::Earn::CreditsEmojiSmall());
 	nice.append(WithCaptionNotificationText(type, caption, hasMiniImages));
 	return {
 		.text = std::move(nice),

@@ -505,7 +505,7 @@ void FillCreditOptions(
 			object_ptr<Ui::VerticalLayout>(container)));
 	const auto content = options->entity();
 
-	const auto singleStarWidth = Ui::GenerateStars(
+	const auto singleStarWidth = Ui::Earn::GenerateStars(
 		st::creditsTopupButton.height,
 		1).width() / style::DevicePixelRatio();
 
@@ -519,7 +519,7 @@ void FillCreditOptions(
 		constexpr auto kPreloadCount = 10;
 		auto cache = base::flat_map<int, QImage>();
 		for (auto i = 1; i <= kPreloadCount; ++i) {
-			cache[i] = Ui::GenerateStars(st::creditsTopupButton.height, i);
+			cache[i] = Ui::Earn::GenerateStars(st::creditsTopupButton.height, i);
 		}
 		crl::on_main(weak, [=, result = std::move(cache)]() mutable {
 			starsState->cache = std::move(result);
@@ -658,7 +658,7 @@ void FillCreditOptions(
 				if (starsState->cache.contains(starIndex)) {
 					return starsState->cache[starIndex];
 				}
-				return Ui::GenerateStars(st.height, starIndex);
+				return Ui::Earn::GenerateStars(st.height, starIndex);
 			};
 			const auto stars = getStars();
 			const auto textLeft = diffBetweenTextAndStar

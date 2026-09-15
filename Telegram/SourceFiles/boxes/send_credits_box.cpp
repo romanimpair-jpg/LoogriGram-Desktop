@@ -27,6 +27,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/settings_credits_graphics.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/controls/userpic_button.h"
+#include "info/channel_statistics/earn/earn_icons.h"
 #include "ui/effects/credits_graphics.h"
 #include "ui/effects/premium_graphics.h"
 #include "ui/effects/premium_top_bar.h" // Ui::Premium::ColorizedSvg.
@@ -469,7 +470,7 @@ void SendCreditsBox(
 					lt_count,
 					rpl::single(form->invoice.amount) | tr::to_count(),
 					lt_emoji,
-					rpl::single(CreditsEmojiSmall()),
+					rpl::single(Ui::Earn::CreditsEmojiSmall()),
 					tr::rich),
 			state->confirmButtonBusy.value()
 		) | rpl::map([](TextWithEntities &&text, bool busy) {
@@ -506,18 +507,6 @@ void SendCreditsBox(
 			balance->update();
 		}, balance->lifetime());
 	}
-}
-
-TextWithEntities CreditsEmoji() {
-	return Ui::Text::IconEmoji(
-		&st::starIconEmojiLarge,
-		QString(QChar(0x2B50)));
-}
-
-TextWithEntities CreditsEmojiSmall() {
-	return Ui::Text::IconEmoji(
-		&st::starIconEmoji,
-		QString(QChar(0x2B50)));
 }
 
 not_null<FlatLabel*> SetButtonMarkedLabel(

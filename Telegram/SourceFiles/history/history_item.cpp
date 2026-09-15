@@ -43,7 +43,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/click_handler_types.h"
 #include "base/unixtime.h"
 #include "base/timer_rpl.h"
-#include "boxes/send_credits_box.h"
+#include "info/channel_statistics/earn/earn_icons.h"
 #include "api/api_text_entities.h"
 #include "api/api_updates.h"
 #include "data/business/data_shortcut_messages.h"
@@ -191,7 +191,7 @@ template <typename T>
 		int64 amount,
 		const QString &currency) {
 	if (currency == Ui::kCreditsCurrency) {
-		return Ui::CreditsEmojiSmall().append(
+		return Ui::Earn::CreditsEmojiSmall().append(
 			Lang::FormatCountDecimal(std::abs(amount)));
 	}
 	return { Ui::FillAmountAndCurrency(amount, currency) };

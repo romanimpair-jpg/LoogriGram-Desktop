@@ -20,6 +20,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/userpic/info_userpic_emoji_builder_preview.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
+#include "info/channel_statistics/earn/earn_icons.h"
 #include "ui/effects/premium_graphics.h"
 #include "ui/effects/spoiler_mess.h"
 #include "ui/empty_userpic.h"
@@ -89,74 +90,17 @@ PaintRoundImageCallback MultiThumbnail(
 	};
 }
 
-QByteArray CreditsIconSvg(int strokeWidth) {
-	auto colorized = qs(Premium::ColorizedSvg(
-		Premium::CreditsIconGradientStops()));
-	colorized.replace(
-		u"stroke=\"none\""_q,
-		u"stroke=\"%1\""_q.arg(st::creditsStroke->c.name()));
-	colorized.replace(
-		u"stroke-width=\"1\""_q,
-		u"stroke-width=\"%1\""_q.arg(strokeWidth));
-	return colorized.toUtf8();
-}
-
 } // namespace
 
-QImage GenerateStars(int height, int count, int ratio) {
-	constexpr auto kOutlineWidth = .6;
-	constexpr auto kStrokeWidth = 3;
-	constexpr auto kShift = 3;
-
-	if (!ratio) {
-		ratio = style::DevicePixelRatio();
-	}
-	auto svg = QSvgRenderer(CreditsIconSvg(kStrokeWidth));
-	svg.setViewBox(svg.viewBox() + Margins(kStrokeWidth));
-
-	const auto starSize = Size(height - kOutlineWidth * 2);
-
-	auto frame = QImage(
-		QSize((height + kShift * (count - 1)) * ratio, height * ratio),
-		QImage::Format_ARGB32_Premultiplied);
-	frame.setDevicePixelRatio(ratio);
-	frame.fill(Qt::transparent);
-	const auto drawSingle = [&](QPainter &q) {
-		const auto s = kOutlineWidth;
-		q.save();
-		q.translate(s, s);
-		if (count > 1) {
-			// Cut a gap in the star below, they overlap by kShift.
-			q.setCompositionMode(QPainter::CompositionMode_Clear);
-			svg.render(&q, QRectF(QPointF(s, 0), starSize));
-			svg.render(&q, QRectF(QPointF(s, s), starSize));
-			svg.render(&q, QRectF(QPointF(0, s), starSize));
-			svg.render(&q, QRectF(QPointF(-s, s), starSize));
-			svg.render(&q, QRectF(QPointF(-s, 0), starSize));
-			svg.render(&q, QRectF(QPointF(-s, -s), starSize));
-			svg.render(&q, QRectF(QPointF(0, -s), starSize));
-			svg.render(&q, QRectF(QPointF(s, -s), starSize));
-			q.setCompositionMode(QPainter::CompositionMode_SourceOver);
-		}
-		svg.render(&q, Rect(starSize));
-		q.restore();
-	};
-	{
-		auto q = QPainter(&frame);
-		q.translate(frame.width() / ratio - height, 0);
-		for (auto i = count; i > 0; --i) {
-			drawSingle(q);
-			q.translate(-kShift, 0);
-		}
-	}
-	return frame;
-}
+// LoogriGram: GenerateStars and the svg behind it moved to earn_icons,
+// where the rest of the money icons live - things outside the stars
+// economy still want the star image and this file is going.
 
 not_null<RpWidget*> CreateSingleStarWidget(
 		not_null<RpWidget*> parent,
 		int height) {
 	const auto widget = CreateChild<RpWidget>(parent);
-	const auto image = GenerateStars(height, 1);
+	const auto image = Earn::GenerateStars(height, 1);
 	widget->resize(image.size() / style::DevicePixelRatio());
 	widget->paintRequest(
 	) | rpl::on_next([=] {

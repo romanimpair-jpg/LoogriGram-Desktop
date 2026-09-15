@@ -5,6 +5,7 @@ the official desktop application for the Telegram messaging service.
 For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
+#include "info/channel_statistics/earn/earn_icons.h"
 #include "history/view/media/history_view_media.h"
 #include "ui/basic_click_handlers.h"
 
@@ -248,7 +249,7 @@ void Media::drawPurchasedTag(
 		if (!amount) {
 			return;
 		}
-		auto text = Ui::Text::Colorized(Ui::CreditsEmojiSmall());
+		auto text = Ui::Text::Colorized(Ui::Earn::CreditsEmojiSmall());
 		text.append(Lang::FormatCountDecimal(amount));
 		purchased->text.setMarkedText(
 			st::defaultTextStyle,
@@ -408,7 +409,7 @@ void Media::drawSpoilerTag(
 				tr::lng_sensitive_tag(tr::now));
 			iconSkip = st::mediaMenuIconStealth.width() * 1.4;
 		} else {
-			auto price = Ui::Text::Colorized(Ui::CreditsEmoji());
+			auto price = Ui::Text::Colorized(Ui::Earn::CreditsEmoji());
 			price.append(Lang::FormatCountDecimal(tag->price));
 			text.setMarkedText(
 				st::semiboldTextStyle,

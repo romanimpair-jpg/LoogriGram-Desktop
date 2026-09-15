@@ -7,8 +7,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/channel_statistics/earn/earn_icons.h"
 
-#include "ui/effects/credits_graphics.h"
 #include "ui/effects/premium_graphics.h"
+#include "ui/rect.h"
+#include "ui/text/text_utilities.h"
 #include "ui/text/custom_emoji_instance.h"
 #include "ui/rect.h"
 #include "styles/style_credits.h"
@@ -60,7 +61,89 @@ namespace {
 </svg>)";
 }
 
+
+// LoogriGram: GenerateStars and the svg it colours were the last two things
+// in ui/effects/credits_graphics.cpp that anything outside the stars economy
+// wanted - a chat list subscription badge, a statistics chart axis and the
+// star emoji below. That file is deleted, so they live here with the rest of
+// the money icons.
+[[nodiscard]] QByteArray CreditsIconSvg(int strokeWidth) {
+	auto colorized = qs(Premium::ColorizedSvg(
+		Premium::CreditsIconGradientStops()));
+	colorized.replace(
+		u"stroke=\"none\""_q,
+		u"stroke=\"%1\""_q.arg(st::creditsStroke->c.name()));
+	colorized.replace(
+		u"stroke-width=\"1\""_q,
+		u"stroke-width=\"%1\""_q.arg(strokeWidth));
+	return colorized.toUtf8();
+}
+
 } // namespace
+
+QImage GenerateStars(int height, int count, int ratio) {
+	constexpr auto kOutlineWidth = .6;
+	constexpr auto kStrokeWidth = 3;
+	constexpr auto kShift = 3;
+
+	if (!ratio) {
+		ratio = style::DevicePixelRatio();
+	}
+	auto svg = QSvgRenderer(CreditsIconSvg(kStrokeWidth));
+	svg.setViewBox(svg.viewBox() + Margins(kStrokeWidth));
+
+	const auto starSize = Size(height - kOutlineWidth * 2);
+
+	auto frame = QImage(
+		QSize((height + kShift * (count - 1)) * ratio, height * ratio),
+		QImage::Format_ARGB32_Premultiplied);
+	frame.setDevicePixelRatio(ratio);
+	frame.fill(Qt::transparent);
+	const auto drawSingle = [&](QPainter &q) {
+		const auto s = kOutlineWidth;
+		q.save();
+		q.translate(s, s);
+		if (count > 1) {
+			// Cut a gap in the star below, they overlap by kShift.
+			q.setCompositionMode(QPainter::CompositionMode_Clear);
+			svg.render(&q, QRectF(QPointF(s, 0), starSize));
+			svg.render(&q, QRectF(QPointF(s, s), starSize));
+			svg.render(&q, QRectF(QPointF(0, s), starSize));
+			svg.render(&q, QRectF(QPointF(-s, s), starSize));
+			svg.render(&q, QRectF(QPointF(-s, 0), starSize));
+			svg.render(&q, QRectF(QPointF(-s, -s), starSize));
+			svg.render(&q, QRectF(QPointF(0, -s), starSize));
+			svg.render(&q, QRectF(QPointF(s, -s), starSize));
+			q.setCompositionMode(QPainter::CompositionMode_SourceOver);
+		}
+		svg.render(&q, Rect(starSize));
+		q.restore();
+	};
+	{
+		auto q = QPainter(&frame);
+		q.translate(frame.width() / ratio - height, 0);
+		for (auto i = count; i > 0; --i) {
+			drawSingle(q);
+			q.translate(-kShift, 0);
+		}
+	}
+	return frame;
+}
+
+// LoogriGram: these two were in boxes/send_credits_box.cpp, a box for paying,
+// which is deleted. They are the star glyph inside a line of text, and what
+// is left using them is a paid media or paid message label.
+TextWithEntities CreditsEmoji() {
+	return Ui::Text::IconEmoji(
+		&st::starIconEmojiLarge,
+		QString(QChar(0x2B50)));
+}
+
+TextWithEntities CreditsEmojiSmall() {
+	return Ui::Text::IconEmoji(
+		&st::starIconEmoji,
+		QString(QChar(0x2B50)));
+}
 
 QImage IconCurrencyColored(int size, const QColor &c) {
 	const auto s = Size(size);
@@ -167,7 +250,7 @@ std::unique_ptr<Ui::Text::CustomEmoji> MakeCurrencyIconEmoji(
 Ui::Text::PaletteDependentEmoji IconCreditsEmoji(
 		IconDescriptor descriptor) {
 	return { .factory = [=] {
-		return Ui::GenerateStars(
+		return GenerateStars(
 			(descriptor.size
 				? descriptor.size
 				: st::defaultTableLabel.style.font->height),

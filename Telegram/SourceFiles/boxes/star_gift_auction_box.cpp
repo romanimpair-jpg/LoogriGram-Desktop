@@ -917,14 +917,14 @@ void AuctionBidBox(not_null<GenericBox*> box, AuctionBidBoxArgs &&args) {
 		return !state.my.bid
 			? tr::lng_auction_bid_place(
 				lt_stars,
-				rpl::single(CreditsEmojiSmall().append(
+				rpl::single(Ui::Earn::CreditsEmojiSmall().append(
 					Lang::FormatCountDecimal(count))),
 				tr::marked)
 			: (count <= state.my.bid)
 			? tr::lng_box_ok(tr::marked)
 			: tr::lng_auction_bid_increase(
 				lt_stars,
-				rpl::single(CreditsEmojiSmall().append(
+				rpl::single(Ui::Earn::CreditsEmojiSmall().append(
 					Lang::FormatCountDecimal(count - state.my.bid))),
 				tr::marked);
 	}) | rpl::flatten_latest());
