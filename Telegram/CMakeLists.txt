@@ -845,7 +845,6 @@ PRIVATE
     dialogs/suggestions/suggestion.h
     dialogs/suggestions/suggestion_birthday_setup.cpp
     dialogs/suggestions/suggestion_custom_promo.cpp
-    dialogs/suggestions/suggestion_gift_auctions.cpp
     dialogs/suggestions/suggestion_low_credits_subs.cpp
     dialogs/suggestions/suggestion_unreviewed_auth.cpp
     dialogs/suggestions/suggestion_userpic_setup.cpp

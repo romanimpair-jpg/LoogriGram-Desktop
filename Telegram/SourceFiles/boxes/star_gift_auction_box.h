@@ -13,7 +13,6 @@ class Show;
 
 namespace Data {
 struct GiftAuctionState;
-struct ActiveAuctions;
 struct StarGift;
 } // namespace Data
 
@@ -62,20 +61,6 @@ void AuctionAboutBox(
 	int rounds,
 	int giftsPerRound,
 	Fn<void(Fn<void()> close)> understood);
-
-[[nodiscard]] TextWithEntities ActiveAuctionsTitle(
-	const Data::ActiveAuctions &auctions);
-struct ManyAuctionsState {
-	TextWithEntities text;
-	bool someOutbid = false;
-};
-[[nodiscard]] ManyAuctionsState ActiveAuctionsState(
-	const Data::ActiveAuctions &auctions);
-[[nodiscard]] rpl::producer<TextWithEntities> ActiveAuctionsButton(
-	const Data::ActiveAuctions &auctions);
-[[nodiscard]] Fn<void()> ActiveAuctionsCallback(
-	not_null<Window::SessionController*> window,
-	const Data::ActiveAuctions &auctions);
 
 [[nodiscard]] std::vector<int> RandomIndicesSubset(int total, int subset);
 

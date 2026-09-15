@@ -1726,12 +1726,10 @@ QString TryConvertUrlToLocal(QString url) {
 		} else if (const auto chatlinkMatch = regex_match(u"^m/([a-zA-Z0-9\\.\\_\\-]+)(\\?|$)"_q, query, matchOptions)) {
 			const auto slug = chatlinkMatch->captured(1);
 			return u"tg://message?slug="_q + slug;
-		} else if (const auto nftMatch = regex_match(u"^nft/([a-zA-Z0-9\\.\\_\\-]+)(\\?|$)"_q, query, matchOptions)) {
-			const auto slug = nftMatch->captured(1);
-			return u"tg://nft?slug="_q + slug;
-		} else if (const auto auctionMatch = regex_match(u"^auction/([a-zA-Z0-9\\.\\_\\-]+)(\\?|$)"_q, query, matchOptions)) {
-			const auto slug = auctionMatch->captured(1);
-			return u"tg://stargift_auction?slug="_q + slug;
+		// LoogriGram: an nft/ or auction/ link was rewritten into a tg://
+		// link for a collectible gift or a gift auction. Neither of those
+		// is registered any more, so the rewrite only manufactured a link
+		// that could not be opened.
 		} else if (const auto callMatch = regex_match(u"^call/([a-zA-Z0-9\\.\\_\\-]+)(\\?|$)"_q, query, matchOptions)) {
 			const auto slug = callMatch->captured(1);
 			return u"tg://call?slug="_q + slug;

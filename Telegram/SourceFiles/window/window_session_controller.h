@@ -718,8 +718,6 @@ public:
 		-> std::unique_ptr<HistoryView::SubsectionTabs>;
 	void dropSubsectionTabs();
 
-	void showStarGiftAuction(const QString &slug);
-	void showStarGiftAuction(uint64 giftId);
 
 	void showCloudPassword(const QString &highlightId = QString());
 
@@ -880,7 +878,6 @@ private:
 	std::unique_ptr<HistoryView::SubsectionTabs> _savedSubsectionTabs;
 	rpl::lifetime _savedSubsectionTabsLifetime;
 
-	rpl::lifetime _starGiftAuctionLifetime;
 	rpl::lifetime _showCloudPasswordLifetime;
 
 	rpl::lifetime _lifetime;

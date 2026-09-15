@@ -52,7 +52,6 @@ enum class Priority : int {
 	BirthdaySetup    = 3,
 	LowCreditsSubs   = 5,
 	CustomPromo      = 7,
-	GiftAuctions     = 8,
 	UnreviewedAuth   = 9,
 };
 
@@ -67,7 +66,6 @@ struct Spec {
 
 [[nodiscard]] Spec MakeBirthdaySetupSpec();
 [[nodiscard]] Spec MakeCustomPromoSpec();
-[[nodiscard]] Spec MakeGiftAuctionsSpec();
 [[nodiscard]] Spec MakeLowCreditsSubsSpec();
 [[nodiscard]] Spec MakeUnreviewedAuthSpec();
 [[nodiscard]] Spec MakeUserpicSetupSpec();
