@@ -44,7 +44,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/settings_builder.h"
 #include "settings/cloud_password/settings_cloud_password_input.h"
 #include "settings/sections/settings_advanced.h"
-#include "settings/sections/settings_business.h"
 #include "settings/sections/settings_calls.h"
 #include "settings/sections/settings_chat.h"
 #include "settings/settings_codes.h"
@@ -519,13 +518,10 @@ void BuildPremiumSection(SectionBuilder &builder) {
 		) | rpl::map([](CreditsAmount c) { return !c.empty(); }),
 	});
 
-	builder.addButton({
-		.id = u"main/business"_q,
-		.title = tr::lng_business_title(),
-		.icon = { .icon = &st::menuIconShop },
-		.onClick = [=] { showOther(BusinessId()); },
-		.keywords = { u"work"_q, u"company"_q },
-	});
+	// LoogriGram: the Telegram Business row opened a section of settings for
+	// configuring a business account - greeting and away messages, quick
+	// replies, opening hours, a location, chatbots - every one of which is
+	// sold with a subscription. The section is deleted, so is the row.
 
 	if (session->premiumCanBuy()) {
 		builder.addButton({

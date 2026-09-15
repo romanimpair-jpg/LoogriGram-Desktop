@@ -102,13 +102,6 @@ settingsIconInterfaceScale: icon {{ "settings/interface_scale", settingsIconFg }
 settingsPremiumIconDouble: icon {{ "settings/premium/double", settingsIconFg }};
 settingsPremiumIconTags: icon {{ "settings/premium/tags", settingsIconFg }};
 
-settingsIconChatAutomation: icon {
-	{ size(24px, 24px), transparent },
-	{ "chat/ai_letters-20x20", menuIconColor, point(2px, 2px) },
-	{ "chat/ai_star1-20x20", menuIconColor, point(2px, 2px) },
-	{ "chat/ai_star2-20x20", menuIconColor, point(2px, 2px) },
-};
-
 settingsStoriesIconOrder: icon {{ "settings/premium/stories_order", premiumButtonBg1 }};
 settingsStoriesIconStealth: icon {{ "menu/stealth", premiumButtonBg1 }};
 settingsStoriesIconViews: icon {{ "menu/show_in_chat", premiumButtonBg1 }};
@@ -117,23 +110,9 @@ settingsStoriesIconDownload: icon {{ "menu/download", premiumButtonBg1 }};
 settingsStoriesIconCaption: icon {{ "settings/premium/stories_caption", premiumButtonBg1 }};
 settingsStoriesIconLinks: icon {{ "menu/links_profile", premiumButtonBg1 }};
 
-settingsBusinessIconLocation: icon {{ "settings/premium/business/business_location", settingsIconFg }};
-settingsBusinessIconHours: icon {{ "settings/premium/business/business_hours", settingsIconFg }};
-settingsBusinessIconReplies: icon {{ "settings/premium/business/business_quick", settingsIconFg }};
-settingsBusinessIconGreeting: icon {{ "settings/premium/status", settingsIconFg }};
-settingsBusinessIconAway: icon {{ "settings/premium/business/business_away", settingsIconFg }};
-settingsBusinessIconChatbots: icon {{ "settings/premium/business/business_chatbots", settingsIconFg }};
-settingsBusinessIconChatIntro: icon {{ "settings/premium/business/business_intro", settingsIconFg }};
-settingsBusinessIconChatLinks: icon {{ "settings/premium/business/business_links", settingsIconFg }};
-
-settingsBusinessPromoLocation: icon {{ "settings/premium/promo/business_location", premiumButtonBg1 }};
-settingsBusinessPromoHours: icon {{ "settings/premium/promo/business_hours", premiumButtonBg1 }};
-settingsBusinessPromoReplies: icon {{ "settings/premium/promo/business_quickreply", premiumButtonBg1 }};
-settingsBusinessPromoGreeting: icon {{ "menu/welcome_message-24x24", premiumButtonBg1 }};
-settingsBusinessPromoAway: icon {{ "settings/premium/promo/business_away", premiumButtonBg1 }};
-settingsBusinessPromoChatbots: icon {{ "settings/premium/promo/business_chatbot", premiumButtonBg1 }};
-settingsBusinessPromoChatIntro: icon {{ "settings/premium/promo/business_intro", premiumButtonBg1 }};
-settingsBusinessPromoChatLinks: icon {{ "settings/premium/promo/business_chatlink", premiumButtonBg1 }};
+// LoogriGram: the eight row icons of the Business settings section and the
+// eight of its promo carousel went with them, and settingsIconChatAutomation
+// with the "Chat automation" row above.
 
 settingsStarRefEarnStars: icon {{ "settings/premium/business/earn_stars", settingsIconFg }};
 

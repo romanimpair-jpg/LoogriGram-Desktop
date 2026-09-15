@@ -65,7 +65,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_sending.h"
 #include "apiwrap.h"
 #include "data/business/data_shortcut_messages.h"
-#include "settings/business/settings_quick_replies.h"
 #include "ui/boxes/confirm_box.h"
 #include "chat_helpers/bot_keyboard.h"
 #include "chat_helpers/message_field.h"
@@ -434,15 +433,14 @@ ChatWidget::ChatWidget(
 			}) | rpl::type_erased,
 		.currentSuggest = [=] { return suggestOptions(); },
 		.processShortcut = [=](QString shortcut) {
-			const auto messages = &_peer->owner().shortcutMessages();
-			const auto shortcutId = messages->lookupShortcutId(shortcut);
-			if (shortcut.isEmpty()) {
-				controller->showSettings(Settings::QuickRepliesId());
-			// LoogriGram: as in history_widget - a quick-reply shortcut
-			// typed by someone who cannot use them offers nothing.
-			} else if (!_peer->session().premium()) {
+			// LoogriGram: as in history_widget - the quick-replies settings
+			// are gone with the rest of Business, and the pitch with them.
+			if (shortcut.isEmpty() || !_peer->session().premium()) {
 				return;
-			} else if (shortcutId) {
+			}
+			const auto messages = &_peer->owner().shortcutMessages();
+			if (const auto shortcutId = messages->lookupShortcutId(
+					shortcut)) {
 				session().api().sendShortcutMessages(_peer, shortcutId);
 				session().api().finishForwarding(prepareSendAction({}));
 				if (const auto field = _composeControls->fieldForMention()) {

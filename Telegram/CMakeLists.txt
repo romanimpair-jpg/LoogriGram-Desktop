@@ -1688,26 +1688,6 @@ PRIVATE
     profile/profile_block_widget.h
     profile/profile_cover_drop_area.cpp
     profile/profile_cover_drop_area.h
-    settings/business/settings_away_message.cpp
-    settings/business/settings_away_message.h
-    settings/business/settings_shortcut_messages.cpp
-    settings/business/settings_shortcut_messages.h
-    settings/business/settings_chat_intro.cpp
-    settings/business/settings_chat_intro.h
-    settings/business/settings_chat_links.cpp
-    settings/business/settings_chat_links.h
-    settings/business/settings_chatbots.cpp
-    settings/business/settings_chatbots.h
-    settings/business/settings_greeting.cpp
-    settings/business/settings_greeting.h
-    settings/business/settings_location.cpp
-    settings/business/settings_location.h
-    settings/business/settings_quick_replies.cpp
-    settings/business/settings_quick_replies.h
-    settings/business/settings_recipients_helper.cpp
-    settings/business/settings_recipients_helper.h
-    settings/business/settings_working_hours.cpp
-    settings/business/settings_working_hours.h
     settings/cloud_password/settings_cloud_password_email.cpp
     settings/cloud_password/settings_cloud_password_email.h
     settings/cloud_password/settings_cloud_password_email_confirm.cpp
@@ -1736,8 +1716,6 @@ PRIVATE
     settings/sections/settings_chat.h
     settings/sections/settings_blocked_peers.cpp
     settings/sections/settings_blocked_peers.h
-    settings/sections/settings_business.cpp
-    settings/sections/settings_business.h
     settings/sections/settings_calls.cpp
     settings/sections/settings_calls.h
     settings/settings_codes.cpp

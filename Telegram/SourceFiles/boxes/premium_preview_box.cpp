@@ -37,7 +37,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/boxes/confirm_box.h"
 #include "ui/painter.h"
 #include "ui/vertical_list.h"
-#include "settings/sections/settings_business.h"
 #include "settings/sections/settings_premium.h"
 #include "lottie/lottie_single_player.h"
 #include "history/view/media/history_view_sticker.h"
@@ -1029,10 +1028,7 @@ void PreviewBox(
 	const auto state = outer->lifetime().make_state<State>();
 	state->selected = descriptor.section;
 	auto premiumOrder = Settings::PremiumFeaturesOrder(&show->session());
-	auto businessOrder = Settings::BusinessFeaturesOrder(&show->session());
-	state->order = ranges::contains(businessOrder, descriptor.section)
-		? std::move(businessOrder)
-		: ranges::contains(premiumOrder, descriptor.section)
+	state->order = ranges::contains(premiumOrder, descriptor.section)
 		? std::move(premiumOrder)
 		: std::vector{ descriptor.section };
 
@@ -1412,12 +1408,6 @@ void Show(
 			DecorateListPromoBox(box, show, descriptor);
 		}));
 		return;
-	} else if (descriptor.section == PremiumFeature::Business) {
-		show->showBox(Box([=](not_null<Ui::GenericBox*> box) {
-			TelegramBusinessPreviewBox(box, &show->session());
-			DecorateListPromoBox(box, show, descriptor);
-		}));
-		return;
 	}
 	auto &list = Preloads();
 	for (auto i = begin(list); i != end(list);) {
@@ -1736,79 +1726,10 @@ void UpgradedStoriesPreviewBox(
 		tr::lng_premium_stories_about_mobile());
 }
 
-void TelegramBusinessPreviewBox(
-		not_null<Ui::GenericBox*> box,
-		not_null<Main::Session*> session) {
-	using namespace Ui::Text;
-
-	box->setTitle(tr::lng_business_title());
-
-	auto entries = std::vector<Ui::Premium::ListEntry>();
-	const auto push = [&](
-			tr::phrase<> title,
-			tr::phrase<> description,
-			const style::icon &icon) {
-		entries.push_back({
-			.title = title(),
-			.about = description(WithEntities),
-			.icon = &icon,
-		});
-	};
-	for (const auto feature : Settings::BusinessFeaturesOrder(session)) {
-		switch (feature) {
-		case PremiumFeature::GreetingMessage: push(
-			tr::lng_business_subtitle_greeting_messages,
-			tr::lng_business_about_greeting_messages,
-			st::settingsBusinessPromoGreeting);
-			break;
-		case PremiumFeature::AwayMessage: push(
-			tr::lng_business_subtitle_away_messages,
-			tr::lng_business_about_away_messages,
-			st::settingsBusinessPromoAway);
-			break;
-		case PremiumFeature::QuickReplies: push(
-			tr::lng_business_subtitle_quick_replies,
-			tr::lng_business_about_quick_replies,
-			st::settingsBusinessPromoReplies);
-			break;
-		case PremiumFeature::BusinessHours: push(
-			tr::lng_business_subtitle_opening_hours,
-			tr::lng_business_about_opening_hours,
-			st::settingsBusinessPromoHours);
-			break;
-		case PremiumFeature::BusinessLocation: push(
-			tr::lng_business_subtitle_location,
-			tr::lng_business_about_location,
-			st::settingsBusinessPromoLocation);
-			break;
-		case PremiumFeature::BusinessBots: push(
-			tr::lng_business_subtitle_chatbots,
-			tr::lng_business_about_chatbots,
-			st::settingsBusinessPromoChatbots);
-			break;
-		case PremiumFeature::ChatIntro: push(
-			tr::lng_business_subtitle_chat_intro,
-			tr::lng_business_about_chat_intro,
-			st::settingsBusinessPromoChatIntro);
-			break;
-		case PremiumFeature::ChatLinks: push(
-			tr::lng_business_subtitle_chat_links,
-			tr::lng_business_about_chat_links,
-			st::settingsBusinessPromoChatLinks);
-			break;
-		case PremiumFeature::FilterTags: push(
-			tr::lng_premium_summary_subtitle_filter_tags,
-			tr::lng_premium_summary_about_filter_tags,
-			st::settingsPremiumIconTags);
-			break;
-		}
-	}
-
-	Ui::Premium::ShowListBox(
-		box,
-		st::defaultPremiumLimits,
-		std::move(entries));
-}
+// LoogriGram: TelegramBusinessPreviewBox listed the Business features -
+// greeting and away messages, quick replies, opening hours, a location,
+// chatbots, a chat intro, chat links - as a carousel advertising the
+// subscription that sells them. Business is deleted, so is its advert.
 
 object_ptr<Ui::GradientButton> CreateUnlockButton(
 		QWidget *parent,

@@ -155,7 +155,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "menu/menu_timecode_action.h"
 #include "mtproto/mtproto_config.h"
 #include "lang/lang_keys.h"
-#include "settings/business/settings_quick_replies.h"
 #include "settings/settings_credits_graphics.h"
 #include "storage/localimageloader.h"
 #include "storage/storage_account.h"
@@ -1882,16 +1881,15 @@ void HistoryWidget::initFieldAutocomplete() {
 		if (!_peer) {
 			return;
 		}
-		const auto messages = &_peer->owner().shortcutMessages();
-		const auto shortcutId = messages->lookupShortcutId(shortcut);
-		if (shortcut.isEmpty()) {
-			controller()->showSettings(Settings::QuickRepliesId());
-		// LoogriGram: a shortcut typed by someone who cannot use quick
-		// replies used to open the pitch for them. Nothing is sent and
-		// nothing is offered.
-		} else if (!_peer->session().premium()) {
+		// LoogriGram: an empty shortcut opened the quick-replies settings,
+		// gone with the rest of Business, and a shortcut typed by someone
+		// who cannot use quick replies opened the pitch for them. Sending
+		// one that exists is all that is left.
+		if (shortcut.isEmpty() || !_peer->session().premium()) {
 			return;
-		} else if (shortcutId) {
+		}
+		const auto messages = &_peer->owner().shortcutMessages();
+		if (const auto shortcutId = messages->lookupShortcutId(shortcut)) {
 			session().api().sendShortcutMessages(_peer, shortcutId);
 			session().api().finishForwarding(prepareSendAction({}));
 			setFieldText(_field->getTextWithTagsPart(

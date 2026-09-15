@@ -38,7 +38,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_reply_markup.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
-#include "settings/business/settings_chat_intro.h"
 #include "settings/sections/settings_credits.h" // BuyStarsHandler
 #include "ui/chat/chat_style.h"
 #include "ui/image/image_location_factory.h"
@@ -853,16 +852,10 @@ void AboutView::make(Data::ChatIntro data, bool preview) {
 	const auto helloChosen = [=](not_null<DocumentData*> sticker) {
 		setHelloChosen(sticker);
 	};
-	const auto handler = [=](ClickContext context) {
-		const auto my = context.other.value<ClickHandlerContext>();
-		// LoogriGram: setting a chat intro is subscriber-only, and the
-		// other half of this used to open the pitch for it.
-		if (const auto controller = my.sessionWindow.get()) {
-			if (controller->session().premium()) {
-				controller->showSettings(Settings::ChatIntroId());
-			}
-		}
-	};
+	// LoogriGram: this service link opened the chat-intro settings for a
+	// subscriber and the pitch for it otherwise. Both are gone - the section
+	// with the rest of Business - so the greeting another person set still
+	// renders and there is nothing to click.
 	const auto sendIntroSticker = [=](not_null<DocumentData*> sticker) {
 		_sendIntroSticker.fire_copy(sticker);
 	};
