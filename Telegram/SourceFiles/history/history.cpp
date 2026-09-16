@@ -38,7 +38,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_chat_filters.h"
 #include "data/data_replies_list.h"
 #include "data/data_send_action.h"
-#include "data/data_star_gift.h"
 #include "data/data_emoji_statuses.h"
 #include "data/data_folder.h"
 #include "data/data_forum.h"
@@ -1399,9 +1398,9 @@ void History::applyServiceChanges(
 	}, [&](const MTPDmessageActionSetChatTheme &data) {
 		data.vtheme().match([&](const MTPDchatTheme &data) {
 			peer->setThemeToken(qs(data.vemoticon()));
-		}, [&](const MTPDchatThemeUniqueGift &data) {
-			peer->setThemeToken(
-				owner().cloudThemes().processGiftThemeGetToken(data));
+		}, [&](const MTPDchatThemeUniqueGift &) {
+			// LoogriGram: a collectible gift's theme is not applied.
+			peer->setThemeToken(QString());
 		});
 	}, [&](const MTPDmessageActionSetChatWallPaper &data) {
 		if (item->out() || data.is_for_both()) {
@@ -1508,13 +1507,6 @@ void History::applyServiceChanges(
 					}
 				}
 			}
-		}
-	}, [&](const MTPDmessageActionStarGift &data) {
-		if (data.is_auction_acquired() && data.vto_id()) {
-			const auto to = peer->owner().peer(peerFromMTP(*data.vto_id()));
-			data.vgift().match([&](const MTPDstarGift &data) {
-				peer->owner().notifyGiftAuctionGot({ data.vid().v, to });
-			}, [](const auto &) {});
 		}
 	}, [&](const MTPDmessageActionNoForwardsToggle &data) {
 		if (const auto user = peer->asUser()) {

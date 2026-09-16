@@ -29,7 +29,6 @@ namespace {
 
 constexpr auto kFirstReloadTimeout = 10 * crl::time(1000);
 constexpr auto kReloadTimeout = 3600 * crl::time(1000);
-constexpr auto kGiftThemesLimit = 24;
 
 [[nodiscard]] bool SamePaper(
 		const std::optional<WallPaper> &was,
@@ -146,80 +145,6 @@ CloudTheme CloudTheme::Parse(
 		.createdBy = data.is_creator() ? session->userId() : UserId(0),
 		.usersCount = data.vinstalls_count().value_or_empty(),
 		.emoticon = qs(data.vemoticon().value_or_empty()),
-		.settings = (parseSettings
-			? settings()
-			: base::flat_map<Type, Settings>()),
-	};
-}
-
-CloudTheme CloudTheme::Parse(
-		not_null<Main::Session*> session,
-		const MTPDchatThemeUniqueGift &data,
-		bool parseSettings) {
-	const auto gift = Api::FromTL(session, data.vgift());
-	if (!gift || !gift->unique) {
-		return {};
-	}
-	const auto paper = [&](const MTPThemeSettings &settings) {
-		const auto &data = settings.data();
-		return data.vwallpaper()
-			? WallPaper::Create(session, *data.vwallpaper())
-			: std::nullopt;
-	};
-	const auto basedOnDark = [&](const MTPThemeSettings &settings) {
-		const auto &data = settings.data();
-		return data.vbase_theme().match([](const MTPDbaseThemeNight &) {
-			return true;
-		}, [](const MTPDbaseThemeTinted &) {
-			return true;
-		}, [](const auto &) {
-			return false;
-		});
-	};
-	const auto outgoingMessagesColors = [&](
-			const MTPThemeSettings &settings) {
-		auto result = std::vector<QColor>();
-		const auto &data = settings.data();
-		if (const auto colors = data.vmessage_colors()) {
-			for (const auto &color : colors->v) {
-				result.push_back(Ui::ColorFromSerialized(color));
-			}
-		//} else if (basedOnDark(settings)) {
-		//	result.push_back(gift->unique->backdrop.edgeColor);
-		//} else {
-		//	result.push_back(anim::color(
-		//		gift->unique->backdrop.patternColor,
-		//		QColor(255, 255, 255, 255),
-		//		0.75));
-		}
-		return result;
-	};
-	const auto accentColor = [&](const MTPThemeSettings &settings) {
-		const auto &data = settings.data();
-		return Ui::ColorFromSerialized(data.vaccent_color());
-	};
-	const auto outgoingAccentColor = [&](const MTPThemeSettings &settings) {
-		const auto &data = settings.data();
-		return Ui::MaybeColorFromSerialized(
-			data.voutbox_accent_color()
-		);// .value_or(gift->unique->backdrop.patternColor);
-	};
-	const auto settings = [&] {
-		auto result = base::flat_map<Type, Settings>();
-		for (const auto &fields : data.vtheme_settings().v) {
-			const auto type = basedOnDark(fields) ? Type::Dark : Type::Light;
-			result.emplace(type, Settings{
-				.paper = paper(fields),
-				.accentColor = accentColor(fields),
-				.outgoingAccentColor = outgoingAccentColor(fields),
-				.outgoingMessagesColors = outgoingMessagesColors(fields),
-			});
-		}
-		return result;
-	};
-	return {
-		.id = gift->unique->id,
-		.unique = gift->unique,
 		.settings = (parseSettings
 			? settings()
 			: base::flat_map<Type, Settings>()),
@@ -538,13 +463,6 @@ rpl::producer<> CloudThemes::chatThemesUpdated() const {
 
 std::optional<CloudTheme> CloudThemes::themeForToken(
 		const QString &token) const {
-	if (token.startsWith(u"gift:"_q)) {
-		const auto id = QStringView(token).mid(5).toULongLong();
-		const auto i = _giftThemes.find(id);
-		return (i != end(_giftThemes))
-			? i->second
-			: std::optional<CloudTheme>();
-	}
 	const auto emoji = Ui::Emoji::Find(token);
 	if (!emoji) {
 		return {};
@@ -557,9 +475,6 @@ std::optional<CloudTheme> CloudThemes::themeForToken(
 
 rpl::producer<std::optional<CloudTheme>> CloudThemes::themeForTokenValue(
 		const QString &token) {
-	if (token.startsWith(u"gift:"_q)) {
-		return rpl::single(themeForToken(token));
-	}
 	const auto testing = TestingColors();
 	if (!Ui::Emoji::Find(token)) {
 		return rpl::single<std::optional<CloudTheme>>(std::nullopt);
@@ -588,83 +503,7 @@ rpl::producer<std::optional<CloudTheme>> CloudThemes::themeForTokenValue(
 	}) | rpl::take(limit));
 }
 
-void CloudThemes::myGiftThemesLoadMore(bool reload) {
-	if (reload && !_myGiftThemesTokens.empty()) {
-		_session->api().request(base::take(_myGiftThemesRequestId)).cancel();
-	}
-	if (_myGiftThemesRequestId || (!reload && _myGiftThemesLoaded)) {
-		return;
-	}
-	_myGiftThemesRequestId = _session->api().request(
-		MTPaccount_GetUniqueGiftChatThemes(
-			MTP_string(reload ? QString() : _myGiftThemesNextOffset),
-			MTP_int(kGiftThemesLimit),
-			MTP_long(_myGiftThemesHash))
-	).done([=](const MTPaccount_ChatThemes &result) {
-		_myGiftThemesRequestId = 0;
-		result.match([&](const MTPDaccount_chatThemes &data) {
-			if (reload || _myGiftThemesTokens.empty()) {
-				_myGiftThemesHash = data.vhash().v;
-				_myGiftThemesTokens.clear();
-				_myGiftThemesLoaded = false;
-			}
-			_session->data().processUsers(data.vusers());
-			_session->data().processChats(data.vchats());
-			const auto &list = data.vthemes().v;
-			const auto got = int(list.size());
-			_myGiftThemesTokens.reserve(_myGiftThemesTokens.size() + got);
-			for (const auto &theme : list) {
-				theme.match([](const MTPDchatTheme &) {
-				}, [&](const MTPDchatThemeUniqueGift &data) {
-					_myGiftThemesTokens.push_back(
-						processGiftThemeGetToken(data));
-				});
-			}
-			if (const auto next = data.vnext_offset()) {
-				_myGiftThemesNextOffset = qs(*next);
-			} else {
-				_myGiftThemesLoaded = true;
-			}
-			_myGiftThemesUpdates.fire({});
-		}, [&](const MTPDaccount_chatThemesNotModified &) {
-			if (!reload) {
-				_myGiftThemesLoaded = true;
-				_myGiftThemesUpdates.fire({});
-			}
-		});
-	}).fail([=] {
-		_myGiftThemesRequestId = 0;
-		_myGiftThemesLoaded = true;
-	}).send();
-}
-
-const std::vector<QString> &CloudThemes::myGiftThemesTokens() const {
-	return _myGiftThemesTokens;
-}
-
-bool CloudThemes::myGiftThemesReady() const {
-	return !_myGiftThemesTokens.empty() || _myGiftThemesLoaded;
-}
-
-rpl::producer<> CloudThemes::myGiftThemesUpdated() const {
-	return _myGiftThemesUpdates.events();
-}
-
-QString CloudThemes::processGiftThemeGetToken(
-		const MTPDchatThemeUniqueGift &data) {
-	auto parsed = CloudTheme::Parse(_session, data, true);
-	if (parsed.unique) {
-		const auto id = parsed.unique->id;
-		_giftThemes[id] = std::move(parsed);
-		return u"gift:%1"_q.arg(id);
-	}
-	return QString();
-}
-
 void CloudThemes::refreshChatThemesFor(const QString &token) {
-	if (token.startsWith(u"gift:"_q)) {
-		return;
-	}
 	refreshChatThemes();
 }
 

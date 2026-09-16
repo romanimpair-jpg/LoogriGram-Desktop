@@ -117,11 +117,6 @@ struct GiftsUpdate {
 	std::vector<Data::SavedStarGiftId> added;
 	std::vector<Data::SavedStarGiftId> removed;
 };
-struct GiftAuctionGot {
-	uint64 giftId = 0;
-	not_null<PeerData*> to;
-};
-
 struct SentToScheduled {
 	not_null<History*> history;
 	MsgId scheduledId = 0;
@@ -394,8 +389,6 @@ public:
 	[[nodiscard]] rpl::producer<GiftUpdate> giftUpdates() const;
 	void notifyGiftsUpdate(GiftsUpdate &&update);
 	[[nodiscard]] rpl::producer<GiftsUpdate> giftsUpdates() const;
-	void notifyGiftAuctionGot(GiftAuctionGot &&update);
-	[[nodiscard]] rpl::producer<GiftAuctionGot> giftAuctionGots() const;
 	void requestItemRepaint(not_null<const HistoryItem*> item, QRect r = QRect());
 	[[nodiscard]] rpl::producer<not_null<const HistoryItem*>> itemRepaintRequest() const;
 	void requestDrawToReply(DrawToReplyRequest request);
@@ -1209,7 +1202,6 @@ private:
 	rpl::event_stream<not_null<HistoryItem*>> _newItemAdded;
 	rpl::event_stream<GiftUpdate> _giftUpdates;
 	rpl::event_stream<GiftsUpdate> _giftsUpdates;
-	rpl::event_stream<GiftAuctionGot> _giftAuctionGots;
 	rpl::event_stream<not_null<const HistoryItem*>> _itemRepaintRequest;
 	rpl::event_stream<RequestViewRepaint> _viewRepaintRequest;
 	rpl::event_stream<not_null<const HistoryItem*>> _itemResizeRequest;

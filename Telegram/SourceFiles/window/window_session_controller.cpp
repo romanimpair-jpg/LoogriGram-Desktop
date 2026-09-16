@@ -1382,8 +1382,6 @@ struct SessionController::CachedThemeKey {
 struct SessionController::CachedTheme {
 	std::weak_ptr<Ui::ChatTheme> theme;
 	std::shared_ptr<Data::DocumentMedia> media;
-	std::unique_ptr<Ui::Text::CustomEmoji> giftSymbol;
-	uint64 giftId = 0;
 	Data::WallPaper paper;
 	bool basedOnDark = false;
 	bool caching = false;
@@ -3452,33 +3450,11 @@ void SessionController::cacheChatTheme(
 	const auto &use = !paper.isNull() ? paper : *i->second.paper;
 	const auto document = use.document();
 	const auto media = document ? document->createMediaView() : nullptr;
-	const auto findGiftSymbols = (data.unique != nullptr);
-	const auto reportSymbolLoaded = [weak = base::make_weak(this)] {
-		// We must notify async here, because we destroy emoji in
-		// the handler and we can't destroy emoji in repaint callback.
-		crl::on_main([weak] {
-			if (const auto strong = weak.get()) {
-				strong->_giftSymbolLoaded.fire({});
-			}
-		});
-	};
-	auto giftSymbol = findGiftSymbols
-		? session().data().customEmojiManager().create(
-			data.unique->pattern.document,
-			reportSymbolLoaded,
-			Data::CustomEmojiSizeTag::Large)
-		: nullptr;
-	const auto giftId = findGiftSymbols
-		? data.unique->model.document->id
-		: uint64();
-	const auto giftSymbolReady = !giftSymbol || giftSymbol->ready();
 	use.loadDocument();
 	auto &theme = [&]() -> CachedTheme& {
 		const auto i = _customChatThemes.find(key);
 		if (i != end(_customChatThemes)) {
 			i->second.media = media;
-			i->second.giftSymbol = std::move(giftSymbol);
-			i->second.giftId = giftId;
 			i->second.paper = use;
 			i->second.basedOnDark = dark;
 			i->second.caching = true;
@@ -3488,8 +3464,6 @@ void SessionController::cacheChatTheme(
 			key,
 			CachedTheme{
 				.media = media,
-				.giftSymbol = std::move(giftSymbol),
-				.giftId = giftId,
 				.paper = use,
 				.basedOnDark = dark,
 				.caching = true,
@@ -3519,9 +3493,6 @@ void SessionController::cacheChatTheme(
 	});
 	if (media && media->loaded(true)) {
 		theme.media = nullptr;
-		if (giftSymbolReady) {
-			theme.giftSymbol = nullptr;
-		}
 	}
 }
 
@@ -3540,24 +3511,16 @@ void SessionController::cacheChatThemeDone(
 	i->second.caching = false;
 	i->second.theme = result;
 	const auto media = i->second.media.get();
-	const auto giftSymbol = i->second.giftSymbol.get();
-	if (media || giftSymbol) {
-		if ((!media || media->loaded(true))
-			&& (!giftSymbol || giftSymbol->ready())) {
+	if (media) {
+		if (media->loaded(true)) {
 			updateCustomThemeBackground(i->second);
 		} else {
-			rpl::merge(
-				session().downloaderTaskFinished(),
-				((giftSymbol && !giftSymbol->ready())
-					? (_giftSymbolLoaded.events() | rpl::type_erased)
-					: rpl::never<rpl::empty_value>())
+			session().downloaderTaskFinished(
 			) | rpl::filter([=] {
 				const auto i = _customChatThemes.find(key);
 				Assert(i != end(_customChatThemes));
 				const auto media = i->second.media.get();
-				const auto giftSymbol = i->second.giftSymbol.get();
-				return (!media || media->loaded(true))
-					&& (!giftSymbol || giftSymbol->ready());
+				return !media || media->loaded(true);
 			}) | rpl::on_next([=] {
 				const auto i = _customChatThemes.find(key);
 				Assert(i != end(_customChatThemes));
@@ -3572,15 +3535,10 @@ void SessionController::updateCustomThemeBackground(CachedTheme &theme) {
 	const auto guard = gsl::finally([&] {
 		theme.lifetime.destroy();
 		theme.media = nullptr;
-		theme.giftSymbol = nullptr;
 	});
 	const auto strong = theme.theme.lock();
 	const auto media = theme.media.get();
-	const auto giftSymbol = theme.giftSymbol.get();
-	if (!strong
-		|| (!media && !giftSymbol)
-		|| (media && !media->loaded(true))
-		|| (giftSymbol && !giftSymbol->ready())) {
+	if (!strong || !media || !media->loaded(true)) {
 		return;
 	}
 	const auto key = strong->key();
@@ -3621,8 +3579,6 @@ Ui::ChatThemeBackgroundData SessionController::backgroundData(
 		.key = paper.key(),
 		.path = paperPath,
 		.bytes = paperBytes,
-		.giftSymbolFrame = Ui::PrepareGiftSymbol(theme.giftSymbol),
-		.giftId = theme.giftId,
 		.gzipSvg = gzipSvg,
 		.colors = colors,
 		.isPattern = isPattern,

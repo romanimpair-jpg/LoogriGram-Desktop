@@ -887,9 +887,9 @@ void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update) {
 	if (const auto theme = update.vtheme()) {
 		theme->match([&](const MTPDchatTheme &data) {
 			user->setThemeToken(qs(data.vemoticon()));
-		}, [&](const MTPDchatThemeUniqueGift &data) {
-			user->setThemeToken(
-				user->owner().cloudThemes().processGiftThemeGetToken(data));
+		}, [&](const MTPDchatThemeUniqueGift &) {
+			// LoogriGram: a collectible gift's theme is not applied.
+			user->setThemeToken(QString());
 		});
 	} else {
 		user->setThemeToken(QString());
