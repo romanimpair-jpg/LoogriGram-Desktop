@@ -348,11 +348,6 @@ void ActivateBotButton(ClickHandlerContext context, BotButtonLookup lookup) {
 		SendBotCallbackDataWithPassword(controller, item, lookup);
 	} break;
 
-	// LoogriGram: this opened the checkout for a bot's invoice. The message
-	// carrying the button is hidden at the view like every other invoice,
-	// so the button is not reachable; if one ever is, it does nothing.
-	case ButtonType::Buy: break;
-
 	case ButtonType::Url: {
 		auto url = QString::fromUtf8(button->data);
 		auto skipConfirmation = false;
@@ -412,12 +407,10 @@ void ActivateBotButton(ClickHandlerContext context, BotButtonLookup lookup) {
 			}
 		}
 		const auto replyTo = FullReplyTo();
-		const auto suggest = SuggestOptions();
 		Window::PeerMenuCreatePoll(
 			controller,
 			item->history()->peer,
 			replyTo,
-			suggest,
 			chosen,
 			disabled);
 	} break;
@@ -557,10 +550,6 @@ void ActivateBotButton(ClickHandlerContext context, BotButtonLookup lookup) {
 			QVariant::fromValue(context),
 		});
 	} break;
-
-	// LoogriGram: "Suggest changes" reopened the price and date box for a
-	// paid post. Paying a channel to publish is deleted.
-	case ButtonType::SuggestChange: break;
 
 	case ButtonType::CreateBot: {
 		HideSingleUseKeyboard(controller, item);

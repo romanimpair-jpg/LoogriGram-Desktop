@@ -36,7 +36,6 @@ constexpr auto kButtonTypeIcons = std::array{
 	ButtonTypeIconRow{ ButtonType::SwitchInline, ButtonTypeIcon::SwitchPm },
 	ButtonTypeIconRow{ ButtonType::SwitchInlineSame, ButtonTypeIcon::SwitchPm },
 	ButtonTypeIconRow{ ButtonType::Game, ButtonTypeIcon::None },
-	ButtonTypeIconRow{ ButtonType::Buy, ButtonTypeIcon::Payment },
 	ButtonTypeIconRow{ ButtonType::Auth, ButtonTypeIcon::Url },
 	ButtonTypeIconRow{ ButtonType::UserProfile, ButtonTypeIcon::None },
 	ButtonTypeIconRow{ ButtonType::WebView, ButtonTypeIcon::Webview },
@@ -45,7 +44,6 @@ constexpr auto kButtonTypeIcons = std::array{
 	ButtonTypeIconRow{ ButtonType::Disabled, ButtonTypeIcon::None },
 	ButtonTypeIconRow{ ButtonType::SuggestDecline, ButtonTypeIcon::None },
 	ButtonTypeIconRow{ ButtonType::SuggestAccept, ButtonTypeIcon::None },
-	ButtonTypeIconRow{ ButtonType::SuggestChange, ButtonTypeIcon::None },
 	ButtonTypeIconRow{ ButtonType::CreateBot, ButtonTypeIcon::None },
 };
 
@@ -206,8 +204,9 @@ std::optional<HistoryMessageMarkupButton> ParseInlineButton(
 			qba(data.vdata()));
 	}, [&](const MTPDinlineButtonTypeGame &) {
 		result.emplace(Type::Game, text, visual);
-	}, [&](const MTPDinlineButtonTypeBuy &) {
-		result.emplace(Type::Buy, text, visual);
+	}, [](const MTPDinlineButtonTypeBuy &) {
+		// LoogriGram: a buy button, which only ever sits on an invoice. It
+		// is dropped rather than parsed; the invoice itself is hidden.
 	}, [&](const MTPDinlineButtonTypeSwitchInline &data) {
 		const auto samePeer = data.is_same_peer();
 		result.emplace(
@@ -435,11 +434,6 @@ void HistoryMessageMarkupData::fillRows(const QVector<Row> &list) {
 			rows.push_back(std::move(row));
 		}
 	}
-	if (rows.size() == 1
-		&& rows.front().size() == 1
-		&& rows.front().front().type == Type::Buy) {
-		flags |= ReplyMarkupFlag::OnlyBuyButton;
-	}
 }
 
 HistoryMessageMarkupData::HistoryMessageMarkupData(
@@ -541,30 +535,3 @@ HistoryMessageRepliesData::HistoryMessageRepliesData(
 	pts = fields.vreplies_pts().v;
 }
 
-HistoryMessageSuggestInfo::HistoryMessageSuggestInfo(
-		const MTPSuggestedPost *data) {
-	if (!data) {
-		return;
-	}
-	const auto &fields = data->data();
-	price = CreditsAmountFromTL(fields.vprice());
-	date = fields.vschedule_date().value_or_empty();
-	accepted = fields.is_accepted();
-	rejected = fields.is_rejected();
-	exists = true;
-}
-
-HistoryMessageSuggestInfo::HistoryMessageSuggestInfo(
-	const Api::SendOptions &options)
-: HistoryMessageSuggestInfo(options.suggest) {
-}
-
-HistoryMessageSuggestInfo::HistoryMessageSuggestInfo(
-		SuggestOptions options) {
-	if (!options.exists) {
-		return;
-	}
-	price = options.price();
-	date = options.date;
-	exists = true;
-}

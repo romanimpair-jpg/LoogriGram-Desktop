@@ -1273,7 +1273,6 @@ private:
 			.shortcutId = action.options.shortcutId,
 			.postAuthor = NewMessagePostAuthor(action),
 			.effectId = action.options.effectId,
-			.suggest = HistoryMessageSuggestInfo(action.options),
 		}, TextWithEntities(), MTP_messageMediaEmpty());
 	}
 
@@ -4349,7 +4348,6 @@ std::optional<::Data::Draft> ArticleSession::prepareRichDraftForAutosave() const
 		: ::Data::Draft(
 			TextWithTags(),
 			_composeAction->replyTo,
-			SuggestOptions(),
 			MessageCursor(),
 			::Data::WebPageDraft());
 	draft.textWithTags = TextWithTags();

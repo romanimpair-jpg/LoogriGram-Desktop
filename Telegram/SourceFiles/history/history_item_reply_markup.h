@@ -38,11 +38,9 @@ enum class ReplyMarkupFlag : uint32 {
 	SingleUse             = (1U << 5),
 	Selective             = (1U << 6),
 	IsNull                = (1U << 7),
-	OnlyBuyButton         = (1U << 8),
 	Persistent            = (1U << 9),
 	SuggestionDecline     = (1U << 10),
 	SuggestionAccept      = (1U << 11),
-	SuggestionSeparator   = (1U << 12),
 };
 inline constexpr bool is_flag_type(ReplyMarkupFlag) { return true; }
 using ReplyMarkupFlags = base::flags<ReplyMarkupFlag>;
@@ -90,7 +88,6 @@ struct HistoryMessageMarkupButton {
 		SwitchInline,
 		SwitchInlineSame,
 		Game,
-		Buy,
 		Auth,
 		UserProfile,
 		WebView,
@@ -100,7 +97,6 @@ struct HistoryMessageMarkupButton {
 
 		SuggestDecline,
 		SuggestAccept,
-		SuggestChange,
 		CreateBot,
 
 		kCount,
@@ -109,7 +105,6 @@ struct HistoryMessageMarkupButton {
 	enum class TypeIcon : uchar {
 		None,
 		Url,
-		Payment,
 		SwitchPm,
 		Webview,
 		Copy,
@@ -211,15 +206,3 @@ struct HistoryMessageRepliesData {
 	int pts = 0;
 };
 
-struct HistoryMessageSuggestInfo {
-	HistoryMessageSuggestInfo() = default;
-	explicit HistoryMessageSuggestInfo(const MTPSuggestedPost *data);
-	explicit HistoryMessageSuggestInfo(const Api::SendOptions &options);
-	explicit HistoryMessageSuggestInfo(SuggestOptions options);
-
-	CreditsAmount price;
-	TimeId date = 0;
-	bool accepted = false;
-	bool rejected = false;
-	bool exists = false;
-};

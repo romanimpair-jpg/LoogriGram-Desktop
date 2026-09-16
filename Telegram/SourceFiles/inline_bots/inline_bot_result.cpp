@@ -249,25 +249,9 @@ std::shared_ptr<Result> Result::Create(
 			qs(data.vfirst_name()),
 			qs(data.vlast_name()),
 			qs(data.vphone_number()));
-	}, [&](const MTPDbotInlineMessageMediaInvoice &data) {
-		using Flag = MTPDmessageMediaInvoice::Flag;
-		const auto media = MTP_messageMediaInvoice(
-			MTP_flags((data.is_shipping_address_requested()
-				? Flag::f_shipping_address_requested
-				: Flag(0))
-				| (data.is_test() ? Flag::f_test : Flag(0))
-				| (data.vphoto() ? Flag::f_photo : Flag(0))),
-			data.vtitle(),
-			data.vdescription(),
-			data.vphoto() ? (*data.vphoto()) : MTPWebDocument(),
-			MTPint(), // receipt_msg_id
-			data.vcurrency(),
-			data.vtotal_amount(),
-			MTP_string(QString()), // start_param
-			MTPMessageExtendedMedia());
-		result->sendData = std::make_unique<internal::SendInvoice>(
-			session,
-			media);
+	}, [](const MTPDbotInlineMessageMediaInvoice &) {
+		// LoogriGram: an inline result that sends an invoice, a request
+		// for payment. With no send data the result is not offered.
 	}, [&](const MTPDbotInlineMessageMediaWebPage &data) {
 		result->sendData = std::make_unique<internal::SendText>(
 			session,

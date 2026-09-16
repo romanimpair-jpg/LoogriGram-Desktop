@@ -58,21 +58,18 @@ struct Draft {
 	Draft(
 		const TextWithTags &textWithTags,
 		FullReplyTo reply,
-		SuggestOptions suggest,
 		const MessageCursor &cursor,
 		WebPageDraft webpage,
 		mtpRequestId saveRequestId = 0);
 	Draft(
 		not_null<const Ui::InputField*> field,
 		FullReplyTo reply,
-		SuggestOptions suggest,
 		WebPageDraft webpage,
 		mtpRequestId saveRequestId = 0);
 
 	TimeId date = 0;
 	TextWithTags textWithTags;
 	FullReplyTo reply; // reply.messageId.msg is editMsgId for edit draft.
-	SuggestOptions suggest;
 	MessageCursor cursor;
 	WebPageDraft webpage;
 	std::shared_ptr<const Iv::RichPage> richMessage;

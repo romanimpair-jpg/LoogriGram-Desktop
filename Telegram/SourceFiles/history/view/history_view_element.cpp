@@ -306,7 +306,6 @@ void KeyboardStyle::paintButtonIcon(
 	const auto icon = [&]() -> const style::icon* {
 		switch (HistoryMessageMarkupButton::IconOfType(type)) {
 		case TypeIcon::Url: return &st->msgBotKbUrlIcon();
-		case TypeIcon::Payment: return &st->msgBotKbPaymentIcon();
 		case TypeIcon::SwitchPm: return &st->msgBotKbSwitchPmIcon();
 		case TypeIcon::Webview: return &st->msgBotKbWebviewIcon();
 		case TypeIcon::Copy: return &st->msgBotKbCopyIcon();
@@ -406,9 +405,6 @@ int KeyboardStyle::minButtonWidth(
 	switch (HistoryMessageMarkupButton::IconOfType(type)) {
 	case TypeIcon::Url:
 		iconWidth = st::msgBotKbUrlIcon.width();
-		break;
-	case TypeIcon::Payment:
-		iconWidth = st::msgBotKbPaymentIcon.width();
 		break;
 	case TypeIcon::SwitchPm:
 		iconWidth = st::msgBotKbSwitchPmIcon.width();
@@ -741,9 +737,6 @@ QString DateTooltipText(not_null<Element*> view) {
 	}
 	if (item->isScheduled() && item->isSilent()) {
 		dateText += '\n' + QChar(0xD83D) + QChar(0xDD15);
-	}
-	if (const auto stars = item->out() ? item->starsPaid() : 0) {
-		dateText += '\n' + tr::lng_you_paid_stars(tr::now, lt_count, stars);
 	}
 	return dateText;
 }
@@ -2188,8 +2181,7 @@ void Element::validateTextSkipBlock(bool has, int width, int height) {
 
 void Element::validateInlineKeyboard(HistoryMessageReplyMarkup *markup) {
 	if (!markup
-		|| markup->inlineKeyboard
-		|| markup->hiddenBy(data()->media())) {
+		|| markup->inlineKeyboard) {
 		return;
 	}
 	const auto item = data();
@@ -2271,7 +2263,7 @@ bool Element::computeIsAttachToPrevious(not_null<Element*> previous) {
 			&& (item->isEphemeral() == prev->isEphemeral())
 			&& mayBeAttached(this)
 			&& mayBeAttached(previous)
-			&& (!previousMarkup || previousMarkup->hiddenBy(prev->media()))
+			&& !previousMarkup
 			&& (item->topicRootId() == prev->topicRootId())
 			&& sameReceiver()
 			&& sameAnchored();

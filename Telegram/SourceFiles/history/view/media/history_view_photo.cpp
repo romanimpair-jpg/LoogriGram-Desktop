@@ -184,8 +184,7 @@ void Photo::dataMediaCreated() const {
 
 	if (_data->inlineThumbnailBytes().isEmpty()
 		&& !_dataMedia->image(PhotoSize::Large)
-		&& !_dataMedia->image(PhotoSize::Thumbnail)
-		&& !_data->extendedMediaPreview()) {
+		&& !_dataMedia->image(PhotoSize::Thumbnail)) {
 		_dataMedia->wanted(PhotoSize::Small, _realParent->fullId());
 	}
 	history()->owner().registerHeavyViewPart(_parent);
@@ -283,14 +282,10 @@ QSize Photo::countCurrentSize(int newWidth) {
 		thumbMaxWidth);
 	const auto dimensions = photoSize();
 	const auto desired = PhotoDesiredMediaSize(dimensions, hostedInstantView);
-	auto pix = _data->extendedMediaVideoDuration()
-		? CountMediaSize(
-			desired,
-			newWidth)
-		: CountPhotoMediaSize(
-			desired,
-			newWidth,
-			hostedInstantView ? newWidth : maxWidth());
+	auto pix = CountPhotoMediaSize(
+		desired,
+		newWidth,
+		hostedInstantView ? newWidth : maxWidth());
 	newWidth = qMax(pix.width(), minWidth);
 	auto newHeight = qMax(pix.height(), st::minPhotoSize);
 	if (_parent->hasBubble()) {
@@ -345,9 +340,8 @@ void Photo::draw(Painter &p, const PaintContext &context) const {
 	_dataMedia->automaticLoad(_realParent->fullId(), _parent->data());
 	const auto st = context.st;
 	const auto sti = context.imageStyle();
-	const auto preview = _data->extendedMediaPreview();
-	const auto loaded = preview || _dataMedia->loaded();
-	const auto displayLoading = !preview && _data->displayLoading();
+	const auto loaded = _dataMedia->loaded();
+	const auto displayLoading = _data->displayLoading();
 
 	const auto hostedInstantView = IsHostedInstantViewMedia(_parent);
 	auto inWebPage = (_parent->media() != this);
@@ -747,7 +741,7 @@ TextState Photo::textState(QPoint point, StateRequest request) const {
 	if (QRect(paintx, painty, paintw, painth).contains(point)) {
 		ensureDataMediaCreated();
 		result.link = (_spoiler && !_spoiler->revealed)
-			? ((_data->extendedMediaPreview() || _sensitiveSpoiler)
+			? (_sensitiveSpoiler
 				? spoilerTagLink()
 				: _spoiler->link)
 			: _data->uploading()
@@ -813,9 +807,8 @@ void Photo::drawGrouped(
 
 	const auto st = context.st;
 	const auto sti = context.imageStyle();
-	const auto preview = _data->extendedMediaPreview();
-	const auto loaded = preview || _dataMedia->loaded();
-	const auto displayLoading = !preview && _data->displayLoading();
+	const auto loaded = _dataMedia->loaded();
+	const auto displayLoading = _data->displayLoading();
 
 	if (displayLoading) {
 		ensureAnimation();
@@ -948,7 +941,7 @@ TextState Photo::getStateGrouped(
 	}
 	ensureDataMediaCreated();
 	auto link = (_spoiler && !_spoiler->revealed)
-		? ((_data->extendedMediaPreview() || _sensitiveSpoiler)
+		? (_sensitiveSpoiler
 			? spoilerTagLink()
 			: _spoiler->link)
 		: _data->uploading()
@@ -996,8 +989,7 @@ void Photo::validateGroupedCache(
 
 	ensureDataMediaCreated();
 
-	const auto preview = _data->extendedMediaPreview();
-	const auto loaded = preview || _dataMedia->loaded();
+	const auto loaded = _dataMedia->loaded();
 	const auto loadLevel = loaded
 		? 2
 		: (_dataMedia->thumbnailInline()

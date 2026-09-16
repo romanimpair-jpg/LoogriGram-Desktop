@@ -185,13 +185,5 @@ Data::SendError SendGame::getErrorOnSend(
 	return Data::RestrictionError(history->peer, type);
 }
 
-SendDataCommon::SentMessageFields SendInvoice::getSentMessageFields() const {
-	return { .media = _media };
-}
-
-QString SendInvoice::getLayoutDescription(const Result *owner) const {
-	return qs(_media.c_messageMediaInvoice().vdescription());
-}
-
 } // namespace internal
 } // namespace InlineBots

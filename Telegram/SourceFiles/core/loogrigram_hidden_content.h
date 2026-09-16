@@ -11,27 +11,26 @@ class HistoryItem;
 
 namespace LoogriGram {
 
-// LoogriGram: gifts, giveaways and paid posts are things other people send
-// us. We take no part in any of it, so none of it is shown - not the gift
-// someone sent, not the giveaway a channel is running, not the post we would
-// have to pay to read.
+// LoogriGram: gifts, giveaways, invoices, paid media, payments, prizes and
+// priced suggested posts are how money moves between people on Telegram. We
+// take no part in any of it, in either direction, so none of it is parsed or
+// shown.
 //
-// **The item is still created and still lives in history.** That is the whole
-// point of hiding at the view rather than refusing the message: Telegram
-// tracks what we have read by message id, and the read position only advances
-// past messages we have. Drop one at parse time and nothing ever marks it
+// **The item is still created and still lives in history - but empty.** The
+// server tracks what we have read by message id, and the read position only
+// advances past messages we have. Drop one entirely and nothing ever marks it
 // read, so the chat keeps an unread badge that scrolling cannot clear - the
 // same coupling that made read-receipt suppression get reverted here.
 //
-// Every view asks this instead. Element::isHidden() collapses the message to
-// nothing, the chat list preview skips it when choosing what to show, and the
-// notification for it is never raised.
-//
-// Service messages that are only a line of text - "X boosted this channel",
-// a refund notice, a price change - are not covered here. They carry no media
-// to recognise them by, and are cut at the source instead: their action is
-// routed to PrepareEmptyText in history_item.cpp, which is upstream's own way
-// of saying an action displays nothing.
+// So the TL type is checked before anything inside the message is looked at.
+// A money message becomes a bare service item: its id, date, sender and the
+// MoneyHidden flag. No media, no text, no price, no stickers, no images, and
+// no view is built for it. Element::isHidden() collapses it to nothing, the
+// chat list preview skips it, and no notification is raised.
+[[nodiscard]] bool MoneyMedia(const MTPMessageMedia &media);
+[[nodiscard]] bool MoneyAction(const MTPMessageAction &action);
+[[nodiscard]] bool MoneyMessage(const MTPDmessage &data);
+
 [[nodiscard]] bool HiddenContent(not_null<const HistoryItem*> item);
 
 } // namespace LoogriGram

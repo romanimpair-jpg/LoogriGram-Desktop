@@ -55,8 +55,6 @@ public:
 		QDateTime editedDate;
 		QString author;
 		EffectId effectId = 0;
-		int64 tonStake = 0;
-		int stars = 0;
 		TimeId scheduleRepeatPeriod = 0;
 		std::optional<int> views;
 		std::optional<int> replies;

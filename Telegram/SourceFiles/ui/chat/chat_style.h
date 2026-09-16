@@ -493,9 +493,6 @@ public:
 	[[nodiscard]] const style::icon &msgBotKbUrlIcon() const {
 		return _msgBotKbUrlIcon;
 	}
-	[[nodiscard]] const style::icon &msgBotKbPaymentIcon() const {
-		return _msgBotKbPaymentIcon;
-	}
 	[[nodiscard]] const style::icon &msgBotKbSwitchPmIcon() const {
 		return _msgBotKbSwitchPmIcon;
 	}
@@ -730,7 +727,6 @@ private:
 	style::icon _historySentInvertedIcon = { Qt::Uninitialized };
 	style::icon _historyReceivedInvertedIcon = { Qt::Uninitialized };
 	style::icon _msgBotKbUrlIcon = { Qt::Uninitialized };
-	style::icon _msgBotKbPaymentIcon = { Qt::Uninitialized };
 	style::icon _msgBotKbSwitchPmIcon = { Qt::Uninitialized };
 	style::icon _msgBotKbWebviewIcon = { Qt::Uninitialized };
 	style::icon _msgBotKbCopyIcon = { Qt::Uninitialized };

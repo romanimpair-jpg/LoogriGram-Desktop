@@ -93,12 +93,6 @@ public:
 		-> std::shared_ptr<Data::PhotoMedia>;
 
 	void setFields(TimeId date, bool hasAttachedStickers);
-	void setExtendedMediaPreview(
-		QSize dimensions,
-		const QByteArray &inlineThumbnailBytes,
-		std::optional<TimeId> videoDuration);
-	[[nodiscard]] bool extendedMediaPreview() const;
-	[[nodiscard]] std::optional<TimeId> extendedMediaVideoDuration() const;
 
 	void updateImages(
 		const QByteArray &inlineThumbnailBytes,
@@ -178,7 +172,7 @@ private:
 	[[nodiscard]] const Data::CloudFile &videoFile(
 		Data::PhotoSize size) const;
 
-	TimeId _dateOrExtendedVideoDuration = 0;
+	TimeId _date = 0;
 
 	struct VideoSizes {
 		Data::CloudFile small;
@@ -193,7 +187,6 @@ private:
 	int32 _dc = 0;
 	uint64 _access = 0;
 	bool _hasStickers = false;
-	bool _extendedMediaPreview = false;
 
 	QByteArray _fileReference;
 	std::unique_ptr<Data::ReplyPreview> _replyPreview;

@@ -12,7 +12,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 // LoogriGram: these four lived in data/components/credits.cpp, which was the
 // stars balance and went with the rest of it. They only read and write an
 // amount: a gift, an offer or a suggested post arriving in a chat still
-// carries a price to parse and show, and SuggestOptions is still serialized.
+// carries a price to parse and show.
 
 CreditsAmount CreditsAmountFromTL(const MTPStarsAmount &amount) {
 	return amount.match([&](const MTPDstarsAmount &data) {

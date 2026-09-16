@@ -156,8 +156,7 @@ bool BottomInfo::isWide() const {
 		|| !_data.author.isEmpty()
 		|| !_views.isEmpty()
 		|| !_replies.isEmpty()
-		|| _effect
-		|| _data.tonStake;
+		|| _effect;
 }
 
 TextState BottomInfo::textState(
@@ -520,24 +519,6 @@ void BottomInfo::layoutDateText() {
 	auto helper = Ui::Text::CustomEmojiHelper(
 		Core::TextContext({ .session = &_reactionsOwner->session() }));
 	auto marked = TextWithEntities();
-	if (const auto count = _data.stars) {
-		marked.append(
-			Ui::Text::IconEmoji(&st::starIconEmojiSmall)
-		).append(Lang::FormatCountToShort(count).string).append(u", "_q);
-	}
-	if (const auto stake = _data.tonStake) {
-		marked.append(
-			QString::number(stake / 1e9)
-		).append(helper.image({
-			.image = Ui::Emoji::SinglePixmap(
-				Ui::Emoji::Find(QString::fromUtf8("\xf0\x9f\x92\x8e")),
-				Ui::Emoji::GetSizeNormal()).toImage().scaledToHeight(
-					st::stakeIconEmojiSize * style::DevicePixelRatio(),
-					Qt::SmoothTransformation),
-			.margin = QMargins(0, st::stakeIconEmojiTop, 0, 0),
-			.textColor = false,
-		})).append("  ");
-	}
 	marked.append(full);
 	_authorEditedDate.setMarkedText(
 		st::msgDateTextStyle,
@@ -708,22 +689,6 @@ BottomInfo::Data BottomInfoDataFromMessage(not_null<Message*> message) {
 		&& (!message->media()
 			|| !message->media()->drawsOwnEphemeralBadge())) {
 		result.flags |= Flag::Ephemeral;
-	}
-	if (!item->history()->peer->isUser()) {
-		const auto mine = PaidInformation{
-			.messages = 1,
-			.stars = item->starsPaid(),
-		};
-		const auto media = message->media();
-		auto info = media ? media->paidInformation().value_or(mine) : mine;
-		if (const auto total = info.stars) {
-			result.stars = total;
-		}
-	}
-	if (const auto media = item->media()) {
-		if (const auto outcome = media->diceGameOutcome()) {
-			result.tonStake = outcome.stakeNanoTon;
-		}
 	}
 	const auto forwarded = item->Get<HistoryMessageForwarded>();
 	if (forwarded && forwarded->imported) {

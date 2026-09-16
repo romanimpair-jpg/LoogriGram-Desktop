@@ -41,13 +41,11 @@ struct HistoryMessageEdition {
 	bool useSameReplies = false;
 	bool useSameMarkup = false;
 	bool useSameReactions = false;
-	bool useSameSuggest = false;
 	bool savePreviousMedia = false;
 	bool invertMedia = false;
 	TextWithEntities textWithEntities;
 	HistoryMessageMarkupData replyMarkup;
 	HistoryMessageRepliesData replies;
-	HistoryMessageSuggestInfo suggest;
 	std::shared_ptr<const Iv::RichPage> richPage;
 	const MTPMessageMedia *mtpMedia = nullptr;
 	const MTPMessageReactions *mtpReactions = nullptr;

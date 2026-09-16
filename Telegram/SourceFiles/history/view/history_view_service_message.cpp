@@ -814,8 +814,6 @@ TextState Service::textState(QPoint point, StateRequest request) const {
 				}
 			} else if (const auto same = item->Get<HistoryServiceSameBackground>()) {
 				result.link = same->lnk;
-			} else if (const auto results = item->Get<HistoryServiceGiveawayResults>()) {
-				result.link = results->lnk;
 			} else if (const auto custom = item->Get<HistoryServiceCustomLink>()) {
 				result.link = custom->link;
 			} else if (const auto done = item->Get<HistoryServiceTodoCompletions>()) {
@@ -826,8 +824,6 @@ TextState Service::textState(QPoint point, StateRequest request) const {
 				result.link = pollAppend->lnk;
 			} else if (const auto pollDelete = item->Get<HistoryServicePollDeleteAnswer>()) {
 				result.link = pollDelete->lnk;
-			} else if (const auto finish = item->Get<HistoryServiceSuggestFinish>()) {
-				result.link = finish->lnk;
 			} else if (media && data()->showSimilarChannels()) {
 				result = media->textState(mediaPoint, request);
 			}

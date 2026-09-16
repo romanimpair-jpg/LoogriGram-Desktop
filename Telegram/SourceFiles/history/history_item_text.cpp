@@ -158,8 +158,6 @@ bool UsesSelectedCopyPlaceholder(not_null<Data::Media*> media) {
 		return false;
 	} else if (media->photo() || media->document()) {
 		return true;
-	} else if (const auto invoice = media->invoice()) {
-		return invoice->isPaidMedia && !invoice->extendedMedia.empty();
 	}
 	return false;
 }
@@ -167,7 +165,7 @@ bool UsesSelectedCopyPlaceholder(not_null<Data::Media*> media) {
 bool SelectedCopyMediaBeforeText(
 		not_null<HistoryItem*> item,
 		not_null<Data::Media*> media) {
-	auto result = !media->webpage() && !media->invoice();
+	auto result = !media->webpage();
 	if (item->invertMedia() && !item->emptyText()) {
 		result = !result;
 	}

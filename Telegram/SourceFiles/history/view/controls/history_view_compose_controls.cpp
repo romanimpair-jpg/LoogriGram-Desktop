@@ -205,7 +205,6 @@ public:
 
 	void editMessage(
 		FullMsgId id,
-		SuggestOptions suggest,
 		bool photoEditAllowed = false);
 	void replyToMessage(FullReplyTo id);
 	void replyToMessageExternal(FullReplyTo id);
@@ -971,7 +970,6 @@ void FieldHeader::updateControlsGeometry(QSize size) {
 
 void FieldHeader::editMessage(
 		FullMsgId id,
-		SuggestOptions suggest,
 		bool photoEditAllowed) {
 	_photoEditAllowed = photoEditAllowed;
 	_editMsgId = id;
@@ -1041,7 +1039,6 @@ MessageToEdit FieldHeader::queryToEdit() {
 			.scheduled = item->isScheduled() ? item->date() : 0,
 			.shortcutId = item->shortcutId(),
 			.invertCaption = _mediaEditManager.invertCaption(),
-			.suggest = SuggestOptions(),
 		},
 		.spoilered = _mediaEditManager.spoilered(),
 		.videoCover = _mediaEditManager.videoCover(),
@@ -1464,7 +1461,6 @@ void ComposeControls::setCurrentDialogsEntryState(
 	unregisterDraftSources();
 	state.currentReplyTo.topicRootId = _topicRootId;
 	state.currentReplyTo.monoforumPeerId = _monoforumPeerId;
-	state.currentSuggest = SuggestOptions();
 	_currentDialogsEntryState = state;
 	updateForwarding();
 	trackThreadFieldVisibility();
@@ -1856,7 +1852,6 @@ bool ComposeControls::confirmMediaEdit(Ui::PreparedList &list) {
 			_editingId,
 			std::move(list),
 			_field->getTextWithTags(),
-			SuggestOptions(),
 			queryToEdit.spoilered,
 			queryToEdit.options.invertCaption,
 			crl::guard(_wrap.get(), [=] { cancelEditMessage(); }));
@@ -2008,16 +2003,14 @@ void ComposeControls::saveFieldToHistoryLocalDraft(bool save) {
 		return;
 	}
 	const auto id = _header->getDraftReply();
-	const auto suggest = SuggestOptions();
 	if (shouldShowRichDraftPreview()) {
 		_history->clearDraft(key);
-	} else if (_preview && (id || suggest.exists || !_field->empty())) {
+	} else if (_preview && (id || !_field->empty())) {
 		_history->setDraft(
 			key,
 			std::make_unique<Data::Draft>(
 				_field,
 				id,
-				suggest,
 				_preview->draft()));
 	} else {
 		_history->clearDraft(key);
@@ -2107,7 +2100,6 @@ void ComposeControls::clearRichDraft() {
 				std::make_unique<Data::Draft>(
 					TextWithTags(),
 					reply,
-					SuggestOptions(),
 					MessageCursor(),
 					Data::WebPageDraft()));
 		} else {
@@ -2122,7 +2114,6 @@ void ComposeControls::clearRichDraft() {
 		auto draft = Data::Draft(
 			TextWithTags(),
 			reply,
-			SuggestOptions(),
 			MessageCursor(),
 			Data::WebPageDraft());
 		if (const auto cloudDraft = _history->createCloudDraft(
@@ -2291,7 +2282,6 @@ void ComposeControls::init() {
 			_photoEditMedia,
 			_editingId,
 			_field->getTextWithTags(),
-			SuggestOptions(),
 			queryToEdit.spoilered,
 			queryToEdit.options.invertCaption,
 			crl::guard(_wrap.get(), [=] { cancelEditMessage(); }));
@@ -2303,7 +2293,6 @@ void ComposeControls::init() {
 		const auto topicRootId = _topicRootId;
 		const auto monoforumPeerId = _monoforumPeerId;
 		const auto reply = _header->replyingToMessage();
-		const auto suggest = SuggestOptions();
 		const auto webpage = _preview->draft();
 
 		const auto done = [=](
@@ -2331,7 +2320,7 @@ void ComposeControls::init() {
 		EditDraftOptions({
 			.show = _show,
 			.history = history,
-			.draft = Data::Draft(_field, reply, suggest, _preview->draft()),
+			.draft = Data::Draft(_field, reply, _preview->draft()),
 			.usedLink = _preview->link(),
 			.forward = _header->forwardDraft(),
 			.links = _preview->links(),
@@ -2965,7 +2954,6 @@ void ComposeControls::registerDraftSource() {
 		const auto draft = [=] {
 			return Storage::MessageDraft{
 				_header->getDraftReply(),
-				SuggestOptions(),
 				_field->getTextWithTags(),
 				_preview->draft(),
 			};
@@ -3127,9 +3115,6 @@ void ComposeControls::applyDraft(FieldHistoryAction fieldHistoryAction) {
 	const auto editingId = (draft && draft == editDraft)
 		? draft->reply.messageId
 		: FullMsgId();
-	const auto editingSuggest = (draft && draft == editDraft)
-		? draft->suggest
-		: SuggestOptions();
 
 	InvokeQueued(_autocomplete.get(), [=] {
 		if (_autocomplete) {
@@ -3230,7 +3215,6 @@ void ComposeControls::applyDraft(FieldHistoryAction fieldHistoryAction) {
 				}
 				_header->editMessage(
 					editingId,
-					editingSuggest,
 					_photoEditMedia != nullptr);
 				if (_preview) {
 					_preview->setDisabled(media && !media->webpage());
@@ -3239,7 +3223,7 @@ void ComposeControls::applyDraft(FieldHistoryAction fieldHistoryAction) {
 			}
 			_canReplaceMedia = _canAddMedia = false;
 			_photoEditMedia = nullptr;
-			_header->editMessage(editingId, SuggestOptions(), false);
+			_header->editMessage(editingId, false);
 			return false;
 		};
 		if (!resolve()) {
@@ -4974,7 +4958,6 @@ void ComposeControls::editMessage(not_null<HistoryItem*> item) {
 				.topicRootId = key.topicRootId(),
 				.monoforumPeerId = key.monoforumPeerId(),
 			},
-			SuggestOptions(),
 			cursor,
 			Data::WebPageDraft::FromItem(item)));
 	applyDraft();
@@ -5012,7 +4995,6 @@ bool ComposeControls::updateReplaceMediaButton() {
 				_regularWindow,
 				_editingId,
 				_field->getTextWithTags(),
-				SuggestOptions(),
 				queryToEdit.spoilered,
 				queryToEdit.options.invertCaption,
 				crl::guard(_wrap.get(), [=] { cancelEditMessage(); }));
@@ -5084,7 +5066,6 @@ void ComposeControls::replyToMessage(FullReplyTo id) {
 				std::make_unique<Data::Draft>(
 					TextWithTags(),
 					id,
-					SuggestOptions(),
 					MessageCursor(),
 					Data::WebPageDraft()));
 		}

@@ -2228,7 +2228,6 @@ Api::SendAction ChatWidget::prepareSendAction(
 	}
 
 	result.options.sendAs = _composeControls->sendAsPeer();
-	result.options.suggest = SuggestOptions();
 	result.clearDraft = !Iv::Editor::IsComposeBoxOpen(
 		&session(),
 		_peer->id,
@@ -2527,9 +2526,7 @@ void ChatWidget::edit(
 			|| webpage.url.isEmpty()
 			|| !webpage.manual)
 		&& !hasMediaWithCaption) {
-		if (item->computeSuggestionActions() == SuggestionActions::None) {
-			controller()->show(Box<DeleteMessagesBox>(item));
-		}
+		controller()->show(Box<DeleteMessagesBox>(item));
 		return;
 	} else {
 		const auto limits = Data::PremiumLimits(&session());
@@ -3359,7 +3356,6 @@ void ChatWidget::refreshTopBarActiveChat() {
 
 	auto state = EntryState{
 		.currentReplyTo = replyTo(),
-		.currentSuggest = SuggestOptions(),
 	};
 	auto painter = (HistoryView::SendActionPainter*)nullptr;
 	switch (mode()) {

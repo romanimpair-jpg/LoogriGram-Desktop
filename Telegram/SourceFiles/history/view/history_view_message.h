@@ -16,7 +16,6 @@ class HistoryItem;
 struct HistoryMessageEdited;
 struct HistoryMessageForwarded;
 struct HistoryMessageReplyMarkup;
-struct HistoryMessageSuggestion;
 struct HistoryMessageReply;
 
 namespace Data {

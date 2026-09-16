@@ -643,7 +643,6 @@ bool MainWidget::shareUrl(
 			.topicRootId = topicRootId,
 			.monoforumPeerId = monoforumPeerId,
 		},
-		SuggestOptions(),
 		cursor,
 		Data::WebPageDraft()));
 	history->clearLocalEditDraft(topicRootId, monoforumPeerId);

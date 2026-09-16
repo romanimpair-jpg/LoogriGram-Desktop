@@ -115,7 +115,6 @@ void PeerMenuCreatePoll(
 	not_null<Window::SessionController*> controller,
 	not_null<PeerData*> peer,
 	FullReplyTo replyTo = FullReplyTo(),
-	SuggestOptions suggest = SuggestOptions(),
 	PollData::Flags chosen = kDefaultPollCreateFlags,
 	PollData::Flags disabled = PollData::Flags(),
 	Api::SendType sendType = Api::SendType::Normal,
@@ -130,7 +129,6 @@ void PeerMenuCreateTodoList(
 	not_null<Window::SessionController*> controller,
 	not_null<PeerData*> peer,
 	FullReplyTo replyTo = FullReplyTo(),
-	SuggestOptions suggest = SuggestOptions(),
 	Api::SendType sendType = Api::SendType::Normal,
 	SendMenu::Details sendMenuDetails = SendMenu::Details());
 void PeerMenuEditTodoList(

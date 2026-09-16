@@ -1384,14 +1384,12 @@ void Filler::addCreatePoll() {
 		: Api::SendType::Normal;
 	const auto replyTo = _request.currentReplyTo;
 	const auto sendMenuDetails = createSendMenuDetails();
-	const auto suggest = _request.currentSuggest;
 	const auto chosen = kDefaultPollCreateFlags;
 	auto callback = [=] {
 		PeerMenuCreatePoll(
 			controller,
 			peer,
 			replyTo,
-			suggest,
 			chosen,
 			PollData::Flags(),
 			source,
@@ -1421,13 +1419,11 @@ void Filler::addCreateTodoList() {
 		: Api::SendType::Normal;
 	const auto replyTo = _request.currentReplyTo;
 	const auto sendMenuDetails = createSendMenuDetails();
-	const auto suggest = _request.currentSuggest;
 	auto callback = [=] {
 		PeerMenuCreateTodoList(
 			controller,
 			peer,
 			replyTo,
-			suggest,
 			source,
 			sendMenuDetails);
 	};
@@ -2253,7 +2249,6 @@ void PeerMenuCreatePoll(
 		not_null<Window::SessionController*> controller,
 		not_null<PeerData*> peer,
 		FullReplyTo replyTo,
-		SuggestOptions suggest,
 		PollData::Flags chosen,
 		PollData::Flags disabled,
 		Api::SendType sendType,
@@ -2288,7 +2283,6 @@ void PeerMenuCreatePoll(
 			peer->owner().history(peer),
 			result.options);
 		action.replyTo = replyTo;
-		action.options.suggest = suggest;
 		if (ShowEphemeralReplyTextOnlyError(
 				controller->uiShow(),
 				&peer->session(),
@@ -2370,7 +2364,6 @@ void PeerMenuCreateTodoList(
 		not_null<Window::SessionController*> controller,
 		not_null<PeerData*> peer,
 		FullReplyTo replyTo,
-		SuggestOptions suggest,
 		Api::SendType sendType,
 		SendMenu::Details sendMenuDetails) {
 	if (ShowEphemeralReplyTextOnlyError(
@@ -2398,7 +2391,6 @@ void PeerMenuCreateTodoList(
 			peer->owner().history(peer),
 			result.options);
 		action.replyTo = replyTo;
-		action.options.suggest = suggest;
 		if (ShowEphemeralReplyTextOnlyError(
 				controller->uiShow(),
 				&peer->session(),

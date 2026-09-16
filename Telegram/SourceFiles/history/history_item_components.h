@@ -74,11 +74,10 @@ struct BotKeyboardButton;
 extern const char kOptionFastButtonsMode[];
 [[nodiscard]] bool FastButtonsMode();
 
+// LoogriGram: suggested posts and gift offers used these buttons too. Both
+// are money and deleted; only the free forwarding request is left.
 enum class SuggestionActions : uchar {
 	None,
-	Decline,
-	AcceptAndDecline,
-	GiftOfferActions,
 	NoForwardsRequest,
 };
 
@@ -455,7 +454,6 @@ struct HistoryMessageReplyMarkup
 	void updateData(HistoryMessageMarkupData &&markup);
 	void updateSuggestControls(SuggestionActions actions);
 
-	[[nodiscard]] bool hiddenBy(Data::Media *media) const;
 
 	HistoryMessageMarkupData data;
 	std::unique_ptr<ReplyKeyboard> inlineKeyboard;
@@ -690,16 +688,6 @@ struct HistoryMessageFactcheck
 	bool requested = false;
 };
 
-struct HistoryMessageSuggestion
-: RuntimeComponent<HistoryMessageSuggestion, HistoryItem> {
-	std::shared_ptr<Data::UniqueGift> gift;
-	CreditsAmount price;
-	TimeId date = 0;
-	mtpRequestId requestId = 0;
-	bool accepted = false;
-	bool rejected = false;
-};
-
 struct HistoryMessageRestrictions
 : RuntimeComponent<HistoryMessageRestrictions, HistoryItem> {
 	std::vector<Data::UnavailableReason> reasons;
@@ -785,30 +773,6 @@ struct HistoryServicePollDeleteAnswer
 	PollAnswer answer;
 };
 
-struct HistoryServiceSuggestDecision
-: RuntimeComponent<HistoryServiceSuggestDecision, HistoryItem>
-, HistoryServiceDependentData {
-	CreditsAmount price;
-	TimeId date = 0;
-	QString rejectComment;
-	bool rejected = false;
-	bool balanceTooLow = false;
-};
-
-enum class SuggestRefundType {
-	None,
-	User,
-	Admin,
-	Expired,
-};
-
-struct HistoryServiceSuggestFinish
-: RuntimeComponent<HistoryServiceSuggestFinish, HistoryItem>
-, HistoryServiceDependentData {
-	CreditsAmount price;
-	SuggestRefundType refundType = SuggestRefundType::None;
-};
-
 struct HistoryServiceNoForwardsRequest
 : RuntimeComponent<HistoryServiceNoForwardsRequest, HistoryItem> {
 	TimeId expiresAt = 0;
@@ -841,37 +805,14 @@ struct HistoryServiceGameScore
 	int score = 0;
 };
 
-struct HistoryServicePayment
-: RuntimeComponent<HistoryServicePayment, HistoryItem>
-, HistoryServiceDependentData {
-	QString slug;
-	TextWithEntities amount;
-	bool recurringInit = false;
-	bool recurringUsed = false;
-	bool isCreditsCurrency = false;
-};
-
 struct HistoryServiceSameBackground
 : RuntimeComponent<HistoryServiceSameBackground, HistoryItem>
-, HistoryServiceDependentData {
-};
-
-struct HistoryServiceGiveawayResults
-: RuntimeComponent<HistoryServiceGiveawayResults, HistoryItem>
 , HistoryServiceDependentData {
 };
 
 struct HistoryServiceCustomLink
 : RuntimeComponent<HistoryServiceCustomLink, HistoryItem> {
 	ClickHandlerPtr link;
-};
-
-struct HistoryServicePaymentRefund
-: RuntimeComponent<HistoryServicePaymentRefund, HistoryItem> {
-	PeerData *peer = nullptr;
-	QString transactionId;
-	QString currency;
-	uint64 amount = 0;
 };
 
 enum class HistorySelfDestructType {

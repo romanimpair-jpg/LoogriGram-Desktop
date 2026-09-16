@@ -53,35 +53,8 @@ PhotoData::~PhotoData() {
 }
 
 void PhotoData::setFields(TimeId date, bool hasAttachedStickers) {
-	_dateOrExtendedVideoDuration = date;
+	_date = date;
 	_hasStickers = hasAttachedStickers;
-	_extendedMediaPreview = false;
-}
-
-void PhotoData::setExtendedMediaPreview(
-		QSize dimensions,
-		const QByteArray &inlineThumbnailBytes,
-		std::optional<TimeId> videoDuration) {
-	_extendedMediaPreview = true;
-	updateImages(
-		inlineThumbnailBytes,
-		{},
-		{},
-		{ .location = { {}, dimensions.width(), dimensions.height() } },
-		{},
-		{},
-		{});
-	_dateOrExtendedVideoDuration = videoDuration ? (*videoDuration + 1) : 0;
-}
-
-bool PhotoData::extendedMediaPreview() const {
-	return _extendedMediaPreview;
-}
-
-std::optional<TimeId> PhotoData::extendedMediaVideoDuration() const {
-	return (_extendedMediaPreview && _dateOrExtendedVideoDuration)
-		? TimeId(_dateOrExtendedVideoDuration - 1)
-		: std::optional<TimeId>();
 }
 
 Data::Session &PhotoData::owner() const {
@@ -109,7 +82,7 @@ void PhotoData::load(
 }
 
 TimeId PhotoData::date() const {
-	return _extendedMediaPreview ? 0 : _dateOrExtendedVideoDuration;
+	return _date;
 }
 
 bool PhotoData::loading() const {

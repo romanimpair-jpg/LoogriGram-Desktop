@@ -2209,13 +2209,9 @@ bool SessionController::switchInlineQuery(
 		&& to.currentReplyTo.quote.empty()) {
 		to.currentReplyTo.messageId.msg = MsgId();
 	}
-	if (!history->suggestDraftAllowed()) {
-		to.currentSuggest = SuggestOptions();
-	}
 	auto draft = std::make_unique<Data::Draft>(
 		textWithTags,
 		to.currentReplyTo,
-		to.currentSuggest,
 		cursor,
 		Data::WebPageDraft());
 

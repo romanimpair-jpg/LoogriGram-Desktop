@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/media/history_view_service_box.h"
 
 namespace Data {
-class MediaGiftBox;
 } // namespace Data
 
 namespace HistoryView {

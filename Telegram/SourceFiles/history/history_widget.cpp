@@ -1153,7 +1153,6 @@ Dialogs::EntryState HistoryWidget::computeDialogsEntryState() const {
 		.key = _history,
 		.section = Dialogs::EntryState::Section::History,
 		.currentReplyTo = replyTo(),
-		.currentSuggest = SuggestOptions(),
 	};
 }
 
@@ -2232,19 +2231,16 @@ void HistoryWidget::saveFieldToHistoryLocalDraft() {
 				.topicRootId = topicRootId,
 				.monoforumPeerId = monoforumPeerId,
 			},
-			SuggestOptions(),
 			_preview->draft(),
 			_saveEditMsgRequestId));
 	} else if (shouldShowRichDraftPreview()) {
 		_history->clearLocalDraft(topicRootId, monoforumPeerId);
 		_history->clearLocalEditDraft(topicRootId, monoforumPeerId);
 	} else {
-		const auto suggest = SuggestOptions();
-		if (_replyTo || suggest.exists || !_field->empty()) {
+		if (_replyTo || !_field->empty()) {
 			_history->setLocalDraft(std::make_unique<Data::Draft>(
 				_field,
 				_replyTo,
-				suggest,
 				_preview->draft()));
 		} else {
 			_history->clearLocalDraft(topicRootId, monoforumPeerId);
@@ -2302,7 +2298,6 @@ void HistoryWidget::clearRichDraft() {
 		_history->setLocalDraft(std::make_unique<Data::Draft>(
 			TextWithTags(),
 			reply,
-			SuggestOptions(),
 			MessageCursor(),
 			Data::WebPageDraft()));
 	} else {
@@ -2315,7 +2310,6 @@ void HistoryWidget::clearRichDraft() {
 	auto draft = Data::Draft(
 		TextWithTags(),
 		reply,
-		SuggestOptions(),
 		MessageCursor(),
 		Data::WebPageDraft());
 	if (const auto cloudDraft = _history->createCloudDraft(
@@ -3438,7 +3432,6 @@ void HistoryWidget::registerDraftSource() {
 			(editMsgId
 				? FullReplyTo{ FullMsgId(peerId, editMsgId) }
 				: _replyTo),
-			SuggestOptions(),
 			_field->getTextWithTags(),
 			_preview->draft(),
 		};
@@ -3567,7 +3560,6 @@ bool HistoryWidget::updateReplaceMediaButton() {
 				controller(),
 				{ _history->peer->id, _editMsgId },
 				_field->getTextWithTags(),
-				SuggestOptions(),
 				_mediaEditManager.spoilered(),
 				_mediaEditManager.invertCaption(),
 				crl::guard(_list, [=] { cancelEdit(); }));
@@ -5041,9 +5033,7 @@ void HistoryWidget::saveEditMessage(Api::SendOptions options) {
 			|| webPageDraft.url.isEmpty()
 			|| !webPageDraft.manual)
 		&& !hasMediaWithCaption) {
-		if (item->computeSuggestionActions() == SuggestionActions::None) {
-			controller()->show(Box<DeleteMessagesBox>(item));
-		}
+		controller()->show(Box<DeleteMessagesBox>(item));
 		return;
 	} else {
 		const auto limits = Data::PremiumLimits(&session());
@@ -5107,7 +5097,6 @@ void HistoryWidget::saveEditMessage(Api::SendOptions options) {
 	};
 
 	options.invertCaption = _mediaEditManager.invertCaption();
-	options.suggest = SuggestOptions();
 
 	_saveEditMsgRequestId = Api::EditTextMessage(
 		item,
@@ -5201,7 +5190,6 @@ Api::SendAction HistoryWidget::prepareSendAction(
 		}
 	}
 
-	result.options.suggest = SuggestOptions();
 	result.options.sendAs = _sendAs
 		? _history->session().sendAsPeers().resolveChosen(
 			_history->peer).get()
@@ -7199,7 +7187,6 @@ bool HistoryWidget::confirmSendingFiles(
 				{ _history->peer->id, _editMsgId },
 				std::move(list),
 				_field->getTextWithTags(),
-				SuggestOptions(),
 				_mediaEditManager.spoilered(),
 				_mediaEditManager.invertCaption(),
 				crl::guard(_list, [=] { cancelEdit(); }));
@@ -8322,7 +8309,6 @@ void HistoryWidget::mousePressEvent(QMouseEvent *e) {
 			_photoEditMedia,
 			{ _history->peer->id, _editMsgId },
 			_field->getTextWithTags(),
-			SuggestOptions(),
 			_mediaEditManager.spoilered(),
 			_mediaEditManager.invertCaption(),
 			crl::guard(_list, [=] { cancelEdit(); }));
@@ -8357,7 +8343,6 @@ void HistoryWidget::editDraftOptions() {
 
 	const auto history = _history;
 	const auto reply = _replyTo;
-	const auto suggest = SuggestOptions();
 	const auto webpage = _preview->draft();
 	const auto forward = _forwardPanel->draft();
 
@@ -8382,7 +8367,7 @@ void HistoryWidget::editDraftOptions() {
 	EditDraftOptions({
 		.show = controller()->uiShow(),
 		.history = history,
-		.draft = Data::Draft(_field, reply, suggest, _preview->draft()),
+		.draft = Data::Draft(_field, reply, _preview->draft()),
 		.usedLink = _preview->link(),
 		.forward = _forwardPanel->draft(),
 		.links = _preview->links(),
@@ -9518,12 +9503,10 @@ void HistoryWidget::setReplyFieldsFromProcessing() {
 	if (_editMsgId) {
 		if (const auto localDraft = _history->localDraft({}, {})) {
 			localDraft->reply = id;
-			localDraft->suggest = SuggestOptions();
 		} else {
 			_history->setLocalDraft(std::make_unique<Data::Draft>(
 				TextWithTags(),
 				id,
-				SuggestOptions(),
 				MessageCursor(),
 				Data::WebPageDraft()));
 		}
@@ -9586,12 +9569,10 @@ void HistoryWidget::editMessage(
 		_send->clearState();
 	}
 	if (!_editMsgId) {
-		const auto suggest = SuggestOptions();
-		if (_replyTo || suggest.exists || !_field->empty()) {
+		if (_replyTo || !_field->empty()) {
 			_history->setLocalDraft(std::make_unique<Data::Draft>(
 				_field,
 				_replyTo,
-				suggest,
 				_preview->draft()));
 		} else {
 			_history->clearLocalDraft(MsgId(), PeerId());
@@ -9608,7 +9589,6 @@ void HistoryWidget::editMessage(
 	_history->setLocalEditDraft(std::make_unique<Data::Draft>(
 		editData,
 		FullReplyTo{ item->fullId() },
-		SuggestOptions(),
 		cursor,
 		previewDraft));
 	applyDraft();

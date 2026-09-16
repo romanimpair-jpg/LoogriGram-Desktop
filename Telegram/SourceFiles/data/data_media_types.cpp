@@ -22,7 +22,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/media/history_view_contact.h"
 #include "history/view/media/history_view_location.h"
 #include "history/view/media/history_view_game.h"
-#include "history/view/media/history_view_invoice.h"
 #include "history/view/media/history_view_media_generic.h"
 #include "history/view/media/history_view_media_grouped.h"
 #include "history/view/media/history_view_call.h"
@@ -267,8 +266,8 @@ template <typename MediaType>
 		bool spoiler) {
 	auto result = PreparePhotoPreviewImage(item, media, radius, spoiler);
 	if (!result.data.isNull()
-		&& (media->owner()->extendedMediaVideoDuration().has_value()
-			|| (item->media() && item->media()->videoCover()))) {
+		&& item->media()
+		&& item->media()->videoCover()) {
 		result.data = PutPlayIcon(std::move(result.data));
 	}
 	return result;
@@ -308,86 +307,6 @@ template <typename MediaType>
 		CountCacheKey(data, radius, spoiler),
 		&ItemPreviewImage::cacheKey);
 	return (i != end(*existing)) ? *i : ItemPreviewImage();
-}
-
-bool UpdateExtendedMedia(
-		std::unique_ptr<Media> &media,
-		not_null<HistoryItem*> item,
-		const MTPMessageExtendedMedia &extended) {
-	return extended.match([&](const MTPDmessageExtendedMediaPreview &data) {
-		auto photo = (PhotoData*)nullptr;
-		if (!media) {
-			const auto id = base::RandomValue<PhotoId>();
-			photo = item->history()->owner().photo(id);
-		} else {
-			photo = media->photo();
-			if (!photo || !photo->extendedMediaPreview()) {
-				return false;
-			}
-		}
-
-		auto changed = false;
-		auto size = QSize();
-		auto thumbnail = QByteArray();
-		auto videoDuration = std::optional<TimeId>();
-		if (const auto &w = data.vw()) {
-			const auto &h = data.vh();
-			Assert(h.has_value());
-			size = QSize(w->v, h->v);
-			if (!changed && photo->size(PhotoSize::Large) != size) {
-				changed = true;
-			}
-		}
-		if (const auto &thumb = data.vthumb()) {
-			if (thumb->type() == mtpc_photoStrippedSize) {
-				thumbnail = thumb->c_photoStrippedSize().vbytes().v;
-				if (!changed && photo->inlineThumbnailBytes() != thumbnail) {
-					changed = true;
-				}
-			}
-		}
-		if (const auto &duration = data.vvideo_duration()) {
-			videoDuration = duration->v;
-			if (photo->extendedMediaVideoDuration() != videoDuration) {
-				changed = true;
-			}
-		} else if (photo->extendedMediaVideoDuration().has_value()) {
-			changed = true;
-		}
-		if (changed) {
-			photo->setExtendedMediaPreview(size, thumbnail, videoDuration);
-		}
-		if (!media) {
-			media = std::make_unique<MediaPhoto>(
-				item,
-				photo,
-				MediaPhoto::Args{ .spoiler = true });
-		}
-		return changed;
-	}, [&](const MTPDmessageExtendedMedia &data) {
-		media = HistoryItem::CreateMedia(item, data.vmedia());
-		return true;
-	});
-}
-
-bool UpdateExtendedMedia(
-		Invoice &invoice,
-		not_null<HistoryItem*> item,
-		const QVector<MTPMessageExtendedMedia> &media) {
-	auto changed = false;
-	const auto count = int(media.size());
-	for (auto i = 0; i != count; ++i) {
-		if (i <= invoice.extendedMedia.size()) {
-			invoice.extendedMedia.emplace_back();
-			changed = true;
-		}
-		UpdateExtendedMedia(invoice.extendedMedia[i], item, media[i]);
-	}
-	if (count < invoice.extendedMedia.size()) {
-		invoice.extendedMedia.resize(count);
-		changed = true;
-	}
-	return changed;
 }
 
 TextForMimeData WithCaptionClipboardText(
@@ -433,43 +352,6 @@ TextForMimeData WithCaptionClipboardText(
 }
 
 } // namespace
-
-Invoice ComputeInvoiceData(
-		not_null<HistoryItem*> item,
-		const MTPDmessageMediaInvoice &data) {
-	auto description = qs(data.vdescription());
-	auto result = Invoice{
-		.receiptMsgId = data.vreceipt_msg_id().value_or_empty(),
-		.amount = data.vtotal_amount().v,
-		.currency = qs(data.vcurrency()),
-		.title = TextUtilities::SingleLine(qs(data.vtitle())),
-		.description = TextUtilities::ParseEntities(
-			description,
-			TextParseLinks | TextParseMultiline),
-		.photo = (data.vphoto()
-			? item->history()->owner().photoFromWeb(
-				*data.vphoto(),
-				ImageLocation())
-			: nullptr),
-		.isTest = data.is_test(),
-	};
-	if (const auto &media = data.vextended_media()) {
-		UpdateExtendedMedia(result, item, { *media });
-	}
-	return result;
-}
-
-Invoice ComputeInvoiceData(
-		not_null<HistoryItem*> item,
-		const MTPDmessageMediaPaidMedia &data) {
-	auto result = Invoice{
-		.amount = data.vstars_amount().v,
-		.currency = Ui::kCreditsCurrency,
-		.isPaidMedia = true,
-	};
-	UpdateExtendedMedia(result, item, data.vextended_media().v);
-	return result;
-}
 
 Call ComputeCallData(
 		not_null<Session*> owner,
@@ -522,81 +404,6 @@ Call ComputeCallData(
 	};
 }
 
-GiveawayStart ComputeGiveawayStartData(
-		not_null<HistoryItem*> item,
-		const MTPDmessageMediaGiveaway &data) {
-	auto result = GiveawayStart{
-		.untilDate = data.vuntil_date().v,
-		.quantity = data.vquantity().v,
-		.months = data.vmonths().value_or_empty(),
-		.credits = data.vstars().value_or_empty(),
-		.all = !data.is_only_new_subscribers(),
-	};
-	result.channels.reserve(data.vchannels().v.size());
-	const auto owner = &item->history()->owner();
-	for (const auto &id : data.vchannels().v) {
-		result.channels.push_back(owner->channel(ChannelId(id)));
-	}
-	if (const auto countries = data.vcountries_iso2()) {
-		result.countries.reserve(countries->v.size());
-		for (const auto &country : countries->v) {
-			result.countries.push_back(qs(country));
-		}
-	}
-	if (const auto additional = data.vprize_description()) {
-		result.additionalPrize = qs(*additional);
-	}
-	return result;
-}
-
-GiveawayResults ComputeGiveawayResultsData(
-		not_null<HistoryItem*> item,
-		const MTPDmessageMediaGiveawayResults &data) {
-	const auto additional = data.vadditional_peers_count();
-	auto result = GiveawayResults{
-		.channel = item->history()->owner().channel(data.vchannel_id()),
-		.untilDate = data.vuntil_date().v,
-		.launchId = data.vlaunch_msg_id().v,
-		.additionalPeersCount = additional.value_or_empty(),
-		.winnersCount = data.vwinners_count().v,
-		.unclaimedCount = data.vunclaimed_count().v,
-		.months = data.vmonths().value_or_empty(),
-		.credits = data.vstars().value_or_empty(),
-		.refunded = data.is_refunded(),
-		.all = !data.is_only_new_subscribers(),
-	};
-	result.winners.reserve(data.vwinners().v.size());
-	const auto owner = &item->history()->owner();
-	for (const auto &id : data.vwinners().v) {
-		result.winners.push_back(owner->user(UserId(id)));
-	}
-	if (const auto additional = data.vprize_description()) {
-		result.additionalPrize = qs(*additional);
-	}
-	return result;
-}
-
-bool HasExtendedMedia(const Invoice &invoice) {
-	return !invoice.extendedMedia.empty();
-}
-
-bool HasUnpaidMedia(const Invoice &invoice) {
-	for (const auto &media : invoice.extendedMedia) {
-		const auto photo = media->photo();
-		return photo && photo->extendedMediaPreview();
-	}
-	return false;
-}
-
-bool IsFirstVideo(const Invoice &invoice) {
-	if (invoice.extendedMedia.empty()) {
-		return false;
-	} else if (const auto photo = invoice.extendedMedia.front()->photo()) {
-		return photo->extendedMediaVideoDuration().has_value();
-	}
-	return true;
-}
-
 Media::Media(not_null<HistoryItem*> parent) : _parent(parent) {
 }
 
@@ -644,14 +451,6 @@ GameData *Media::game() const {
 	return nullptr;
 }
 
-const Invoice *Media::invoice() const {
-	return nullptr;
-}
-
-const GiftCode *Media::gift() const {
-	return nullptr;
-}
-
 CloudImage *Media::location() const {
 	return nullptr;
 }
@@ -686,18 +485,6 @@ bool Media::storyUnsupported() const {
 
 bool Media::storyMention() const {
 	return false;
-}
-
-const GiveawayStart *Media::giveawayStart() const {
-	return nullptr;
-}
-
-const GiveawayResults *Media::giveawayResults() const {
-	return nullptr;
-}
-
-DiceGameOutcome Media::diceGameOutcome() const {
-	return {};
 }
 
 bool Media::uploading() const {
@@ -2200,195 +1987,6 @@ std::unique_ptr<HistoryView::Media> MediaGame::createView(
 		_consumedText);
 }
 
-MediaInvoice::MediaInvoice(
-	not_null<HistoryItem*> parent,
-	const Invoice &data)
-: Media(parent)
-, _invoice{
-	.receiptMsgId = data.receiptMsgId,
-	.amount = data.amount,
-	.currency = data.currency,
-	.title = data.title,
-	.description = data.description,
-	.photo = data.photo,
-	.isPaidMedia = data.isPaidMedia,
-	.isTest = data.isTest,
-} {
-	_invoice.extendedMedia.reserve(data.extendedMedia.size());
-	for (auto &item : data.extendedMedia) {
-		_invoice.extendedMedia.push_back(item->clone(parent));
-	}
-	if (HasUnpaidMedia(_invoice)) {
-		Ui::PreloadImageSpoiler();
-	}
-}
-
-std::unique_ptr<Media> MediaInvoice::clone(not_null<HistoryItem*> parent) {
-	return std::make_unique<MediaInvoice>(parent, _invoice);
-}
-
-const Invoice *MediaInvoice::invoice() const {
-	return &_invoice;
-}
-
-bool MediaInvoice::hasReplyPreview() const {
-	if (const auto photo = _invoice.photo) {
-		return !photo->isNull();
-	}
-	return false;
-}
-
-Image *MediaInvoice::replyPreview() const {
-	if (const auto photo = _invoice.photo) {
-		return photo->getReplyPreview(parent());
-	}
-	return nullptr;
-}
-
-bool MediaInvoice::replyPreviewLoaded() const {
-	const auto spoiler = false;
-	if (const auto photo = _invoice.photo) {
-		return photo->replyPreviewLoaded(spoiler);
-	}
-	return true;
-}
-
-TextWithEntities MediaInvoice::notificationText() const {
-	if (_invoice.isPaidMedia && !_invoice.extendedMedia.empty()) {
-		return WithCaptionNotificationText(
-			(IsFirstVideo(_invoice)
-				? tr::lng_in_dlg_video
-				: tr::lng_in_dlg_photo)(tr::now),
-			parent()->originalText());
-	}
-	return { .text = _invoice.title };
-}
-
-ItemPreview MediaInvoice::toPreview(ToPreviewOptions options) const {
-	if (!_invoice.isPaidMedia || _invoice.extendedMedia.empty()) {
-		return {
-			.text = Ui::Text::IconEmoji(
-				&st::dialogsMiniInvoiceIcon
-			).append(notificationText()),
-		};
-	}
-	auto counts = AlbumCounts();
-	auto images = std::vector<ItemPreviewImage>();
-	auto context = std::vector<std::any>();
-	const auto existing = options.existing;
-	const auto spoiler = HasUnpaidMedia(_invoice);
-	for (const auto &media : _invoice.extendedMedia) {
-		const auto raw = media.get();
-		const auto photo = raw->photo();
-		const auto document = raw->document();
-		if (!photo && !document) {
-			continue;
-		} else if (images.size() < kMaxPreviewImages) {
-			const auto radius = ImageRoundRadius::Small;
-			auto found = photo
-				? FindCachedPreview(
-					existing,
-					not_null(photo),
-					radius,
-					spoiler)
-				: FindCachedPreview(
-					existing,
-					not_null(document),
-					radius,
-					spoiler);
-			if (found) {
-				images.push_back(std::move(found));
-			} else if (photo) {
-				const auto media = photo->createMediaView();
-				if (auto prepared = PreparePhotoPreview(
-					parent(),
-					media,
-					radius,
-					spoiler)
-					; prepared || !prepared.cacheKey) {
-					images.push_back(std::move(prepared));
-					if (!prepared.cacheKey) {
-						context.push_back(media);
-					}
-				}
-			} else if (TryFilePreview(document)) {
-				const auto media = document->createMediaView();
-				if (auto prepared = PrepareFilePreview(
-						parent(),
-						media,
-						radius,
-						spoiler)
-					; prepared || !prepared.cacheKey) {
-					images.push_back(std::move(prepared));
-					if (!prepared.cacheKey) {
-						context.push_back(media);
-					}
-				}
-			}
-		}
-		if (photo && !photo->extendedMediaVideoDuration().has_value()) {
-			++counts.photos;
-		} else {
-			++counts.videos;
-		}
-	}
-	const auto type = ComputeAlbumCountsString(counts);
-	const auto caption = (options.hideCaption || options.ignoreMessageText)
-		? TextWithEntities()
-		: Dialogs::Ui::DialogsPreviewText(options.translated
-			? parent()->translatedText()
-			: parent()->originalText());
-	const auto hasMiniImages = !images.empty();
-	auto nice = Ui::Text::Colorized(Ui::Earn::CreditsEmojiSmall());
-	nice.append(WithCaptionNotificationText(type, caption, hasMiniImages));
-	return {
-		.text = std::move(nice),
-		.images = std::move(images),
-		.loadingContext = std::move(context),
-	};
-}
-
-QString MediaInvoice::pinnedTextSubstring() const {
-	return QString::fromUtf8("\xC2\xAB")
-		+ _invoice.title
-		+ QString::fromUtf8("\xC2\xBB");
-}
-
-TextForMimeData MediaInvoice::clipboardText() const {
-	return TextForMimeData();
-}
-
-bool MediaInvoice::updateInlineResultMedia(const MTPMessageMedia &media) {
-	return true;
-}
-
-std::unique_ptr<HistoryView::Media> MediaInvoice::createView(
-		not_null<HistoryView::Element*> message,
-		not_null<HistoryItem*> realParent,
-		HistoryView::Element *replacing) {
-	// LoogriGram: an invoice is a request to pay for something, and
-	// paying is the one thing this fork never does.
-	//
-	// Element::refreshMedia already stops before asking, so this is the
-	// second half of the same statement rather than a live branch - kept
-	// because Media::createView is pure virtual. It is what lets every view
-	// this used to build be deleted: with no caller, nothing is left to keep
-	// them alive.
-	return nullptr;
-}
-
-bool MediaInvoice::updateSentMedia(const MTPMessageMedia &media) {
-	return true;
-}
-
-bool MediaInvoice::updateExtendedMedia(
-		not_null<HistoryItem*> item,
-		const QVector<MTPMessageExtendedMedia> &media) {
-	Expects(item == parent());
-
-	return UpdateExtendedMedia(_invoice, item, media);
-}
-
 MediaPoll::MediaPoll(
 	not_null<HistoryItem*> parent,
 	not_null<PollData*> poll)
@@ -2570,17 +2168,15 @@ std::unique_ptr<HistoryView::Media> MediaTodoList::createView(
 
 MediaDice::MediaDice(
 	not_null<HistoryItem*> parent,
-	DiceGameOutcome outcome,
 	QString emoji,
 	int value)
 : Media(parent)
-, _outcome(outcome)
 , _emoji(emoji)
 , _value(value) {
 }
 
 std::unique_ptr<Media> MediaDice::clone(not_null<HistoryItem*> parent) {
-	return std::make_unique<MediaDice>(parent, _outcome, _emoji, _value);
+	return std::make_unique<MediaDice>(parent, _emoji, _value);
 }
 
 QString MediaDice::emoji() const {
@@ -2589,10 +2185,6 @@ QString MediaDice::emoji() const {
 
 int MediaDice::value() const {
 	return _value;
-}
-
-DiceGameOutcome MediaDice::diceGameOutcome() const {
-	return _outcome;
 }
 
 bool MediaDice::allowsRevoke(TimeId now) const {
@@ -2629,16 +2221,6 @@ bool MediaDice::updateSentMedia(const MTPMessageMedia &media) {
 	}
 	const auto &data = media.c_messageMediaDice();
 	_value = data.vvalue().v;
-	if (const auto outcome = data.vgame_outcome()) {
-		const auto &data = outcome->data();
-		_outcome = Data::DiceGameOutcome{
-			.nanoTon = int64(data.vton_amount().v),
-			.stakeNanoTon = int64(data.vstake_ton_amount().v),
-			.seed = data.vseed().v,
-		};
-	} else {
-		_outcome = {};
-	}
 	parent()->history()->owner().notifyItemDataChange(parent());
 	return true;
 }
@@ -2724,70 +2306,6 @@ ClickHandlerPtr MediaDice::MakeHandler(
 		// is what every other emoji here already did.
 		showSimple();
 	});
-}
-
-MediaGiftBox::MediaGiftBox(
-	not_null<HistoryItem*> parent,
-	not_null<PeerData*> from,
-	GiftType type,
-	int64 count)
-: MediaGiftBox(parent, from, GiftCode{ .count = count, .type = type }) {
-}
-
-MediaGiftBox::MediaGiftBox(
-	not_null<HistoryItem*> parent,
-	not_null<PeerData*> from,
-	GiftCode data)
-: Media(parent)
-, _from(from)
-, _data(std::move(data)) {
-}
-
-std::unique_ptr<Media> MediaGiftBox::clone(not_null<HistoryItem*> parent) {
-	return std::make_unique<MediaGiftBox>(parent, _from, _data);
-}
-
-not_null<PeerData*> MediaGiftBox::from() const {
-	return _from;
-}
-
-const GiftCode *MediaGiftBox::gift() const {
-	return &_data;
-}
-
-TextWithEntities MediaGiftBox::notificationText() const {
-	return {};
-}
-
-QString MediaGiftBox::pinnedTextSubstring() const {
-	return {};
-}
-
-TextForMimeData MediaGiftBox::clipboardText() const {
-	return {};
-}
-
-bool MediaGiftBox::updateInlineResultMedia(const MTPMessageMedia &media) {
-	return false;
-}
-
-bool MediaGiftBox::updateSentMedia(const MTPMessageMedia &media) {
-	return false;
-}
-
-std::unique_ptr<HistoryView::Media> MediaGiftBox::createView(
-		not_null<HistoryView::Element*> message,
-		not_null<HistoryItem*> realParent,
-		HistoryView::Element *replacing) {
-	// LoogriGram: a gift someone sent us is not shown. We take no part
-	// in any of it, so there is nothing to draw and nothing to click.
-	//
-	// Element::refreshMedia already stops before asking, so this is the
-	// second half of the same statement rather than a live branch - kept
-	// because Media::createView is pure virtual. It is what lets every view
-	// this used to build be deleted: with no caller, nothing is left to keep
-	// them alive.
-	return nullptr;
 }
 
 MediaWallPaper::MediaWallPaper(
@@ -3016,135 +2534,6 @@ std::unique_ptr<HistoryView::Media> MediaStory::createView(
 		}
 		return nullptr;
 	}
-}
-
-MediaGiveawayStart::MediaGiveawayStart(
-	not_null<HistoryItem*> parent,
-	const GiveawayStart &data)
-: Media(parent)
-, _data(data) {
-	parent->history()->session().giftBoxStickersPacks().load();
-}
-
-std::unique_ptr<Media> MediaGiveawayStart::clone(
-		not_null<HistoryItem*> parent) {
-	return std::make_unique<MediaGiveawayStart>(parent, _data);
-}
-
-const GiveawayStart *MediaGiveawayStart::giveawayStart() const {
-	return &_data;
-}
-
-ItemPreview MediaGiveawayStart::toPreview(ToPreviewOptions options) const {
-	return {
-		.text = Ui::Text::IconEmoji(
-			&st::dialogsMiniGiveawayIcon
-		).append(notificationText()),
-	};
-}
-
-TextWithEntities MediaGiveawayStart::notificationText() const {
-	return {
-		.text = tr::lng_prizes_title(tr::now, lt_count, _data.quantity),
-	};
-}
-
-QString MediaGiveawayStart::pinnedTextSubstring() const {
-	return QString::fromUtf8("\xC2\xAB")
-		+ notificationText().text
-		+ QString::fromUtf8("\xC2\xBB");
-}
-
-TextForMimeData MediaGiveawayStart::clipboardText() const {
-	return TextForMimeData();
-}
-
-bool MediaGiveawayStart::updateInlineResultMedia(const MTPMessageMedia &media) {
-	return true;
-}
-
-bool MediaGiveawayStart::updateSentMedia(const MTPMessageMedia &media) {
-	return true;
-}
-
-std::unique_ptr<HistoryView::Media> MediaGiveawayStart::createView(
-		not_null<HistoryView::Element*> message,
-		not_null<HistoryItem*> realParent,
-		HistoryView::Element *replacing) {
-	// LoogriGram: a giveaway we cannot enter is not shown.
-	//
-	// Element::refreshMedia already stops before asking, so this is the
-	// second half of the same statement rather than a live branch - kept
-	// because Media::createView is pure virtual. It is what lets every view
-	// this used to build be deleted: with no caller, nothing is left to keep
-	// them alive.
-	return nullptr;
-}
-
-MediaGiveawayResults::MediaGiveawayResults(
-	not_null<HistoryItem*> parent,
-	const GiveawayResults &data)
-: Media(parent)
-, _data(data) {
-}
-
-std::unique_ptr<Media> MediaGiveawayResults::clone(
-		not_null<HistoryItem*> parent) {
-	return std::make_unique<MediaGiveawayResults>(parent, _data);
-}
-
-const GiveawayResults *MediaGiveawayResults::giveawayResults() const {
-	return &_data;
-}
-
-ItemPreview MediaGiveawayResults::toPreview(
-		ToPreviewOptions options) const {
-	return {
-		.text = Ui::Text::Colorized(
-			Ui::Text::IconEmoji(&st::dialogsMiniGiveawayIcon)
-		).append(notificationText()),
-	};
-}
-
-TextWithEntities MediaGiveawayResults::notificationText() const {
-	return Ui::Text::Colorized({
-		((_data.winnersCount == 1)
-			? tr::lng_prizes_results_title_one
-			: tr::lng_prizes_results_title)(tr::now)
-	});
-}
-
-QString MediaGiveawayResults::pinnedTextSubstring() const {
-	return QString::fromUtf8("\xC2\xAB")
-		+ notificationText().text
-		+ QString::fromUtf8("\xC2\xBB");
-}
-
-TextForMimeData MediaGiveawayResults::clipboardText() const {
-	return TextForMimeData();
-}
-
-bool MediaGiveawayResults::updateInlineResultMedia(const MTPMessageMedia &media) {
-	return true;
-}
-
-bool MediaGiveawayResults::updateSentMedia(const MTPMessageMedia &media) {
-	return true;
-}
-
-std::unique_ptr<HistoryView::Media> MediaGiveawayResults::createView(
-		not_null<HistoryView::Element*> message,
-		not_null<HistoryItem*> realParent,
-		HistoryView::Element *replacing) {
-	// LoogriGram: the results of a giveaway we never entered are not
-	// shown either.
-	//
-	// Element::refreshMedia already stops before asking, so this is the
-	// second half of the same statement rather than a live branch - kept
-	// because Media::createView is pure virtual. It is what lets every view
-	// this used to build be deleted: with no caller, nothing is left to keep
-	// them alive.
-	return nullptr;
 }
 
 } // namespace Data

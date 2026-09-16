@@ -24,7 +24,6 @@ struct HistoryMessageMarkupData;
 struct HistoryMessageReplyMarkup;
 struct HistoryMessageTranslation;
 struct HistoryMessageForwarded;
-struct HistoryMessageSuggestion;
 struct HistoryServiceDependentData;
 struct HistoryServiceTodoCompletions;
 enum class HistorySelfDestructType;
@@ -91,13 +90,11 @@ struct HistoryItemCommonFields {
 	TimeId date = 0;
 	TimeId scheduleRepeatPeriod = 0;
 	BusinessShortcutId shortcutId = 0;
-	int starsPaid = 0;
 	UserId viaBotId = 0;
 	QString postAuthor;
 	uint64 groupedId = 0;
 	EffectId effectId = 0;
 	HistoryMessageMarkupData markup;
-	HistoryMessageSuggestInfo suggest;
 	bool ignoreForwardFrom = false;
 	bool ignoreForwardCaptions = false;
 	bool mediaSpoiler = false;
@@ -107,12 +104,6 @@ enum class HistoryReactionSource : char {
 	Selector,
 	Quick,
 	Existing,
-};
-
-enum class PaidPostType : uchar {
-	None,
-	Stars,
-	Ton,
 };
 
 class HistoryItem final : public RuntimeComposer<HistoryItem> {
@@ -244,6 +235,9 @@ public:
 	void invalidateChatListEntry();
 
 	void destroy();
+	[[nodiscard]] bool moneyHidden() const {
+		return _flags & MessageFlag::MoneyHidden;
+	}
 	[[nodiscard]] bool out() const {
 		return _flags & MessageFlag::Outgoing;
 	}
@@ -370,10 +364,8 @@ public:
 	[[nodiscard]] int repliesCount() const;
 	[[nodiscard]] bool repliesAreComments() const;
 	[[nodiscard]] bool externalReply() const;
-	[[nodiscard]] bool hasUnpaidContent() const;
 	[[nodiscard]] bool inHighlightProcess() const;
 	void highlightProcessDone();
-	[[nodiscard]] PaidPostType paidType() const;
 
 	void setCommentsInboxReadTill(MsgId readTillId);
 	void setCommentsMaxId(MsgId maxId);
@@ -390,7 +382,6 @@ public:
 	void applyChanges(not_null<Data::Story*> story);
 
 	void applyEdition(const MTPDmessageService &message);
-	void applyEdition(const QVector<MTPMessageExtendedMedia> &media);
 	void updateForwardedInfo(const MTPMessageFwdHeader *fwd);
 	void updateSentContent(const MTPDmessage &data);
 	void updateSentContent(
@@ -615,7 +606,6 @@ public:
 	[[nodiscard]] auto contentColorCollectible() const
 		-> const std::shared_ptr<Ui::ColorCollectible> &;
 
-	[[nodiscard]] int starsPaid() const;
 
 	[[nodiscard]] std::unique_ptr<HistoryView::Element> createView(
 		not_null<HistoryView::ElementDelegate*> delegate,
@@ -635,13 +625,6 @@ public:
 		not_null<PhotoData*> photo,
 		TextWithEntities caption = {});
 
-	[[nodiscard]] SuggestionActions computeSuggestionActions() const;
-	[[nodiscard]] SuggestionActions computeSuggestionActions(
-		const HistoryMessageSuggestion *suggest) const;
-	[[nodiscard]] SuggestionActions computeSuggestionActions(
-		bool accepted,
-		bool rejected,
-		TimeId giftOfferExpiresAt) const;
 
 	[[nodiscard]] bool needsUpdateForVideoQualities(const MTPMessage &data);
 
@@ -689,7 +672,6 @@ private:
 	void setReplyMarkup(
 		HistoryMessageMarkupData &&markup,
 		bool ignoreSuggestButtons = false);
-	void updateSuggestControls(const HistoryMessageSuggestion *suggest);
 
 	void changeReplyToTopCounter(
 		not_null<HistoryMessageReply*> reply,
@@ -714,6 +696,7 @@ private:
 	void finishEditionToEmpty();
 
 	void clearDependencyMessage();
+	void setupMoneyHidden();
 	void setupChatThemeChange();
 	void setupTTLChange();
 
@@ -757,7 +740,6 @@ private:
 
 	// For an invoice button we replace the button text with a "Receipt" key.
 	// It should show the receipt for the payed invoice. Still let mobile apps do that.
-	void replaceBuyWithReceiptInMarkup();
 
 	[[nodiscard]] PreparedServiceText preparePinnedText();
 	[[nodiscard]] PreparedServiceText prepareGameScoreText();
@@ -799,7 +781,6 @@ private:
 	TimeId _date = 0;
 	TimeId _ttlDestroyAt = 0;
 	int _boostsApplied = 0;
-	int _starsPaid = 0;
 	BusinessShortcutId _shortcutId = 0;
 
 	MessageGroupId _groupId = MessageGroupId();

@@ -231,7 +231,6 @@ ChatStyle::ChatStyle(rpl::producer<ColorIndicesCompressed> colorIndices) {
 	make(_historySentInvertedIcon, st::historySentInvertedIcon);
 	make(_historyReceivedInvertedIcon, st::historyReceivedInvertedIcon);
 	make(_msgBotKbUrlIcon, st::msgBotKbUrlIcon);
-	make(_msgBotKbPaymentIcon, st::msgBotKbPaymentIcon);
 	make(_msgBotKbSwitchPmIcon, st::msgBotKbSwitchPmIcon);
 	make(_msgBotKbWebviewIcon, st::msgBotKbWebviewIcon);
 	make(_msgBotKbCopyIcon, st::msgBotKbCopyIcon);

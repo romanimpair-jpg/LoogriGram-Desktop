@@ -467,58 +467,7 @@ void DeleteMessagesBox::keyPressEvent(QKeyEvent *e) {
 	}
 }
 
-PaidPostType DeleteMessagesBox::paidPostType() const {
-	auto result = PaidPostType::None;
-	const auto now = base::unixtime::now();
-	for (const auto &id : _ids) {
-		if (const auto item = _session->data().message(id)) {
-			const auto type = item->paidType();
-			if (type != PaidPostType::None) {
-				const auto date = item->date();
-				const auto config = &item->history()->session().appConfig();
-				const auto limit = config->suggestedPostAgeMin();
-				if (now < date || now - date <= limit) {
-					if (type == PaidPostType::Ton) {
-						return type;
-					} else if (type == PaidPostType::Stars) {
-						result = type;
-					}
-				}
-			}
-		}
-	}
-	return result;
-}
-
 void DeleteMessagesBox::deleteAndClear() {
-	const auto warnPaidType = _confirmedDeletePaidSuggestedPosts
-		? PaidPostType::None
-		: paidPostType();
-	if (warnPaidType != PaidPostType::None) {
-		const auto weak = base::make_weak(this);
-		const auto callback = [=](Fn<void()> close) {
-			close();
-			if (const auto strong = weak.get()) {
-				strong->_confirmedDeletePaidSuggestedPosts = true;
-				strong->deleteAndClear();
-			}
-		};
-		const auto ton = (warnPaidType == PaidPostType::Ton);
-		uiShow()->show(Ui::MakeConfirmBox({
-			.text = (ton
-				? tr::lng_suggest_warn_text_ton
-				: tr::lng_suggest_warn_text_stars)(
-					tr::now,
-					tr::rich),
-			.confirmed = callback,
-			.confirmText = tr::lng_suggest_warn_delete_anyway(tr::now),
-			.confirmStyle = &st::attentionBoxButton,
-			.title = (ton
-				? tr::lng_suggest_warn_title_ton
-				: tr::lng_suggest_warn_title_stars)(tr::now),
-		}));
-		return;
-	}
 	if (_revoke
 		&& _revokeRemember
 		&& _revokeRemember->toggled()

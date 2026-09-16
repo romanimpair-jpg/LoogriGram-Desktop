@@ -295,12 +295,6 @@ void EnumerateStaticMediaPhotos(
 			callback(photo);
 		}
 	}
-	const auto invoice = media->invoice();
-	if (invoice) {
-		for (const auto &extended : invoice->extendedMedia) {
-			EnumerateStaticMediaPhotos(extended.get(), callback);
-		}
-	}
 }
 
 } // namespace

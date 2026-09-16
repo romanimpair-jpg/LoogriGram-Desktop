@@ -2063,20 +2063,6 @@ void OverlayWidget::refreshPollVotersWidgetGeometry() {
 
 void OverlayWidget::fillContextMenuActions(
 		const Ui::Menu::MenuCallback &addAction) {
-	if (_message) {
-		const auto media = _message->media();
-		const auto invoice = media ? media->invoice() : nullptr;
-		if (invoice
-			&& invoice->isPaidMedia
-			&& invoice->currency == Ui::kCreditsCurrency
-			&& !invoice->extendedMedia.empty()
-			&& invoice->amount > 0) {
-			addAction(
-				Lang::FormatCountDecimal(invoice->amount),
-				[] {},
-				&st::mediaMenuIconStar);
-		}
-	}
 	const auto story = _stories ? _stories->story() : nullptr;
 	if (!story && _document && _document->loading()) {
 		addAction(
@@ -3606,7 +3592,7 @@ auto OverlayWidget::sharedMediaType() const
 	using Type = SharedMediaType;
 	if (_message) {
 		if (const auto media = _message->media()) {
-			if (media->webpage() || media->invoice()) {
+			if (media->webpage()) {
 				return std::nullopt;
 			} else if (const auto poll = media->poll()) {
 				const auto isPollMedia = [&](const auto &item) {
@@ -3908,14 +3894,6 @@ std::optional<OverlayWidget::CollageKey> OverlayWidget::collageKey() const {
 						return item;
 					}
 				}
-			} else if (const auto invoice = media->invoice()) {
-				for (const auto &item : invoice->extendedMedia) {
-					if (_photo && item->photo() == _photo) {
-						return _photo;
-					} else if (_document && item->document() == _document) {
-						return _document;
-					}
-				}
 			} else if (const auto poll = media->poll()) {
 				if (_photo
 					&& IsPollAnswerMediaItem(
@@ -3961,16 +3939,6 @@ void OverlayWidget::validateCollage() {
 			if (const auto media = _message->media()) {
 				if (const auto page = media->webpage()) {
 					_collageData = page->collage;
-				} else if (const auto invoice = media->invoice()) {
-					auto &data = *_collageData;
-					data.items.reserve(invoice->extendedMedia.size());
-					for (const auto &item : invoice->extendedMedia) {
-						if (const auto photo = item->photo()) {
-							data.items.push_back(photo);
-						} else if (const auto document = item->document()) {
-							data.items.push_back(document);
-						}
-					}
 				} else if (const auto poll = media->poll()) {
 					_collageData = PollAnswersCollage(poll);
 				}

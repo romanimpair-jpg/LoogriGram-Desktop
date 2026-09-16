@@ -2381,9 +2381,6 @@ mtpRequestId ApiWrap::savePreparedDraftToCloud(
 	if (!textWithTags.tags.isEmpty()) {
 		flags |= MTPmessages_SaveDraft::Flag::f_entities;
 	}
-	if (draft.suggest) {
-		flags |= MTPmessages_SaveDraft::Flag::f_suggested_post;
-	}
 	auto richMessage = MTPInputRichMessage();
 	if (draft.hasRichMessage()) {
 		const auto serialized = Iv::SerializeInputRichMessage(
@@ -2486,7 +2483,7 @@ mtpRequestId ApiWrap::savePreparedDraftToCloud(
 				draft.webpage,
 				textWithTags.text.isEmpty()),
 			MTP_long(0), // effect
-			Api::SuggestToMTP(draft.suggest),
+			MTPSuggestedPost(),
 			std::move(currentRichMessage)
 		)).done([=](const MTPBool &, const MTP::Response &response) {
 			const auto requestId = response.requestId;
@@ -3887,9 +3884,6 @@ void ApiWrap::forwardMessages(
 	if (sendAs) {
 		sendFlags |= SendFlag::f_send_as;
 	}
-	if (action.options.suggest) {
-		sendFlags |= SendFlag::f_suggested_post;
-	}
 	const auto kGeneralId = Data::ForumTopic::kGeneralId;
 	const auto topicRootId = action.replyTo.topicRootId;
 	const auto topMsgId = (topicRootId == kGeneralId)
@@ -3902,7 +3896,7 @@ void ApiWrap::forwardMessages(
 	const auto monoforumPeer = monoforumPeerId
 		? session().data().peer(monoforumPeerId).get()
 		: nullptr;
-	if (monoforumPeer || (action.options.suggest && action.replyTo)) {
+	if (monoforumPeer) {
 		sendFlags |= SendFlag::f_reply_to;
 	}
 
@@ -3948,9 +3942,7 @@ void ApiWrap::forwardMessages(
 				MTP_vector<MTPlong>(randomIds),
 				history->peer->input(),
 				MTP_int(realTopMsgId),
-				(action.options.suggest
-					? ReplyToForMTP(history, replyTo)
-					: monoforumPeer
+				(monoforumPeer
 					? MTP_inputReplyToMonoForum(
 						monoforumPeer->input())
 					: MTPInputReplyTo()),
@@ -3965,7 +3957,7 @@ void ApiWrap::forwardMessages(
 				MTP_long(action.options.effectId),
 				MTPint(),
 				MTP_long(0),
-				Api::SuggestToMTP(action.options.suggest));
+				MTPSuggestedPost());
 		};
 		histories.sendPreparedMessage(
 			history,
@@ -4028,7 +4020,6 @@ void ApiWrap::forwardMessages(
 					.date = NewMessageDate(action.options),
 					.shortcutId = action.options.shortcutId,
 					.postAuthor = NewMessagePostAuthor(action),
-					.suggest = HistoryMessageSuggestInfo(action.options),
 					// forwarded messages don't have effects
 					//.effectId = action.options.effectId,
 				}, item);
@@ -4125,7 +4116,6 @@ void ApiWrap::sendSharedContact(
 		.shortcutId = action.options.shortcutId,
 		.postAuthor = NewMessagePostAuthor(action),
 		.effectId = action.options.effectId,
-		.suggest = HistoryMessageSuggestInfo(action.options),
 	}, TextWithEntities(), MTP_messageMediaContact(
 		MTP_string(phone),
 		MTP_string(firstName),
@@ -4177,18 +4167,6 @@ void ApiWrap::editMedia(
 
 	auto &file = list.files.front();
 	auto to = FileLoadTaskOptions(action);
-	const auto existing = to.replaceMediaOf
-		? session().data().message(action.history->peer, to.replaceMediaOf)
-		: nullptr;
-	if (existing && existing->computeSuggestionActions()
-		== SuggestionActions::AcceptAndDecline) {
-		to.replyTo.messageId = {
-			action.history->peer->id,
-			to.replaceMediaOf
-		};
-		to.replyTo.monoforumPeerId = existing->sublistPeerId();
-		to.replaceMediaOf = MsgId();
-	}
 	const auto forceFile = (type == SendMediaType::File)
 		&& (file.type == Ui::PreparedFile::Type::Video);
 	_fileLoader->addTask(std::make_unique<FileLoadTask>(FileLoadTask::Args{
@@ -4435,7 +4413,6 @@ void ApiWrap::sendRichMessage(
 		.shortcutId = action.options.shortcutId,
 		.postAuthor = NewMessagePostAuthor(action),
 		.effectId = action.options.effectId,
-		.suggest = HistoryMessageSuggestInfo(action.options),
 	}, TextWithEntities(), MTP_messageMediaEmpty());
 	item->applyLocalRichPage(std::move(page));
 
@@ -4516,9 +4493,6 @@ void ApiWrap::sendRichMessage(
 	}
 	if (action.options.effectId) {
 		sendFlags |= Flag::f_effect;
-	}
-	if (action.options.suggest) {
-		sendFlags |= Flag::f_suggested_post;
 	}
 	const auto mtpShortcut = Data::ShortcutIdToMTP(
 		_session,
@@ -4605,7 +4579,7 @@ void ApiWrap::sendRichMessage(
 				mtpShortcut,
 				MTP_long(action.options.effectId),
 				MTP_long(0),
-				Api::SuggestToMTP(action.options.suggest),
+				MTPSuggestedPost(),
 				std::move(currentRichMessage)),
 			[=](const MTPUpdates &result, const MTP::Response &response) {
 				finishCloudDraft(response);
@@ -4801,10 +4775,6 @@ void ApiWrap::sendMessage(
 			sendFlags |= MTPmessages_SendMessage::Flag::f_effect;
 			mediaFlags |= MTPmessages_SendMedia::Flag::f_effect;
 		}
-		if (action.options.suggest) {
-			sendFlags |= MTPmessages_SendMessage::Flag::f_suggested_post;
-			mediaFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
-		}
 		lastMessage = history->addNewLocalMessage({
 			.id = newId.msg,
 			.flags = flags,
@@ -4815,7 +4785,6 @@ void ApiWrap::sendMessage(
 			.shortcutId = action.options.shortcutId,
 			.postAuthor = NewMessagePostAuthor(action),
 			.effectId = action.options.effectId,
-			.suggest = HistoryMessageSuggestInfo(action.options),
 		}, sending, media);
 		const auto done = [=](
 				const MTPUpdates &result,
@@ -4854,7 +4823,6 @@ void ApiWrap::sendMessage(
 								text.entities),
 						};
 						draft.reply = action.replyTo;
-						draft.suggest = action.options.suggest;
 						draft.cursor = MessageCursor(
 							int(text.text.size()),
 							int(text.text.size()),
@@ -4905,7 +4873,7 @@ void ApiWrap::sendMessage(
 					mtpShortcut,
 					MTP_long(action.options.effectId),
 					MTP_long(0),
-					Api::SuggestToMTP(action.options.suggest)
+					MTPSuggestedPost()
 				), done, fail);
 		} else {
 			histories.sendPreparedMessage(
@@ -4926,7 +4894,7 @@ void ApiWrap::sendMessage(
 					mtpShortcut,
 					MTP_long(action.options.effectId),
 					MTP_long(0),
-					Api::SuggestToMTP(action.options.suggest),
+					MTPSuggestedPost(),
 					MTPInputRichMessage()
 				), done, fail);
 		}
@@ -5252,7 +5220,6 @@ void ApiWrap::sendMediaWithRandomId(
 		| (options.sendAs ? Flag::f_send_as : Flag(0))
 		| (options.shortcutId ? Flag::f_quick_reply_shortcut : Flag(0))
 		| (options.effectId ? Flag::f_effect : Flag(0))
-		| (options.suggest ? Flag::f_suggested_post : Flag(0))
 		| (options.invertCaption ? Flag::f_invert_media : Flag(0));
 
 	auto &histories = history->owner().histories();
@@ -5276,7 +5243,7 @@ void ApiWrap::sendMediaWithRandomId(
 			Data::ShortcutIdToMTP(_session, options.shortcutId),
 			MTP_long(options.effectId),
 			MTP_long(0),
-			Api::SuggestToMTP(options.suggest)
+			MTPSuggestedPost()
 		), [=](const MTPUpdates &result, const MTP::Response &response) {
 		if (done) done(true);
 		if (updateRecentStickers) {

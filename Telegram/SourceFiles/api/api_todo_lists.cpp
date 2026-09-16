@@ -74,9 +74,6 @@ void TodoLists::create(
 	if (action.options.effectId) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
 	}
-	if (action.options.suggest) {
-		sendFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
-	}
 	const auto sendAs = action.options.sendAs;
 	if (sendAs) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_send_as;
@@ -102,7 +99,7 @@ void TodoLists::create(
 			Data::ShortcutIdToMTP(_session, action.options.shortcutId),
 			MTP_long(action.options.effectId),
 			MTP_long(0),
-			SuggestToMTP(action.options.suggest)
+			MTPSuggestedPost()
 		), [=](const MTPUpdates &result, const MTP::Response &response) {
 		if (clearCloudDraft) {
 			history->finishSavingCloudDraft(

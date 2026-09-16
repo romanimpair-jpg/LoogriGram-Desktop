@@ -214,42 +214,10 @@ QString MessageAccessibilityName(
 			if (!game->title.isEmpty()) {
 				mediaParts.push_back(game->title);
 			}
-		} else if (const auto invoice = media->invoice()) {
-			if (!invoice->title.isEmpty()) {
-				mediaParts.push_back(invoice->title);
-			}
-			mediaParts.push_back(invoice->currency
-				+ u" "_q
-				+ QString::number(invoice->amount / 100.0, 'f', 2));
-		} else if (const auto gift = media->gift()) {
-			switch (gift->type) {
-			case Data::GiftType::Premium:
-				mediaParts.push_back(
-					tr::lng_sr_message_gift_premium(
-						tr::now,
-						lt_count,
-						gift->count));
-				break;
-			case Data::GiftType::Credits:
-			case Data::GiftType::StarGift:
-				mediaParts.push_back(
-					tr::lng_sr_message_gift_credits(
-						tr::now,
-						lt_count,
-						gift->count));
-				break;
-			default:
-				if (!gift->giftTitle.isEmpty()) {
-					mediaParts.push_back(gift->giftTitle);
-				}
-				break;
-			}
 		} else if (const auto todolist = media->todolist()) {
 			if (!todolist->title.text.isEmpty()) {
 				mediaParts.push_back(todolist->title.text);
 			}
-		} else if (media->giveawayStart() || media->giveawayResults()) {
-			mediaParts.push_back(item->notificationText().text);
 		} else {
 			const auto notification = item->notificationText().text;
 			if (!notification.isEmpty()) {
@@ -442,18 +410,10 @@ QString MessageSubItemLabel(MessageSubItem item) {
 		return tr::lng_sr_message_column_game_title(tr::now);
 	case MessageSubItem::GameDescription:
 		return tr::lng_sr_message_column_game_description(tr::now);
-	case MessageSubItem::InvoiceTitle:
-		return tr::lng_sr_message_column_invoice_title(tr::now);
-	case MessageSubItem::InvoiceAmount:
-		return tr::lng_sr_message_column_invoice_amount(tr::now);
 	case MessageSubItem::Spoiler:
 		return tr::lng_sr_message_column_spoiler(tr::now);
 	case MessageSubItem::Dice:
 		return tr::lng_sr_message_column_dice(tr::now);
-	case MessageSubItem::Giveaway:
-		return tr::lng_sr_message_column_giveaway(tr::now);
-	case MessageSubItem::Gift:
-		return tr::lng_sr_message_column_gift(tr::now);
 	case MessageSubItem::TodoTitle:
 		return tr::lng_sr_message_column_todo_title(tr::now);
 	case MessageSubItem::TodoItems:
@@ -936,40 +896,6 @@ QString MessageSubItemValue(
 		}
 		return {};
 	}
-	case MessageSubItem::InvoiceTitle: {
-		const auto media = data->media();
-		if (!media) {
-			return {};
-		}
-		const auto invoice = media->invoice();
-		if (invoice) {
-			return invoice->title;
-		}
-		return {};
-	}
-	case MessageSubItem::InvoiceAmount: {
-		const auto media = data->media();
-		if (!media) {
-			return {};
-		}
-		const auto invoice = media->invoice();
-		if (!invoice) {
-			return {};
-		}
-		auto result = invoice->currency
-			+ u" "_q
-			+ QString::number(invoice->amount / 100.0, 'f', 2);
-		if (invoice->receiptMsgId) {
-			result += u" ("_q
-				+ tr::lng_sr_message_invoice_paid(tr::now)
-				+ u")"_q;
-		} else {
-			result += u" ("_q
-				+ tr::lng_sr_message_invoice_unpaid(tr::now)
-				+ u")"_q;
-		}
-		return result;
-	}
 	case MessageSubItem::Spoiler: {
 		const auto media = data->media();
 		if (media && media->hasSpoiler()) {
@@ -990,10 +916,6 @@ QString MessageSubItemValue(
 			&& !media->photo()
 			&& !media->sharedContact()
 			&& !media->location()
-			&& !media->invoice()
-			&& !media->giveawayStart()
-			&& !media->giveawayResults()
-			&& !media->gift()
 			&& !media->todolist()
 			&& !media->game()
 			&& !media->poll()
@@ -1002,73 +924,6 @@ QString MessageSubItemValue(
 			return notification;
 		}
 		return {};
-	}
-	case MessageSubItem::Giveaway: {
-		const auto media = data->media();
-		if (!media) {
-			return {};
-		}
-		if (const auto giveaway = media->giveawayStart()) {
-			QStringList parts;
-			if (giveaway->quantity > 0) {
-				parts.push_back(QString::number(giveaway->quantity)
-					+ u" winners"_q);
-			}
-			if (giveaway->months > 0) {
-				parts.push_back(QString::number(giveaway->months)
-					+ u" months Premium"_q);
-			}
-			if (giveaway->credits > 0) {
-				parts.push_back(QString::number(giveaway->credits)
-					+ u" stars"_q);
-			}
-			if (!giveaway->additionalPrize.isEmpty()) {
-				parts.push_back(giveaway->additionalPrize);
-			}
-			return parts.join(u", "_q);
-		}
-		if (const auto results = media->giveawayResults()) {
-			QStringList parts;
-			parts.push_back(QString::number(results->winnersCount)
-				+ u" winners"_q);
-			if (results->unclaimedCount > 0) {
-				parts.push_back(QString::number(results->unclaimedCount)
-					+ u" unclaimed"_q);
-			}
-			if (results->refunded) {
-				parts.push_back(u"refunded"_q);
-			}
-			return parts.join(u", "_q);
-		}
-		return {};
-	}
-	case MessageSubItem::Gift: {
-		const auto media = data->media();
-		if (!media) {
-			return {};
-		}
-		const auto gift = media->gift();
-		if (!gift) {
-			return {};
-		}
-		switch (gift->type) {
-		case Data::GiftType::Premium:
-			return tr::lng_sr_message_gift_premium(
-				tr::now,
-				lt_count,
-				gift->count);
-		case Data::GiftType::Credits:
-		case Data::GiftType::StarGift:
-			return tr::lng_sr_message_gift_credits(
-				tr::now,
-				lt_count,
-				gift->count);
-		default:
-			if (!gift->giftTitle.isEmpty()) {
-				return gift->giftTitle;
-			}
-			return {};
-		}
 	}
 	case MessageSubItem::TodoTitle: {
 		const auto media = data->media();

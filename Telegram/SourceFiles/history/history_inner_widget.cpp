@@ -1519,9 +1519,6 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 			}
 		}
 		session().data().reactions().poll(item, context.now);
-		if (item->hasUnpaidContent()) {
-			session().api().views().pollExtendedMedia(item);
-		}
 		_reactionsManager->recordCurrentReactionEffect(
 			item->fullId(),
 			QPoint(0, top));

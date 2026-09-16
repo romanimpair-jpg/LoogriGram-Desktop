@@ -134,9 +134,6 @@ void SendSimpleMedia(SendAction action, MTPInputMedia inputMedia) {
 	if (action.options.effectId) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
 	}
-	if (action.options.suggest) {
-		sendFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
-	}
 	if (action.options.invertCaption) {
 		flags |= MessageFlag::InvertMedia;
 		sendFlags |= MTPmessages_SendMedia::Flag::f_invert_media;
@@ -162,7 +159,7 @@ void SendSimpleMedia(SendAction action, MTPInputMedia inputMedia) {
 			Data::ShortcutIdToMTP(session, action.options.shortcutId),
 			MTP_long(action.options.effectId),
 			MTP_long(0),
-			SuggestToMTP(action.options.suggest)
+			MTPSuggestedPost()
 		), [=](const MTPUpdates &result, const MTP::Response &response) {
 	}, [=](const MTP::Error &error, const MTP::Response &response) {
 		api->sendMessageFail(error, peer, randomId);
@@ -259,9 +256,6 @@ void SendExistingMedia(
 	if (action.options.effectId) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
 	}
-	if (action.options.suggest) {
-		sendFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
-	}
 	if (action.options.invertCaption) {
 		flags |= MessageFlag::InvertMedia;
 		sendFlags |= MTPmessages_SendMedia::Flag::f_invert_media;
@@ -277,7 +271,6 @@ void SendExistingMedia(
 		.shortcutId = action.options.shortcutId,
 		.postAuthor = NewMessagePostAuthor(action),
 		.effectId = action.options.effectId,
-		.suggest = HistoryMessageSuggestInfo(action.options),
 		.mediaSpoiler = action.options.mediaSpoiler,
 	}, media, caption);
 
@@ -323,7 +316,7 @@ void SendExistingMedia(
 				Data::ShortcutIdToMTP(session, action.options.shortcutId),
 				MTP_long(action.options.effectId),
 				MTP_long(0),
-				SuggestToMTP(action.options.suggest)
+				MTPSuggestedPost()
 			), [=](const MTPUpdates &result, const MTP::Response &response) {
 		}, [=](const MTP::Error &error, const MTP::Response &response) {
 			if (error.code() == 400
@@ -458,7 +451,6 @@ void SendMusicSelectionBatch(
 			.postAuthor = NewMessagePostAuthor(action),
 			.groupedId = groupId,
 			.effectId = action.options.effectId,
-			.suggest = HistoryMessageSuggestInfo(action.options),
 			.mediaSpoiler = action.options.mediaSpoiler,
 		}, items[i].document, itemCaption);
 		requests.push_back({
@@ -572,9 +564,6 @@ void SendMusicSelectionBatch(
 			if (action.options.effectId) {
 				sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
 			}
-			if (action.options.suggest) {
-				sendFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
-			}
 			if (action.options.invertCaption) {
 				sendFlags |= MTPmessages_SendMedia::Flag::f_invert_media;
 			}
@@ -598,7 +587,7 @@ void SendMusicSelectionBatch(
 					Data::ShortcutIdToMTP(session, action.options.shortcutId),
 					MTP_long(action.options.effectId),
 					MTP_long(0),
-					SuggestToMTP(action.options.suggest)
+					MTPSuggestedPost()
 				), [=](const MTPUpdates &result, const MTP::Response &response) {
 				if (done) {
 					done();
@@ -718,8 +707,7 @@ void SendMusicSelection(
 			return;
 		}
 		const auto optionsRequireSingle
-			= state->action.options.scheduleRepeatPeriod
-			|| state->action.options.suggest;
+			= state->action.options.scheduleRepeatPeriod;
 		const auto batchLimit = optionsRequireSingle
 			? 1
 			: Ui::MaxAlbumItems();
@@ -832,9 +820,6 @@ bool SendDice(MessageToSend &message) {
 	if (action.options.effectId) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
 	}
-	if (action.options.suggest) {
-		sendFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
-	}
 	if (action.options.invertCaption) {
 		flags |= MessageFlag::InvertMedia;
 		sendFlags |= MTPmessages_SendMedia::Flag::f_invert_media;
@@ -852,7 +837,6 @@ bool SendDice(MessageToSend &message) {
 		.shortcutId = action.options.shortcutId,
 		.postAuthor = NewMessagePostAuthor(action),
 		.effectId = action.options.effectId,
-		.suggest = HistoryMessageSuggestInfo(action.options),
 	}, TextWithEntities(), MTP_messageMediaDice(
 		MTP_flags(MTPDmessageMediaDice::Flag()),
 		MTP_int(0),
@@ -880,7 +864,7 @@ bool SendDice(MessageToSend &message) {
 			Data::ShortcutIdToMTP(session, action.options.shortcutId),
 			MTP_long(action.options.effectId),
 			MTP_long(0),
-			SuggestToMTP(action.options.suggest)
+			MTPSuggestedPost()
 		), [=](const MTPUpdates &result, const MTP::Response &response) {
 	}, [=](const MTP::Error &error, const MTP::Response &response) {
 		api->sendMessageFail(error, peer, randomId, newId);
@@ -1156,7 +1140,6 @@ void AddConfirmedLocalPlaceholder(const ConfirmedLocalFile &local) {
 		edition.useSameMarkup = true;
 		edition.useSameReplies = true;
 		edition.useSameReactions = true;
-		edition.useSameSuggest = true;
 		edition.savePreviousMedia = true;
 		local.itemToEdit->applyEdition(std::move(edition));
 		return;
@@ -1178,7 +1161,6 @@ void AddConfirmedLocalPlaceholder(const ConfirmedLocalFile &local) {
 			? local.file->album->groupId
 			: uint64(0),
 		.effectId = local.file->to.options.effectId,
-		.suggest = HistoryMessageSuggestInfo(local.file->to.options),
 	}, local.caption, local.media);
 	if (welcomeTemplate) {
 		local.history->session().welcomeMessages().appendSending(item);

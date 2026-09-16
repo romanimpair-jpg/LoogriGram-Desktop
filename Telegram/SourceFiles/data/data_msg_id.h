@@ -215,33 +215,6 @@ struct FullReplyTo {
 	friend inline bool operator==(FullReplyTo, FullReplyTo) = default;
 };
 
-struct SuggestOptions {
-	uint32 exists : 1 = 0;
-	uint32 priceWhole : 31 = 0;
-	uint32 priceNano : 31 = 0;
-	uint32 ton : 1 = 0;
-	TimeId date = 0;
-	TimeId offerDuration = 0;
-
-	[[nodiscard]] CreditsAmount price() const {
-		return CreditsAmount(
-			priceWhole,
-			priceNano,
-			ton ? CreditsType::Ton : CreditsType::Stars);
-	}
-
-	explicit operator bool() const {
-		return exists != 0;
-	}
-
-	friend inline auto operator<=>(
-		SuggestOptions,
-		SuggestOptions) = default;
-	friend inline bool operator==(
-		SuggestOptions,
-		SuggestOptions) = default;
-};
-
 struct GlobalMsgId {
 	FullMsgId itemId;
 	uint64 sessionUniqueId = 0;

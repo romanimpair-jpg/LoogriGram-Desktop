@@ -344,11 +344,9 @@ Media *GroupedMedia::lookupSpoilerTagMedia() const {
 		return nullptr;
 	}
 	const auto media = _parts.front().content.get();
-	if (media && _parts.front().item->isMediaSensitive()) {
-		return media;
-	}
-	const auto photo = media ? media->getPhoto() : nullptr;
-	return (photo && photo->extendedMediaPreview()) ? media : nullptr;
+	return (media && _parts.front().item->isMediaSensitive())
+		? media
+		: nullptr;
 }
 
 QImage GroupedMedia::generateSpoilerTagBackground(QRect full) const {
@@ -907,15 +905,6 @@ QPoint GroupedMedia::resolveCustomInfoRightBottom() const {
 	const auto skipx = (st::msgDateImgDelta + st::msgDateImgPadding.x());
 	const auto skipy = (st::msgDateImgDelta + st::msgDateImgPadding.y());
 	return QPoint(width() - skipx, height() - skipy);
-}
-
-std::optional<PaidInformation> GroupedMedia::paidInformation() const {
-	auto result = PaidInformation();
-	for (const auto &part : _parts) {
-		++result.messages;
-		result.stars += part.item->starsPaid();
-	}
-	return result;
 }
 
 bool GroupedMedia::enforceBubbleWidth() const {

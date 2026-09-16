@@ -347,27 +347,5 @@ private:
 
 };
 
-class SendInvoice : public SendDataCommon {
-public:
-	SendInvoice(
-		not_null<Main::Session*> session,
-		MTPMessageMedia media)
-	: SendDataCommon(session)
-	, _media(media) {
-	}
-
-	bool isValid() const override {
-		return true;
-	}
-
-	SentMessageFields getSentMessageFields() const override;
-
-	QString getLayoutDescription(const Result *owner) const override;
-
-private:
-	MTPMessageMedia _media;
-
-};
-
 } // namespace internal
 } // namespace InlineBots

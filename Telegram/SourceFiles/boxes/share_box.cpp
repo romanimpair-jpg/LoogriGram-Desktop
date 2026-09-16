@@ -1844,7 +1844,6 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 						? Flag::f_quick_reply_shortcut
 						: Flag(0))
 					| (sublistPeer ? Flag::f_reply_to : Flag())
-					| (options.suggest ? Flag::f_suggested_post : Flag())
 					| (options.effectId ? Flag::f_effect : Flag())
 					| (range.fromEphemeral
 						? Flag::f_from_ephemeral
@@ -1889,7 +1888,7 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 						MTP_long(options.effectId),
 						MTP_int(videoTimestamp.value_or(0)),
 						MTP_long(0),
-						Api::SuggestToMTP(options.suggest));
+						MTPSuggestedPost());
 				};
 				const auto requestKey = ++state->nextRequestKey;
 				state->requests.insert(requestKey);

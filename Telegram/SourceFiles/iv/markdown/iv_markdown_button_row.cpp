@@ -504,7 +504,6 @@ const style::icon *RichButtonIcon(ButtonType type) {
 	using TypeIcon = HistoryMessageMarkupButton::TypeIcon;
 	switch (HistoryMessageMarkupButton::IconOfType(type)) {
 	case TypeIcon::Url: return &st::msgBotKbUrlIcon;
-	case TypeIcon::Payment: return &st::msgBotKbPaymentIcon;
 	case TypeIcon::SwitchPm: return &st::msgBotKbSwitchPmIcon;
 	case TypeIcon::Webview: return &st::msgBotKbWebviewIcon;
 	case TypeIcon::Copy: return &st::msgBotKbCopyIcon;

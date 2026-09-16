@@ -43,7 +43,6 @@ public:
 		not_null<Window::SessionController*> controller,
 		not_null<HistoryItem*> item,
 		TextWithTags &&text,
-		SuggestOptions suggest,
 		bool spoilered,
 		bool invertCaption,
 		Ui::PreparedList &&list,
@@ -54,7 +53,6 @@ public:
 		not_null<Window::SessionController*> controller,
 		FullMsgId itemId,
 		TextWithTags text,
-		SuggestOptions suggest,
 		bool spoilered,
 		bool invertCaption,
 		Fn<void()> saved);
@@ -63,7 +61,6 @@ public:
 		FullMsgId itemId,
 		Ui::PreparedList &&list,
 		TextWithTags text,
-		SuggestOptions suggest,
 		bool spoilered,
 		bool invertCaption,
 		Fn<void()> saved);
@@ -72,7 +69,6 @@ public:
 		std::shared_ptr<Data::PhotoMedia> media,
 		FullMsgId itemId,
 		TextWithTags text,
-		SuggestOptions suggest,
 		bool spoilered,
 		bool invertCaption,
 		Fn<void()> saved);
@@ -126,7 +122,6 @@ private:
 
 	const not_null<Window::SessionController*> _controller;
 	const not_null<HistoryItem*> _historyItem;
-	const SuggestOptions _suggest;
 	const bool _isAllowedEditMedia;
 	const Ui::AlbumType _albumType;
 

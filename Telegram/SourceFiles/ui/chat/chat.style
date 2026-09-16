@@ -273,7 +273,6 @@ textBackIconEmoji: IconEmoji {
 msgBotKbIconPadding: 4px;
 msgBotKbUrlIcon: icon {{ "inline_button_url", msgBotKbIconFg }};
 msgBotKbSwitchPmIcon: icon {{ "inline_button_switch", msgBotKbIconFg }};
-msgBotKbPaymentIcon: icon {{ "inline_button_card", msgBotKbIconFg }};
 msgBotKbWebviewIcon: icon {{ "inline_button_web", msgBotKbIconFg }};
 msgBotKbCopyIcon: icon {{ "inline_button_copy", msgBotKbIconFg }};
 msgBotKbButton: BotKeyboardButton {
@@ -954,10 +953,6 @@ chatSuggestDeclineIcon: IconEmoji {
 	icon: icon{{ "chat/paid_decline", windowFg }};
 	padding: margins(0px, -2px, 0px, 0px);
 }
-chatSuggestChangeIcon: IconEmoji {
-	icon: icon{{ "chat/paid_edit", windowFg }};
-	padding: margins(0px, -2px, 0px, 0px);
-}
 
 
 repliesEmptyIcon: icon{{ "chat/large_quickreply", msgServiceFg }};
@@ -1355,8 +1350,6 @@ stakeEmojiIcon: IconEmoji {
 	icon: icon{{ "chat/mini_roll-18x18", activeButtonFg }};
 	padding: margins(1px, 2px, 1px, 0px);
 }
-stakeIconEmojiSize: 12px;
-stakeIconEmojiTop: 3px;
 stakePresetButton: RoundButton(defaultLightButton) {
 	textBg: lightButtonBgOver;
 }

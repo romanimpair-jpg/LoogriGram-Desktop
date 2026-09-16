@@ -121,10 +121,6 @@ struct FileReferenceAccumulator {
 			push(data.vwebpage());
 		}, [&](const MTPDmessageMediaGame &data) {
 			push(data.vgame());
-		}, [&](const MTPDmessageMediaInvoice &data) {
-			push(data.vextended_media());
-		}, [&](const MTPDmessageMediaPaidMedia &data) {
-			push(data.vextended_media());
 		}, [&](const MTPDmessageMediaPoll &data) {
 			push(data.vattached_media());
 			for (const auto &answer : data.vpoll().data().vanswers().v) {

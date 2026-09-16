@@ -140,33 +140,6 @@ auto EmptyMessageDraftSources()
 	return cWorkingDir() + u"tdata/tdld/"_q;
 }
 
-[[nodiscard]] std::pair<quint64, quint64> SerializeSuggest(
-		SuggestOptions options) {
-	return {
-		((quint64(options.exists) << 63)
-			| (quint64(quint32(options.date)))),
-		((quint64(options.ton) << 63)
-			| (quint64(options.priceWhole) << 32)
-			| (quint64(options.priceNano))),
-	};
-}
-
-[[nodiscard]] SuggestOptions DeserializeSuggest(
-		std::pair<quint64, quint64> suggest) {
-	const auto exists = (suggest.first >> 63) ? 1 : 0;
-	const auto date = TimeId(uint32(suggest.first & 0xFFFF'FFFFULL));
-	const auto ton = (suggest.second >> 63) ? 1 : 0;
-	const auto priceWhole = uint32((suggest.second >> 32) & 0x7FFF'FFFFULL);
-	const auto priceNano = uint32(suggest.second & 0xFFFF'FFFFULL);
-	return {
-		.exists = uint32(exists),
-		.priceWhole = priceWhole,
-		.priceNano = priceNano,
-		.ton = uint32(ton),
-		.date = date,
-	};
-}
-
 } // namespace
 
 Account::Account(not_null<Main::Account*> owner, const QString &dataName)
@@ -1239,7 +1212,6 @@ void EnumerateDrafts(
 		callback(
 			key,
 			draft->reply,
-			draft->suggest,
 			draft->textWithTags,
 			draft->webpage,
 			draft->cursor);
@@ -1253,7 +1225,6 @@ void EnumerateDrafts(
 			callback(
 				key,
 				draft.reply,
-				draft.suggest,
 				draft.textWithTags,
 				draft.webpage,
 				cursor);
@@ -1319,7 +1290,6 @@ void Account::writeDrafts(not_null<History*> history) {
 	const auto sizeCallback = [&](
 			auto&&, // key
 			const FullReplyTo &reply,
-			SuggestOptions suggest,
 			const TextWithTags &text,
 			const Data::WebPageDraft &webpage,
 			auto&&) { // cursor
@@ -1327,7 +1297,6 @@ void Account::writeDrafts(not_null<History*> history) {
 			+ Serialize::stringSize(text.text)
 			+ TextUtilities::SerializeTagsSize(text.tags)
 			+ sizeof(qint64) + sizeof(qint64) // messageId
-			+ (sizeof(quint64) * 2) // suggest
 			+ Serialize::stringSize(webpage.url)
 			+ sizeof(qint32) // webpage.forceLargeMedia
 			+ sizeof(qint32) // webpage.forceSmallMedia
@@ -1343,26 +1312,22 @@ void Account::writeDrafts(not_null<History*> history) {
 
 	EncryptedDescriptor data(size);
 	data.stream
-		<< quint64(kDraftsTag2)
+		<< quint64(kRichDraftsTag)
 		<< SerializePeerId(peerId)
 		<< quint32(count);
 
 	const auto writeCallback = [&](
 			const Data::DraftKey &key,
 			const FullReplyTo &reply,
-			SuggestOptions suggest,
 			const TextWithTags &text,
 			const Data::WebPageDraft &webpage,
 			auto&&) { // cursor
-		const auto serialized = SerializeSuggest(suggest);
 		data.stream
 			<< key.serialize()
 			<< text.text
 			<< TextUtilities::SerializeTags(text.tags)
 			<< qint64(reply.messageId.peer.value)
 			<< qint64(reply.messageId.msg.bare)
-			<< serialized.first
-			<< serialized.second
 			<< webpage.url
 			<< qint32(webpage.forceLargeMedia ? 1 : 0)
 			<< qint32(webpage.forceSmallMedia ? 1 : 0)
@@ -1419,7 +1384,6 @@ void Account::writeDraftCursors(not_null<History*> history) {
 	const auto writeCallback = [&](
 			const Data::DraftKey &key,
 			auto&&, // reply
-			auto&&, // suggest
 			auto&&, // text
 			auto&&, // webpage
 			const MessageCursor &cursor) { // cursor
@@ -1587,7 +1551,6 @@ void Account::readDraftsWithCursors(not_null<History*> history) {
 		QByteArray textTagsSerialized;
 		qint64 keyValue = 0;
 		qint64 messageIdPeer = 0, messageIdMsg = 0;
-		std::pair<quint64, quint64> suggestSerialized;
 		qint32 keyValueOld = 0;
 		QString webpageUrl;
 		qint32 webpageForceLargeMedia = 0;
@@ -1623,9 +1586,11 @@ void Account::readDraftsWithCursors(not_null<History*> history) {
 				>> messageIdPeer
 				>> messageIdMsg;
 			if (withSuggest) {
-				draft.stream
-					>> suggestSerialized.first
-					>> suggestSerialized.second;
+				// LoogriGram: suggested post options, written by builds that
+				// still had them. Read past and dropped; drafts are written
+				// with kRichDraftsTag now, which never carried them.
+				quint64 suggestFirst = 0, suggestSecond = 0;
+				draft.stream >> suggestFirst >> suggestSecond;
 			}
 			draft.stream
 				>> webpageUrl
@@ -1650,7 +1615,6 @@ void Account::readDraftsWithCursors(not_null<History*> history) {
 						MsgId(messageIdMsg)),
 					.topicRootId = key.topicRootId(),
 				},
-				DeserializeSuggest(suggestSerialized),
 				MessageCursor(),
 				Data::WebPageDraft{
 					.url = webpageUrl,
@@ -1724,7 +1688,6 @@ void Account::readDraftsWithCursorsLegacy(
 			std::make_unique<Data::Draft>(
 				msgData,
 				FullReplyTo{ FullMsgId(peerId, MsgId(msgReplyTo)) },
-				SuggestOptions(),
 				MessageCursor(),
 				Data::WebPageDraft{
 					.removed = (msgPreviewCancelled == 1),
@@ -1736,7 +1699,6 @@ void Account::readDraftsWithCursorsLegacy(
 			std::make_unique<Data::Draft>(
 				editData,
 				FullReplyTo{ FullMsgId(peerId, editMsgId) },
-				SuggestOptions(),
 				MessageCursor(),
 				Data::WebPageDraft{
 					.removed = (editPreviewCancelled == 1),

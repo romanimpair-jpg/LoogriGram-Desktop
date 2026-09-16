@@ -906,8 +906,6 @@ PRIVATE
     history/view/media/history_view_game.h
     history/view/media/history_view_gif.cpp
     history/view/media/history_view_gif.h
-    history/view/media/history_view_invoice.cpp
-    history/view/media/history_view_invoice.h
     history/view/media/history_view_location.cpp
     history/view/media/history_view_location.h
     history/view/media/history_view_media.cpp

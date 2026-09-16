@@ -125,15 +125,13 @@ using UpdateFlag = Data::HistoryUpdate::Flag;
 [[nodiscard]] std::unique_ptr<Data::Draft> CloneDraftForThread(
 		const Data::Draft &from,
 		MsgId topicRootId,
-		PeerId monoforumPeerId,
-		bool suggestAllowed) {
+		PeerId monoforumPeerId) {
 	auto reply = from.reply;
 	reply.topicRootId = topicRootId;
 	reply.monoforumPeerId = monoforumPeerId;
 	auto result = std::make_unique<Data::Draft>(
 		from.textWithTags,
 		reply,
-		suggestAllowed ? from.suggest : SuggestOptions(),
 		from.cursor,
 		from.webpage);
 	result->richMessage = from.richMessage;
@@ -145,13 +143,11 @@ void CopyDraftForThread(
 		not_null<Data::Draft*> to,
 		const Data::Draft &from,
 		MsgId topicRootId,
-		PeerId monoforumPeerId,
-		bool suggestAllowed) {
+		PeerId monoforumPeerId) {
 	to->textWithTags = from.textWithTags;
 	to->reply = from.reply;
 	to->reply.topicRootId = topicRootId;
 	to->reply.monoforumPeerId = monoforumPeerId;
-	to->suggest = suggestAllowed ? from.suggest : SuggestOptions();
 	to->cursor = from.cursor;
 	to->webpage = from.webpage;
 	to->richMessage = from.richMessage;
@@ -273,15 +269,6 @@ void History::itemVanished(not_null<HistoryItem*> item) {
 		&& unreadCount() > 0) {
 		setUnreadCount(unreadCount() - 1);
 	}
-	if (const auto media = item->media()) {
-		if (media->gift()) {
-			using GiftAction = Data::GiftUpdate::Action;
-			owner().notifyGiftUpdate({
-				.id = Data::SavedStarGiftId::User(item->id),
-				.action = GiftAction::Delete,
-			});
-		}
-	}
 }
 
 void History::takeLocalDraft(not_null<History*> from) {
@@ -319,7 +306,6 @@ void History::createLocalDraftFromCloud(
 	}
 
 	auto existing = localDraft(topicRootId, monoforumPeerId);
-	const auto suggestAllowed = suggestDraftAllowed();
 	if (Data::DraftIsNull(existing)
 		|| !existing->date
 		|| draft->date >= existing->date) {
@@ -327,16 +313,14 @@ void History::createLocalDraftFromCloud(
 			setLocalDraft(CloneDraftForThread(
 				*draft,
 				topicRootId,
-				monoforumPeerId,
-				suggestAllowed));
+				monoforumPeerId));
 			existing = localDraft(topicRootId, monoforumPeerId);
 		} else if (existing != draft) {
 			CopyDraftForThread(
 				existing,
 				*draft,
 				topicRootId,
-				monoforumPeerId,
-				suggestAllowed);
+				monoforumPeerId);
 		}
 		existing->date = draft->date;
 	}
@@ -407,34 +391,27 @@ Data::Draft *History::createCloudDraft(
 				.topicRootId = topicRootId,
 				.monoforumPeerId = monoforumPeerId,
 			},
-			SuggestOptions(),
 			MessageCursor(),
 			Data::WebPageDraft()));
 		cloudDraft(topicRootId, monoforumPeerId)->date = TimeId(0);
 	} else {
 		auto existing = cloudDraft(topicRootId, monoforumPeerId);
-		const auto suggestAllowed = suggestDraftAllowed();
 		if (!existing) {
 			setCloudDraft(CloneDraftForThread(
 				*fromDraft,
 				topicRootId,
-				monoforumPeerId,
-				suggestAllowed));
+				monoforumPeerId));
 			existing = cloudDraft(topicRootId, monoforumPeerId);
 		} else if (existing != fromDraft) {
 			CopyDraftForThread(
 				existing,
 				*fromDraft,
 				topicRootId,
-				monoforumPeerId,
-				suggestAllowed);
+				monoforumPeerId);
 		}
 		existing->date = base::unixtime::now();
 		existing->reply.topicRootId = topicRootId;
 		existing->reply.monoforumPeerId = monoforumPeerId;
-		if (!suggestAllowed) {
-			existing->suggest = SuggestOptions();
-		}
 	}
 
 	if (const auto thread = threadFor(topicRootId, monoforumPeerId)) {
@@ -1665,16 +1642,6 @@ void History::newItemAdded(not_null<HistoryItem*> item, NewAddType type) {
 	}
 	if (const auto sublist = item->savedSublist()) {
 		sublist->applyItemAdded(item);
-	}
-	if (const auto media = item->media()) {
-		if (const auto gift = media->gift()) {
-			if (const auto unique = gift->unique.get()) {
-				if (unique->ownerId == session().userPeerId()
-					|| unique->hostId == session().userPeerId()) {
-					owner().emojiStatuses().refreshCollectibles();
-				}
-			}
-		}
 	}
 }
 
@@ -3897,10 +3864,6 @@ void History::monoforumChanged(Data::SavedMessages *old) {
 
 bool History::amMonoforumAdmin() const {
 	return (_flags & Flag::IsMonoforumAdmin);
-}
-
-bool History::suggestDraftAllowed() const {
-	return peer->isMonoforum() && !peer->amMonoforumAdmin();
 }
 
 bool History::hasForumThreadBars() const {

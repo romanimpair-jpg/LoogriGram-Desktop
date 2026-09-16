@@ -16,7 +16,6 @@ class UserPhotosSlice;
 struct WebPageCollage;
 
 namespace Data {
-struct Invoice;
 } // namespace Data
 
 namespace Main {
@@ -137,10 +136,6 @@ private:
 	std::unique_ptr<Thumb> createThumb(
 		Key key,
 		const InstantViewItems &items,
-		int index);
-	std::unique_ptr<Thumb> createThumb(
-		Key key,
-		const Data::Invoice &invoice,
 		int index);
 	std::unique_ptr<Thumb> createThumb(Key key, not_null<PhotoData*> photo);
 	std::unique_ptr<Thumb> createThumb(

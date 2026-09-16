@@ -517,13 +517,6 @@ Message::Message(
 , _bottomInfo(
 		&data->history()->owner().reactions(),
 		BottomInfoDataFromMessage(this)) {
-	if (data->Get<HistoryMessageSuggestion>()) {
-		_hideReply = 1;
-	} else if (const auto media = data->media()) {
-		if (media->giveawayResults()) {
-			_hideReply = 1;
-		}
-	}
 	initLogEntryOriginal();
 	initPsa();
 	if (data->displayHiddenSenderInfo()) {

@@ -677,7 +677,6 @@ void WelcomeMessages::applyEdition(
 	edition.useSameForwards = true;
 	edition.useSameReplies = true;
 	edition.useSameReactions = true;
-	edition.useSameSuggest = true;
 	edition.textWithEntities = {
 		qs(data.vmessage()),
 		Api::EntitiesFromMTP(

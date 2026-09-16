@@ -834,15 +834,8 @@ ReplyKeyboard::ReplyKeyboard(
 			for (auto j = 0; j != rowSize; ++j) {
 				auto button = Button();
 				using Type = HistoryMessageMarkupButton::Type;
-				static const auto RegExp = QRegularExpression("\\b"
-					+ Ui::kCreditsCurrency
-					+ "\\b");
 				const auto type = row[j].type;
-				const auto text = (type == Type::Buy)
-					? base::duplicate(row[j].text).replace(
-						RegExp,
-						QChar(0x2B50))
-					: row[j].text;
+				const auto &text = row[j].text;
 				const auto withEmoji = [&](const style::IconEmoji &icon) {
 					return Ui::Text::IconEmoji(&icon).append(text);
 				};
@@ -851,8 +844,6 @@ ReplyKeyboard::ReplyKeyboard(
 						return withEmoji(st::chatSuggestAcceptIcon);
 					} else if (type == Type::SuggestDecline) {
 						return withEmoji(st::chatSuggestDeclineIcon);
-					} else if (type == Type::SuggestChange) {
-						return withEmoji(st::chatSuggestChangeIcon);
 					}
 					auto result = TextWithEntities();
 					if (const auto iconId = row[j].visual.iconId) {
@@ -862,17 +853,7 @@ ReplyKeyboard::ReplyKeyboard(
 							result.append(' ');
 						}
 					}
-					if (type == Type::Buy) {
-						auto firstPart = true;
-						for (const auto &part : text.split(QChar(0x2B50))) {
-							if (!firstPart) {
-								result.append(Ui::Text::IconEmoji(
-									&st::starIconEmojiLarge));
-							}
-							result.append(part);
-							firstPart = false;
-						}
-					} else if (!result.entities.empty()) {
+					if (!result.entities.empty()) {
 						result.append(text);
 					}
 					return result.entities.empty()
@@ -1322,33 +1303,8 @@ void HistoryMessageReplyMarkup::updateData(
 	inlineKeyboard = nullptr;
 }
 
-bool HistoryMessageReplyMarkup::hiddenBy(Data::Media *media) const {
-	if (media && (data.flags & ReplyMarkupFlag::OnlyBuyButton)) {
-		if (const auto invoice = media->invoice()) {
-			if (HasUnpaidMedia(*invoice)
-				|| (HasExtendedMedia(*invoice) && !invoice->receiptMsgId)) {
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
 void HistoryMessageReplyMarkup::updateSuggestControls(
 		SuggestionActions actions) {
-	if (actions == SuggestionActions::AcceptAndDecline
-		|| actions == SuggestionActions::GiftOfferActions
-		|| actions == SuggestionActions::NoForwardsRequest) {
-		data.flags |= ReplyMarkupFlag::SuggestionAccept;
-	} else {
-		data.flags &= ~ReplyMarkupFlag::SuggestionAccept;
-	}
-	if (actions == SuggestionActions::None) {
-		data.flags &= ~ReplyMarkupFlag::SuggestionDecline;
-	} else {
-		data.flags |= ReplyMarkupFlag::Inline
-			| ReplyMarkupFlag::SuggestionDecline;
-	}
 	using Type = HistoryMessageMarkupButton::Type;
 	using Visual = HistoryMessageMarkupButton::Visual;
 	const auto has = [&](Type type) {
@@ -1358,23 +1314,10 @@ void HistoryMessageReplyMarkup::updateSuggestControls(
 				type,
 				&HistoryMessageMarkupButton::type);
 	};
-	if (actions == SuggestionActions::GiftOfferActions) {
-		if (has(Type::SuggestAccept)) {
-			// Nothing changed.
-		}
-		data.rows.push_back({
-			{
-				Type::SuggestDecline,
-				tr::lng_action_gift_offer_decline(tr::now),
-				Visual(),
-			},
-			{
-				Type::SuggestAccept,
-				tr::lng_action_gift_offer_accept(tr::now),
-				Visual(),
-			},
-		});
-	} else if (actions == SuggestionActions::NoForwardsRequest) {
+	if (actions == SuggestionActions::NoForwardsRequest) {
+		data.flags |= ReplyMarkupFlag::Inline
+			| ReplyMarkupFlag::SuggestionAccept
+			| ReplyMarkupFlag::SuggestionDecline;
 		data.rows.push_back({
 			{
 				Type::SuggestDecline,
@@ -1387,75 +1330,13 @@ void HistoryMessageReplyMarkup::updateSuggestControls(
 				Visual(),
 			},
 		});
-	} else if (actions == SuggestionActions::AcceptAndDecline) {
-		//     ... rows ...
-		// [decline] | [accept]
-		//   [suggestchanges]
-		if (has(Type::SuggestChange)) {
-			// Nothing changed.
-		} else {
-			if (has(Type::SuggestDecline)) {
-				data.rows.pop_back();
-			}
-			data.rows.push_back({
-				{
-					Type::SuggestDecline,
-					tr::lng_suggest_action_decline(tr::now),
-					Visual(),
-				},
-				{
-					Type::SuggestAccept,
-					tr::lng_suggest_action_accept(tr::now),
-					Visual(),
-				},
-			});
-			data.rows.push_back({ {
-				Type::SuggestChange,
-				tr::lng_suggest_action_change(tr::now),
-				Visual(),
-			} });
-			data.flags |= ReplyMarkupFlag::SuggestionAccept
-				| ReplyMarkupFlag::SuggestionDecline;
-		}
-		if (data.rows.size() > 2) {
-			data.flags |= ReplyMarkupFlag::SuggestionSeparator;
-		} else {
-			data.flags &= ~ReplyMarkupFlag::SuggestionSeparator;
-		}
 	} else {
-		while (!data.rows.empty()) {
-			if (has(Type::SuggestChange) || has(Type::SuggestAccept)) {
-				data.rows.pop_back();
-			} else if (has(Type::SuggestDecline)
-				&& actions == SuggestionActions::None) {
-				data.rows.pop_back();
-			} else {
-				break;
-			}
+		while (has(Type::SuggestAccept) || has(Type::SuggestDecline)) {
+			data.rows.pop_back();
 		}
-		data.flags &= ~ReplyMarkupFlag::SuggestionAccept;
-		if (actions == SuggestionActions::None) {
-			data.flags &= ~ReplyMarkupFlag::SuggestionDecline;
-			data.flags &= ~ReplyMarkupFlag::SuggestionSeparator;
-		} else {
-			if (!has(Type::SuggestDecline)) {
-				// ... rows ...
-				//  [decline]
-				data.rows.push_back({ {
-					Type::SuggestDecline,
-					tr::lng_suggest_action_decline(tr::now),
-					Visual(),
-				} });
-				data.flags |= ReplyMarkupFlag::SuggestionDecline;
-			}
-			if (data.rows.size() > 1) {
-				data.flags |= ReplyMarkupFlag::SuggestionSeparator;
-			} else {
-				data.flags &= ~ReplyMarkupFlag::SuggestionSeparator;
-			}
-		}
+		data.flags &= ~(ReplyMarkupFlag::SuggestionAccept
+			| ReplyMarkupFlag::SuggestionDecline);
 	}
-
 	inlineKeyboard = nullptr;
 }
 

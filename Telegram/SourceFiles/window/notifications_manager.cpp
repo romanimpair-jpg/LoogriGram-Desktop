@@ -1204,8 +1204,6 @@ TextWithEntities Manager::ComposeReactionNotification(
 				tr::marked);
 	} else if (media->game()) {
 		return simple(tr::lng_reaction_game);
-	} else if (media->invoice()) {
-		return simple(tr::lng_reaction_invoice);
 	}
 	return text();
 }
@@ -1299,7 +1297,6 @@ void Manager::notificationActivated(
 					.topicRootId = topicRootId,
 					.monoforumPeerId = monoforumPeerId,
 				},
-				SuggestOptions(),
 				MessageCursor{
 					length,
 					length,

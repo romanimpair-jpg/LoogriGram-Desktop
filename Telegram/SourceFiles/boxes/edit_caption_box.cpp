@@ -240,14 +240,12 @@ EditCaptionBox::EditCaptionBox(
 	not_null<Window::SessionController*> controller,
 	not_null<HistoryItem*> item,
 	TextWithTags &&text,
-	SuggestOptions suggest,
 	bool spoilered,
 	bool invertCaption,
 	Ui::PreparedList &&list,
 	Fn<void()> saved)
 : _controller(controller)
 , _historyItem(item)
-, _suggest(suggest)
 , _isAllowedEditMedia(item->allowsEditMedia())
 , _albumType(ComputeAlbumType(item))
 , _controls(base::make_unique_q<Ui::VerticalLayout>(this))
@@ -284,7 +282,6 @@ void EditCaptionBox::StartMediaReplace(
 		not_null<Window::SessionController*> controller,
 		FullMsgId itemId,
 		TextWithTags text,
-		SuggestOptions suggest,
 		bool spoilered,
 		bool invertCaption,
 		Fn<void()> saved) {
@@ -298,7 +295,6 @@ void EditCaptionBox::StartMediaReplace(
 			controller,
 			item,
 			std::move(text),
-			suggest,
 			spoilered,
 			invertCaption,
 			std::move(list),
@@ -315,7 +311,6 @@ void EditCaptionBox::StartMediaReplace(
 		FullMsgId itemId,
 		Ui::PreparedList &&list,
 		TextWithTags text,
-		SuggestOptions suggest,
 		bool spoilered,
 		bool invertCaption,
 		Fn<void()> saved) {
@@ -351,7 +346,6 @@ void EditCaptionBox::StartMediaReplace(
 			controller,
 			item,
 			std::move(text),
-			suggest,
 			spoilered,
 			invertCaption,
 			std::move(list),
@@ -364,7 +358,6 @@ void EditCaptionBox::StartPhotoEdit(
 		std::shared_ptr<Data::PhotoMedia> media,
 		FullMsgId itemId,
 		TextWithTags text,
-		SuggestOptions suggest,
 		bool spoilered,
 		bool invertCaption,
 		Fn<void()> saved) {
@@ -387,7 +380,6 @@ void EditCaptionBox::StartPhotoEdit(
 				controller,
 				item,
 				std::move(text),
-				suggest,
 				spoilered,
 				invertCaption,
 				std::move(list),
@@ -1294,7 +1286,6 @@ void EditCaptionBox::save() {
 	};
 
 	auto options = Api::SendOptions();
-	options.suggest = _suggest;
 	options.scheduled = item->isScheduled() ? item->date() : 0;
 	options.shortcutId = item->shortcutId();
 	options.invertCaption = _mediaEditManager.invertCaption();

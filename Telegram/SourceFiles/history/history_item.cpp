@@ -10,6 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_premium.h"
 #include "api/api_sensitive_content.h"
 #include "api/api_transcribes.h"
+#include "core/loogrigram_hidden_content.h"
 #include "lang/lang_keys.h"
 #include "calls/calls_instance.h" // Core::App().calls().joinGroupCall.
 #include "history/view/history_view_item_preview.h"
@@ -73,7 +74,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_photo.h"
 #include "data/data_stories.h"
 #include "data/data_web_page.h"
-#include "chat_helpers/stickers_gift_box_pack.h"
 #include "platform/platform_notifications_manager.h"
 #include "spellcheck/spellcheck_highlight_syntax.h"
 #include "styles/style_dialogs.h"
@@ -184,16 +184,6 @@ template <typename T>
 	return fields;
 }
 
-[[nodiscard]] TextWithEntities AmountAndStarCurrency(
-		int64 amount,
-		const QString &currency) {
-	if (currency == Ui::kCreditsCurrency) {
-		return Ui::Earn::CreditsEmojiSmall().append(
-			Lang::FormatCountDecimal(std::abs(amount)));
-	}
-	return { Ui::FillAmountAndCurrency(amount, currency) };
-}
-
 [[nodiscard]] bool IsNavigableForInstantViewMedia(
 		DocumentData *document) {
 	Expects(document != nullptr);
@@ -262,7 +252,6 @@ struct HistoryItem::CreateConfig {
 	TimeId scheduleRepeatPeriod = 0;
 	HistoryMessageMarkupData markup;
 	HistoryMessageRepliesData replies;
-	HistoryMessageSuggestInfo suggest;
 	bool imported = false;
 
 	// For messages created from existing messages (forwarded).
@@ -421,10 +410,10 @@ std::unique_ptr<Data::Media> HistoryItem::CreateMedia(
 				item,
 				item->history()->owner().processGame(game));
 		});
-	}, [&](const MTPDmessageMediaInvoice &media) -> Result {
-		return std::make_unique<Data::MediaInvoice>(
-			item,
-			Data::ComputeInvoiceData(item, media));
+	}, [](const MTPDmessageMediaInvoice &) -> Result {
+		// LoogriGram: money media is hidden before it is parsed, see
+		// LoogriGram::MoneyMedia(). The same goes for the three below.
+		return nullptr;
 	}, [&](const MTPDmessageMediaPoll &media) -> Result {
 		return std::make_unique<Data::MediaPoll>(
 			item,
@@ -434,16 +423,10 @@ std::unique_ptr<Data::Media> HistoryItem::CreateMedia(
 			item,
 			item->history()->owner().processTodoList(item->fullId(), media));
 	}, [&](const MTPDmessageMediaDice &media) -> Result {
-		auto outcome = Data::DiceGameOutcome();
-		if (const auto game = media.vgame_outcome()) {
-			const auto &data = game->data();
-			outcome.seed = data.vseed().v;
-			outcome.nanoTon = data.vton_amount().v;
-			outcome.stakeNanoTon = data.vstake_ton_amount().v;
-		}
+		// LoogriGram: game_outcome carried a TON stake and what was won or
+		// lost on the roll. Only the roll itself is kept.
 		return std::make_unique<Data::MediaDice>(
 			item,
-			outcome,
 			qs(media.vemoticon()),
 			media.vvalue().v);
 	}, [&](const MTPDmessageMediaStory &media) -> Result {
@@ -460,18 +443,12 @@ std::unique_ptr<Data::Media> HistoryItem::CreateMedia(
 			item,
 			storyId,
 			media.is_via_mention());
-	}, [&](const MTPDmessageMediaGiveaway &media) -> Result {
-		return std::make_unique<Data::MediaGiveawayStart>(
-			item,
-			Data::ComputeGiveawayStartData(item, media));
-	}, [&](const MTPDmessageMediaGiveawayResults &media) -> Result {
-		return std::make_unique<Data::MediaGiveawayResults>(
-			item,
-			Data::ComputeGiveawayResultsData(item, media));
-	}, [&](const MTPDmessageMediaPaidMedia &media) -> Result {
-		return std::make_unique<Data::MediaInvoice>(
-			item,
-			Data::ComputeInvoiceData(item, media));
+	}, [](const MTPDmessageMediaGiveaway &) -> Result {
+		return nullptr;
+	}, [](const MTPDmessageMediaGiveawayResults &) -> Result {
+		return nullptr;
+	}, [](const MTPDmessageMediaPaidMedia &) -> Result {
+		return nullptr;
 	}, [](const MTPDmessageMediaVideoStream &) -> Result {
 		// Live stories.
 		return nullptr;
@@ -494,11 +471,12 @@ HistoryItem::HistoryItem(
 	.date = data.vdate().v,
 	.scheduleRepeatPeriod = data.vschedule_repeat_period().value_or_empty(),
 	.shortcutId = data.vquick_reply_shortcut_id().value_or_empty(),
-	.starsPaid = int(data.vpaid_message_stars().value_or_empty()),
 	.effectId = data.veffect().value_or_empty(),
 }) {
-	_boostsApplied = data.vfrom_boosts_applied().value_or_empty();
-
+	if (LoogriGram::MoneyMessage(data)) {
+		setupMoneyHidden();
+		return;
+	}
 	// Called only for server-received messages, not locally created ones.
 	applyInitialEffectWatched();
 
@@ -675,7 +653,6 @@ HistoryItem::HistoryItem(
 			}
 		}
 	}
-	config.suggest = fields.suggest;
 	if (!dropForwardInfo) {
 		config.originalDate = original->originalDate();
 		if (const auto info = original->originalHiddenSenderInfo()) {
@@ -878,7 +855,6 @@ HistoryItem::HistoryItem(
 	: history->peer)
 , _flags(FinalizeMessageFlags(history, fields.flags))
 , _date(fields.date)
-, _starsPaid(fields.starsPaid)
 , _shortcutId(fields.shortcutId)
 , _effectId(fields.effectId) {
 	Expects(!_shortcutId
@@ -928,10 +904,6 @@ TimeId HistoryItem::date() const {
 	return _date;
 }
 
-int HistoryItem::starsPaid() const {
-	return _starsPaid;
-}
-
 bool HistoryItem::awaitingVideoProcessing() const {
 	return (_flags & MessageFlag::EstimatedDate);
 }
@@ -943,14 +915,10 @@ HistoryServiceDependentData *HistoryItem::GetServiceDependentData() {
 		return clear;
 	} else if (const auto gamescore = Get<HistoryServiceGameScore>()) {
 		return gamescore;
-	} else if (const auto payment = Get<HistoryServicePayment>()) {
-		return payment;
 	} else if (const auto info = Get<HistoryServiceTopicInfo>()) {
 		return info;
 	} else if (const auto same = Get<HistoryServiceSameBackground>()) {
 		return same;
-	} else if (const auto results = Get<HistoryServiceGiveawayResults>()) {
-		return results;
 	} else if (const auto done = Get<HistoryServiceTodoCompletions>()) {
 		return done;
 	} else if (const auto append = Get<HistoryServiceTodoAppendTasks>()) {
@@ -1016,8 +984,6 @@ void HistoryItem::updateDependentServiceText() {
 		updateServiceText(preparePinnedText());
 	} else if (Has<HistoryServiceGameScore>()) {
 		updateServiceText(prepareGameScoreText());
-	} else if (Has<HistoryServicePayment>()) {
-		updateServiceText(preparePaymentSentText());
 	} else if (Has<HistoryServiceTodoCompletions>()) {
 		updateServiceText(prepareTodoCompletionsText());
 	} else if (Has<HistoryServiceTodoAppendTasks>()) {
@@ -1117,14 +1083,6 @@ MsgId HistoryItem::dependencyMsgId() const {
 	return replyToId();
 }
 
-void HistoryItem::checkBuyButton() {
-	if (const auto invoice = _media ? _media->invoice() : nullptr) {
-		if (invoice->receiptMsgId) {
-			replaceBuyWithReceiptInMarkup();
-		}
-	}
-}
-
 void HistoryItem::resolveDependent(
 		not_null<HistoryServiceDependentData*> dependent) {
 	if (!dependent->pendingResolve || dependent->requestedResolve) {
@@ -1222,70 +1180,12 @@ bool HistoryItem::checkDiscussionLink(ChannelId id) const {
 	return false;
 }
 
-SuggestionActions HistoryItem::computeSuggestionActions() const {
-	return computeSuggestionActions(Get<HistoryMessageSuggestion>());
-}
-
-SuggestionActions HistoryItem::computeSuggestionActions(
-		const HistoryMessageSuggestion *suggest) const {
-	return suggest
-		? computeSuggestionActions(
-			suggest->accepted,
-			suggest->rejected,
-			suggest->gift ? suggest->date: 0)
-		: SuggestionActions::None;
-}
-
-SuggestionActions HistoryItem::computeSuggestionActions(
-		bool accepted,
-		bool rejected,
-		TimeId giftOfferExpiresAt) const {
-	if (giftOfferExpiresAt) {
-		const auto can = isRegular()
-			&& !(accepted || rejected)
-			&& !out()
-			&& (giftOfferExpiresAt > base::unixtime::now());
-		return can
-			? SuggestionActions::GiftOfferActions
-			: SuggestionActions::None;
-	}
-	const auto channelIsAuthor = from()->isChannel();
-	const auto amMonoforumAdmin = history()->peer->amMonoforumAdmin();
-	const auto broadcast = history()->peer->monoforumBroadcast();
-	const auto canDecline = isRegular()
-		&& !(accepted || rejected)
-		&& (channelIsAuthor ? !amMonoforumAdmin : amMonoforumAdmin);
-	const auto canAccept = canDecline
-		&& (channelIsAuthor
-			? !amMonoforumAdmin
-			: (amMonoforumAdmin
-				&& broadcast
-				&& broadcast->canPostMessages()));
-	return canAccept
-		? SuggestionActions::AcceptAndDecline
-		: canDecline
-		? SuggestionActions::Decline
-		: SuggestionActions::None;
-}
-
-void HistoryItem::updateSuggestControls(
-		const HistoryMessageSuggestion *suggest) {
-	if (const auto markup = Get<HistoryMessageReplyMarkup>()) {
-		markup->updateSuggestControls(computeSuggestionActions(suggest));
-	}
-}
-
 void HistoryItem::setReplyMarkup(
 		HistoryMessageMarkupData &&markup,
 		bool ignoreSuggestButtons) {
 	const auto requestUpdate = [&] {
-		const auto actions = computeSuggestionActions();
-		if (actions != SuggestionActions::None
-			&& !Has<HistoryMessageReplyMarkup>()) {
-			AddComponents(HistoryMessageReplyMarkup::Bit());
-		}
 		if (const auto markup = Get<HistoryMessageReplyMarkup>()) {
-			markup->updateSuggestControls(actions);
+			markup->updateSuggestControls(SuggestionActions::None);
 		}
 		history()->owner().requestItemResize(this);
 		history()->session().changes().messageUpdated(
@@ -2028,14 +1928,6 @@ const Data::Media *HistoryItem::savedMedia() const {
 	return data ? data->media.get() : nullptr;
 }
 
-PaidPostType HistoryItem::paidType() const {
-	return (_flags & MessageFlag::StarsPaidSuggested)
-		? PaidPostType::Stars
-		: (_flags & MessageFlag::TonPaidSuggested)
-		? PaidPostType::Ton
-		: PaidPostType::None;
-}
-
 void HistoryItem::clearSavedMedia() {
 	RemoveComponents(HistoryMessageSavedMediaData::Bit());
 }
@@ -2345,6 +2237,13 @@ void HistoryItem::applyEdition(HistoryMessageEdition &&edition) {
 	if (!edition.useSameForwards) {
 		setForwardsCount(edition.forwards);
 	}
+	if (edition.mtpMedia && LoogriGram::MoneyMedia(*edition.mtpMedia)) {
+		// LoogriGram: edited into a money message. Nothing of it is kept.
+		removeFromSharedMediaIndex();
+		setupMoneyHidden();
+		finishEdition(keyboardTop);
+		return;
+	}
 	const auto mediaCheck = edition.mtpMedia
 		? CheckMessageMedia(*edition.mtpMedia)
 		: MediaCheckResult::Good;
@@ -2410,22 +2309,6 @@ void HistoryItem::applyEdition(HistoryMessageEdition &&edition) {
 		}
 	}
 
-	if (!edition.useSameSuggest) {
-		if (edition.suggest.exists) {
-			if (!Has<HistoryMessageSuggestion>()) {
-				AddComponents(HistoryMessageSuggestion::Bit());
-			}
-			auto suggest = Get<HistoryMessageSuggestion>();
-			suggest->price = edition.suggest.price;
-			suggest->date = edition.suggest.date;
-			suggest->accepted = edition.suggest.accepted;
-			suggest->rejected = edition.suggest.rejected;
-			updateSuggestControls(suggest);
-		} else {
-			RemoveComponents(HistoryMessageSuggestion::Bit());
-			updateSuggestControls(nullptr);
-		}
-	}
 
 	if (edition.repeatPeriod) {
 		if (!Has<HistoryMessageSchedulePeriod>()) {
@@ -2580,16 +2463,6 @@ void HistoryItem::applyEdition(const MTPDmessageService &message) {
 		wasTopic->applyItemRemoved(id);
 		if (nowTopic) {
 			nowTopic->applyMaybeLast(this);
-		}
-	}
-}
-
-void HistoryItem::applyEdition(
-		const QVector<MTPMessageExtendedMedia> &media) {
-	if (const auto existing = this->media()) {
-		if (existing->updateExtendedMedia(this, media)) {
-			checkBuyButton();
-			finishEdition(-1);
 		}
 	}
 }
@@ -3122,8 +2995,7 @@ bool HistoryItem::allowsSendNow() const {
 		&& isScheduled()
 		&& !isSending()
 		&& !hasFailed()
-		&& !isEditingMedia()
-		&& (paidType() == PaidPostType::None);
+		&& !isEditingMedia();
 }
 
 bool HistoryItem::allowsReschedule() const {
@@ -3155,8 +3027,7 @@ bool HistoryItem::allowsEdit(TimeId now) const {
 		&& (!_media || _media->allowsEdit())
 		&& !isLegacyMessage()
 		&& !isEditingMedia()
-		&& !IsAnchoredEphemeral(this)
-		&& (paidType() == PaidPostType::None);
+		&& !IsAnchoredEphemeral(this);
 }
 
 bool HistoryItem::allowsEditMedia() const {
@@ -3212,8 +3083,6 @@ bool HistoryItem::forbidsSaving() const {
 		return true;
 	} else if (_media && _media->ttlSeconds()) {
 		return true;
-	} else if (const auto invoice = _media ? _media->invoice() : nullptr) {
-		return HasExtendedMedia(*invoice);
 	}
 	return false;
 }
@@ -3388,14 +3257,6 @@ Data::SendError HistoryItem::errorTextForForwardIgnoreRights(
 		&& _media->todolist()
 		&& (peer->isBroadcast() || peer->isMonoforum())) {
 		return tr::lng_restricted_send_todo_lists(tr::now);
-	} else if (_media
-		&& _media->invoice()
-		&& _media->invoice()->isPaidMedia
-		&& peer->isBroadcast()) {
-		// LoogriGram: upstream allowed this into a channel that was cleared
-		// to post paid media. Re-posting it anywhere is putting it up for
-		// sale, so it is refused everywhere.
-		return tr::lng_restricted_send_paid_media(tr::now);
 	}
 	return {};
 }
@@ -4087,25 +3948,6 @@ void HistoryItem::applyTTL(TimeId destroyAt) {
 	}
 }
 
-void HistoryItem::replaceBuyWithReceiptInMarkup() {
-	if (const auto markup = inlineReplyMarkup()) {
-		for (auto &row : markup->data.rows) {
-			for (auto &button : row) {
-				if (button.type == HistoryMessageMarkupButton::Type::Buy) {
-					const auto receipt = tr::lng_payments_receipt_button(tr::now);
-					if (button.text != receipt) {
-						button.text = receipt;
-						if (markup->inlineKeyboard) {
-							markup->inlineKeyboard = nullptr;
-							_history->owner().requestItemResize(this);
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
 bool HistoryItem::isUploading() const {
 	return _media && _media->uploading();
 }
@@ -4161,15 +4003,6 @@ bool HistoryItem::externalReply() const {
 		return false;
 	} else if (const auto forwarded = Get<HistoryMessageForwarded>()) {
 		return forwarded->savedFromPeer && forwarded->savedFromMsgId;
-	}
-	return false;
-}
-
-bool HistoryItem::hasUnpaidContent() const {
-	if (const auto media = _media.get()) {
-		if (const auto invoice = media->invoice()) {
-			return HasUnpaidMedia(*invoice);
-		}
 	}
 	return false;
 }
@@ -4595,11 +4428,6 @@ ItemPreview HistoryItem::toPreview(ToPreviewOptions options) const {
 		// Because larger version is shown exactly to the left of the small.
 		//auto media = _media ? _media->toPreview(options) : ItemPreview();
 		auto text = Ui::Text::Colorized(notificationText());
-		if (_media && _media->gift()) {
-			text = Ui::Text::Colorized(
-				Ui::Text::IconEmoji(&st::dialogsMiniGiftIcon)
-			).append(std::move(text));
-		}
 		return {
 			.text = std::move(text),
 		};
@@ -4765,16 +4593,6 @@ void HistoryItem::createComponents(CreateConfig &&config) {
 			mask |= HistoryMessageRestrictions::Bit();
 		}
 	}
-	if (config.suggest.exists) {
-		mask |= HistoryMessageSuggestion::Bit();
-		if (computeSuggestionActions(
-			config.suggest.accepted,
-			config.suggest.rejected,
-			TimeId()
-		) != SuggestionActions::None) {
-			mask |= HistoryMessageReplyMarkup::Bit();
-		}
-	}
 
 	UpdateComponents(mask);
 
@@ -4878,19 +4696,7 @@ void HistoryItem::createComponents(CreateConfig &&config) {
 		flagSensitiveContent();
 	}
 
-	if (const auto suggest = Get<HistoryMessageSuggestion>()) {
-		suggest->price = config.suggest.price;
-		suggest->date = config.suggest.date;
-		suggest->accepted = config.suggest.accepted;
-		suggest->rejected = config.suggest.rejected;
-		updateSuggestControls(suggest);
-	}
 
-	if (out() && isSending()) {
-		if (const auto channel = _history->peer->asMegagroup()) {
-			_boostsApplied = channel->mgInfo->boostsApplied;
-		}
-	}
 }
 
 void HistoryItem::flagSensitiveContent() {
@@ -5084,9 +4890,6 @@ void HistoryItem::createComponentsHelper(HistoryItemCommonFields &&fields) {
 	if (fields.flags & MessageFlag::HasViews) {
 		config.viewsCount = 1;
 	}
-	if (fields.suggest.exists) {
-		config.suggest = fields.suggest;
-	}
 
 	createComponents(std::move(config));
 }
@@ -5214,17 +5017,11 @@ void HistoryItem::createComponents(const MTPDmessage &data) {
 	config.postAuthor = qs(data.vpost_author().value_or_empty());
 	config.restrictions = Data::UnavailableReason::Extract(
 		data.vrestriction_reason());
-	config.suggest = HistoryMessageSuggestInfo(data.vsuggested_post());
 	createComponents(std::move(config));
 }
 
 void HistoryItem::refreshMedia(const MTPMessageMedia *media) {
 	const auto was = (_media != nullptr);
-	if (const auto invoice = was ? _media->invoice() : nullptr) {
-		if (HasExtendedMedia(*invoice)) {
-			return;
-		}
-	}
 	_media = nullptr;
 	if (media) {
 		setMedia(*media);
@@ -5357,6 +5154,10 @@ void HistoryItem::createServiceFromMtp(const MTPDmessageService &message) {
 	AddComponents(HistoryServiceData::Bit());
 
 	const auto &action = message.vaction();
+	if (LoogriGram::MoneyAction(action)) {
+		setupMoneyHidden();
+		return;
+	}
 	const auto type = action.type();
 	if (type == mtpc_messageActionPinMessage) {
 		UpdateComponents(HistoryServicePinned::Bit());
@@ -5398,21 +5199,6 @@ void HistoryItem::createServiceFromMtp(const MTPDmessageService &message) {
 		const auto &data = action.c_messageActionGameScore();
 		UpdateComponents(HistoryServiceGameScore::Bit());
 		Get<HistoryServiceGameScore>()->score = data.vscore().v;
-	} else if (type == mtpc_messageActionPaymentSent) {
-		const auto &data = action.c_messageActionPaymentSent();
-		UpdateComponents(HistoryServicePayment::Bit());
-		const auto amount = data.vtotal_amount().v;
-		const auto currency = qs(data.vcurrency());
-		const auto payment = Get<HistoryServicePayment>();
-		payment->slug = data.vinvoice_slug().value_or_empty();
-		payment->recurringInit = data.is_recurring_init();
-		payment->recurringUsed = data.is_recurring_used();
-		payment->isCreditsCurrency = (currency == Ui::kCreditsCurrency);
-		payment->amount = AmountAndStarCurrency(amount, currency);
-		// LoogriGram: the service message stays and still reads "you paid N
-		// to X", because it is an arriving record of something that happened.
-		// Tapping it opened the receipt in the checkout panel, which is a
-		// payment surface, so it is no longer a link.
 	} else if (type == mtpc_messageActionGroupCall
 		|| type == mtpc_messageActionGroupCallScheduled) {
 		const auto started = (type == mtpc_messageActionGroupCall);
@@ -5467,19 +5253,6 @@ void HistoryItem::createServiceFromMtp(const MTPDmessageService &message) {
 		} else {
 			RemoveComponents(HistoryServiceSameBackground::Bit());
 		}
-	} else if (type == mtpc_messageActionGiveawayResults) {
-		UpdateComponents(HistoryServiceGiveawayResults::Bit());
-	} else if (type == mtpc_messageActionPaymentRefunded) {
-		const auto &data = action.c_messageActionPaymentRefunded();
-		UpdateComponents(HistoryServicePaymentRefund::Bit());
-		const auto refund = Get<HistoryServicePaymentRefund>();
-		refund->peer = _history->owner().peer(peerFromMTP(data.vpeer()));
-		refund->amount = data.vtotal_amount().v;
-		refund->currency = qs(data.vcurrency());
-		refund->transactionId = qs(data.vcharge().data().vid());
-		// LoogriGram: this service message still says a payment was
-		// refunded, because that happened. Tapping it opened the refund's
-		// entry in the credits history, which is a payments screen.
 	} else if (type == mtpc_messageActionTodoCompletions) {
 		const auto &data = action.c_messageActionTodoCompletions();
 		UpdateComponents(HistoryServiceTodoCompletions::Bit());
@@ -5522,64 +5295,6 @@ void HistoryItem::createServiceFromMtp(const MTPDmessageService &message) {
 				answer.vtext());
 		}, [](const auto &) {
 		});
-	} else if (type == mtpc_messageActionSuggestedPostApproval) {
-		const auto &data = action.c_messageActionSuggestedPostApproval();
-		UpdateComponents(HistoryServiceSuggestDecision::Bit());
-		const auto decision = Get<HistoryServiceSuggestDecision>();
-		decision->price = CreditsAmountFromTL(data.vprice());
-		decision->balanceTooLow = data.is_balance_too_low();
-		decision->rejected = data.is_rejected();
-		decision->rejectComment = qs(data.vreject_comment().value_or_empty());
-		decision->date = data.vschedule_date().value_or_empty();
-	} else if (type == mtpc_messageActionSuggestedPostSuccess) {
-		const auto &data = action.c_messageActionSuggestedPostSuccess();
-		UpdateComponents(HistoryServiceSuggestFinish::Bit());
-		const auto finish = Get<HistoryServiceSuggestFinish>();
-		finish->price = CreditsAmountFromTL(data.vprice());
-	} else if (type == mtpc_messageActionSuggestedPostRefund) {
-		const auto &data = action.c_messageActionSuggestedPostRefund();
-		UpdateComponents(HistoryServiceSuggestFinish::Bit());
-		const auto finish = Get<HistoryServiceSuggestFinish>();
-		finish->refundType = data.is_payer_initiated()
-			? SuggestRefundType::User
-			: SuggestRefundType::Admin;
-	} else if (type == mtpc_messageActionStarGiftPurchaseOffer) {
-		const auto &data = action.c_messageActionStarGiftPurchaseOffer();
-		const auto accepted = data.is_accepted();
-		const auto rejected = data.is_declined();
-		const auto expiresAt = data.vexpires_at().v;
-		const auto gift = Api::FromTL(&history()->session(), data.vgift());
-		if (const auto unique = gift ? gift->unique : nullptr) {
-			auto mask = HistoryMessageSuggestion::Bit();
-			const auto actions = computeSuggestionActions(
-				accepted,
-				rejected,
-				expiresAt);
-			if (actions != SuggestionActions::None) {
-				mask |= HistoryMessageReplyMarkup::Bit();
-			}
-			UpdateComponents(mask);
-
-			const auto suggestion = Get<HistoryMessageSuggestion>();
-			suggestion->price = CreditsAmountFromTL(data.vprice());
-			suggestion->date = expiresAt;
-			suggestion->accepted = accepted;
-			suggestion->rejected = rejected;
-			suggestion->gift = unique;
-
-			if (actions != SuggestionActions::None) {
-				const auto markup = Get<HistoryMessageReplyMarkup>();
-				markup->updateSuggestControls(actions);
-			}
-		}
-	} else if (type == mtpc_messageActionStarGiftPurchaseOfferDeclined) {
-		const auto &data = action.c_messageActionStarGiftPurchaseOfferDeclined();
-		UpdateComponents(HistoryServiceSuggestFinish::Bit());
-		const auto finish = Get<HistoryServiceSuggestFinish>();
-		finish->refundType = data.is_expired()
-			? SuggestRefundType::Expired
-			: SuggestRefundType::User;
-		finish->price = CreditsAmountFromTL(data.vprice());
 	} else if (type == mtpc_messageActionNoForwardsToggle) {
 		AddComponents(HistoryServiceNoForwardsToggle::Bit());
 	} else if (type == mtpc_messageActionNoForwardsRequest) {
@@ -5709,7 +5424,6 @@ void HistoryItem::createServiceFromMtp(const MTPDmessageService &message) {
 void HistoryItem::setMedia(const MTPMessageMedia &media) {
 	_media = CreateMedia(this, media);
 	checkStoryForwardInfo();
-	checkBuyButton();
 }
 
 void HistoryItem::checkStoryForwardInfo() {
@@ -6295,29 +6009,9 @@ void HistoryItem::setServiceMessageByAction(const MTPmessageAction &action) {
 						tr::marked);
 				}
 			}
-		}, [&](const MTPDchatThemeUniqueGift &data) {
-			data.vgift().match([&](const MTPDstarGiftUnique &data) {
-				const auto giftName = tr::bold(qs(data.vtitle())
-					+ u" #"_q
-					+ QString::number(data.vnum().v));
-				if (_from->isSelf()) {
-					result.text = tr::lng_action_you_gift_theme_changed(
-						tr::now,
-						lt_name,
-						giftName,
-						tr::marked);
-				} else {
-					result.links.push_back(fromLink());
-					result.text = tr::lng_action_gift_theme_changed(
-						tr::now,
-						lt_from,
-						fromLinkText(),
-						lt_name,
-						giftName,
-						tr::marked);
-				}
-			}, [](const MTPDstarGift &) {
-			});
+		}, [](const MTPDchatThemeUniqueGift &) {
+			// LoogriGram: a collectible gift theme is hidden by MoneyAction()
+			// before this is reached.
 		});
 		return result;
 	};
@@ -6368,41 +6062,6 @@ void HistoryItem::setServiceMessageByAction(const MTPmessageAction &action) {
 			lt_text,
 			{ .text = qs(action.vtext()) },
 			tr::marked);
-		return result;
-	};
-
-	auto prepareGiftPremium = [&](
-			const MTPDmessageActionGiftPremium &action) {
-		auto result = PreparedServiceText();
-		const auto session = &_history->session();
-		const auto isSelf = _from->isSelf();
-		const auto peer = isSelf ? _history->peer : _from;
-		session->giftBoxStickersPacks().load();
-		const auto amount = action.vamount().v;
-		const auto currency = qs(action.vcurrency());
-		const auto cost = AmountAndStarCurrency(amount, currency);
-		const auto anonymous = _from->isServiceUser();
-		if (anonymous) {
-			result.text = tr::lng_action_gift_received_anonymous(
-				tr::now,
-				lt_cost,
-				cost,
-				tr::marked);
-		} else {
-			result.links.push_back(peer->createOpenLink());
-			result.text = isSelf
-				? tr::lng_action_gift_sent(tr::now,
-					lt_cost,
-					cost,
-					tr::marked)
-				: tr::lng_action_gift_received(
-					tr::now,
-					lt_user,
-					tr::link(peer->shortName(), 1), // Link 1.
-					lt_cost,
-					cost,
-					tr::marked);
-		}
 		return result;
 	};
 
@@ -6601,517 +6260,6 @@ void HistoryItem::setServiceMessageByAction(const MTPmessageAction &action) {
 		return result;
 	};
 
-	auto prepareGiftCode = [&](const MTPDmessageActionGiftCode &action) {
-		auto result = PreparedServiceText();
-		_history->session().giftBoxStickersPacks().load();
-		if (const auto boosted = action.vboost_peer()) {
-			result.text = {
-				(action.is_unclaimed()
-					? tr::lng_prize_unclaimed_about
-					: action.is_via_giveaway()
-					? tr::lng_prize_about
-					: tr::lng_prize_gift_about)(
-						tr::now,
-						lt_channel,
-						_from->owner().peer(
-							peerFromMTP(*action.vboost_peer()))->name()),
-			};
-		} else {
-			const auto isSelf = (_from->id == _from->session().userPeerId());
-			const auto peer = isSelf ? _history->peer : _from;
-			const auto cost = AmountAndStarCurrency(
-				action.vamount().value_or_empty(),
-				qs(action.vcurrency().value_or_empty()));
-			result.links.push_back(peer->createOpenLink());
-			result.text = isSelf
-				? tr::lng_action_gift_sent(tr::now,
-					lt_cost,
-					cost,
-					tr::marked)
-				: tr::lng_action_gift_received(
-					tr::now,
-					lt_user,
-					tr::link(peer->shortName(), 1), // Link 1.
-					lt_cost,
-					cost,
-					tr::marked);
-
-		}
-		return result;
-	};
-
-	auto prepareGiveawayLaunch = [&](const MTPDmessageActionGiveawayLaunch &action) {
-		const auto credits = action.vstars().value_or_empty();
-		auto result = PreparedServiceText();
-		result.links.push_back(fromLink());
-		result.text = credits
-			? (_history->peer->isMegagroup()
-				? tr::lng_action_giveaway_credits_started_group
-				: tr::lng_action_giveaway_credits_started)(
-					tr::now,
-					lt_from,
-					fromLinkText(), // Link 1.
-					lt_amount,
-					tr::lng_action_giveaway_credits_started_amount(
-						tr::now,
-						lt_count_decimal,
-						float64(credits),
-						tr::bold),
-					tr::marked)
-			: (_history->peer->isMegagroup()
-				? tr::lng_action_giveaway_started_group
-				: tr::lng_action_giveaway_started)(
-					tr::now,
-					lt_from,
-					fromLinkText(), // Link 1.
-					tr::marked);
-		return result;
-	};
-
-	auto prepareGiveawayResults = [&](const MTPDmessageActionGiveawayResults &action) {
-		auto result = PreparedServiceText();
-		const auto winners = action.vwinners_count().v;
-		const auto unclaimed = action.vunclaimed_count().v;
-		const auto credits = action.is_stars();
-		result.text = {
-			(!winners
-				? tr::lng_action_giveaway_results_none(tr::now)
-				: (credits && unclaimed)
-				? tr::lng_action_giveaway_results_credits_some(tr::now)
-				: (!credits && unclaimed)
-				? tr::lng_action_giveaway_results_some(tr::now)
-				: (credits && !unclaimed)
-				? tr::lng_action_giveaway_results_credits(
-					tr::now,
-					lt_count,
-					winners)
-				: tr::lng_action_giveaway_results(tr::now, lt_count, winners))
-		};
-		return result;
-	};
-
-	auto prepareGiftStars = [&](
-			const MTPDmessageActionGiftStars &action) {
-		auto result = PreparedServiceText();
-		const auto isSelf = (_from->id == _from->session().userPeerId());
-		const auto peer = isSelf ? _history->peer : _from;
-		_history->session().giftBoxStickersPacks().load();
-		const auto amount = action.vamount().v;
-		const auto currency = qs(action.vcurrency());
-		const auto cost = AmountAndStarCurrency(amount, currency);
-		const auto anonymous = _from->isServiceUser();
-		if (anonymous) {
-			result.text = tr::lng_action_gift_received_anonymous(
-				tr::now,
-				lt_cost,
-				cost,
-				tr::marked);
-		} else {
-			result.links.push_back(peer->createOpenLink());
-			result.text = isSelf
-				? tr::lng_action_gift_sent(tr::now,
-					lt_cost,
-					cost,
-					tr::marked)
-				: tr::lng_action_gift_received(
-					tr::now,
-					lt_user,
-					tr::link(peer->shortName(), 1), // Link 1.
-					lt_cost,
-					cost,
-					tr::marked);
-		}
-		return result;
-	};
-
-	auto prepareGiftTon = [&](
-			const MTPDmessageActionGiftTon &action) {
-		auto result = PreparedServiceText();
-		const auto isSelf = (_from->id == _from->session().userPeerId());
-		const auto peer = isSelf ? _history->peer : _from;
-		_history->session().giftBoxStickersPacks().tonLoad();
-		const auto amount = action.vamount().v;
-		const auto currency = qs(action.vcurrency());
-		const auto cost = AmountAndStarCurrency(amount, currency);
-		const auto anonymous = _from->isServiceUser();
-		if (anonymous) {
-			result.text = tr::lng_action_gift_received_anonymous(
-				tr::now,
-				lt_cost,
-				cost,
-				tr::marked);
-		} else {
-			result.links.push_back(peer->createOpenLink());
-			result.text = isSelf
-				? tr::lng_action_gift_sent(tr::now,
-					lt_cost,
-					cost,
-					tr::marked)
-				: tr::lng_action_gift_received(
-					tr::now,
-					lt_user,
-					tr::link(peer->shortName(), 1), // Link 1.
-					lt_cost,
-					cost,
-					tr::marked);
-		}
-		return result;
-	};
-
-	auto prepareGiftPrize = [&](
-			const MTPDmessageActionPrizeStars &action) {
-		auto result = PreparedServiceText();
-		_history->session().giftBoxStickersPacks().load();
-		result.text = {
-			(action.is_unclaimed()
-				? tr::lng_prize_unclaimed_about
-				: tr::lng_prize_about)(
-					tr::now,
-					lt_channel,
-					_from->owner().peer(
-						peerFromMTP(action.vboost_peer()))->name()),
-		};
-		return result;
-	};
-
-	auto prepareStarGift = [&](
-			const MTPDmessageActionStarGift &action) {
-		auto result = PreparedServiceText();
-		const auto upgradeGifted = action.is_prepaid_upgrade();
-		const auto upgradeSeparate = action.is_upgrade_separate();
-		const auto isSelf = _from->isSelf();
-		const auto peer = isSelf ? _history->peer : _from;
-		const auto stars = action.vgift().match([&](
-				const MTPDstarGift &data) {
-			return upgradeGifted
-				? uint64(action.vupgrade_stars().value_or_empty())
-				: upgradeSeparate
-				? uint64(data.vstars().v)
-				: (uint64(data.vstars().v)
-					+ uint64(action.vupgrade_stars().value_or_empty()));
-		}, [](const MTPDstarGiftUnique &) {
-			return uint64();
-		});
-		if (!stars) {
-			if (!isSelf) {
-				result.links.push_back(peer->createOpenLink());
-			}
-			result.text = isSelf
-				? tr::lng_action_gift_unique_sent(
-					tr::now,
-					tr::marked)
-				: tr::lng_action_gift_unique_received(
-					tr::now,
-					lt_user,
-					tr::link(peer->shortName(), 1), // Link 1.
-					tr::marked);
-			return result;
-		}
-		const auto cost = TextWithEntities{
-			tr::lng_action_gift_for_stars(tr::now, lt_count, stars),
-		};
-		const auto giftPeer = action.vpeer()
-			? peerFromMTP(*action.vpeer())
-			: PeerId();
-		const auto service = _from->isServiceUser();
-		const auto toChannel = service && peerIsChannel(giftPeer);
-		const auto anonymous = service && !toChannel;
-		if (toChannel) {
-			const auto fromId = action.vfrom_id()
-				? peerFromMTP(*action.vfrom_id())
-				: PeerId();
-			const auto from = fromId
-				? peer->owner().peer(fromId).get()
-				: nullptr;
-			const auto channel = peer->owner().channel(
-				peerToChannel(giftPeer));
-			if (!from || from->isSelf()) {
-				result.links.push_back(channel->createOpenLink());
-				if (upgradeGifted) {
-					result.text = tr::lng_action_gift_sent_upgrade_self_channel(
-						tr::now,
-						lt_cost,
-						cost,
-						lt_name,
-						tr::link(channel->name(), 1),
-						tr::marked);
-				} else {
-					result.text = tr::lng_action_gift_sent_self_channel(
-							tr::now,
-							lt_name,
-							tr::link(channel->name(), 1),
-							lt_cost,
-							cost,
-							tr::marked);
-				}
-			} else {
-				result.links.push_back(from->createOpenLink());
-				result.links.push_back(channel->createOpenLink());
-				if (upgradeGifted) {
-					result.text = tr::lng_action_gift_sent_upgrade_self_other(
-						tr::now,
-						lt_cost,
-						cost,
-						lt_name,
-						tr::link(channel->name(), 2),
-						lt_user,
-						tr::link(from->shortName(), 1),
-						tr::marked);
-				} else {
-					result.text = tr::lng_action_gift_sent_channel(
-						tr::now,
-						lt_user,
-						tr::link(from->shortName(), 1),
-						lt_name,
-						tr::link(channel->name(), 2),
-						lt_cost,
-						cost,
-						tr::marked);
-				}
-			}
-		} else if (anonymous || _history->peer->isSelf()) {
-			result.text = (action.is_auction_acquired()
-				? tr::lng_action_gift_auction_won
-				: anonymous
-				? tr::lng_action_gift_received_anonymous
-				: tr::lng_action_gift_self_bought)(
-					tr::now,
-					lt_cost,
-					cost,
-					tr::marked);
-		} else if (upgradeGifted) {
-			// Who sent the gift.
-			const auto fromId = action.vfrom_id()
-				? peerFromMTP(*action.vfrom_id())
-				: PeerId();
-			const auto from = fromId
-				? peer->owner().peer(fromId).get()
-				: nullptr;
-			if (isSelf) {
-				result.links.push_back(peer->createOpenLink());
-				if (!from || from->isSelf()) {
-					result.text = tr::lng_action_gift_sent_upgrade_self(
-						tr::now,
-						lt_cost,
-						cost,
-						tr::marked);
-				} else {
-					result.links.push_back(from->createOpenLink());
-					result.text = tr::lng_action_gift_sent_upgrade_self_other(
-						tr::now,
-						lt_cost,
-						cost,
-						lt_name,
-						tr::link(peer->shortName(), 1),
-						lt_user,
-						tr::link(from->shortName(), 2),
-						tr::marked);
-				}
-			} else {
-				result.links.push_back(peer->createOpenLink());
-				if (from && from != peer && !from->isSelf()) {
-					result.links.push_back(from->createOpenLink());
-					result.text = tr::lng_action_gift_sent_upgrade_other(
-						tr::now,
-						lt_from,
-						tr::link(peer->shortName(), 1),
-						lt_cost,
-						cost,
-						lt_user,
-						tr::link(from->shortName(), 2),
-						tr::marked);
-				} else {
-					result.text = tr::lng_action_gift_sent_upgrade(
-						tr::now,
-						lt_from,
-						tr::link(peer->shortName(), 1),
-						lt_cost,
-						cost,
-						tr::marked);
-				}
-			}
-		} else {
-			if (!isSelf) {
-				result.links.push_back(peer->createOpenLink());
-			}
-			result.text = isSelf
-				? tr::lng_action_gift_sent(
-					tr::now,
-					lt_cost,
-					cost,
-					tr::marked)
-				: tr::lng_action_gift_received(
-					tr::now,
-					lt_user,
-					tr::link(peer->shortName(), 1), // Link 1.
-					lt_cost,
-					cost,
-					tr::marked);
-		}
-		return result;
-	};
-
-	auto prepareStarGiftUnique = [&](
-			const MTPDmessageActionStarGiftUnique &action) {
-		auto result = PreparedServiceText();
-		const auto isSelf = _from->isSelf();
-		const auto resale = CreditsAmountFromTL(action.vresale_amount());
-		const auto fromOffer = action.is_from_offer();
-		const auto resaleCost = !resale
-			? tr::marked()
-			: tr::marked(PrepareCreditsAmountText(resale));
-		const auto giftPeer = action.vpeer()
-			? peerFromMTP(*action.vpeer())
-			: PeerId();
-		const auto service = _from->isServiceUser();
-		const auto toChannel = service && peerIsChannel(giftPeer);
-		const auto upgradeHelped = action.is_prepaid_upgrade();
-		const auto peer = isSelf ? _history->peer : _from;
-		const auto fromId = action.vfrom_id()
-			? peerFromMTP(*action.vfrom_id())
-			: PeerId();
-		const auto from = fromId ? peer->owner().peer(fromId) : peer;
-		if (toChannel) {
-			const auto channel = peer->owner().channel(
-				peerToChannel(giftPeer));
-			if (!from->isServiceUser() && !from->isSelf()) {
-				result.links.push_back(from->createOpenLink());
-				if (resale) {
-					result.links.push_back(channel->createOpenLink());
-				}
-				result.text = resale
-					? tr::lng_action_gift_sent_channel(
-						tr::now,
-						lt_user,
-						tr::link(from->shortName(), 1),
-						lt_name,
-						tr::link(channel->name(), 2),
-						lt_cost,
-						resaleCost,
-						tr::marked)
-					: (action.is_upgrade()
-						? tr::lng_action_gift_upgraded_channel
-						: tr::lng_action_gift_transferred_channel)(
-							tr::now,
-							lt_user,
-							tr::link(from->shortName(), 1),
-							lt_channel,
-							tr::link(channel->name(), 2),
-							tr::marked);
-			} else {
-				result.text = resale
-					? tr::lng_action_gift_sent_self_channel(
-						tr::now,
-						lt_name,
-						tr::link(channel->name(), 1),
-						lt_cost,
-						resaleCost,
-						tr::marked)
-					: (from->isServiceUser()
-						? tr::lng_action_gift_transferred_unknown_channel
-						: action.is_upgrade()
-						? tr::lng_action_gift_upgraded_self_channel
-						: tr::lng_action_gift_transferred_self_channel)(
-							tr::now,
-							lt_channel,
-							tr::link(channel->name(), 1),
-							tr::marked);
-			}
-			result.links.push_back(channel->createOpenLink());
-		} else {
-			if (upgradeHelped) {
-				result.links.push_back(peer->createOpenLink());
-				if (isSelf) {
-					result.text = tr::lng_action_gift_upgraded_helped_self(
-						tr::now,
-						lt_user,
-						tr::link(peer->shortName(), 1),
-						tr::marked);
-				} else {
-					result.text = tr::lng_action_gift_upgraded_helped(
-						tr::now,
-						lt_user,
-						tr::link(peer->shortName(), 1),
-						tr::marked);
-				}
-			} else if (!from->isServiceUser() && !_history->peer->isSelf()) {
-				if (!resale || !isSelf) {
-					result.links.push_back(from->createOpenLink());
-				}
-				result.text = fromOffer
-					? (isSelf
-						? tr::lng_action_gift_sent_sold(
-							tr::now,
-							lt_cost,
-							resaleCost,
-							tr::marked)
-						: tr::lng_action_gift_received_sold(
-							tr::now,
-							lt_user,
-							tr::link(peer->shortName(), 1), // Link 1.
-							lt_cost,
-							resaleCost,
-							tr::marked))
-					: resale
-					? (isSelf
-						? tr::lng_action_gift_sent(
-							tr::now,
-							lt_cost,
-							resaleCost,
-							tr::marked)
-						: tr::lng_action_gift_received(
-							tr::now,
-							lt_user,
-							tr::link(peer->shortName(), 1), // Link 1.
-							lt_cost,
-							resaleCost,
-							tr::marked))
-					: (action.is_upgrade()
-						? (isSelf
-							? tr::lng_action_gift_upgraded_mine
-							: tr::lng_action_gift_upgraded)
-						: (isSelf
-							? tr::lng_action_gift_transferred_mine
-							: tr::lng_action_gift_transferred))(
-								tr::now,
-								lt_user,
-								tr::link(from->shortName(), 1),
-								tr::marked);
-			} else if (action.is_assigned()) {
-				const auto gift = Api::FromTL(
-					&history()->session(),
-					action.vgift());
-				result.text = tr::lng_action_gift_displayed_self(
-					tr::now,
-					lt_name,
-					TextWithEntities{ (gift && gift->unique)
-						? Data::UniqueGiftName(*gift->unique)
-						: QString(),
-					},
-					tr::marked);
-			} else if (action.is_craft()) {
-				result.text = tr::lng_action_gift_crafted(
-					tr::now,
-					tr::marked);
-			} else {
-				result.text = resale
-					? tr::lng_action_gift_self_bought(
-						tr::now,
-						lt_cost,
-						resaleCost,
-						tr::marked)
-					: (from->isServiceUser()
-						? tr::lng_action_gift_transferred_unknown
-						: action.is_upgrade()
-						? tr::lng_action_gift_upgraded_self
-						: tr::lng_action_gift_transferred_self)(
-							tr::now,
-							tr::marked);
-			}
-		}
-		return result;
-	};
-
 	auto prepareTodoCompletions = [&](const MTPDmessageActionTodoCompletions &) {
 		return prepareTodoCompletionsText();
 	};
@@ -7128,143 +6276,8 @@ void HistoryItem::setServiceMessageByAction(const MTPmessageAction &action) {
 		return preparePollDeleteAnswerText();
 	};
 
-	auto prepareSuggestedPostApproval = [&](const MTPDmessageActionSuggestedPostApproval &data) {
-		return PreparedServiceText{ { data.is_rejected()
-			? tr::lng_action_post_rejected(tr::now)
-			: data.is_balance_too_low()
-			? tr::lng_action_not_enough_funds(tr::now)
-			: tr::lng_suggest_action_agreement(tr::now) } };
-	};
-
-	auto prepareSuggestedPostSuccess = [&](const MTPDmessageActionSuggestedPostSuccess &data) {
-		const auto price = CreditsAmountFromTL(&data.vprice());
-		auto result = PreparedServiceText();
-		result.links.push_back(_from->createOpenLink());
-		result.text = (price.stars()
-			? tr::lng_action_suggest_success_stars
-			: tr::lng_action_suggest_success_ton)(
-				tr::now,
-				lt_count_decimal,
-				price.value(),
-				lt_from,
-				tr::link(_from->shortName(), 1),
-				tr::marked);
-		return result;
-	};
-
-	auto prepareSuggestedPostRefund = [&](const MTPDmessageActionSuggestedPostRefund &data) {
-		return PreparedServiceText{ { data.is_payer_initiated()
-			? tr::lng_action_suggest_refund_user(tr::now)
-			: tr::lng_action_suggest_refund_admin(tr::now)
-		} };
-	};
-
 	auto prepareConferenceCall = [&](const MTPDmessageActionConferenceCall &) -> PreparedServiceText {
 		Unexpected("PhoneCall type in setServiceMessageFromMtp.");
-	};
-
-	auto prepareSuggestBirthday = [&](const MTPDmessageActionSuggestBirthday &action) {
-		auto result = PreparedServiceText{};
-		const auto isSelf = (_from->id == _from->session().userPeerId());
-		const auto peer = isSelf ? history()->peer : _from;
-		const auto user = peer->asUser();
-		const auto name = (user && !user->firstName.isEmpty())
-			? user->firstName
-			: peer->name();
-		result.links.push_back(peer->createOpenLink());
-		result.text = (isSelf
-			? tr::lng_action_suggested_birthday_me
-			: tr::lng_action_suggested_birthday)(
-				tr::now,
-				lt_user,
-				tr::link(name, 1), // Link 1.
-				tr::marked);
-		return result;
-	};
-
-	auto prepareStarGiftPurchaseOffer = [&](const MTPDmessageActionStarGiftPurchaseOffer &action) {
-		auto result = PreparedServiceText{};
-		action.vgift().match([&](const MTPDstarGiftUnique &data) {
-			const auto amount = CreditsAmountFromTL(action.vprice());
-			const auto cost = tr::marked(PrepareCreditsAmountText(amount));
-			const auto giftName = tr::bold(qs(data.vtitle())
-				+ u" #"_q
-				+ QString::number(data.vnum().v));
-			if (_from->isSelf()) {
-				result.text = tr::lng_action_gift_offer_you(
-					tr::now,
-					lt_cost,
-					cost,
-					lt_name,
-					giftName,
-					tr::marked);
-			} else {
-				result.text = tr::lng_action_gift_offer_incoming(
-					tr::now,
-					lt_amount,
-					cost,
-					tr::marked);
-			}
-		}, [](const MTPDstarGift &) {
-		});
-		return result;
-	};
-
-	auto prepareStarGiftPurchaseOfferDeclined = [&](const MTPDmessageActionStarGiftPurchaseOfferDeclined &action) {
-		auto result = PreparedServiceText{};
-		action.vgift().match([&](const MTPDstarGiftUnique &data) {
-			const auto amount = CreditsAmountFromTL(action.vprice());
-			const auto cost = tr::marked(PrepareCreditsAmountText(amount));
-			const auto giftName = tr::bold(qs(data.vtitle())
-				+ u" #"_q
-				+ QString::number(data.vnum().v));
-			const auto expired = action.is_expired();
-			if (_from->isSelf()) {
-				result.links.push_back(_history->peer->createOpenLink());
-				result.text = expired
-					? tr::lng_action_gift_offer_expired(
-						tr::now,
-						lt_user,
-						tr::link(st::wrap_rtl(_history->peer->name()), 1),
-						lt_name,
-						giftName,
-						lt_cost,
-						cost,
-						tr::marked)
-					: tr::lng_action_gift_offer_declined_you(
-						tr::now,
-						lt_user,
-						tr::link(st::wrap_rtl(_history->peer->name()), 1),
-						lt_name,
-						giftName,
-						lt_cost,
-						cost,
-						tr::marked);
-			} else {
-				if (!expired) {
-					result.links.push_back(fromLink());
-				}
-				result.text = expired
-					? tr::lng_action_gift_offer_expired_your(
-						tr::now,
-						lt_name,
-						giftName,
-						lt_cost,
-						cost,
-						tr::marked)
-					: tr::lng_action_gift_offer_declined(
-						tr::now,
-						lt_user,
-						fromLinkText(),
-						lt_name,
-						giftName,
-						lt_cost,
-						cost,
-						tr::marked);
-			}
-		}, [](const MTPDstarGift &) {
-		});
-		return result;
 	};
 
 	auto prepareNewCreatorPending = [this](const MTPDmessageActionNewCreatorPending &action) {
@@ -7462,35 +6475,35 @@ void HistoryItem::setServiceMessageByAction(const MTPmessageAction &action) {
 		prepareChatJoinedByRequest,
 		prepareChatJoinedViaCommunity,
 		prepareWebViewDataSent,
-		prepareGiftPremium,
+		PrepareEmptyText<MTPDmessageActionGiftPremium>,
 		prepareTopicCreate,
 		prepareTopicEdit,
 		PrepareErrorText<MTPDmessageActionWebViewDataSentMe>,
 		prepareSuggestProfilePhoto,
 		prepareRequestedPeer,
 		prepareSetChatWallPaper,
-		prepareGiftCode,
-		prepareGiveawayLaunch,
-		prepareGiveawayResults,
+		PrepareEmptyText<MTPDmessageActionGiftCode>,
+		PrepareEmptyText<MTPDmessageActionGiveawayLaunch>,
+		PrepareEmptyText<MTPDmessageActionGiveawayResults>,
 		PrepareEmptyText<MTPDmessageActionBoostApply>,
 		PrepareEmptyText<MTPDmessageActionPaymentRefunded>,
-		prepareGiftStars,
-		prepareGiftTon,
-		prepareGiftPrize,
-		prepareStarGift,
-		prepareStarGiftUnique,
+		PrepareEmptyText<MTPDmessageActionGiftStars>,
+		PrepareEmptyText<MTPDmessageActionGiftTon>,
+		PrepareEmptyText<MTPDmessageActionPrizeStars>,
+		PrepareEmptyText<MTPDmessageActionStarGift>,
+		PrepareEmptyText<MTPDmessageActionStarGiftUnique>,
 		PrepareEmptyText<MTPDmessageActionPaidMessagesRefunded>,
 		PrepareEmptyText<MTPDmessageActionPaidMessagesPrice>,
 		prepareConferenceCall,
 		prepareTodoCompletions,
 		prepareTodoAppendTasks,
 		preparePollAppendAnswer,
-		prepareSuggestedPostApproval,
-		prepareSuggestedPostSuccess,
-		prepareSuggestedPostRefund,
-		prepareSuggestBirthday,
-		prepareStarGiftPurchaseOffer,
-		prepareStarGiftPurchaseOfferDeclined,
+		PrepareEmptyText<MTPDmessageActionSuggestedPostApproval>,
+		PrepareEmptyText<MTPDmessageActionSuggestedPostSuccess>,
+		PrepareEmptyText<MTPDmessageActionSuggestedPostRefund>,
+		PrepareEmptyText<MTPDmessageActionSuggestBirthday>,
+		PrepareEmptyText<MTPDmessageActionStarGiftPurchaseOffer>,
+		PrepareEmptyText<MTPDmessageActionStarGiftPurchaseOfferDeclined>,
 		prepareNewCreatorPending,
 		prepareChangeCreator,
 		prepareNoForwardsToggle,
@@ -7552,18 +6565,6 @@ void HistoryItem::processAction(const MTPMessageAction &action) {
 				channel->mgInfo->joinedMessageFound = true;
 			}
 		}
-	}, [&](const MTPDmessageActionGiftPremium &data) {
-		const auto session = &history()->session();
-		_media = std::make_unique<Data::MediaGiftBox>(
-			this,
-			_from,
-			Data::GiftCode{
-				.message = (data.vmessage()
-					? Api::ParseTextWithEntities(session, *data.vmessage())
-					: TextWithEntities()),
-				.count = data.vdays().v,
-				.type = Data::GiftType::Premium,
-			});
 	}, [&](const MTPDmessageActionSuggestProfilePhoto &data) {
 		data.vphoto().match([&](const MTPDphoto &photo) {
 			_flags |= MessageFlag::IsUserpicSuggestion;
@@ -7584,254 +6585,6 @@ void HistoryItem::processAction(const MTPMessageAction &action) {
 					*paper,
 					data.is_for_both());
 			}
-		}
-	}, [&](const MTPDmessageActionSetChatTheme &data) {
-		data.vtheme().match([](const MTPDchatTheme &) {
-		}, [&](const MTPDchatThemeUniqueGift &data) {
-			const auto session = &history()->session();
-			if (const auto gift = Api::FromTL(session, data.vgift())) {
-				_media = std::make_unique<Data::MediaGiftBox>(
-					this,
-					_from,
-					Data::GiftCode{
-						.unique = gift->unique,
-						.type = Data::GiftType::ChatTheme,
-					});
-			}
-		}, [](const MTPDchatTheme &) {});
-	}, [&](const MTPDmessageActionGiftCode &data) {
-		const auto boostedId = data.vboost_peer()
-			? peerToChannel(peerFromMTP(*data.vboost_peer()))
-			: ChannelId();
-		_media = std::make_unique<Data::MediaGiftBox>(
-			this,
-			_from,
-			Data::GiftCode{
-				.slug = qs(data.vslug()),
-				.message = (data.vmessage()
-					? Api::ParseTextWithEntities(
-						&history()->session(),
-						*data.vmessage())
-					: TextWithEntities()),
-				.channel = (boostedId
-					? history()->owner().channel(boostedId).get()
-					: nullptr),
-				.count = data.vdays().v,
-				.type = Data::GiftType::Premium,
-				.viaGiveaway = data.is_via_giveaway(),
-				.unclaimed = data.is_unclaimed(),
-			});
-	}, [&](const MTPDmessageActionGiftStars &data) {
-		_media = std::make_unique<Data::MediaGiftBox>(
-			this,
-			_from,
-			Data::GiftType::Credits,
-			data.vstars().v);
-	}, [&](const MTPDmessageActionGiftTon &data) {
-		_media = std::make_unique<Data::MediaGiftBox>(
-			this,
-			_from,
-			Data::GiftType::Ton,
-			data.vcrypto_amount().v);
-	}, [&](const MTPDmessageActionPrizeStars &data) {
-		_media = std::make_unique<Data::MediaGiftBox>(
-			this,
-			_from,
-			Data::GiftCode{
-				.slug = qs(data.vtransaction_id()),
-				.channel = history()->owner().channel(
-					peerToChannel(peerFromMTP(data.vboost_peer()))),
-				.giveawayMsgId = data.vgiveaway_msg_id().v,
-				.count = int(data.vstars().v),
-				.type = Data::GiftType::Credits,
-				.viaGiveaway = true,
-				.unclaimed = data.is_unclaimed(),
-			});
-	}, [&](const MTPDmessageActionStarGift &data) {
-		const auto service = _from->isServiceUser();
-		const auto from = data.vfrom_id()
-			? peerFromMTP(*data.vfrom_id())
-			: PeerId();
-		const auto to = data.vpeer()
-			? peerFromMTP(*data.vpeer())
-			: PeerId();
-		const auto upgradeMsgId = data.vupgrade_msg_id().value_or_empty();
-		const auto giftMsgId = data.vgift_msg_id().value_or_empty();
-		const auto title = data.vgift().match([&](const MTPDstarGift &gift) {
-			return qs(gift.vtitle().value_or_empty());
-		}, [](const MTPDstarGiftUnique &) {
-			return QString();
-		});
-		const auto bid = data.vgift().match([&](const MTPDstarGift &gift) {
-			return data.is_auction_acquired()
-				? (int(gift.vstars().v)
-					+ int(gift.vupgrade_stars().value_or_empty()))
-				: 0;
-		}, [](const MTPDstarGiftUnique &) {
-			return 0;
-		});
-		const auto channel = (service && peerIsChannel(to))
-			? history()->owner().channel(peerToChannel(to)).get()
-			: nullptr;
-		const auto channelSavedId = channel
-			? data.vsaved_id().value_or_empty()
-			: uint64();
-		const auto realGiftMsgId = (peerIsUser(to) && data.vsaved_id())
-			? MsgId(data.vsaved_id().value_or_empty())
-			: upgradeMsgId
-			? upgradeMsgId
-			: giftMsgId;
-
-		using Fields = Data::GiftCode;
-		auto fields = Fields{
-			.message = (data.vmessage()
-				? Api::ParseTextWithEntities(
-					&history()->session(),
-					*data.vmessage())
-				: TextWithEntities()),
-			.auctionTo = (service
-				&& data.is_auction_acquired()
-				&& data.vto_id())
-				? history()->owner().peer(
-					peerFromMTP(*data.vto_id())).get()
-				: nullptr,
-			.channel = channel,
-			.channelFrom = ((service && from)
-				? history()->owner().peer(from).get()
-				: nullptr),
-			.channelSavedId = channelSavedId,
-			.giftPrepayUpgradeHash = qs(
-				data.vprepaid_upgrade_hash().value_or_empty()),
-			.giftTitle = title,
-			.realGiftMsgId = realGiftMsgId,
-			.starsConverted = int(data.vconvert_stars().value_or_empty()),
-			.starsUpgradedBySender = int(
-				data.vupgrade_stars().value_or_empty()),
-			.starsBid = bid,
-			.giftNum = data.vgift_num().value_or_empty(),
-			.type = Data::GiftType::StarGift,
-			.upgradeSeparate = data.is_upgrade_separate(),
-			.upgradeGifted = data.is_prepaid_upgrade(),
-			.upgradable = data.is_can_upgrade(),
-			.anonymous = data.is_name_hidden(),
-			.converted = data.is_converted(),
-			.upgraded = data.is_upgraded(),
-			.saved = data.is_saved(),
-		};
-		if (auto gift = Api::FromTL(&history()->session(), data.vgift())) {
-			fields.stargiftId = gift->id;
-			fields.starsToUpgrade = gift->starsToUpgrade;
-			fields.document = gift->document;
-			fields.stargiftReleasedBy = gift->releasedBy;
-			fields.limitedCount = gift->limitedCount;
-			fields.limitedLeft = gift->limitedLeft;
-			fields.count = gift->stars;
-			fields.unique = gift->unique;
-		}
-		_media = std::make_unique<Data::MediaGiftBox>(
-			this,
-			_from,
-			std::move(fields));
-	}, [&](const MTPDmessageActionStarGiftUnique &data) {
-		const auto service = _from->isServiceUser();
-		const auto from = data.vfrom_id()
-			? peerFromMTP(*data.vfrom_id())
-			: PeerId();
-		const auto to = data.vpeer()
-			? peerFromMTP(*data.vpeer())
-			: PeerId();
-		const auto channel = (service && peerIsChannel(to))
-			? history()->owner().channel(peerToChannel(to)).get()
-			: nullptr;
-		const auto channelSavedId = channel
-			? data.vsaved_id().value_or_empty()
-			: uint64();
-		const auto realGiftMsgId = (peerIsUser(to) && data.vsaved_id())
-			? MsgId(data.vsaved_id().value_or_empty())
-			: id;
-		auto message = (data.vmessage()
-			? Api::ParseTextWithEntities(
-				&history()->session(),
-				*data.vmessage())
-			: TextWithEntities());
-		const auto anonymous = data.is_name_hidden();
-		auto messageAuthor = static_cast<PeerData*>(nullptr);
-		if (!message.empty() && !anonymous) {
-			if (data.vfrom_id()) {
-				const auto peer = history()->owner().peerLoaded(from);
-				if (peer && !peer->isServiceUser()) {
-					messageAuthor = peer;
-				}
-			} else if (!_from->isServiceUser()) {
-				messageAuthor = _from.get();
-			}
-		}
-
-		using Fields = Data::GiftCode;
-		auto fields = Fields{
-			.message = std::move(message),
-			.messageAuthor = messageAuthor,
-			.channel = channel,
-			.channelFrom = ((service && from)
-				? history()->owner().peer(from).get()
-				: nullptr),
-			.channelSavedId = channelSavedId,
-			.realGiftMsgId = realGiftMsgId,
-			.starsForDetailsRemove = int(
-				data.vdrop_original_details_stars().value_or_empty()),
-			.type = Data::GiftType::StarGift,
-			.transferred = data.is_transferred(),
-			.messageFromUniqueAction = true,
-			.anonymous = anonymous,
-			.refunded = data.is_refunded(),
-			.upgrade = data.is_upgrade(),
-			.saved = data.is_saved(),
-			.craft = data.is_craft(),
-		};
-		if (auto gift = Api::FromTL(&history()->session(), data.vgift())) {
-			fields.stargiftId = gift->id;
-			fields.document = gift->document;
-			fields.stargiftReleasedBy = gift->releasedBy;
-			fields.limitedCount = gift->limitedCount;
-			fields.limitedLeft = gift->limitedLeft;
-			fields.count = gift->stars;
-			fields.unique = std::move(gift->unique);
-			if (const auto unique = fields.unique.get()) {
-				unique->starsForTransfer
-					= data.vtransfer_stars().value_or(-1);
-				unique->exportAt = data.vcan_export_at().value_or_empty();
-				unique->canTransferAt = data.vcan_transfer_at().value_or_empty();
-				unique->canResellAt = data.vcan_resell_at().value_or_empty();
-				unique->canCraftAt = data.vcan_craft_at().value_or_empty();
-			}
-		}
-		_media = std::make_unique<Data::MediaGiftBox>(
-			this,
-			_from,
-			std::move(fields));
-	}, [&](const MTPDmessageActionSuggestBirthday &data) {
-		const auto &fields = data.vbirthday().data();
-		_media = std::make_unique<Data::MediaGiftBox>(
-			this,
-			_from,
-			Data::GiftCode{
-				.count = Data::Birthday(
-					fields.vday().v,
-					fields.vmonth().v,
-					fields.vyear().value_or_empty()).serialize(),
-				.type = Data::GiftType::BirthdaySuggest,
-			});
-	}, [&](const MTPDmessageActionStarGiftPurchaseOffer &data) {
-		if (const auto suggestion = Get<HistoryMessageSuggestion>()) {
-			Assert(suggestion->gift != nullptr);
-
-			_media = std::make_unique<Data::MediaGiftBox>(
-				this,
-				_from,
-				Data::GiftCode{
-					.unique = suggestion->gift,
-					.type = Data::GiftType::GiftOffer,
-				});
 		}
 	}, [](const auto &) {
 	});
@@ -8135,59 +6888,6 @@ PreparedServiceText HistoryItem::prepareGameScoreText() {
 	return result;
 }
 
-PreparedServiceText HistoryItem::preparePaymentSentText() {
-	auto result = PreparedServiceText();
-	const auto payment = Get<HistoryServicePayment>();
-	Assert(payment != nullptr);
-
-	auto invoiceTitle = [&] {
-		if (payment->msg) {
-			if (const auto media = payment->msg->media()) {
-				if (const auto invoice = media->invoice()) {
-					return tr::link(invoice->title, QString());
-				}
-			}
-		}
-		return TextWithEntities();
-	}();
-
-	if (invoiceTitle.text.isEmpty()) {
-		if (payment->recurringUsed) {
-			result.text = tr::lng_action_payment_used_recurring(
-				tr::now,
-				lt_amount,
-				payment->amount,
-				tr::marked);
-		} else {
-			result.text = (payment->recurringInit
-				? tr::lng_action_payment_init_recurring
-				: tr::lng_action_payment_done)(
-					tr::now,
-					lt_amount,
-					payment->amount,
-					lt_user,
-					{ .text = _history->peer->name() },
-					tr::marked);
-		}
-	} else {
-		result.text = (payment->recurringInit
-			? tr::lng_action_payment_init_recurring_for
-			: tr::lng_action_payment_done_for)(
-				tr::now,
-				lt_amount,
-				payment->amount,
-				lt_user,
-				{ .text = _history->peer->name() },
-				lt_invoice,
-				invoiceTitle,
-				tr::marked);
-		if (payment->msg) {
-			result.links.push_back(payment->lnk);
-		}
-	}
-	return result;
-}
-
 PreparedServiceText HistoryItem::prepareStoryMentionText() {
 	auto result = PreparedServiceText();
 	const auto peer = history()->peer;
@@ -8437,6 +7137,12 @@ bool HistoryItem::isOnlyEmojiAndSpaces() const {
 			!HasNotEmojiAndSpaces(_text.text));
 	}
 	return (_flags & MessageFlag::OnlyEmojiAndSpaces);
+}
+
+void HistoryItem::setupMoneyHidden() {
+	_flags |= MessageFlag::MoneyHidden;
+	_media = nullptr;
+	setServiceText({});
 }
 
 void HistoryItem::setupChatThemeChange() {
