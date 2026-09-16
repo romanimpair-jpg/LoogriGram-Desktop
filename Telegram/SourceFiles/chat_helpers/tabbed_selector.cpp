@@ -33,6 +33,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_emoji_statuses.h"
 #include "data/data_session.h"
 #include "data/data_changes.h"
+#include "data/data_peer_values.h"
 #include "data/stickers/data_stickers.h"
 #include "data/stickers/data_custom_emoji.h" // AllowEmojiWithoutPremium.
 #include "lang/lang_keys.h"
@@ -497,7 +498,7 @@ TabbedSelector::TabbedSelector(
 		}, lifetime());
 
 		rpl::merge(
-			session().premiumValue() | rpl::to_empty,
+			Data::AmPremiumValue(&session()) | rpl::to_empty,
 			session().data().stickers().updated(hasMasksTab()
 				? Data::StickersType::Masks
 				: Data::StickersType::Stickers)

@@ -351,22 +351,8 @@ bool Session::premium() const {
 
 // LoogriGram: premiumPossible() was premium() || premiumCanBuy(), and
 // nothing can be bought in-app, so the two were the same answer. Both are
-// gone and every caller asks premium() directly. This producer, which was
-// premiumPossibleValue(), emits the current value first because several
-// callers need one before the flag next changes; flagsValue() alone only
-// fires on a change.
-rpl::producer<bool> Session::premiumValue() const {
-	return rpl::single(
-		rpl::empty
-	) | rpl::then(
-		_user->flagsValue() | rpl::filter([=](
-				UserData::Flags::Change change) {
-			return (change.diff & UserDataFlag::Premium);
-		}) | rpl::to_empty
-	) | rpl::map([=] {
-		return _user->isPremium();
-	});
-}
+// gone and every caller asks premium() directly; premiumPossibleValue()
+// callers use Data::AmPremiumValue(), which is the same producer.
 
 void Session::applyGhostModePrivacy() {
 	// Exception lists are left alone rather than cleared. Wiping an "always

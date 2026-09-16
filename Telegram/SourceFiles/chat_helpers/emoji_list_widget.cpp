@@ -599,9 +599,11 @@ EmojiListWidget::EmojiListWidget(
 		updateSelected();
 	}, lifetime());
 
-	rpl::combine(
-		Data::AmPremiumValue(&session()),
-		session().premiumValue()
+	// LoogriGram: was combined with premiumPossibleValue(), which is gone —
+	// it had become this same value. skip(1) drops only the initial emission;
+	// a second one would run refreshCustom() before _footer exists.
+	Data::AmPremiumValue(
+		&session()
 	) | rpl::skip(1) | rpl::on_next([=] {
 		refreshCustom();
 		resizeToWidth(width());

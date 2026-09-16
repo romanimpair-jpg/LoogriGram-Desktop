@@ -799,11 +799,10 @@ void EditFilterBox(
 
 		wrap->toggleOn(
 			rpl::combine(
-				session->premiumValue(),
 				session->data().chatsFilters().tagsEnabledValue(),
 				Data::AmPremiumValue(session)
-			) | rpl::map([=] (bool possible, bool tagsEnabled, bool premium) {
-				return possible && (tagsEnabled || !premium);
+			) | rpl::map([=] (bool tagsEnabled, bool premium) {
+				return premium && tagsEnabled;
 			}),
 			anim::type::instant);
 

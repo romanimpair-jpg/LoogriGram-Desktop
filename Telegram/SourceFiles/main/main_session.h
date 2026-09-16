@@ -123,7 +123,6 @@ public:
 	}
 
 	[[nodiscard]] bool premium() const;
-	[[nodiscard]] rpl::producer<bool> premiumValue() const;
 
 	// LoogriGram: sets Last Seen to Nobody. Suppressing presence client side
 	// is not enough on its own, because the server also infers it from
