@@ -105,8 +105,7 @@ public:
 		std::shared_ptr<Ui::ChatTheme> theme,
 		not_null<PeerData*> peer,
 		rpl::producer<uint8> colorIndexValue,
-		rpl::producer<DocumentId> backgroundEmojiId,
-		rpl::producer<std::optional<Ui::ColorCollectible>> colorCollectible);
+		rpl::producer<DocumentId> backgroundEmojiId);
 	~PreviewWrap();
 
 private:
@@ -161,8 +160,7 @@ PreviewWrap::PreviewWrap(
 	std::shared_ptr<Ui::ChatTheme> theme,
 	not_null<PeerData*> peer,
 	rpl::producer<uint8> colorIndexValue,
-	rpl::producer<DocumentId> backgroundEmojiId,
-	rpl::producer<std::optional<Ui::ColorCollectible>> colorCollectible)
+	rpl::producer<DocumentId> backgroundEmojiId)
 : RpWidget(box)
 , _box(box)
 , _peer(peer)
@@ -235,15 +233,6 @@ PreviewWrap::PreviewWrap(
 	}, lifetime());
 	std::move(backgroundEmojiId) | rpl::on_next([=](DocumentId id) {
 		_fake->changeBackgroundEmojiId(id);
-		update();
-	}, lifetime());
-	std::move(colorCollectible) | rpl::on_next([=](
-			std::optional<Ui::ColorCollectible> &&collectible) {
-		if (collectible) {
-			_fake->changeColorCollectible(std::move(*collectible));
-		} else {
-			_fake->clearColorCollectible();
-		}
 		update();
 	}, lifetime());
 
@@ -400,7 +389,6 @@ void LevelBadge::paintEvent(QPaintEvent *e) {
 struct SetValues {
 	uint8 colorIndex = 0;
 	DocumentId backgroundEmojiId = 0;
-	std::optional<Ui::ColorCollectible> colorCollectible;
 	EmojiStatusId statusId;
 	TimeId statusUntil = 0;
 	bool statusChanged = false;
@@ -417,12 +405,8 @@ void Set(
 	const auto wasEmojiId = values.forProfile
 		? peer->profileBackgroundEmojiId()
 		: peer->backgroundEmojiId();
-	const auto &wasColorCollectible = peer->colorCollectible();
 
-	const auto setLocal = [=](
-			uint8 index,
-			DocumentId emojiId,
-			std::optional<Ui::ColorCollectible> colorCollectible) {
+	const auto setLocal = [=](uint8 index, DocumentId emojiId) {
 		using UpdateFlag = Data::PeerUpdate::Flag;
 		if (values.forProfile) {
 			if (index == kUnsetColorIndex) {
@@ -437,11 +421,6 @@ void Set(
 			} else {
 				peer->changeColorIndex(index);
 			}
-			if (colorCollectible) {
-				peer->changeColorCollectible(*colorCollectible);
-			} else {
-				peer->clearColorCollectible();
-			}
 			peer->changeBackgroundEmojiId(emojiId);
 		}
 		peer->session().changes().peerUpdated(
@@ -451,10 +430,7 @@ void Set(
 					? UpdateFlag::ColorProfile
 					: UpdateFlag::Color)));
 	};
-	setLocal(
-		values.colorIndex,
-		values.backgroundEmojiId,
-		values.colorCollectible);
+	setLocal(values.colorIndex, values.backgroundEmojiId);
 
 	const auto done = [=] {
 		if (showToast) {
@@ -470,9 +446,7 @@ void Set(
 	const auto fail = [=](const MTP::Error &error) {
 		const auto type = error.type();
 		if (type != u"CHAT_NOT_MODIFIED"_q) {
-			setLocal(wasIndex, wasEmojiId, wasColorCollectible
-				? *wasColorCollectible
-				: std::optional<Ui::ColorCollectible>());
+			setLocal(wasIndex, wasEmojiId);
 			show->showToast(type);
 		}
 	};
@@ -486,21 +460,17 @@ void Set(
 		using ColorFlag = MTPDpeerColor::Flag;
 		send(MTPaccount_UpdateColor(
 			MTP_flags((values.forProfile ? Flag::f_for_profile : Flag(0))
-				| (((!values.forProfile && values.colorCollectible)
-					|| (values.colorIndex != kUnsetColorIndex))
+				| ((values.colorIndex != kUnsetColorIndex)
 					? Flag::f_color
 					: Flag(0))),
-			((!values.forProfile && values.colorCollectible)
-				? MTP_inputPeerColorCollectible(
-					MTP_long(values.colorCollectible->collectibleId))
-				: MTP_peerColor(
-					MTP_flags(ColorFlag()
-						| ColorFlag::f_color
-						| (values.backgroundEmojiId
-							? ColorFlag::f_background_emoji_id
-							: ColorFlag(0))),
-					MTP_int(values.colorIndex),
-					MTP_long(values.backgroundEmojiId)))));
+			MTP_peerColor(
+				MTP_flags(ColorFlag()
+					| ColorFlag::f_color
+					| (values.backgroundEmojiId
+						? ColorFlag::f_background_emoji_id
+						: ColorFlag(0))),
+				MTP_int(values.colorIndex),
+				MTP_long(values.backgroundEmojiId))));
 		if (values.statusChanged
 			&& (values.statusId || peer->emojiStatusId())) {
 			peer->owner().emojiStatuses().set(
@@ -559,14 +529,9 @@ void Apply(
 
 	const auto colorMatch = (currentColorIndex == values.colorIndex);
 	const auto emojiMatch = (currentEmojiId == values.backgroundEmojiId);
-	const auto collectibleMatch = values.forProfile
-		|| ((!peer->colorCollectible() == !values.colorCollectible)
-			&& (!peer->colorCollectible()
-				|| (*peer->colorCollectible() == *values.colorCollectible)));
 
 	if (colorMatch
 		&& emojiMatch
-		&& collectibleMatch
 		&& !values.statusChanged) {
 		close();
 	} else if (peer->isSelf()) {
@@ -1192,7 +1157,6 @@ void EditPeerColorSection(
 		rpl::variable<uint8> index;
 		rpl::variable<DocumentId> emojiId;
 		rpl::variable<EmojiStatusId> statusId;
-		rpl::variable<std::optional<Ui::ColorCollectible>> collectible;
 		rpl::variable<uint8> profileIndex;
 		rpl::variable<DocumentId> profileEmojiId;
 		Info::Profile::TopBar *preview = nullptr;
@@ -1202,14 +1166,9 @@ void EditPeerColorSection(
 		bool applying = false;
 	};
 	const auto state = button->lifetime().make_state<State>();
-	state->index = peer->colorCollectible()
-		? kUnsetColorIndex
-		: peer->colorIndex();
+	state->index = peer->colorIndex();
 	state->emojiId = peer->backgroundEmojiId();
 	state->statusId = peer->emojiStatusId();
-	state->collectible = peer->colorCollectible()
-		? *peer->colorCollectible()
-		: std::optional<Ui::ColorCollectible>();
 	state->profileIndex = peer->colorProfileIndex().value_or(
 		kUnsetColorIndex);
 	state->profileEmojiId = peer->profileBackgroundEmojiId();
@@ -1352,8 +1311,7 @@ void EditPeerColorSection(
 			theme,
 			peer,
 			state->index.value(),
-			state->emojiId.value(),
-			state->collectible.value()));
+			state->emojiId.value()));
 
 		auto indices = peer->session().api().peerColors().suggestedValue();
 		const auto margin = st::settingsColorRadioMargin;
@@ -1364,13 +1322,7 @@ void EditPeerColorSection(
 				style,
 				std::move(indices),
 				state->index.value(),
-				[=](uint8 index) {
-					if (state->collectible.current()) {
-						state->collectible = std::nullopt;
-						state->emojiId = 0;
-					}
-					state->index = index;
-				}),
+				[=](uint8 index) { state->index = index; }),
 			{ margin, skip, margin, skip });
 
 		Ui::AddDividerText(
@@ -1408,11 +1360,6 @@ void EditPeerColorSection(
 				: tr::lng_settings_color_emoji_about_channel()),
 			st::peerAppearanceDividerTextMargin);
 
-		iconWrap->toggleOn(state->collectible.value(
-		) | rpl::map([](const std::optional<Ui::ColorCollectible> &value) {
-			return !value.has_value();
-		}));
-		iconWrap->finishAnimating();
 	}
 
 	if (const auto channel = peer->asChannel()) {
@@ -1484,10 +1431,8 @@ void EditPeerColorSection(
 		}
 	}
 	// LoogriGram: a tab strip and gift grid sat here, to wear a collectible
-	// gift's colour - one you own, or one bought from a reseller on the
-	// spot. A collectible colour already set from elsewhere still shows in
-	// the preview above and can still be cleared by picking a plain colour;
-	// only choosing and buying one is gone.
+	// gift's colour. Collectible colours are not parsed at all now, so
+	// there is nothing to choose or clear here but the plain palette.
 
 	button->setClickedCallback([=] {
 		if (state->applying) {
@@ -1498,7 +1443,6 @@ void EditPeerColorSection(
 		const auto values = SetValues{
 			state->index.current(),
 			state->emojiId.current(),
-			state->collectible.current(),
 			state->statusId.current(),
 			state->statusUntil,
 			state->statusChanged,
@@ -1506,7 +1450,6 @@ void EditPeerColorSection(
 		const auto profileValues = SetValues{
 			.colorIndex = state->profileIndex.current(),
 			.backgroundEmojiId = state->profileEmojiId.current(),
-			.colorCollectible = state->collectible.current(),
 			.statusId = {},
 			.statusUntil = 0,
 			.statusChanged = false,
@@ -1709,7 +1652,6 @@ void EditPeerProfileColorSection(
 		const auto values = SetValues{
 			.colorIndex = state->index.current(),
 			.backgroundEmojiId = state->patternEmojiId.current(),
-			.colorCollectible = std::nullopt,
 			.statusId = state->wearable.current(),
 			.statusUntil = 0,
 			.statusChanged = statusChanged,
@@ -1893,12 +1835,6 @@ void SetupPeerColorSample(
 	) | rpl::map([=] {
 		return peer->colorIndex();
 	});
-	auto colorCollectibleValue = peer->session().changes().peerFlagsValue(
-		peer,
-		Data::PeerUpdate::Flag::Color
-	) | rpl::map([=] {
-		return peer->colorCollectible();
-	});
 	auto colorProfileIndexValue = peer->session().changes().peerFlagsValue(
 		peer,
 		Data::PeerUpdate::Flag::ColorProfile
@@ -1920,11 +1856,8 @@ void SetupPeerColorSample(
 
 	const auto sample = Ui::CreateChild<Ui::ColorSample>(
 		button.get(),
-		[=] { return Core::TextContext({ .session = &peer->session() }); },
-		[=](auto id) { return Data::SingleCustomEmoji(id); },
 		style,
 		rpl::duplicate(colorIndexValue),
-		rpl::duplicate(colorCollectibleValue),
 		rpl::duplicate(name));
 	sample->show();
 

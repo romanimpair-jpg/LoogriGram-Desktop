@@ -41,7 +41,6 @@ class ChatStyle;
 struct ReactionFlyAnimationArgs;
 class ReactionFlyAnimation;
 class RippleAnimation;
-struct ColorCollectible;
 } // namespace Ui
 
 namespace HistoryView::Reactions {
@@ -460,13 +459,9 @@ public:
 	[[nodiscard]] PeerData *displayFrom() const;
 
 	[[nodiscard]] uint8 colorIndex() const;
-	[[nodiscard]] auto colorCollectible() const
-		-> const std::shared_ptr<Ui::ColorCollectible> &;
 
 	[[nodiscard]] uint8 contentColorIndex() const;
 	[[nodiscard]] DocumentId contentBackgroundEmojiId() const;
-	[[nodiscard]] auto contentColorCollectible() const
-		-> const std::shared_ptr<Ui::ColorCollectible> &;
 
 	[[nodiscard]] QDateTime dateTime() const;
 

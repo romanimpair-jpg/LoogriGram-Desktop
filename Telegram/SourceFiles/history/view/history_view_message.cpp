@@ -2392,10 +2392,7 @@ void Message::paintFromName(
 	const auto from = displayFrom();
 	const auto info = from ? nullptr : item->displayHiddenSenderInfo();
 	Assert(from || info);
-	const auto nameFg = FromNameFg(
-		context,
-		colorIndex(),
-		colorCollectible());
+	const auto nameFg = FromNameFg(context, colorIndex());
 	const auto nameText = [&] {
 		if (from) {
 			validateFromNameText(from);
@@ -2932,9 +2929,7 @@ void Message::paintText(
 		.availableWidth = std::max(textRealWidth(), trect.width()),
 		.palette = &stm->textPalette,
 		.pre = stm->preCache.get(),
-		.blockquote = context.quoteCache(
-			contentColorCollectible(),
-			contentColorIndex()),
+		.blockquote = context.quoteCache(contentColorIndex()),
 		.colors = context.st->highlightColors(),
 		.spoiler = Ui::Text::DefaultSpoilerCache(),
 		.now = context.now,
@@ -3010,9 +3005,7 @@ void Message::paintRichText(
 	articleContext.buttonLoading.itemId = data()->fullId();
 	articleContext.caches = {
 		.pre = stm->preCache.get(),
-		.blockquote = context.quoteCache(
-			contentColorCollectible(),
-			contentColorIndex()),
+		.blockquote = context.quoteCache(contentColorIndex()),
 		.thinking = &rich->thinkingPaintCache,
 		.pathShiftGradient = delegate()->elementPathShiftGradient().get(),
 		.colors = context.st->highlightColors(),

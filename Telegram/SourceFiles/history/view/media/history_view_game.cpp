@@ -222,15 +222,9 @@ void Game::draw(Painter &p, const PaintContext &context) const {
 	auto paintw = inner.width();
 	const auto selected = context.selected();
 	const auto colorIndex = parent()->contentColorIndex();
-	const auto &colorCollectible = parent()->contentColorCollectible();
-	const auto colorPattern = colorCollectible
-		? st->collectiblePatternIndex(colorCollectible)
-		: st->colorPatternIndex(colorIndex);
-	const auto useColorCollectible = colorCollectible && !context.outbg;
+	const auto colorPattern = st->colorPatternIndex(colorIndex);
 	const auto useColorIndex = !context.outbg;
-	const auto cache = useColorCollectible
-		? st->collectibleReplyCache(selected, colorCollectible).get()
-		: useColorIndex
+	const auto cache = useColorIndex
 		? st->coloredReplyCache(selected, colorIndex).get()
 		: stm->replyCache[colorPattern].get();
 	Ui::Text::ValidateQuotePaintCache(*cache, _st);
@@ -246,9 +240,7 @@ void Game::draw(Painter &p, const PaintContext &context) const {
 	auto lineHeight = UnitedLineHeight();
 	if (_titleLines) {
 		p.setPen(cache->icon);
-		p.setTextPalette(useColorCollectible
-			? st->collectibleTextPalette(selected, colorCollectible)
-			: useColorIndex
+		p.setTextPalette(useColorIndex
 			? st->coloredTextPalette(selected, colorIndex)
 			: stm->semiboldPalette);
 

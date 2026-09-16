@@ -25,7 +25,6 @@ enum class ChatRestriction;
 namespace Ui {
 class EmptyUserpic;
 struct BotVerifyDetails;
-struct ColorCollectible;
 } // namespace Ui
 
 namespace Main {
@@ -153,8 +152,6 @@ struct AllowedReactions {
 	not_null<Session*> owner,
 	const MTPInputUser &input);
 
-[[nodiscard]] Ui::ColorCollectible ParseColorCollectible(
-	const MTPDpeerColorCollectible &data);
 
 } // namespace Data
 
@@ -227,12 +224,6 @@ public:
 	[[nodiscard]] uint8 colorIndex() const {
 		return _colorIndex;
 	}
-	[[nodiscard]] auto colorCollectible() const
-	-> const std::shared_ptr<Ui::ColorCollectible> & {
-		return _colorCollectible;
-	}
-	bool changeColorCollectible(Ui::ColorCollectible data);
-	bool clearColorCollectible();
 	bool changeColorIndex(uint8 index);
 	bool clearColorIndex();
 	[[nodiscard]] DocumentId backgroundEmojiId() const;
@@ -241,14 +232,6 @@ public:
 	[[nodiscard]] std::optional<uint8> colorProfileIndex() const {
 		return _colorProfileIndex;
 	}
-	[[nodiscard]] auto colorProfileCollectible() const
-	-> const std::shared_ptr<Ui::ColorCollectible> & {
-		return _colorProfileCollectible;
-	}
-	bool changeColorProfileCollectible(Ui::ColorCollectible data);
-	bool changeColorProfileCollectible(
-		const tl::conditional<MTPPeerColor> &cloudColor);
-	bool clearColorProfileCollectible();
 	bool changeColorProfileIndex(uint8 index);
 	bool clearColorProfileIndex();
 	[[nodiscard]] DocumentId profileBackgroundEmojiId() const;
@@ -526,8 +509,6 @@ public:
 	void setBarSettings(const MTPPeerSettings &data);
 	bool changeBackgroundEmojiId(
 		const tl::conditional<MTPlong> &cloudBackgroundEmoji);
-	bool changeColorCollectible(
-		const tl::conditional<MTPPeerColor> &cloudColor);
 	bool changeColor(const tl::conditional<MTPPeerColor> &cloudColor);
 	bool changeColorProfile(const tl::conditional<MTPPeerColor> &cloudColor);
 
@@ -650,8 +631,6 @@ private:
 
 	BarSettings _barSettings = PeerBarSettings(PeerBarSetting::Unknown);
 	std::unique_ptr<PeerBarDetails> _barDetails;
-	std::shared_ptr<Ui::ColorCollectible> _colorCollectible;
-	std::shared_ptr<Ui::ColorCollectible> _colorProfileCollectible;
 
 	BlockStatus _blockStatus = BlockStatus::Unknown;
 	LoadedStatus _loadedStatus = LoadedStatus::Not;

@@ -28,35 +28,17 @@ constexpr auto kProfileColorIndexCount = uint8(8);
 
 ColorSample::ColorSample(
 	not_null<QWidget*> parent,
-	Fn<Ui::Text::MarkedContext()> contextProvider,
-	Fn<TextWithEntities(uint64)> emojiProvider,
 	std::shared_ptr<Ui::ChatStyle> style,
 	rpl::producer<uint8> colorIndex,
-	rpl::producer<std::shared_ptr<Ui::ColorCollectible>> collectible,
 	rpl::producer<QString> name)
 : AbstractButton(parent)
 , _style(style) {
 	rpl::combine(
 		std::move(colorIndex),
-		std::move(collectible),
 		std::move(name)
-	) | rpl::on_next([=](
-			uint8 index,
-			std::shared_ptr<Ui::ColorCollectible> collectible,
-			const QString &nameValue) {
+	) | rpl::on_next([=](uint8 index, const QString &nameValue) {
 		_index = index;
-		_collectible = std::move(collectible);
-		if (const auto raw = _collectible.get()) {
-			auto context = contextProvider();
-			context.repaint = [=] { update(); };
-			_name.setMarkedText(
-				st::semiboldTextStyle,
-				emojiProvider(raw->giftEmojiId),
-				kMarkupTextOptions,
-				std::move(context));
-		} else {
-			_name.setText(st::semiboldTextStyle, nameValue);
-		}
+		_name.setText(st::semiboldTextStyle, nameValue);
 		setNaturalWidth([&] {
 			if (_name.isEmpty() || _style->colorPatternIndex(_index)) {
 				return st::settingsColorSampleSize;
@@ -162,21 +144,7 @@ void ColorSample::paintEvent(QPaintEvent *e) {
 	if (!_forceCircle && !_simple && !colors.outlines[1].alpha()) {
 		const auto radius = height() / 2;
 		p.setPen(Qt::NoPen);
-		if (const auto raw = _collectible.get()) {
-			const auto withBg = [&](const QColor &color) {
-				return Ui::CountContrast(st::windowBg->c, color);
-			};
-			const auto dark = (withBg({ 0, 0, 0 })
-				< withBg({ 255, 255, 255 }));
-			const auto name = (dark && raw->darkAccentColor.alpha() > 0)
-				? raw->darkAccentColor
-				: raw->accentColor;
-			auto bg = name;
-			bg.setAlpha(0.12 * 255);
-			p.setBrush(bg);
-		} else {
-			p.setBrush(colors.bg);
-		}
+		p.setBrush(colors.bg);
 		p.drawRoundedRect(rect(), radius, radius);
 
 		const auto padding = st::settingsColorSamplePadding;

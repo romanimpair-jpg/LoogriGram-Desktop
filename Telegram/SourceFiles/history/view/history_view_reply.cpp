@@ -131,7 +131,6 @@ template <typename PaintShape>
 
 void ValidateBackgroundEmoji(
 		DocumentId backgroundEmojiId,
-		const std::shared_ptr<Ui::ColorCollectible> &collectible,
 		not_null<Ui::BackgroundEmojiData*> data,
 		not_null<Ui::BackgroundEmojiCache*> cache,
 		not_null<Ui::Text::QuotePaintCache*> quote,
@@ -140,12 +139,6 @@ void ValidateBackgroundEmoji(
 		data->emoji = CreateBackgroundEmojiInstance(
 			&view->history()->owner(),
 			backgroundEmojiId,
-			crl::guard(view, [=] { view->repaint(); }));
-	}
-	if (collectible && data->firstGiftFrame.isNull() && !data->gift) {
-		data->gift = CreateBackgroundGiftInstance(
-			&view->history()->owner(),
-			collectible->giftEmojiId,
 			crl::guard(view, [=] { view->repaint(); }));
 	}
 	ValidateBackgroundEmoji(data, cache, quote);
@@ -157,28 +150,6 @@ void ValidateBackgroundEmoji(
 		not_null<Ui::Text::QuotePaintCache*> quote) {
 	Expects(!data->firstFrameMask.isNull() || data->emoji != nullptr);
 
-	if (data->gift && data->firstGiftFrame.isNull()) {
-		if (data->gift->ready()) {
-			const auto tag = Data::CustomEmojiSizeTag::Normal;
-			const auto size = Data::FrameSizeFromTag(tag);
-			data->firstGiftFrame = QImage(
-				QSize(size, size),
-				QImage::Format_ARGB32_Premultiplied);
-			data->firstGiftFrame.fill(Qt::transparent);
-			data->firstGiftFrame.setDevicePixelRatio(style::DevicePixelRatio());
-			auto p = Painter(&data->firstGiftFrame);
-			data->gift->paint(p, {
-				.textColor = QColor(255, 255, 255),
-				.position = QPoint(0, 0),
-				.internal = {
-					.forceFirstFrame = true,
-				},
-			});
-			p.end();
-
-			data->gift = nullptr;
-		}
-	}
 	if (data->firstFrameMask.isNull()) {
 		if (!cache->frames[0].isNull()) {
 			for (auto &frame : cache->frames) {
@@ -253,17 +224,6 @@ auto CreateBackgroundEmojiInstance(
 		Data::CustomEmojiSizeTag::Isolated);
 }
 
-auto CreateBackgroundGiftInstance(
-	not_null<Data::Session*> owner,
-	DocumentId giftEmojiId,
-	Fn<void()> repaint)
--> std::unique_ptr<Ui::Text::CustomEmoji> {
-	return owner->customEmojiManager().create(
-		giftEmojiId,
-		repaint,
-		Data::CustomEmojiSizeTag::Normal);
-}
-
 void FillPreviewSpoiler(
 		QPainter &p,
 		QRect rect,
@@ -290,8 +250,7 @@ void FillBackgroundEmoji(
 		QPainter &p,
 		const QRect &rect,
 		bool quote,
-		const Ui::BackgroundEmojiCache &cache,
-		const QImage &firstGiftFrame) {
+		const Ui::BackgroundEmojiCache &cache) {
 	p.setClipRect(rect);
 
 	const auto &frames = cache.frames;
@@ -315,11 +274,7 @@ void FillBackgroundEmoji(
 		paintImage(x, y, frames[index], opacity);
 	};
 
-	if (firstGiftFrame.isNull()) {
-		paint(28, 4, 2, 0.32);
-	} else {
-		paintImage(28, 4, firstGiftFrame, 1.);
-	}
+	paint(28, 4, 2, 0.32);
 	paint(51, 15, 1, 0.32);
 	paint(64, -2, 0, 0.28);
 	paint(87, 11, 1, 0.24);
@@ -823,24 +778,14 @@ void Reply::paint(
 	const auto colorIndexPlusOne = _colorPeer
 		? (_colorPeer->colorIndex() + 1)
 		: _hiddenSenderColorIndexPlusOne;
-	const auto &colorCollectible = _colorPeer
-		? _colorPeer->colorCollectible()
-		: nullptr;
-	const auto useColorCollectible = colorCollectible && !context.outbg;
 	const auto useColorIndex = colorIndexPlusOne && !context.outbg;
-	const auto colorPattern = colorCollectible
-		? st->collectiblePatternIndex(colorCollectible)
-		: colorIndexPlusOne
+	const auto colorPattern = colorIndexPlusOne
 		? st->colorPatternIndex(colorIndexPlusOne - 1)
 		: 0;
 	const auto cache = !inBubble
 		? (_hasQuoteIcon
 			? st->serviceQuoteCache(colorPattern)
 			: st->serviceReplyCache(colorPattern)).get()
-		: useColorCollectible
-		? (_hasQuoteIcon
-			? st->collectibleQuoteCache(selected, colorCollectible)
-			: st->collectibleReplyCache(selected, colorCollectible)).get()
 		: useColorIndex
 		? (_hasQuoteIcon
 			? st->coloredQuoteCache(selected, colorIndexPlusOne - 1)
@@ -852,12 +797,10 @@ void Reply::paint(
 		? st::messageTextStyle.blockquote
 		: st::messageQuoteStyle;
 	const auto backgroundEmojiData = backgroundEmojiId
-		? st->backgroundEmojiData(backgroundEmojiId, colorCollectible).get()
+		? st->backgroundEmojiData(backgroundEmojiId).get()
 		: nullptr;
 	const auto backgroundEmojiCache = !backgroundEmojiData
 		? nullptr
-		: useColorCollectible
-		? &backgroundEmojiData->collectibleCaches[colorCollectible]
 		: &backgroundEmojiData->caches[Ui::BackgroundEmojiData::CacheIndex(
 			selected,
 			context.outbg,
@@ -872,7 +815,6 @@ void Reply::paint(
 	if (backgroundEmojiData) {
 		ValidateBackgroundEmoji(
 			backgroundEmojiId,
-			colorCollectible,
 			backgroundEmojiData,
 			backgroundEmojiCache,
 			cache,
@@ -882,8 +824,7 @@ void Reply::paint(
 				p,
 				rect,
 				_hasQuoteIcon,
-				*backgroundEmojiCache,
-				backgroundEmojiData->firstGiftFrame);
+				*backgroundEmojiCache);
 		}
 	}
 	if (!inBubble) {
@@ -1006,11 +947,8 @@ void Reply::paint(
 			if (namew > 0) {
 				p.setPen(!inBubble
 					? st->msgImgReplyBarColor()->c
-					: (colorCollectible || colorIndexPlusOne)
-					? FromNameFg(
-						context,
-						colorIndexPlusOne - 1,
-						colorCollectible)
+					: colorIndexPlusOne
+					? FromNameFg(context, colorIndexPlusOne - 1)
 					: stm->msgServiceFg->c);
 				_name.drawLeftElided(
 					p,
@@ -1026,8 +964,6 @@ void Reply::paint(
 				view->prepareCustomEmojiPaint(p, context, _text);
 				auto replyToTextPalette = &(!inBubble
 					? st->imgReplyTextPalette()
-					: useColorCollectible
-					? st->collectibleTextPalette(selected, colorCollectible)
 					: useColorIndex
 					? st->coloredTextPalette(selected, colorIndexPlusOne - 1)
 					: stm->replyTextPalette);

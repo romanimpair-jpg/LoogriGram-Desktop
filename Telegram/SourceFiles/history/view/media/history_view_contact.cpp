@@ -343,29 +343,19 @@ void Contact::draw(Painter &p, const PaintContext &context) const {
 		? _contact->colorIndex()
 		: Data::DecideColorIndex(
 			Data::FakePeerIdForJustName(_nameLine.toString()));
-	const auto &colorCollectible = _contact
-		? _contact->colorCollectible()
-		: nullptr;
-	const auto colorPattern = colorCollectible
-		? st->collectiblePatternIndex(colorCollectible)
-		: st->colorPatternIndex(colorIndex);
-	const auto useColorCollectible = colorCollectible && !context.outbg;
+	const auto colorPattern = st->colorPatternIndex(colorIndex);
 	const auto useColorIndex = !context.outbg;
-	const auto cache = useColorCollectible
-		? st->collectibleReplyCache(selected, colorCollectible).get()
-		: useColorIndex
+	const auto cache = useColorIndex
 		? st->coloredReplyCache(selected, colorIndex).get()
 		: stm->replyCache[colorPattern].get();
 	const auto backgroundEmojiId = _contact
 		? _contact->backgroundEmojiId()
 		: DocumentId();
 	const auto backgroundEmojiData = backgroundEmojiId
-		? st->backgroundEmojiData(backgroundEmojiId, colorCollectible).get()
+		? st->backgroundEmojiData(backgroundEmojiId).get()
 		: nullptr;
 	const auto backgroundEmojiCache = !backgroundEmojiData
 		? nullptr
-		: useColorCollectible
-		? &backgroundEmojiData->collectibleCaches[colorCollectible]
 		: &backgroundEmojiData->caches[Ui::BackgroundEmojiData::CacheIndex(
 			selected,
 			context.outbg,
@@ -376,7 +366,6 @@ void Contact::draw(Painter &p, const PaintContext &context) const {
 	if (backgroundEmojiData) {
 		ValidateBackgroundEmoji(
 			backgroundEmojiId,
-			colorCollectible,
 			backgroundEmojiData,
 			backgroundEmojiCache,
 			cache,
@@ -389,8 +378,7 @@ void Contact::draw(Painter &p, const PaintContext &context) const {
 				p,
 				r,
 				false,
-				*backgroundEmojiCache,
-				backgroundEmojiData->firstGiftFrame);
+				*backgroundEmojiCache);
 		}
 	}
 
@@ -436,9 +424,7 @@ void Contact::draw(Painter &p, const PaintContext &context) const {
 
 	{
 		p.setPen(cache->icon);
-		p.setTextPalette(useColorCollectible
-			? st->collectibleTextPalette(selected, colorCollectible)
-			: useColorIndex
+		p.setTextPalette(useColorIndex
 			? st->coloredTextPalette(selected, colorIndex)
 			: stm->semiboldPalette);
 

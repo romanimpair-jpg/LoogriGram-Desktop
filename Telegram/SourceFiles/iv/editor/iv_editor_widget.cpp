@@ -11750,7 +11750,7 @@ Markdown::MarkdownArticlePaintContext Widget::textPaintContext(QRect clip) {
 	const auto messageStyle = context.messageStyle();
 	context.caches = {
 		.pre = messageStyle->preCache.get(),
-		.blockquote = context.quoteCache({}, 0),
+		.blockquote = context.quoteCache(0),
 		.colors = _highlightColors,
 		.st = &messageStyle->richPageStyle,
 		.repaint = [=] {

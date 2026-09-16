@@ -1092,7 +1092,6 @@ void Document::draw(
 			.palette = &stm->textPalette,
 			.pre = stm->preCache.get(),
 			.blockquote = context.quoteCache(
-				parent()->contentColorCollectible(),
 				parent()->contentColorIndex()),
 			.colors = context.st->highlightColors(),
 			.spoiler = Ui::Text::DefaultSpoilerCache(),

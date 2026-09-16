@@ -198,7 +198,7 @@ void RichDraftPreview::paint(QRect clip) {
 		const auto messageStyle = articleContext.messageStyle();
 		articleContext.caches = {
 			.pre = messageStyle->preCache.get(),
-			.blockquote = articleContext.quoteCache({}, 0),
+			.blockquote = articleContext.quoteCache(0),
 			.colors = _style->highlightColors(),
 			.st = &messageStyle->richPageStyle,
 			.repaint = [weak = base::make_weak(this)] {

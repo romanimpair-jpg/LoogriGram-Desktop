@@ -871,29 +871,19 @@ void WebPage::draw(Painter &p, const PaintContext &context) const {
 	const auto colorIndex = factcheck
 		? 0 // red
 		: view->contentColorIndex();
-	const auto &colorCollectible = factcheck
-		? nullptr
-		: view->contentColorCollectible();
-	const auto colorPattern = colorCollectible
-		? st->collectiblePatternIndex(colorCollectible)
-		: st->colorPatternIndex(colorIndex);
-	const auto useColorCollectible = colorCollectible && !context.outbg;
+	const auto colorPattern = st->colorPatternIndex(colorIndex);
 	const auto useColorIndex = !context.outbg;
-	const auto cache = useColorCollectible
-		? st->collectibleReplyCache(selected, colorCollectible).get()
-		: useColorIndex
+	const auto cache = useColorIndex
 		? st->coloredReplyCache(selected, colorIndex).get()
 		: stm->replyCache[colorPattern].get();
 	const auto backgroundEmojiId = factcheck
 		? DocumentId()
 		: view->contentBackgroundEmojiId();
 	const auto backgroundEmojiData = backgroundEmojiId
-		? st->backgroundEmojiData(backgroundEmojiId, colorCollectible).get()
+		? st->backgroundEmojiData(backgroundEmojiId).get()
 		: nullptr;
 	const auto backgroundEmojiCache = !backgroundEmojiData
 		? nullptr
-		: useColorCollectible
-		? &backgroundEmojiData->collectibleCaches[colorCollectible]
 		: &backgroundEmojiData->caches[Ui::BackgroundEmojiData::CacheIndex(
 			selected,
 			context.outbg,
@@ -904,7 +894,6 @@ void WebPage::draw(Painter &p, const PaintContext &context) const {
 	if (backgroundEmojiData) {
 		ValidateBackgroundEmoji(
 			backgroundEmojiId,
-			colorCollectible,
 			backgroundEmojiData,
 			backgroundEmojiCache,
 			cache,
@@ -914,8 +903,7 @@ void WebPage::draw(Painter &p, const PaintContext &context) const {
 				p,
 				outer,
 				false,
-				*backgroundEmojiCache,
-				backgroundEmojiData->firstGiftFrame);
+				*backgroundEmojiCache);
 		}
 	} else if (factcheck && factcheck->expandable) {
 		const auto &icon = factcheck->expanded ? _st.collapse : _st.expand;
@@ -1033,9 +1021,7 @@ void WebPage::draw(Painter &p, const PaintContext &context) const {
 	}
 	if (_siteNameLines) {
 		p.setPen(cache->icon);
-		p.setTextPalette(useColorCollectible
-			? st->collectibleTextPalette(selected, colorCollectible)
-			: useColorIndex
+		p.setTextPalette(useColorIndex
 			? st->coloredTextPalette(selected, colorIndex)
 			: stm->semiboldPalette);
 

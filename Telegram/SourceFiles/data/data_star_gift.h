@@ -12,7 +12,6 @@ class Session;
 } // namespace Main
 
 namespace Ui {
-struct ColorCollectible;
 } // namespace Ui
 
 namespace Data {
@@ -145,7 +144,6 @@ struct UniqueGift {
 	UniqueGiftBackdrop backdrop;
 	UniqueGiftOriginalDetails originalDetails;
 	std::shared_ptr<UniqueGiftValue> value;
-	std::shared_ptr<Ui::ColorCollectible> peerColor;
 };
 
 [[nodiscard]] QString UniqueGiftName(const UniqueGift &gift);

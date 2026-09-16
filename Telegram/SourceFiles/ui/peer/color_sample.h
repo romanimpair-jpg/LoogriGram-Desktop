@@ -18,17 +18,13 @@ namespace Text {
 struct MarkedContext;
 } // namespace Text
 class ChatStyle;
-struct ColorCollectible;
 
 class ColorSample final : public AbstractButton {
 public:
 	ColorSample(
 		not_null<QWidget*> parent,
-		Fn<Ui::Text::MarkedContext()> contextProvider,
-		Fn<TextWithEntities(uint64)> emojiProvider,
 		std::shared_ptr<ChatStyle> style,
 		rpl::producer<uint8> colorIndex,
-		rpl::producer<std::shared_ptr<ColorCollectible>> collectible,
 		rpl::producer<QString> name);
 	ColorSample(
 		not_null<QWidget*> parent,
@@ -54,7 +50,6 @@ private:
 	std::shared_ptr<ChatStyle> _style;
 	Text::String _name;
 	uint8 _index = 0;
-	std::shared_ptr<ColorCollectible> _collectible;
 	Animations::Simple _selectAnimation;
 	bool _selected = false;
 	bool _simple = false;

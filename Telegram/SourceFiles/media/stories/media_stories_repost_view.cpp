@@ -114,8 +114,7 @@ void RepostView::draw(Painter &p, int x, int y, int availableWidth) {
 				p,
 				rect,
 				hasQuoteIcon,
-				*backgroundEmojiCache,
-				backgroundEmoji->firstGiftFrame);
+				*backgroundEmojiCache);
 		}
 	}
 	cache->bg = rippleColor;

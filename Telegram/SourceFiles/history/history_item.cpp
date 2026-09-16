@@ -1433,15 +1433,6 @@ DocumentId HistoryItem::backgroundEmojiId() const {
 	return DocumentId();
 }
 
-auto HistoryItem::colorCollectible() const
--> const std::shared_ptr<Ui::ColorCollectible> & {
-	if (const auto from = displayFrom()) {
-		return from->colorCollectible();
-	}
-	static const auto dummy = std::shared_ptr<Ui::ColorCollectible>();
-	return dummy;
-}
-
 PeerData *HistoryItem::contentColorsFrom() const {
 	if (const auto forwarded = Get<HistoryMessageForwarded>()) {
 		return forwarded->originalSender;
@@ -1465,18 +1456,6 @@ DocumentId HistoryItem::contentBackgroundEmojiId() const {
 			: DocumentId();
 	}
 	return backgroundEmojiId();
-}
-
-auto HistoryItem::contentColorCollectible() const
--> const std::shared_ptr<Ui::ColorCollectible> & {
-	if (const auto forwarded = Get<HistoryMessageForwarded>()) {
-		if (forwarded->originalSender) {
-			return forwarded->originalSender->colorCollectible();
-		}
-		static const auto dummy = std::shared_ptr<Ui::ColorCollectible>();
-		return dummy;
-	}
-	return colorCollectible();
 }
 
 std::unique_ptr<HistoryView::Element> HistoryItem::createView(

@@ -240,30 +240,6 @@ UserData *UserFromInputMTP(
 	});
 }
 
-Ui::ColorCollectible ParseColorCollectible(
-		const MTPDpeerColorCollectible &data) {
-	return {
-		.collectibleId = data.vcollectible_id().v,
-		.giftEmojiId = data.vgift_emoji_id().v,
-		.backgroundEmojiId = data.vbackground_emoji_id().v,
-		.accentColor = Ui::ColorFromSerialized(data.vaccent_color()),
-		.strip = ranges::views::all(
-			data.vcolors().v
-		) | ranges::views::transform(
-			&Ui::ColorFromSerialized
-		) | ranges::to_vector,
-		.darkAccentColor = Ui::MaybeColorFromSerialized(
-			data.vdark_accent_color()).value_or(QColor(0, 0, 0, 0)),
-		.darkStrip = (data.vdark_colors()
-			? ranges::views::all(
-				data.vdark_colors()->v
-			) | ranges::views::transform(
-				&Ui::ColorFromSerialized
-			) | ranges::to_vector
-			: std::vector<QColor>()),
-	};
-}
-
 } // namespace Data
 
 PeerClickHandler::PeerClickHandler(not_null<PeerData*> peer)
@@ -991,20 +967,6 @@ bool PeerData::changeBackgroundEmojiId(
 		: DocumentId());
 }
 
-bool PeerData::changeColorCollectible(
-		const tl::conditional<MTPPeerColor> &cloudColor) {
-	if (!cloudColor) {
-		return clearColorCollectible();
-	}
-	return cloudColor->match([&](const MTPDpeerColorCollectible &data) {
-		return changeColorCollectible(Data::ParseColorCollectible(data));
-	}, [&](const MTPDpeerColor &) {
-		return clearColorCollectible();
-	}, [&](const MTPDinputPeerColorCollectible &) {
-		return clearColorCollectible();
-	});
-}
-
 bool PeerData::changeColor(
 		const tl::conditional<MTPPeerColor> &cloudColor) {
 	const auto maybeColorIndex = Data::ColorIndexFromColor(cloudColor);
@@ -1013,8 +975,7 @@ bool PeerData::changeColor(
 		: clearColorIndex();
 	const auto changed2 = changeBackgroundEmojiId(
 		Data::BackgroundEmojiIdFromColor(cloudColor));
-	const auto changed3 = changeColorCollectible(cloudColor);
-	return changed1 || changed2 || changed3;
+	return changed1 || changed2;
 }
 
 bool PeerData::changeColorProfile(
@@ -1025,8 +986,7 @@ bool PeerData::changeColorProfile(
 		: clearColorProfileIndex();
 	const auto changed2 = changeProfileBackgroundEmojiId(
 		Data::BackgroundEmojiIdFromColor(cloudColor));
-	const auto changed3 = changeColorProfileCollectible(cloudColor);
-	return changed1 || changed2 || changed3;
+	return changed1 || changed2;
 }
 
 void PeerData::fillNames() {
@@ -1338,25 +1298,6 @@ bool PeerData::isUsernameEditable(QString username) const {
 	return false;
 }
 
-bool PeerData::changeColorCollectible(Ui::ColorCollectible data) {
-	if (!_colorCollectible || (*_colorCollectible != data)) {
-		// We don't reuse allocated object because in ChatStyle we
-		// cache colors using std::weak_ptr as a key.
-		_colorCollectible = std::make_shared<Ui::ColorCollectible>(
-			std::move(data));
-		return true;
-	}
-	return false;
-}
-
-bool PeerData::clearColorCollectible() {
-	if (!_colorCollectible) {
-		return false;
-	}
-	_colorCollectible = nullptr;
-	return true;
-}
-
 bool PeerData::changeColorIndex(uint8 index) {
 	index %= Ui::kColorIndexCount;
 	if (_colorIndexCloud && _colorIndex == index) {
@@ -1385,37 +1326,6 @@ bool PeerData::changeBackgroundEmojiId(DocumentId id) {
 		return false;
 	}
 	_backgroundEmojiId = id;
-	return true;
-}
-
-bool PeerData::changeColorProfileCollectible(Ui::ColorCollectible data) {
-	if (!_colorProfileCollectible || (*_colorProfileCollectible != data)) {
-		_colorProfileCollectible = std::make_shared<Ui::ColorCollectible>(
-			std::move(data));
-		return true;
-	}
-	return false;
-}
-
-bool PeerData::changeColorProfileCollectible(
-		const tl::conditional<MTPPeerColor> &cloudColor) {
-	if (!cloudColor) {
-		return clearColorProfileCollectible();
-	}
-	return cloudColor->match([&](const MTPDpeerColorCollectible &data) {
-		return changeColorProfileCollectible(Data::ParseColorCollectible(data));
-	}, [&](const MTPDpeerColor &) {
-		return clearColorProfileCollectible();
-	}, [&](const MTPDinputPeerColorCollectible &) {
-		return clearColorProfileCollectible();
-	});
-}
-
-bool PeerData::clearColorProfileCollectible() {
-	if (!_colorProfileCollectible) {
-		return false;
-	}
-	_colorProfileCollectible = nullptr;
 	return true;
 }
 
@@ -2183,9 +2093,11 @@ uint64 BackgroundEmojiIdFromColor(const MTPPeerColor *color) {
 	}
 	return color->match([](const MTPDpeerColor &data) -> uint64 {
 		return data.vbackground_emoji_id().value_or_empty();
-	}, [](const MTPDpeerColorCollectible &data) -> uint64 {
-		return data.vbackground_emoji_id().v;
-	}, [](const MTPDinputPeerColorCollectible &data) -> uint64 {
+	}, [](const MTPDpeerColorCollectible &) -> uint64 {
+		// LoogriGram: a collectible gift's colours and pattern are not
+		// worn here; the peer shows its default colour instead.
+		return 0;
+	}, [](const MTPDinputPeerColorCollectible &) -> uint64 {
 		return 0;
 	});
 }
