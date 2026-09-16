@@ -1076,47 +1076,6 @@ void RegisterSettingsHandlers(Router &router) {
 	});
 
 	router.add(u"settings"_q, {
-		.path = u"privacy/voice"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			return ShowPrivacyBox(
-				ctx,
-				PrivacyKey::Voices,
-				[=] { return std::make_unique<::Settings::VoicesPrivacyController>(&ctx.controller->session()); });
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"privacy/voice/never"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			return ShowPrivacyBox(
-				ctx,
-				PrivacyKey::Voices,
-				[=] { return std::make_unique<::Settings::VoicesPrivacyController>(&ctx.controller->session()); },
-				u"privacy/never"_q);
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"privacy/voice/always"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			return ShowPrivacyBox(
-				ctx,
-				PrivacyKey::Voices,
-				[=] { return std::make_unique<::Settings::VoicesPrivacyController>(&ctx.controller->session()); },
-				u"privacy/always"_q);
-		}},
-	});
-
-	router.add(u"settings"_q, {
 		.path = u"privacy/messages"_q,
 		.action = CodeBlock{ [](const Context &ctx) {
 			if (!ctx.controller) {

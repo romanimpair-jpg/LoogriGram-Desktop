@@ -278,31 +278,6 @@ private:
 
 };
 
-class VoicesPrivacyController final : public EditPrivacyController {
-public:
-	using Option = EditPrivacyBox::Option;
-	using Exception = EditPrivacyBox::Exception;
-
-	explicit VoicesPrivacyController(not_null<::Main::Session*> session);
-
-	Key key() const override;
-
-	rpl::producer<QString> title() const override;
-	rpl::producer<QString> optionsTitleKey() const override;
-	rpl::producer<QString> exceptionButtonTextKey(
-		Exception exception) const override;
-	rpl::producer<QString> exceptionBoxTitle(
-		Exception exception) const override;
-	rpl::producer<QString> exceptionsDescription() const override;
-	Fn<void()> premiumClickedCallback(
-		Option option,
-		not_null<Window::SessionController*> controller) override;
-
-private:
-	rpl::lifetime _lifetime;
-
-};
-
 class AboutPrivacyController final : public EditPrivacyController {
 public:
 	using Option = EditPrivacyBox::Option;

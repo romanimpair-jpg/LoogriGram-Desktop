@@ -206,50 +206,6 @@ rpl::producer<QString> PrivacyButtonLabel(
 	return PrivacyString(session, key);
 }
 
-void AddPrivacyPremiumStar(
-		not_null<Ui::SettingsButton*> button,
-		not_null<::Main::Session*> session,
-		rpl::producer<QString> label,
-		const QMargins &padding) {
-	const auto badge = Ui::CreateChild<Ui::RpWidget>(button.get());
-	badge->showOn(Data::AmPremiumValue(session));
-	const auto sampleLeft = st::settingsColorSamplePadding.left();
-	const auto badgeLeft = padding.left() + sampleLeft;
-
-	const auto factor = style::DevicePixelRatio();
-	const auto size = Size(st::settingsButtonNoIcon.style.font->ascent);
-	auto starImage = QImage(
-		size * factor,
-		QImage::Format_ARGB32_Premultiplied);
-	starImage.setDevicePixelRatio(factor);
-	starImage.fill(Qt::transparent);
-	{
-		auto p = QPainter(&starImage);
-		auto star = QSvgRenderer(
-			Ui::Premium::ColorizedSvg(Ui::Premium::ButtonGradientStops()));
-		star.render(&p, Rect(size));
-	}
-
-	badge->resize(starImage.size() / style::DevicePixelRatio());
-	badge->paintRequest(
-	) | rpl::on_next([=, star = std::move(starImage)] {
-		auto p = QPainter(badge);
-		p.drawImage(0, 0, star);
-	}, badge->lifetime());
-
-	rpl::combine(
-		button->sizeValue(),
-		std::move(label)
-	) | rpl::on_next([=](const QSize &s, const QString &) {
-		if (s.isNull()) {
-			return;
-		}
-		badge->moveToLeft(
-			button->fullTextWidth() + badgeLeft,
-			(s.height() - badge->height()) / 2);
-	}, badge->lifetime());
-}
-
 object_ptr<Ui::BoxContent> ClearPaymentInfoBox(not_null<::Main::Session*> session) {
 	return Box(ClearPaymentInfoBoxBuilder, session);
 }
@@ -520,17 +476,11 @@ void SetupArchiveAndMute(
 	Ui::AddSkip(inner);
 	Ui::AddDividerText(inner, tr::lng_settings_auto_archive_about());
 
-	auto shown = rpl::single(
+	using namespace rpl::mappers;
+	wrap->toggleOn(rpl::single(
 		false
 	) | rpl::then(session->api().globalPrivacy().showArchiveAndMute(
-	) | rpl::filter(_1) | rpl::take(1));
-	auto premium = Data::AmPremiumValue(&controller->session());
-
-	using namespace rpl::mappers;
-	wrap->toggleOn(rpl::combine(
-		std::move(shown),
-		std::move(premium),
-		_1 || _2));
+	) | rpl::filter(_1) | rpl::take(1)));
 }
 
 namespace {
@@ -882,16 +832,8 @@ void BuildPrivacySection(SectionBuilder &builder) {
 		.keywords = { u"calls"_q, u"voice"_q },
 	});
 
-	builder.addPrivacyButton({
-		.id = u"privacy/voices"_q,
-		.title = tr::lng_settings_voices_privacy(),
-		.key = Key::Voices,
-		.controllerFactory = [=] {
-			return std::make_unique<VoicesPrivacyController>(session);
-		},
-		.premium = true,
-		.keywords = { u"voice"_q, u"messages"_q },
-	});
+	// LoogriGram: "Voice Messages" privacy sat here. Restricting who can send
+	// them is premium-only, and its box closed itself for everyone else.
 
 	const auto privacy = &session->api().globalPrivacy();
 	auto messagesLabel = privacy->newRequirePremium(
@@ -901,24 +843,16 @@ void BuildPrivacySection(SectionBuilder &builder) {
 			: tr::lng_edit_privacy_everyone();
 	}) | rpl::flatten_latest();
 
-	const auto messagesPremium = !session->appConfig().newRequirePremiumFree();
-	const auto messagesButton = builder.addButton({
+	builder.addButton({
 		.id = u"privacy/messages"_q,
 		.title = tr::lng_settings_messages_privacy(),
 		.st = &st::settingsButtonNoIcon,
-		.label = rpl::duplicate(messagesLabel),
+		.label = std::move(messagesLabel),
 		.onClick = [=] {
 			controller->show(Box(EditMessagesPrivacyBox, controller));
 		},
 		.keywords = { u"messages"_q, u"new"_q, u"unknown"_q },
 	});
-	if (messagesPremium && messagesButton) {
-		AddPrivacyPremiumStar(
-			messagesButton,
-			session,
-			std::move(messagesLabel),
-			st::settingsButtonNoIcon.padding);
-	}
 
 	builder.addPrivacyButton({
 		.id = u"privacy/birthday"_q,
@@ -986,7 +920,6 @@ void BuildArchiveAndMuteSection(SectionBuilder &builder) {
 		false
 	) | rpl::then(privacy->showArchiveAndMute(
 	) | rpl::filter(rpl::mappers::_1) | rpl::take(1));
-	auto premium = Data::AmPremiumValue(session);
 
 	builder.scope([&] {
 		builder.addSkip();
@@ -1015,10 +948,7 @@ void BuildArchiveAndMuteSection(SectionBuilder &builder) {
 
 		builder.addSkip();
 		builder.addDividerText(tr::lng_settings_auto_archive_about());
-	}, rpl::combine(
-		std::move(shown),
-		std::move(premium),
-		rpl::mappers::_1 || rpl::mappers::_2));
+	}, std::move(shown));
 }
 
 void BuildBotsAndWebsitesSection(SectionBuilder &builder) {

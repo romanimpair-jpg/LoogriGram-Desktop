@@ -126,32 +126,6 @@ void CreateRadiobuttonLock(
 	}, lock->lifetime());
 }
 
-void AddPremiumRequiredRow(
-		not_null<Ui::RpWidget*> widget,
-		not_null<Main::Session*> session,
-		Fn<void()> clickedCallback,
-		Fn<void()> setDefaultOption,
-		const style::Checkbox &st) {
-	const auto row = Ui::CreateChild<Ui::AbstractButton>(widget.get());
-
-	widget->sizeValue(
-	) | rpl::on_next([=](const QSize &s) {
-		row->resize(s);
-	}, row->lifetime());
-	row->setClickedCallback(std::move(clickedCallback));
-
-	CreateRadiobuttonLock(row, st);
-
-	Data::AmPremiumValue(
-		session
-	) | rpl::on_next([=](bool premium) {
-		row->setVisible(!premium);
-		if (!premium) {
-			setDefaultOption();
-		}
-	}, row->lifetime());
-}
-
 class PrivacyExceptionsBoxController : public ChatsListBoxController {
 public:
 	PrivacyExceptionsBoxController(
@@ -725,19 +699,7 @@ void EditPrivacyBox::setupContent() {
 		Option::Nobody,
 	};
 	for (const auto &option : options) {
-		if (const auto row = addOptionRow(option)) {
-			const auto premiumCallback = _controller->premiumClickedCallback(
-				option,
-				_window);
-			if (premiumCallback) {
-				AddPremiumRequiredRow(
-					row,
-					&_window->session(),
-					premiumCallback,
-					[=] { group->setValue(Option::Everyone); },
-					st::messagePrivacyCheck);
-			}
-		}
+		addOptionRow(option);
 	}
 
 	const auto warning = addLabelOrDivider(
@@ -829,8 +791,7 @@ void EditMessagesPrivacyBox(
 
 	const auto session = &controller->session();
 	const auto allowed = [=] {
-		return session->premium()
-			|| session->appConfig().newRequirePremiumFree();
+		return session->appConfig().newRequirePremiumFree();
 	};
 	const auto privacy = &session->api().globalPrivacy();
 	const auto inner = box->verticalLayout();

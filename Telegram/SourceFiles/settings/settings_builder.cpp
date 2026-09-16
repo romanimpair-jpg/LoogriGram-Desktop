@@ -357,7 +357,6 @@ Ui::SettingsButton *SectionBuilder::addPrivacyButton(PrivacyButtonArgs &&args) {
 	});
 	if (button) {
 		const auto id = args.id;
-		const auto premium = args.premium;
 		const auto shower = Ui::CreateChild<rpl::lifetime>(button);
 		const auto factory = args.controllerFactory;
 		button->addClickHandler([=, key = args.key] {
@@ -373,13 +372,6 @@ Ui::SettingsButton *SectionBuilder::addPrivacyButton(PrivacyButtonArgs &&args) {
 					value));
 			}));
 		});
-		if (premium) {
-			AddPrivacyPremiumStar(
-				button,
-				session,
-				std::move(args.title),
-				st::settingsButtonNoIcon.padding);
-		}
 	}
 	return button;
 }

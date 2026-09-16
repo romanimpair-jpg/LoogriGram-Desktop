@@ -45,12 +45,6 @@ not_null<Ui::SettingsButton*> AddPrivacyButton(
 	not_null<::Main::Session*> session,
 	Api::UserPrivacy::Key key);
 
-void AddPrivacyPremiumStar(
-	not_null<Ui::SettingsButton*> button,
-	not_null<::Main::Session*> session,
-	rpl::producer<QString> label,
-	const QMargins &padding);
-
 void SetupArchiveAndMute(
 	not_null<Window::SessionController*> controller,
 	not_null<Ui::VerticalLayout*> container,

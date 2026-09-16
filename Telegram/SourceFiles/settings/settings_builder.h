@@ -222,7 +222,6 @@ public:
 		rpl::producer<QString> title;
 		Api::UserPrivacy::Key key;
 		Fn<std::unique_ptr<EditPrivacyController>()> controllerFactory;
-		bool premium = false;
 		QStringList keywords;
 	};
 	Ui::SettingsButton *addPrivacyButton(PrivacyButtonArgs &&args);

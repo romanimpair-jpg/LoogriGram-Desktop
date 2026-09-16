@@ -737,7 +737,6 @@ void LastSeenPrivacyController::confirmSave(
 		bool someAreDisallowed,
 		Fn<void()> saveCallback) {
 	if (someAreDisallowed
-		&& !_session->premium()
 		&& !Core::App().settings().lastSeenWarningSeen()) {
 		auto callback = [
 			=,
@@ -1377,83 +1376,6 @@ void ProfilePhotoPrivacyController::handleExceptionsChange(
 	if (exception == Exception::Never) {
 		_exceptionsNever = std::move(value);
 	}
-}
-
-VoicesPrivacyController::VoicesPrivacyController(
-		not_null<::Main::Session*> session) {
-	Data::AmPremiumValue(
-		session
-	) | rpl::on_next([=](bool premium) {
-		if (!premium) {
-			if (const auto box = view()) {
-				box->closeBox();
-			}
-		}
-	}, _lifetime);
-}
-
-UserPrivacy::Key VoicesPrivacyController::key() const {
-	return Key::Voices;
-}
-
-rpl::producer<QString> VoicesPrivacyController::title() const {
-	return tr::lng_edit_privacy_voices_title();
-}
-
-rpl::producer<QString> VoicesPrivacyController::optionsTitleKey() const {
-	return tr::lng_edit_privacy_voices_header();
-}
-
-rpl::producer<QString> VoicesPrivacyController::exceptionButtonTextKey(
-		Exception exception) const {
-	switch (exception) {
-	case Exception::Always:
-		return tr::lng_edit_privacy_voices_always_empty();
-	case Exception::Never:
-		return tr::lng_edit_privacy_voices_never_empty();
-	}
-	Unexpected("Invalid exception value.");
-}
-
-rpl::producer<QString> VoicesPrivacyController::exceptionBoxTitle(
-		Exception exception) const {
-	switch (exception) {
-	case Exception::Always:
-		return tr::lng_edit_privacy_voices_always_title();
-	case Exception::Never: return tr::lng_edit_privacy_voices_never_title();
-	}
-	Unexpected("Invalid exception value.");
-}
-
-auto VoicesPrivacyController::exceptionsDescription() const
--> rpl::producer<QString> {
-	return tr::lng_edit_privacy_voices_exceptions();
-}
-
-// LoogriGram: setupBelowWidget here built nothing but a subscribe button and
-// its pitch, shown to exactly the people who cannot buy it, so the override
-// is gone and the base class's empty one stands.
-//
-// The lock on the restricted options stays, because the restriction is the
-// server's and would reject the save either way, and so does the toast that
-// explains it. Only the link out of that toast is gone; "Telegram Premium"
-// reads the same as plain semibold text, and the sentence is still true.
-Fn<void()> VoicesPrivacyController::premiumClickedCallback(
-		Option option,
-		not_null<Window::SessionController*> controller) {
-	if (option == Option::Everyone) {
-		return nullptr;
-	}
-	return [=] {
-		controller->showToast({
-			.text = tr::lng_settings_privacy_premium(
-				tr::now,
-				lt_link,
-				tr::semibold(tr::lng_settings_privacy_premium_link(tr::now)),
-				tr::marked),
-			.duration = Ui::Toast::kDefaultDuration * 2,
-		});
-	};
 }
 
 UserPrivacy::Key AboutPrivacyController::key() const {

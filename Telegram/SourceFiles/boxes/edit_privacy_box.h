@@ -98,11 +98,6 @@ public:
 	virtual void saveAdditional() {
 	}
 
-	[[nodiscard]] virtual Fn<void()> premiumClickedCallback(
-			Option option,
-			not_null<Window::SessionController*> controller) {
-		return nullptr;
-	}
 
 	virtual void checkHighlightControls(
 			not_null<Window::SessionController*> controller) {
