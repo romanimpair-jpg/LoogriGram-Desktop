@@ -315,8 +315,6 @@ void ScheduleBox(
 		Fn<void(Api::SendOptions)> done,
 		TimeId time,
 		ScheduleBoxStyleArgs style) {
-	const auto repeat = std::make_shared<TimeId>(
-		initialOptions.scheduleRepeatPeriod);
 	const auto silent = std::make_shared<bool>(false);
 	const auto submit = [=](Api::SendOptions options) {
 		if (!options.scheduled) {
@@ -325,9 +323,6 @@ void ScheduleBox(
 		// Pro tip: Hold Ctrl key to send a silent scheduled message!
 		if (base::IsCtrlPressed() || *silent) {
 			options.silent = true;
-		}
-		if (repeat) {
-			options.scheduleRepeatPeriod = *repeat;
 		}
 		const auto copy = done;
 		box->closeBox();
@@ -354,42 +349,9 @@ void ScheduleBox(
 			: nullptr),
 	});
 
-	if (repeat) {
-		const auto boxShow = box->uiShow();
-		const auto showPremiumPromo = [=] {
-			if (session->premium()) {
-				return false;
-			}
-			// LoogriGram: repeating a scheduled message is subscriber-only
-			// on the server, so the row stays locked and still says why -
-			// without the link into the page that sells the subscription.
-			boxShow->showToast({
-				.text = tr::lng_schedule_repeat_promo(
-					tr::now,
-					lt_link,
-					tr::bold(tr::lng_schedule_repeat_promo_link(tr::now)),
-					tr::rich),
-				.adaptive = true,
-				.duration = Ui::Toast::kDefaultDuration * 2,
-			});
-			return true;
-		};
-		auto locked = Data::AmPremiumValue(
-			session
-		) | rpl::map([=](bool premium) {
-			return !premium;
-		});
-		const auto row = box->addRow(Ui::ChooseRepeatPeriod(box, {
-			.value = session->premium() ? *repeat : TimeId(),
-			.locked = std::move(locked),
-			.filter = showPremiumPromo,
-			.changed = [=](TimeId value) { *repeat = value; },
-			.test = session->isTestMode(),
-		}), st::scheduleRepeatMargin, style::al_top);
-		std::move(descriptor.width) | rpl::on_next([=](int width) {
-			row->setNaturalWidth(width);
-		}, row->lifetime());
-	}
+	// LoogriGram: a row for repeating the scheduled message sat here. Repeats
+	// are premium-only, so it was always locked; a period the message already
+	// has is still sent back unchanged.
 
 	using namespace SendMenu;
 	const auto childType = (details.type == Type::Disabled)

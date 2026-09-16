@@ -43,7 +43,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/session/send_as_peers.h"
 #include "main/main_session.h"
 #include "media/stories/media_stories_controller.h"
-#include "media/stories/media_stories_stealth.h"
 #include "media/view/media_view_video_stream.h"
 #include "menu/menu_send.h"
 #include "storage/localimageloader.h"
@@ -60,37 +59,19 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace Media::Stories {
 namespace {
 
+// LoogriGram: while stealth mode was active this counted down the time it
+// had left. Stealth mode is premium-only and is gone.
 [[nodiscard]] rpl::producer<QString> PlaceholderText(
-		const std::shared_ptr<ChatHelpers::Show> &show,
 		rpl::producer<ReplyAreaType> type) {
-	return rpl::combine(
-		show->session().data().stories().stealthModeValue(),
-		std::move(type)
-	) | rpl::map([](Data::StealthMode value, ReplyAreaType type) {
-		return std::tuple(value.enabledTill, type);
-	}) | rpl::distinct_until_changed(
-	) | rpl::map([](TimeId till, ReplyAreaType type) {
-		return rpl::single(
-			rpl::empty
-		) | rpl::then(
-			base::timer_each(250)
-		) | rpl::map([=] {
-			return till - base::unixtime::now();
-		}) | rpl::take_while([](TimeId left) {
-			return left > 0;
-		}) | rpl::then(
-			rpl::single(0)
-		) | rpl::map([=](TimeId left) {
-			return (type == ReplyAreaType::VideoStreamComment)
-				? tr::lng_video_stream_comment_ph()
-				: left
-				? tr::lng_stealth_mode_countdown(
-					lt_left,
-					rpl::single(TimeLeftText(left)))
-				: (type == ReplyAreaType::Comment)
-				? tr::lng_story_comment_ph()
-				: tr::lng_story_reply_ph();
-		}) | rpl::flatten_latest();
+	return std::move(
+		type
+	) | rpl::distinct_until_changed(
+	) | rpl::map([](ReplyAreaType type) {
+		return (type == ReplyAreaType::VideoStreamComment)
+			? tr::lng_video_stream_comment_ph()
+			: (type == ReplyAreaType::Comment)
+			? tr::lng_story_comment_ph()
+			: tr::lng_story_reply_ph();
 	}) | rpl::flatten_latest();
 }
 
@@ -160,7 +141,6 @@ ReplyArea::ReplyArea(not_null<Controller*> controller)
 		.sendMenuDetails = sendMenuDetails(),
 		.stickerOrEmojiChosen = _controller->stickerOrEmojiChosen(),
 		.customPlaceholder = PlaceholderText(
-			_controller->uiShow(),
 			rpl::deferred([=] { return _type.value(); })),
 		.voiceCustomCancelText = tr::lng_record_cancel_stories(tr::now),
 		.voiceLockFromBottom = true,
@@ -719,8 +699,7 @@ void ReplyArea::show(
 				? WriteRestriction{ .type = WriteRestrictionType::Frozen }
 				: (can
 				|| !user
-				|| !user->requiresPremiumToWrite()
-				|| user->session().premium())
+				|| !user->requiresPremiumToWrite())
 				? WriteRestriction()
 				: WriteRestriction{
 					.text = tr::lng_send_non_premium_story(tr::now),

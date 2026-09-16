@@ -329,9 +329,6 @@ void TranscribeButton::paint(
 
 bool TranscribeButton::hasLock() const {
 	const auto session = &_item->history()->session();
-	if (session->premium()) {
-		return false;
-	}
 	const auto transcribes = &session->api().transcribes();
 	if (_summarize) {
 		return transcribes->summary(_item).premiumRequired;
@@ -375,12 +372,6 @@ ClickHandlerPtr TranscribeButton::link() {
 		const auto item = session->data().message(id);
 		if (!item) {
 			return;
-		}
-		if (session->premium()) {
-			auto &transcribes = session->api().transcribes();
-			return summarize
-				? transcribes.toggleSummary(item)
-				: transcribes.toggle(item);
 		}
 		const auto my = context.other.value<ClickHandlerContext>();
 		// LoogriGram: the padlock stays - out of free trials, or asking for

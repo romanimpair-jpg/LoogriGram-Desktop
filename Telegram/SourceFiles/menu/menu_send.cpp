@@ -193,12 +193,11 @@ void BottomRounded::paintEvent(QPaintEvent *e) {
 	auto result = Data::PossibleItemReactionsRef();
 	const auto reactions = &session->data().reactions();
 	const auto &effects = reactions->list(Data::Reactions::Type::Effects);
-	const auto premiumAllowed = session->premium();
 	auto added = base::flat_set<Data::ReactionId>();
 	result.recent.reserve(effects.size());
 	result.stickers.reserve(effects.size());
 	for (const auto &reaction : effects) {
-		if (premiumAllowed || !reaction.premium) {
+		if (!reaction.premium) {
 			if (added.emplace(reaction.id).second) {
 				if (reaction.aroundAnimation) {
 					result.recent.push_back(&reaction);
@@ -495,10 +494,9 @@ void EffectPreview::createLottie() {
 
 // LoogriGram: a premium effect used to replace the Send button with a line
 // reading "Subscribe to Telegram Premium to add this animated effect". It
-// could never appear: LookupPossibleEffects filters the list by
-// premium(), which is premium() here, so a non-subscriber is never
-// shown a premium effect to preview in the first place. canSend() said the
-// same thing twice and is gone with it.
+// could never appear: LookupPossibleEffects leaves premium effects out, so
+// none is ever shown to preview. canSend() said the same thing twice and is
+// gone with it.
 void EffectPreview::setupSend(Details details) {
 	_send->setClickedCallback([=] {
 		_actionWithEffect({}, details);

@@ -128,18 +128,8 @@ OverlayWidget::RendererRhi::RendererRhi(not_null<OverlayWidget*> owner)
 	crl::on_main(this, [=] {
 		_owner->_storiesChanged.events(
 		) | rpl::on_next([=] {
-			if (_owner->_storiesSession) {
-				Data::AmPremiumValue(
-					_owner->_storiesSession
-				) | rpl::on_next([=] {
-					ranges::fill(_cacheKeys, quint64(0));
-					invalidateControls();
-				}, _storiesLifetime);
-			} else {
-				_storiesLifetime.destroy();
-				ranges::fill(_cacheKeys, quint64(0));
-				invalidateControls();
-			}
+			ranges::fill(_cacheKeys, quint64(0));
+			invalidateControls();
 		}, _lifetime);
 	});
 }

@@ -7,7 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "media/view/media_view_overlay_opengl.h"
 
-#include "data/data_peer_values.h" // AmPremiumValue.
 #include "ui/gl/gl_shader.h"
 #include "ui/painter.h"
 #include "media/stories/media_stories_view.h"
@@ -154,16 +153,7 @@ OverlayWidget::RendererGL::RendererGL(not_null<OverlayWidget*> owner)
 	crl::on_main(this, [=] {
 		_owner->_storiesChanged.events(
 		) | rpl::on_next([=] {
-			if (_owner->_storiesSession) {
-				Data::AmPremiumValue(
-					_owner->_storiesSession
-				) | rpl::on_next([=] {
-					invalidateControls();
-				}, _storiesLifetime);
-			} else {
-				_storiesLifetime.destroy();
-				invalidateControls();
-			}
+			invalidateControls();
 		}, _lifetime);
 	});
 }

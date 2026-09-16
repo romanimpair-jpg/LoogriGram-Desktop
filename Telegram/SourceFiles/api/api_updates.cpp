@@ -2850,10 +2850,9 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 		_session->data().stories().apply(update.c_updateReadStories());
 	} break;
 
-	case mtpc_updateStoriesStealthMode: {
-		const auto &data = update.c_updateStoriesStealthMode();
-		_session->data().stories().apply(data.vstealth_mode());
-	} break;
+	// LoogriGram: viewing stories anonymously is premium-only, so the state
+	// of that mode is never ours to track.
+	case mtpc_updateStoriesStealthMode: break;
 
 	// LoogriGram: our star balance changed. Nothing here spends or earns
 	// stars and no screen shows a balance, so it is ignored.

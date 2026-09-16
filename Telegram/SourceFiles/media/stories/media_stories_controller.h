@@ -191,8 +191,6 @@ public:
 	[[nodiscard]] bool ignoreWindowMove(QPoint position) const;
 	void tryProcessKeyInput(not_null<QKeyEvent*> e);
 
-	[[nodiscard]] bool allowStealthMode() const;
-	void setupStealthMode();
 
 	using AttachStripResult = HistoryView::Reactions::AttachSelectorResult;
 	[[nodiscard]] AttachStripResult attachReactionsToMenu(

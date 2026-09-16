@@ -2700,8 +2700,7 @@ void Gif::ensureTranscribeButton() const {
 		&& (!media || !media->ttlSeconds())
 		&& !_parent->data()->isScheduled()
 		&& !_parent->data()->isAdminLogEntry()
-		&& (_data->session().premium()
-			|| _data->session().api().transcribes().trialsSupport())) {
+		&& _data->session().api().transcribes().trialsSupport()) {
 		if (!_transcribe) {
 			_transcribe = std::make_unique<TranscribeButton>(
 				_realParent,

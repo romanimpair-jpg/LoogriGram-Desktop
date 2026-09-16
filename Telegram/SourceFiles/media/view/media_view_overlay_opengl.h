@@ -167,7 +167,6 @@ private:
 	bool _shadowsForStories = false;
 	bool _blendingEnabled = false;
 
-	rpl::lifetime _storiesLifetime;
 	rpl::lifetime _lifetime;
 
 };

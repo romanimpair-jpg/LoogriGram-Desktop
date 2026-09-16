@@ -213,7 +213,6 @@ private:
 	VideoStream *_pendingVideoStream = nullptr;
 	bool _initialized = false;
 
-	rpl::lifetime _storiesLifetime;
 	rpl::lifetime _lifetime;
 
 };

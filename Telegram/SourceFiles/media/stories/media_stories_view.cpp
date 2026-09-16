@@ -116,14 +116,6 @@ void View::tryProcessKeyInput(not_null<QKeyEvent*> e) {
 	_controller->tryProcessKeyInput(e);
 }
 
-bool View::allowStealthMode() const {
-	return _controller->allowStealthMode();
-}
-
-void View::setupStealthMode() {
-	_controller->setupStealthMode();
-}
-
 auto View::attachReactionsToMenu(
 	not_null<Ui::PopupMenu*> menu,
 	QPoint desiredPosition)

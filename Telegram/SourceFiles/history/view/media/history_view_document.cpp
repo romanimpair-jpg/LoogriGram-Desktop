@@ -503,11 +503,9 @@ QSize Document::countOptimalSize() {
 			|| IsHostedInstantViewMedia(_parent)
 			|| _realParent->isScheduled()
 			|| _realParent->isAdminLogEntry()
-			|| (!session->premium()
-				&& !transcribes->freeFor(_realParent)
+			|| (!transcribes->freeFor(_realParent)
 				&& !transcribes->trialsSupport())
-			|| (!session->premium()
-				&& _data->duration() > transcribes->trialsMaxLengthMs())) {
+			|| (_data->duration() > transcribes->trialsMaxLengthMs())) {
 			voice->transcribe = nullptr;
 			voice->transcribeText = {};
 		} else {

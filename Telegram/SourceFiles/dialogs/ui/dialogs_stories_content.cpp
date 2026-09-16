@@ -22,7 +22,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/info_controller.h"
 #include "info/info_memento.h"
 #include "main/main_session.h"
-#include "media/stories/media_stories_stealth.h"
 #include "lang/lang_keys.h"
 #include "ui/dynamic_image.h"
 #include "ui/dynamic_thumbnails.h"
@@ -245,9 +244,6 @@ void FillSourceMenu(
 		add(viewProfileText, [=] {
 			controller->showPeerInfo(peer);
 		}, channel ? &st::menuIconInfo : &st::menuIconProfile);
-		if (!peer->hasActiveVideoStream() && peer->hasUnreadStories()) {
-			Media::Stories::AddStealthModeMenu(add, peer, controller);
-		}
 		const auto in = [&](Data::StorySourcesList list) {
 			return ranges::contains(
 				owner->stories().sources(list),

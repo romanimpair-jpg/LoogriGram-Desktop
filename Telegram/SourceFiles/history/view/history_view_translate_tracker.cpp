@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_channel.h"
 #include "data/data_flags.h"
 #include "data/data_peer.h"
-#include "data/data_peer_values.h" // Data::AmPremiumValue.
 #include "data/data_session.h"
 #include "history/history.h"
 #include "history/history_item.h"
@@ -67,11 +66,12 @@ void TranslateTracker::setup() {
 	}) | rpl::distinct_until_changed();
 
 	using namespace rpl::mappers;
+	// LoogriGram: premium accounts also got whole-chat translation in any
+	// chat; here it is only offered where the channel turns it on for all.
 	_trackingLanguage = rpl::combine(
 		Core::App().settings().translateChatEnabledValue(),
-		Data::AmPremiumValue(&_history->session()),
 		std::move(autoTranslationValue),
-		_1 && (_2 || _3));
+		_1 && _2);
 	_trackingLanguage.value() | rpl::on_next([=](bool tracking) {
 		_trackingLifetime.destroy();
 		if (tracking) {

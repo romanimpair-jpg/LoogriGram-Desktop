@@ -40,7 +40,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_helpers.h"
 #include "media/stories/media_stories_controller.h" // ...TogglePinnedToast.
 #include "media/stories/media_stories_share.h" // PrepareShareBox.
-#include "media/stories/media_stories_stealth.h"
 #include "window/window_session_controller.h"
 #include "window/window_peer_menu.h"
 #include "lang/lang_numbers_animation.h"
@@ -1666,17 +1665,6 @@ void ListWidget::showContextMenu(
 					globalId.itemId.peer,
 					StoryIdFromMsgId(globalId.itemId.msg),
 				};
-				const auto albumId = _controller->storiesAlbumId();
-				::Media::Stories::AddStealthModeMenu(
-					Ui::Menu::CreateAddActionCallback(_contextMenu),
-					peer,
-					_controller->parentController(),
-					crl::guard(this, [=] {
-						_controller->parentController()->openPeerStory(
-							peer,
-							storyId.story,
-							{ Data::StoriesContextAlbum{ albumId } });
-					}));
 				_contextMenu->addAction(
 					tr::lng_profile_report(tr::now),
 					[=] { ::Media::Stories::ReportRequested(

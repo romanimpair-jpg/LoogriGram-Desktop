@@ -493,10 +493,7 @@ bool CanHideForwardAuthor(
 	if (HasOnlyForcedForwardedInfo(list)) {
 		return false;
 	}
-	if (!Iv::Editor::CanAuthorRichMessages(session) && HasRichPage(list)) {
-		return false;
-	}
-	return session->premium() || !HasRichPage(list);
+	return !HasRichPage(list);
 }
 
 bool HideForwardAuthorPremiumRequired(
@@ -504,7 +501,6 @@ bool HideForwardAuthorPremiumRequired(
 		const HistoryItemsList &list) {
 	return Iv::Editor::CanAuthorRichMessages(session)
 		&& !list.empty()
-		&& !session->premium()
 		&& !HasOnlyForcedForwardedInfo(list)
 		&& HasRichPage(list)
 		&& HasDropForwardedInfoSetting(list);

@@ -419,7 +419,7 @@ void ConfirmDeleteSelectedEphemeral(
 TextWithEntities DropDisallowedCustomEmoji(
 		not_null<PeerData*> to,
 		TextWithEntities text) {
-	if (to->session().premium() || to->isSelf()) {
+	if (to->isSelf()) {
 		return text;
 	}
 	const auto isLocalIconEmoji = [](const EntityInText &entity) {

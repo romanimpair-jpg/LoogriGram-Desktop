@@ -1240,12 +1240,6 @@ void DraftOptionsBox(
 		}
 	}, box->lifetime());
 
-	Data::AmPremiumValue(
-		&args.show->session()
-	) | rpl::skip(1) | rpl::on_next([=] {
-		state->shown.force_assign(state->shown.current());
-	}, box->lifetime());
-
 }
 
 struct AuthorSelector {

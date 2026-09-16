@@ -41,7 +41,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "media/stories/media_stories_reply.h"
 #include "media/stories/media_stories_repost_view.h"
 #include "media/stories/media_stories_share.h"
-#include "media/stories/media_stories_stealth.h"
 #include "media/stories/media_stories_view.h"
 #include "media/audio/media_audio.h"
 #include "info/stories/info_stories_common.h"
@@ -1820,17 +1819,6 @@ bool Controller::ignoreWindowMove(QPoint position) const {
 
 void Controller::tryProcessKeyInput(not_null<QKeyEvent*> e) {
 	_replyArea->tryProcessKeyInput(e);
-}
-
-bool Controller::allowStealthMode() const {
-	const auto story = this->story();
-	return story
-		&& !story->peer()->isSelf()
-		&& story->peer()->session().premium();
-}
-
-void Controller::setupStealthMode() {
-	SetupStealthMode(uiShow());
 }
 
 auto Controller::attachReactionsToMenu(

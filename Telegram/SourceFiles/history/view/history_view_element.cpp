@@ -2809,10 +2809,6 @@ void Element::refreshReactions() {
 				// Searching by tag is subscriber-only, so the click simply
 				// does nothing for everyone else.
 				if (item->reactionsAreTags()) {
-					if (item->history()->session().premium()) {
-						const auto tag = Data::SearchTagToQuery(id);
-						HashtagClickHandler(tag).onClick(context);
-					}
 					return;
 				}
 				if (!wasChosen

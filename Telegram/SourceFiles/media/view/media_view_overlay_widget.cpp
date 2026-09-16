@@ -2317,19 +2317,6 @@ void OverlayWidget::fillContextMenuActions(
 			}, &st::mediaMenuIconStats);
 		}
 	}
-	if (_stories
-		&& _stories->allowStealthMode()
-		&& story
-		&& story->peer()->isUser()
-		&& !story->call()) {
-		const auto now = base::unixtime::now();
-		const auto stealth = _session->data().stories().stealthMode();
-		addAction(tr::lng_stealth_mode_menu_item(tr::now), [=] {
-			_stories->setupStealthMode();
-		}, ((_session->premium() || (stealth.enabledTill > now))
-			? &st::mediaMenuIconStealth
-			: &st::mediaMenuIconStealthLocked));
-	}
 	if (story && story->canReport()) {
 		addAction(tr::lng_profile_report(tr::now), [=] {
 			_stories->reportRequested();

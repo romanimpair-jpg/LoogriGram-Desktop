@@ -16,7 +16,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/fields/input_field.h"
 #include "ui/widgets/labels.h"
-#include "ui/widgets/popup_menu.h"
 #include "ui/widgets/shadow.h"
 #include "ui/widgets/time_input.h"
 #include "ui/ui_utility.h"
@@ -53,62 +52,6 @@ QString TimeString(QTime time) {
 	return QString("%1:%2"
 	).arg(time.hour()
 	).arg(time.minute(), 2, 10, QLatin1Char('0'));
-}
-
-class RepeatButton final : public Ui::RippleButton {
-public:
-	explicit RepeatButton(not_null<QWidget*> parent);
-
-	void setMarkedText(TextWithEntities text);
-
-protected:
-	void paintEvent(QPaintEvent *e) override;
-
-	QImage prepareRippleMask() const override;
-
-private:
-	const not_null<Ui::FlatLabel*> _label;
-
-};
-
-RepeatButton::RepeatButton(not_null<QWidget*> parent)
-: RippleButton(parent, st::defaultRippleAnimation)
-, _label(Ui::CreateChild<Ui::FlatLabel>(this, st::scheduleRepeatLabel)) {
-	_label->setAttribute(Qt::WA_TransparentForMouseEvents);
-	setPointerCursor(true);
-
-	_label->naturalWidthValue() | rpl::on_next([=](int natural) {
-		_label->resizeToWidth(natural);
-	}, lifetime());
-
-	_label->sizeValue() | rpl::on_next([=](QSize size) {
-		const auto padding = st::scheduleRepeatTextPadding;
-		const auto height = st::scheduleRepeatHeight;
-		resize(size.width() + 2 * padding, height);
-		_label->moveToLeft(padding, (height - size.height()) / 2);
-	}, lifetime());
-}
-
-void RepeatButton::setMarkedText(TextWithEntities text) {
-	_label->setMarkedText(std::move(text));
-}
-
-void RepeatButton::paintEvent(QPaintEvent *e) {
-	auto p = QPainter(this);
-	const auto radius = st::scheduleRepeatRadius;
-	{
-		auto hq = PainterHighQualityEnabler(p);
-		p.setPen(Qt::NoPen);
-		p.setBrush(st::windowBgOver);
-		p.drawRoundedRect(rect(), radius, radius);
-	}
-	paintRipple(p, QPoint());
-}
-
-QImage RepeatButton::prepareRippleMask() const {
-	return Ui::RippleAnimation::RoundRectMask(
-		size(),
-		st::scheduleRepeatRadius);
 }
 
 } // namespace
@@ -306,117 +249,6 @@ ChooseDateTimeBoxDescriptor ChooseDateTimeBox(
 		state->time->value()
 	) | rpl::map(collect);
 	box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
-
-	return result;
-}
-
-object_ptr<Ui::RpWidget> ChooseRepeatPeriod(
-		not_null<Ui::RpWidget*> parent,
-		ChooseRepeatPeriodArgs &&args) {
-	auto result = object_ptr<Ui::RpWidget>(parent.get());
-	const auto raw = result.data();
-
-	struct Entry {
-		TimeId value = 0;
-		QString text;
-	};
-	auto map = std::vector<Entry>{
-		{ 0, tr::lng_schedule_repeat_never(tr::now) },
-		{ 24 * 60 * 60, tr::lng_schedule_repeat_daily(tr::now) },
-		{ 7 * 24 * 60 * 60, tr::lng_schedule_repeat_weekly(tr::now) },
-		{ 14 * 24 * 60 * 60, tr::lng_schedule_repeat_biweekly(tr::now) },
-		{ 30 * 24 * 60 * 60, tr::lng_schedule_repeat_monthly(tr::now) },
-		{
-			91 * 24 * 60 * 60,
-			tr::lng_schedule_repeat_every_month(tr::now, lt_count, 3)
-		},
-		{
-			182 * 24 * 60 * 60,
-			tr::lng_schedule_repeat_every_month(tr::now, lt_count, 6)
-		},
-		{ 365 * 24 * 60 * 60, tr::lng_schedule_repeat_yearly(tr::now) },
-	};
-	if (args.test) {
-		map.insert(begin(map) + 1, Entry{ 300, u"Every 5 minutes"_q });
-		map.insert(begin(map) + 1, Entry{ 60, u"Every minute"_q });
-	}
-
-	const auto button = Ui::CreateChild<RepeatButton>(raw);
-	rpl::combine(
-		raw->widthValue(),
-		button->sizeValue()
-	) | rpl::on_next([=](int outer, QSize size) {
-		raw->resize(outer, size.height());
-		button->moveToLeft((outer - size.width()) / 2, 0, outer);
-	}, raw->lifetime());
-
-	struct State {
-		rpl::variable<TimeId> value;
-		rpl::variable<bool> locked;
-		std::unique_ptr<Ui::PopupMenu> menu;
-	};
-	const auto state = raw->lifetime().make_state<State>(State{
-		.value = args.value,
-		.locked = std::move(args.locked),
-	});
-
-	rpl::combine(
-		state->value.value(),
-		state->locked.value()
-	) | rpl::on_next([=](TimeId value, bool locked) {
-		auto result = tr::lng_schedule_repeat_label(
-			tr::now,
-			tr::marked);
-
-		const auto text = [&] {
-			const auto i = ranges::lower_bound(
-				map,
-				value,
-				ranges::less{},
-				&Entry::value);
-			return (i != end(map)) ? i->text : map.back().text;
-		}();
-
-		button->setMarkedText(result.append(' ').append(
-			tr::bold(text).append(
-				Ui::Text::IconEmoji(locked
-					? &st::scheduleRepeatDropdownLock
-					: &st::scheduleRepeatDropdownArrow))));
-		return result;
-	}, button->lifetime());
-
-	button->setClickedCallback([=] {
-		if (args.filter && args.filter()) {
-			return;
-		}
-		const auto changed = args.changed;
-
-		state->menu = std::make_unique<Ui::PopupMenu>(button);
-		const auto menu = state->menu.get();
-
-		menu->setDestroyedCallback(crl::guard(button, [=] {
-			if (state->menu.get() == menu) {
-				state->menu.release();
-			}
-		}));
-		for (const auto &entry : map) {
-			const auto value = entry.value;
-			menu->addAction(entry.text, [=] {
-				state->value = value;
-				changed(value);
-			});
-		}
-		menu->setForcedOrigin(Ui::PanelAnimation::Origin::BottomLeft);
-		const auto anchor = button->mapToGlobal(
-			QPoint(button->width() / 2, 0));
-		if (menu->prepareGeometryFor(anchor)) {
-			menu->move(
-				anchor.x() - menu->width() / 2,
-				menu->y()
-					- Ui::BoxShadow::ExtendFor(menu->st().shadow).bottom());
-			menu->popupPrepared();
-		}
-	});
 
 	return result;
 }

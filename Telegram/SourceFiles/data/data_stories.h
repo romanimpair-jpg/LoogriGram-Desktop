@@ -122,14 +122,6 @@ struct StoriesContext {
 	friend inline bool operator==(StoriesContext, StoriesContext) = default;
 };
 
-struct StealthMode {
-	TimeId enabledTill = 0;
-	TimeId cooldownTill = 0;
-
-	friend inline auto operator<=>(StealthMode, StealthMode) = default;
-	friend inline bool operator==(StealthMode, StealthMode) = default;
-};
-
 struct StoryAlbumUpdate {
 	not_null<PeerData*> peer;
 	int albumId = 0;
@@ -174,7 +166,6 @@ public:
 	void loadMore(StorySourcesList list);
 	void apply(const MTPDupdateStory &data);
 	void apply(const MTPDupdateReadStories &data);
-	void apply(const MTPStoriesStealthMode &stealthMode);
 	void apply(not_null<PeerData*> peer, const MTPPeerStories *data);
 	Story *applySingle(PeerId peerId, const MTPstoryItem &story);
 	void loadAround(FullStoryId id, StoriesContext context);
@@ -297,9 +288,6 @@ public:
 	[[nodiscard]] std::shared_ptr<HistoryItem> lookupItem(
 		not_null<Story*> story);
 
-	[[nodiscard]] StealthMode stealthMode() const;
-	[[nodiscard]] rpl::producer<StealthMode> stealthModeValue() const;
-	void activateStealthMode(Fn<void()> done = nullptr);
 
 	void sendReaction(FullStoryId id, Data::ReactionId reaction);
 
@@ -488,7 +476,6 @@ private:
 
 	mtpRequestId _reorderStoriesRequestId = 0;
 
-	rpl::variable<StealthMode> _stealthMode;
 
 	rpl::lifetime _lifetime;
 
