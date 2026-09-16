@@ -605,6 +605,8 @@ jobs:
               text.replace(old, new, 1))
           print('stamped ' + tag)
           PY
+          # Read by "Decide whether the build tree is worth saving."
+          echo "BUILD_STARTED=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Telegram Desktop build.
         id: telegram
@@ -714,10 +716,32 @@ jobs:
             echo "no PDB (the link did not run)"
           fi
 
-      # Saved even when the compile fails, so a broken build still leaves the
-      # objects that did compile for the next run to reuse.
+      # A failed compile still leaves objects the next run can reuse, so the
+      # tree is saved after one - but only if the build got as far as
+      # compiling. Run 35143581630 failed a minute in, before any object was
+      # built, and then spent over half an hour uploading a 2.6GB tree that
+      # was the restored cache unchanged. Five minutes is well past configure
+      # and code generation and well short of a meaningful compile.
+      - name: Decide whether the build tree is worth saving.
+        id: worth-saving
+        if: always() && inputs.mode == 'build'
+        shell: bash
+        run: |
+          outcome="${{ steps.telegram.outcome }}"
+          elapsed=0
+          if [ -n "${BUILD_STARTED:-}" ]; then
+            elapsed=$(( $(date +%s) - BUILD_STARTED ))
+          fi
+          if [ "$outcome" = "success" ] || [ "$elapsed" -ge 300 ]; then
+            save=true
+          else
+            save=false
+          fi
+          echo "build $outcome after ${elapsed}s: save=$save"
+          echo "save=$save" >> "$GITHUB_OUTPUT"
+
       - name: Save build tree cache.
-        if: always() && inputs.mode == 'build' && steps.cache-out.outputs.cache-hit != 'true'
+        if: always() && inputs.mode == 'build' && steps.cache-out.outputs.cache-hit != 'true' && steps.worth-saving.outputs.save == 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ env.CACHE_ROOT }}\${{ env.REPO_NAME }}\out
