@@ -446,7 +446,7 @@ void Photo::draw(Painter &p, const PaintContext &context) const {
 				sti->historyFileThumbRadialFg,
 				context.paused);
 		}
-	} else if (_sensitiveSpoiler || preview) {
+	} else if (_sensitiveSpoiler) {
 		drawSpoilerTag(p, rthumb, context, [&] {
 			return spoilerTagBackground();
 		});
