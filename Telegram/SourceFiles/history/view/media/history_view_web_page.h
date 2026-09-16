@@ -97,8 +97,6 @@ public:
 		return true;
 	}
 	bool enforceBubbleWidth() const override;
-	bool allowsNarrowBubble() const override;
-	int minBubbleWidthForNarrowBubble() const override;
 
 	Media *attach() const {
 		return _attach.get();

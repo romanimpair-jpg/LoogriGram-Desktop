@@ -811,8 +811,6 @@ private:
 
 	virtual QSize performCountOptimalSize() = 0;
 	virtual QSize performCountCurrentSize(int newWidth) = 0;
-	virtual void invalidateTextDependentCache() {
-	}
 
 	void refreshMedia(Element *replacing);
 	void setTextWithLinks(

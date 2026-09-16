@@ -14,7 +14,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_photo.h"
 #include "data/data_channel.h"
 #include "data/data_document.h"
-#include "data/data_star_gift.h"
 #include "core/local_url_handlers.h"
 #include "lang/lang_keys.h"
 #include "iv/iv_data.h"
@@ -171,16 +170,10 @@ WebPageType ParseWebPageType(
 		return WebPageType::ChannelBoost;
 	} else if (type == u"telegram_group_boost"_q) {
 		return WebPageType::GroupBoost;
-	} else if (type == u"telegram_giftcode"_q) {
-		return WebPageType::Giftcode;
 	} else if (type == u"telegram_stickerset"_q) {
 		return WebPageType::StickerSet;
 	} else if (type == u"telegram_story_album"_q) {
 		return WebPageType::StoryAlbum;
-	} else if (type == u"telegram_collection"_q) {
-		return WebPageType::GiftCollection;
-	} else if (type == u"telegram_auction"_q) {
-		return WebPageType::Auction;
 	} else if (type == u"telegram_newbot"_q) {
 		return WebPageType::NewBot;
 	} else if (type == u"telegram_aicomposetone"_q) {
@@ -281,8 +274,6 @@ bool WebPageData::applyChanges(
 		WebPageCollage &&newCollage,
 		std::unique_ptr<Iv::Data> newIv,
 		std::unique_ptr<WebPageStickerSet> newStickerSet,
-		std::shared_ptr<Data::UniqueGift> newUniqueGift,
-		std::unique_ptr<WebPageAuction> newAuction,
 		DocumentId newComposeToneEmojiId,
 		int newDuration,
 		const QString &newAuthor,
@@ -346,8 +337,6 @@ bool WebPageData::applyChanges(
 		&& (!iv || (iv->partial() == newIv->partial()
 			&& iv->hash() == newIv->hash()))
 		&& (!stickerSet == !newStickerSet)
-		&& (!uniqueGift == !newUniqueGift)
-		&& (!auction == !newAuction)
 		&& composeToneEmojiId == newComposeToneEmojiId
 		&& duration == newDuration
 		&& author == resultAuthor
@@ -373,8 +362,6 @@ bool WebPageData::applyChanges(
 	collage = std::move(newCollage);
 	iv = std::move(newIv);
 	stickerSet = std::move(newStickerSet);
-	uniqueGift = std::move(newUniqueGift);
-	auction = std::move(newAuction);
 	composeToneEmojiId = newComposeToneEmojiId;
 	duration = newDuration;
 	author = resultAuthor;
@@ -477,8 +464,7 @@ bool WebPageData::computeDefaultSmallMedia() const {
 		&& description.empty()
 		&& author.isEmpty()) {
 		return false;
-	} else if (!uniqueGift
-		&& !document
+	} else if (!document
 		&& photo
 		&& type != WebPageType::Photo
 		&& type != WebPageType::Document

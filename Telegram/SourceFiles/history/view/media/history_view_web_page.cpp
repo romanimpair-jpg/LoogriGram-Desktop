@@ -158,8 +158,6 @@ constexpr auto kLogEntryPreviewLines = 2;
 	const auto type = page->type;
 	const auto text = tr::upper(page->iv
 		? tr::lng_view_button_iv(tr::now)
-		: page->uniqueGift
-		? tr::lng_view_button_collectible(tr::now)
 		: (type == WebPageType::Theme)
 		? tr::lng_view_button_theme(tr::now)
 		: (type == WebPageType::Story)
@@ -178,8 +176,6 @@ constexpr auto kLogEntryPreviewLines = 2;
 		: (type == WebPageType::GroupBoost
 			|| type == WebPageType::ChannelBoost)
 		? tr::lng_view_button_boost(tr::now)
-		: (type == WebPageType::Giftcode)
-		? tr::lng_view_button_giftcode(tr::now)
 		: (type == WebPageType::VoiceChat)
 		? tr::lng_view_button_voice_chat(tr::now)
 		: (type == WebPageType::Livestream)
@@ -200,21 +196,8 @@ constexpr auto kLogEntryPreviewLines = 2;
 		? tr::lng_view_button_style(tr::now)
 		: (type == WebPageType::StoryAlbum)
 		? tr::lng_view_button_storyalbum(tr::now)
-		: (type == WebPageType::GiftCollection)
-		? tr::lng_view_button_collection(tr::now)
 		: (type == WebPageType::NewBot)
 		? tr::lng_view_button_newbot(tr::now)
-		: (type == WebPageType::Auction)
-		? ((page->auction
-			&& page->auction->endDate
-			&& page->auction->endDate <= base::unixtime::now())
-			? tr::lng_auction_preview_view_results(tr::now)
-			: (page->auction
-				&& page->auction->auctionGift->auctionStartDate
-				&& (page->auction->auctionGift->auctionStartDate
-				> base::unixtime::now()))
-			? tr::lng_auction_bar_view(tr::now)
-			: tr::lng_auction_preview_join(tr::now))
 		: QString());
 	if (page->iv) {
 		return Ui::Text::IconEmoji(&st::historyIvIcon).append(text);
@@ -225,7 +208,6 @@ constexpr auto kLogEntryPreviewLines = 2;
 [[nodiscard]] bool HasButton(not_null<WebPageData*> webpage) {
 	const auto type = webpage->type;
 	return webpage->iv
-		|| webpage->uniqueGift
 		|| (type == WebPageType::Message)
 		|| (type == WebPageType::Group)
 		|| (type == WebPageType::GroupWithRequest)
@@ -233,7 +215,6 @@ constexpr auto kLogEntryPreviewLines = 2;
 		|| (type == WebPageType::Channel)
 		|| (type == WebPageType::ChannelBoost)
 		|| (type == WebPageType::ChannelWithRequest)
-		|| (type == WebPageType::Giftcode)
 		// || (type == WebPageType::Bot)
 		|| (type == WebPageType::User)
 		|| (type == WebPageType::VoiceChat)
@@ -250,9 +231,7 @@ constexpr auto kLogEntryPreviewLines = 2;
 			&& webpage->document->isWallPaper())
 		|| (type == WebPageType::StickerSet)
 		|| (type == WebPageType::StoryAlbum)
-		|| (type == WebPageType::GiftCollection)
 		|| (type == WebPageType::ComposeAiTone)
-		|| (type == WebPageType::Auction)
 		|| (type == WebPageType::NewBot);
 }
 
@@ -514,9 +493,7 @@ QSize WebPage::countOptimalSize() {
 
 	// init strings
 	if (_description.isEmpty()
-		&& !_data->description.text.isEmpty()
-		&& !_data->uniqueGift
-		&& !_data->auction) {
+		&& !_data->description.text.isEmpty()) {
 		const auto &text = _data->description;
 		using Type = Core::TextContextDetails::HashtagMentionType;
 		auto context = Core::TextContext({
@@ -1546,15 +1523,6 @@ bool WebPage::enforceBubbleWidth() const {
 	return (_attach != nullptr)
 		&& (_data->document != nullptr)
 		&& (_data->document->isWallPaper() || _data->document->isTheme());
-}
-
-bool WebPage::allowsNarrowBubble() const {
-	return (_attach != nullptr)
-		&& (_data->uniqueGift != nullptr || _data->auction != nullptr);
-}
-
-int WebPage::minBubbleWidthForNarrowBubble() const {
-	return allowsNarrowBubble() ? maxWidth() : 0;
 }
 
 void WebPage::playAnimation(bool autoplay) {

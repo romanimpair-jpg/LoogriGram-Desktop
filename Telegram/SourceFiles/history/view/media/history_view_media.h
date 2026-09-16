@@ -333,12 +333,6 @@ public:
 	[[nodiscard]] virtual int bubbleWidthLimit() const {
 		return 0;
 	}
-	[[nodiscard]] virtual bool allowsNarrowBubble() const {
-		return false;
-	}
-	[[nodiscard]] virtual int minBubbleWidthForNarrowBubble() const {
-		return 0;
-	}
 
 	[[nodiscard]] virtual int contributedMaxMonospaceWidth() const {
 		return 0;

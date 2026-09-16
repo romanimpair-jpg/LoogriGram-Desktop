@@ -501,7 +501,6 @@ private:
 	[[nodiscard]] ClickHandlerPtr createGoToCommentsLink() const;
 	[[nodiscard]] ClickHandlerPtr psaTooltipLink() const;
 	void psaTooltipToggled(bool shown) const;
-	void invalidateTextDependentCache() override;
 
 	bool textAppearValidate();
 	bool textAppearCheckLine();
@@ -531,8 +530,6 @@ private:
 	mutable std::unique_ptr<Ui::RoundCheckbox> _selectionRoundCheckbox;
 	mutable uint32 _fromNameVersion : 16 = 0;
 	uint32 _nonTextMaxWidth : 16 = 0;
-	mutable int _bubbleTextualWidthMinimum : 16 = -1;
-	mutable int _bubbleTextualWidthCache : 16 = 0;
 	uint32 _bubbleWidthLimit : 26 = 0;
 	uint32 _invertMedia : 1 = 0;
 	uint32 _hideReply : 1 = 0;

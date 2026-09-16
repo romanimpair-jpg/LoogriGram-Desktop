@@ -4311,7 +4311,6 @@ not_null<WebPageData*> Session::webpage(
 		WebPageCollage &&collage,
 		std::unique_ptr<Iv::Data> iv,
 		std::unique_ptr<WebPageStickerSet> stickerSet,
-		std::shared_ptr<UniqueGift> uniqueGift,
 		int duration,
 		const QString &author,
 		bool hasLargeMedia,
@@ -4332,8 +4331,6 @@ not_null<WebPageData*> Session::webpage(
 		std::move(collage),
 		std::move(iv),
 		std::move(stickerSet),
-		std::move(uniqueGift),
-		nullptr,
 		0,
 		duration,
 		author,
@@ -4411,54 +4408,12 @@ void Session::webpageApplyFields(
 						result->items.push_back(processDocument(tl));
 					}
 					return result;
-				}, [&](const MTPDwebPageAttributeStarGiftCollection &data) {
-					auto result = std::make_unique<WebPageStickerSet>();
-					result->isEmoji = false;
-					result->isTextColor = false;
-					for (const auto &tl : data.vicons().v) {
-						result->items.push_back(processDocument(tl));
-					}
-					return result;
 				}, [](const auto &) {
 					return WebPageStickerSetPtr(nullptr);
 				});
 				if (result && !result->items.empty()) {
 					return result;
 				}
-			}
-		}
-		return nullptr;
-	};
-
-	using UniqueGiftPtr = std::shared_ptr<UniqueGift>;
-	const auto lookupUniqueGift = [&]() -> UniqueGiftPtr {
-		if (const auto attributes = data.vattributes()) {
-			for (const auto &attribute : attributes->v) {
-				return attribute.match([&](
-						const MTPDwebPageAttributeUniqueStarGift &data) {
-					const auto gift = Api::FromTL(_session, data.vgift());
-					return gift ? gift->unique : nullptr;
-				}, [](const auto &) -> UniqueGiftPtr { return nullptr; });
-			}
-		}
-		return nullptr;
-	};
-
-	using WebPageAuctionPtr = std::unique_ptr<WebPageAuction>;
-	const auto lookupAuction = [&]() -> WebPageAuctionPtr {
-		if (const auto attributes = data.vattributes()) {
-			for (const auto &attribute : attributes->v) {
-				return attribute.match([&](
-						const MTPDwebPageAttributeStarGiftAuction &data) {
-					const auto gift = Api::FromTL(_session, data.vgift());
-					if (!gift) {
-						return WebPageAuctionPtr(nullptr);
-					}
-					auto auction = std::make_unique<WebPageAuction>();
-					auction->auctionGift = std::make_shared<StarGift>(*gift);
-					auction->endDate = data.vend_date().v;
-					return auction;
-				}, [](const auto &) -> WebPageAuctionPtr { return nullptr; });
 			}
 		}
 		return nullptr;
@@ -4557,8 +4512,6 @@ void Session::webpageApplyFields(
 		WebPageCollage(this, data),
 		std::move(iv),
 		lookupStickerSet(),
-		lookupUniqueGift(),
-		lookupAuction(),
 		lookupComposeToneEmojiId(),
 		data.vduration().value_or_empty(),
 		qs(data.vauthor().value_or_empty()),
@@ -4581,8 +4534,6 @@ void Session::webpageApplyFields(
 		WebPageCollage &&collage,
 		std::unique_ptr<Iv::Data> iv,
 		std::unique_ptr<WebPageStickerSet> stickerSet,
-		std::shared_ptr<UniqueGift> uniqueGift,
-		std::unique_ptr<WebPageAuction> auction,
 		DocumentId composeToneEmojiId,
 		int duration,
 		const QString &author,
@@ -4608,8 +4559,6 @@ void Session::webpageApplyFields(
 		std::move(collage),
 		std::move(iv),
 		std::move(stickerSet),
-		std::move(uniqueGift),
-		std::move(auction),
 		composeToneEmojiId,
 		duration,
 		author,

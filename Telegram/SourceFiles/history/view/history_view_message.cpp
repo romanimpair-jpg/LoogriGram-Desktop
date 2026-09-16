@@ -80,7 +80,6 @@ base::options::toggle UnlimitedMessageWidth({
 });
 
 constexpr auto kMaxWidth = (1 << 16) - 1;
-constexpr auto kMaxNiceToReadLines = 6;
 const auto kPsaTooltipPrefix = "cloud_lng_tooltip_psa_";
 constexpr auto kFullLineAppearDuration = crl::time(300);
 constexpr auto kFullLineAppearFinalDuration = crl::time(120);
@@ -5364,44 +5363,9 @@ int Message::bubbleTextualWidth() const {
 			+ std::max(laidOutWidth, 1)
 			+ st::msgPadding.right();
 	}
-	const auto media = this->media();
-	if (!hasVisibleText()
-		|| !media
-		|| !media->allowsNarrowBubble()) {
-		return full;
-	}
-	const auto minimum = std::max(
-		media->minBubbleWidthForNarrowBubble(),
-		st::msgMinWidth);
-	if (_bubbleTextualWidthMinimum != minimum) {
-		_bubbleTextualWidthMinimum = minimum;
-		if (minimum >= full) {
-			_bubbleTextualWidthCache = minimum;
-		} else {
-			const auto lineHeight = text().style()->font->height;
-			const auto fullTextHeight = textHeightFor(bubbleTextWidth(full));
-			if (fullTextHeight > kMaxNiceToReadLines * lineHeight) {
-				_bubbleTextualWidthCache = full;
-			} else {
-				auto left = minimum;
-				auto right = full;
-				while (left < right) {
-					const auto middle = left + (right - left) / 2;
-					const auto middleHeight = textHeightFor(
-						bubbleTextWidth(middle));
-					if (middleHeight <= kMaxNiceToReadLines * lineHeight) {
-						right = middle;
-					} else {
-						left = middle + 1;
-					}
-				}
-				_bubbleTextualWidthCache = right;
-				[[maybe_unused]] const auto ensureRightCache
-					= textHeightFor(bubbleTextWidth(right));
-			}
-		}
-	}
-	return _bubbleTextualWidthCache;
+	// LoogriGram: a narrower bubble was chosen for the two link previews
+	// that asked for one, a collectible gift and a gift auction.
+	return full;
 }
 
 int Message::viewButtonHeight() const {
@@ -6568,11 +6532,6 @@ int Message::resizeContentGetHeight(int newWidth) {
 
 	newHeight += marginTop() + marginBottom();
 	return newHeight;
-}
-
-void Message::invalidateTextDependentCache() {
-	_bubbleTextualWidthMinimum = -1;
-	_bubbleTextualWidthCache = 0;
 }
 
 bool Message::textAppearValidate() {
