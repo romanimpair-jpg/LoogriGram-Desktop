@@ -424,9 +424,6 @@ void Uploader::runTranscode(FullMsgId itemId) {
 	const auto source = file->videoSource;
 	const auto job = file->animationJob;
 	const auto archiveWork = (file->archive != nullptr);
-	const auto archiveLimit = session().premium()
-		? kFileSizePremiumLimit
-		: kFileSizeLimit;
 	const auto cancel = std::make_shared<std::atomic<bool>>(false);
 	entry.cancelPreparing = cancel;
 	crl::async([
@@ -446,7 +443,6 @@ void Uploader::runTranscode(FullMsgId itemId) {
 		auto bytes = QByteArray();
 		auto path = QString();
 		auto archiveStatus = ArchiveWriteResult::Status::Done;
-		auto archiveSize = int64();
 		if (job) {
 			auto result = Media::Encode::Run(
 				Media::Encode::Job(*job),
@@ -468,10 +464,9 @@ void Uploader::runTranscode(FullMsgId itemId) {
 		} else if (entries) {
 			const auto written = WriteArchive(
 				std::move(*entries),
-				archiveLimit,
+				kFileSizeLimit,
 				progress);
 			archiveStatus = written.status;
-			archiveSize = written.size;
 			path = written.path;
 		}
 		crl::on_main([=, bytes = std::move(bytes)]() mutable {
@@ -496,9 +491,7 @@ void Uploader::runTranscode(FullMsgId itemId) {
 					Ui::show(
 						Box(
 							FileSizeLimitBox,
-							&strong->session(),
-							uint64(archiveSize),
-							nullptr),
+							&strong->session()),
 						Ui::LayerOption::KeepOther);
 				} else {
 					Ui::Toast::Show(tr::lng_folder_archive_failed(tr::now));

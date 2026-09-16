@@ -393,10 +393,8 @@ void CreateManagedBotBox(
 				// naming the larger premium cap and opening the subscription
 				// page - which asked for !premium() && premium() and
 				// so could never have been reached here.
-				const auto limits = Data::PremiumLimits(session);
-				const auto current = session->premium()
-					? limits.botsCreatePremium()
-					: limits.botsCreateDefault();
+				const auto current = Data::PremiumLimits(
+					session).botsCreateCurrent();
 				const auto bot = tr::link(
 					u"@BotFather"_q,
 					u"https://t.me/botfather?start=deletebot"_q);

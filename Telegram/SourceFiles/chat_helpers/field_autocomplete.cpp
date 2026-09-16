@@ -7,7 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "chat_helpers/field_autocomplete.h"
 
-#include "data/business/data_shortcut_messages.h"
 #include "data/components/recent_inline_bots.h"
 #include "data/components/top_peers.h"
 #include "data/data_document.h"
@@ -745,30 +744,6 @@ void FieldAutocomplete::updateFiltered(bool resetScroll) {
 				}
 			}
 		}
-		const auto shortcuts = (_user && !_user->isBot())
-			? _user->owner().shortcutMessages().shortcuts().list
-			: base::flat_map<BusinessShortcutId, Data::Shortcut>();
-		if (!hasUsername && brows.empty() && !shortcuts.empty()) {
-			const auto self = _user->session().user();
-			for (const auto &[id, shortcut] : shortcuts) {
-				if (shortcut.count < 1) {
-					continue;
-				} else if (!listAllSuggestions) {
-					if (!shortcut.name.startsWith(_filter, Qt::CaseInsensitive)) {
-						continue;
-					}
-				}
-				brows.push_back(BotCommandRow{
-					self,
-					shortcut.name,
-					tr::lng_forum_messages(tr::now, lt_count, shortcut.count),
-					self->activeUserpicView()
-				});
-			}
-			if (!brows.empty()) {
-				brows.insert(begin(brows), BotCommandRow{ self }); // Edit.
-			}
-		}
 	}
 	rowsUpdated(
 		std::move(mrows),
@@ -1265,15 +1240,6 @@ void FieldAutocomplete::Inner::paintEvent(QPaintEvent *e) {
 			} else {
 				auto &row = _brows->at(i);
 				const auto user = row.user;
-				if (user->isSelf() && row.command.isEmpty()) {
-					p.setPen(st::windowActiveTextFg);
-					p.setFont(st::semiboldFont);
-					p.drawText(
-						QRect(0, i * st::mentionHeight, width(), st::mentionHeight),
-						tr::lng_replies_edit_button(tr::now),
-						style::al_center);
-					continue;
-				}
 
 				auto toHighlight = row.command;
 				const auto botStatus = _parent->chat() ? _parent->chat()->botStatus : ((_parent->channel() && _parent->channel()->isMegagroup()) ? _parent->channel()->mgInfo->botStatus : Data::BotStatus::NoBots);
@@ -1408,10 +1374,6 @@ void FieldAutocomplete::Inner::clearSel(bool hidden) {
 	_lastMousePosition = std::nullopt;
 	setSel((_mrows->empty() && _brows->empty() && _hrows->empty())
 		? -1
-		: (_brows->size() > 1
-			&& _brows->front().user->isSelf()
-			&& _brows->front().command.isEmpty())
-		? 1
 		: 0);
 	if (hidden) {
 		_down = -1;
@@ -1920,10 +1882,6 @@ void InitFieldAutocomplete(
 
 	const auto peer = descriptor.peer;
 	const auto features = descriptor.features;
-	const auto processShortcut = descriptor.processShortcut;
-	const auto shortcutMessages = (processShortcut != nullptr)
-		? &peer->owner().shortcutMessages()
-		: nullptr;
 	raw->botCommandChosen(
 	) | rpl::on_next([=](FieldAutocomplete::BotCommandChosen data) {
 		if (!features().autocompleteCommands) {
@@ -1931,17 +1889,14 @@ void InitFieldAutocomplete(
 		}
 		using Method = FieldAutocompleteChooseMethod;
 		const auto byTab = (data.method == Method::ByTab);
-		const auto shortcut = data.user->isSelf();
 
 		// Send bot command at once, if it was not inserted by pressing Tab.
 		if (byTab && data.command.size() > 1) {
 			field->insertTag(data.command);
-		} else if (!shortcut) {
+		} else {
 			sendCommand(data.command);
 			setText(
 				field->getTextWithTagsPart(field->textCursor().position()));
-		} else if (processShortcut) {
-			processShortcut(data.command.mid(1));
 		}
 	}, raw->lifetime());
 
@@ -1980,9 +1935,7 @@ void InitFieldAutocomplete(
 			peer->session().local().readRecentHashtagsAndBots();
 		} else if (parsed.query[0] == '/'
 			&& peer->isUser()
-			&& !peer->asUser()->isBot()
-			&& (!shortcutMessages
-				|| shortcutMessages->shortcuts().list.empty())) {
+			&& !peer->asUser()->isBot()) {
 			parsed = {};
 		}
 		if (!parsed.query.isEmpty() && parsed.query[0] == '@') {
@@ -2043,11 +1996,6 @@ void InitFieldAutocomplete(
 	) | rpl::filter([=](const Data::PeerUpdate &update) {
 		return (update.peer == peer);
 	}) | rpl::on_next(updateStickersByEmoji, raw->lifetime());
-
-	if (shortcutMessages) {
-		shortcutMessages->shortcutsChanged(
-		) | rpl::on_next(check, raw->lifetime());
-	}
 
 	raw->setSendMenuDetails(std::move(descriptor.sendMenuDetails));
 	raw->hideFast();

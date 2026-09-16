@@ -138,7 +138,6 @@ struct ComposeControlsDescriptor {
 	bool voiceLockFromBottom = false;
 	ChatHelpers::ComposeFeatures features;
 	rpl::producer<bool> scheduledToggleValue;
-	Fn<void(QString)> processShortcut;
 	Fn<bool(int)> moderateKeyActivateCallback;
 
 	rpl::producer<bool> botKeyboardShownToggleShown;
@@ -555,7 +554,6 @@ private:
 	std::shared_ptr<Ui::ChatStyle> _chatStyle;
 
 	const Fn<SendMenu::Details()> _sendMenuDetails;
-	const Fn<void(QString)> _processShortcut;
 	const Fn<bool(int)> _moderateKeyActivateCallback;
 	const Fn<void(not_null<DocumentData*>)> _unavailableEmojiPasted;
 

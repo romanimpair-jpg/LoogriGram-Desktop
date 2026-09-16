@@ -1441,7 +1441,7 @@ void Filler::addThemeEdit() {
 	if (!user || user->isInaccessible()) {
 		return;
 	}
-	if (user->requiresPremiumToWrite() && !user->session().premium()) {
+	if (user->requiresPremiumToWrite()) {
 		return;
 	}
 	const auto controller = _controller;

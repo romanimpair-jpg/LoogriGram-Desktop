@@ -592,7 +592,7 @@ bool ShowSendError(
 			{},
 			&Ui::PreparedFile::size);
 		const auto session = &show->session();
-		show->show(Box(FileSizeLimitBox, session, max->size, nullptr));
+		show->show(Box(FileSizeLimitBox, session));
 		return true;
 	}
 	ShowSendErrorToast(show, peer, error);

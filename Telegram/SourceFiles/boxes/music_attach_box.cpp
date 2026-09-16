@@ -1425,8 +1425,7 @@ void PushPreparedMusicFile(
 
 [[nodiscard]] Ui::PreparedList FilterMusicPreparedList(
 		Ui::PreparedList &&list,
-		int previewWidth,
-		bool premium) {
+		int previewWidth) {
 	auto result = Ui::PreparedList(list.error, list.errorData);
 	result.overrideSendImagesAsPhotos = list.overrideSendImagesAsPhotos;
 	for (auto &file : list.files) {
@@ -1440,8 +1439,7 @@ void PushPreparedMusicFile(
 		}
 		auto prepared = Storage::PrepareMediaList(
 			QStringList{ file.path },
-			previewWidth,
-			premium);
+			previewWidth);
 		if (prepared.error != Ui::PreparedList::Error::None) {
 			return prepared;
 		}
@@ -2417,18 +2415,15 @@ void MusicAttachBox(
 					return;
 				}
 
-				const auto premium = controller->session().user()->isPremium();
 				auto list = Storage::PrepareMediaList(
 					result.paths,
-					st::sendMediaPreviewSize,
-					premium);
+					st::sendMediaPreviewSize);
 				if (Data::ShowSendError(show, peer, list, std::nullopt)) {
 					return;
 				}
 				list = FilterMusicPreparedList(
 					std::move(list),
-					st::sendMediaPreviewSize,
-					premium);
+					st::sendMediaPreviewSize);
 				if (Data::ShowSendError(show, peer, list, std::nullopt)) {
 					return;
 				} else if (list.files.empty() && list.filesToProcess.empty()) {

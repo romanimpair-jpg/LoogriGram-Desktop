@@ -33,10 +33,8 @@ struct ArchiveEntries;
 struct FilePrepareResult;
 
 // Load files up to 2'000 MB.
+// LoogriGram: premium accounts got 4'000 MB. The account is never premium.
 constexpr auto kFileSizeLimit = 2'000 * int64(1024 * 1024);
-
-// Load files up to 4'000 MB.
-constexpr auto kFileSizePremiumLimit = 4'000 * int64(1024 * 1024);
 
 [[nodiscard]] int PhotoSideLimit(bool large);
 [[nodiscard]] int PhotoSideLimit();

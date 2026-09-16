@@ -119,8 +119,7 @@ void VideoCoverUploader::choose(
 			std::move(result),
 			checkResult,
 			showError,
-			st::sendMediaPreviewSize,
-			show->session().premium());
+			st::sendMediaPreviewSize);
 		if (!list || list->files.empty()) {
 			return;
 		}

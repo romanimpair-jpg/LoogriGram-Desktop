@@ -46,8 +46,7 @@ enum class MimeDataState {
 	FileDialog::OpenResult &&result,
 	Fn<bool(const Ui::PreparedList&)> checkResult,
 	Fn<void(tr::phrase<>)> errorCallback,
-	int previewWidth,
-	bool premium);
+	int previewWidth);
 [[nodiscard]] MimeDataState ComputeMimeDataState(const QMimeData *data);
 [[nodiscard]] bool ValidatePhotoEditorMediaDragData(
 	not_null<const QMimeData*> data);
@@ -57,12 +56,10 @@ enum class MimeDataState {
 [[nodiscard]] Ui::PreparedList PrepareMediaList(
 	const QList<QUrl> &files,
 	int previewWidth,
-	bool premium,
 	Fn<void(const Ui::PreparedList &)> errorCallback = nullptr);
 [[nodiscard]] Ui::PreparedList PrepareMediaList(
 	const QStringList &files,
 	int previewWidth,
-	bool premium,
 	Fn<void(const Ui::PreparedList &)> errorCallback = nullptr);
 [[nodiscard]] Ui::PreparedList PrepareMediaFromImage(
 	QImage &&image,

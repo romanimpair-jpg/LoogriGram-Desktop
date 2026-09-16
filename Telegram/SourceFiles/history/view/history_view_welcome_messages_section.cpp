@@ -530,8 +530,7 @@ void WelcomeMessagesWidget::chooseAttach(
 			} else {
 				auto list = Storage::PrepareMediaList(
 					result.paths,
-					st::sendMediaPreviewSize,
-					session().user()->isPremium());
+					st::sendMediaPreviewSize);
 				list.overrideSendImagesAsPhotos
 					= overrideSendImagesAsPhotos;
 				confirmSendingFiles(std::move(list));

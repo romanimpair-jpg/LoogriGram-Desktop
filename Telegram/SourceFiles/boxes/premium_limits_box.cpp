@@ -41,12 +41,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace {
 
 struct InfographicDescriptor {
-	float64 defaultLimit = 0;
 	float64 current = 0;
-	float64 premiumLimit = 0;
 	const style::icon *icon;
 	std::optional<tr::phrase<lngtag_count>> phrase;
-	bool complexRatio = false;
 };
 
 void AddSubtitle(
@@ -135,12 +132,6 @@ private:
 	rpl::event_stream<int> _selectedCountChanges;
 
 };
-
-[[nodiscard]] Ui::Premium::BubbleType ChooseBubbleType(bool premium) {
-	return premium
-		? Ui::Premium::BubbleType::Premium
-		: Ui::Premium::BubbleType::NoPremium;
-}
 
 void InactiveDelegate::peerListSetTitle(rpl::producer<QString> title) {
 }
@@ -399,18 +390,16 @@ std::unique_ptr<PeerListRow> PublicsController::createRow(
 	return result;
 }
 
+// LoogriGram: these boxes compared the free cap with the premium one - a
+// premium bubble, a second bar naming the larger number, a referral tag for
+// the subscription page. The account is never premium, so each is now the
+// server's cap, the count against it and an OK button.
 void SimpleLimitBox(
 		not_null<Ui::GenericBox*> box,
-		const style::PremiumLimits *stOverride,
-		not_null<Main::Session*> session,
-		bool premium,
 		rpl::producer<QString> title,
 		rpl::producer<TextWithEntities> text,
-		const QString &refAddition,
 		const InfographicDescriptor &descriptor,
 		bool fixed = false) {
-	const auto &st = stOverride ? *stOverride : st::defaultPremiumLimits;
-
 	box->setWidth(st::boxWideWidth);
 
 	const auto top = fixed
@@ -424,25 +413,11 @@ void SimpleLimitBox(
 		BoxShowFinishes(box),
 		0,
 		descriptor.current,
-		(descriptor.complexRatio
-			? descriptor.premiumLimit
-			: 2 * descriptor.current),
-		ChooseBubbleType(premium),
+		2 * descriptor.current,
+		Ui::Premium::BubbleType::NoPremium,
 		descriptor.phrase,
 		descriptor.icon);
 	Ui::AddSkip(top, st::premiumLineTextSkip);
-	if (premium) {
-		Ui::Premium::AddLimitRow(
-			top,
-			st,
-			descriptor.premiumLimit,
-			descriptor.phrase,
-			0,
-			(descriptor.complexRatio
-				? (float64(descriptor.current) / descriptor.premiumLimit)
-				: Ui::Premium::kLimitRowRatio));
-		Ui::AddSkip(top, st::premiumInfographicPadding.bottom());
-	}
 
 	box->setTitle(std::move(title));
 
@@ -455,10 +430,6 @@ void SimpleLimitBox(
 			st::aboutRevokePublicLabel),
 		padding);
 
-	// LoogriGram: the explanation of the cap stays - it is an error message
-	// for a limit the server imposes either way - but the offer of a way
-	// around it does not. premium() is premium() now, so the branch
-	// this replaces could only ever have been reached to sell something.
 	box->addButton(tr::lng_box_ok(), [=] {
 		box->closeBox();
 	});
@@ -469,54 +440,23 @@ void SimpleLimitBox(
 	}
 }
 
-void SimpleLimitBox(
-		not_null<Ui::GenericBox*> box,
-		const style::PremiumLimits *stOverride,
-		not_null<Main::Session*> session,
-		rpl::producer<QString> title,
-		rpl::producer<TextWithEntities> text,
-		const QString &refAddition,
-		const InfographicDescriptor &descriptor,
-		bool fixed = false) {
-	SimpleLimitBox(
-		box,
-		stOverride,
-		session,
-		session->premium(),
-		std::move(title),
-		std::move(text),
-		refAddition,
-		descriptor,
-		fixed);
-}
-
 [[nodiscard]] int PinsCount(not_null<Dialogs::MainList*> list) {
 	return list->pinned()->order().size();
 }
 
 void SimplePinsLimitBox(
 		not_null<Ui::GenericBox*> box,
-		not_null<Main::Session*> session,
-		const QString &refAddition,
-		float64 defaultLimit,
-		float64 premiumLimit,
+		float64 limit,
 		float64 currentCount) {
-	const auto premium = session->premium();
-
-	const auto current = std::clamp(currentCount, defaultLimit, premiumLimit);
-
 	auto text = tr::lng_filter_pin_limit1(
 		lt_count,
-		rpl::single(premium ? premiumLimit : defaultLimit),
+		rpl::single(limit),
 		tr::rich);
 	SimpleLimitBox(
 		box,
-		nullptr,
-		session,
 		tr::lng_filter_pin_limit_title(),
 		std::move(text),
-		refAddition,
-		{ defaultLimit, current, premiumLimit, &st::premiumIconPins });
+		{ std::max(currentCount, limit), &st::premiumIconPins });
 }
 
 } // namespace
@@ -524,17 +464,13 @@ void SimplePinsLimitBox(
 void ChannelsLimitBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session) {
-	const auto premium = session->premium();
-
-	const auto limits = Data::PremiumLimits(session);
-	const auto defaultLimit = float64(limits.channelsDefault());
-	const auto premiumLimit = float64(limits.channelsPremium());
-	const auto current = (premium ? premiumLimit : defaultLimit);
+	const auto limit = float64(
+		Data::PremiumLimits(session).channelsCurrent());
 
 	auto text = rpl::combine(
 		tr::lng_channels_limit1(
 			lt_count,
-			rpl::single(current),
+			rpl::single(limit),
 			tr::rich),
 		tr::lng_channels_limit2_final(tr::rich)
 	) | rpl::map([](TextWithEntities &&a, TextWithEntities &&b) {
@@ -543,12 +479,9 @@ void ChannelsLimitBox(
 
 	SimpleLimitBox(
 		box,
-		nullptr,
-		session,
 		tr::lng_channels_limit_title(),
 		std::move(text),
-		"channels",
-		{ defaultLimit, current, premiumLimit, &st::premiumIconGroups },
+		{ limit, &st::premiumIconGroups },
 		true);
 
 	AddSubtitle(box->verticalLayout(), tr::lng_channels_leave_title());
@@ -604,17 +537,13 @@ void PublicLinksLimitBox(
 		not_null<Window::SessionNavigation*> navigation,
 		Fn<void()> retry) {
 	const auto session = &navigation->session();
-	const auto premium = session->premium();
-
-	const auto limits = Data::PremiumLimits(session);
-	const auto defaultLimit = float64(limits.channelsPublicDefault());
-	const auto premiumLimit = float64(limits.channelsPublicPremium());
-	const auto current = (premium ? premiumLimit : defaultLimit);
+	const auto limit = float64(
+		Data::PremiumLimits(session).channelsPublicCurrent());
 
 	auto text = rpl::combine(
 		tr::lng_links_limit1(
 			lt_count,
-			rpl::single(current),
+			rpl::single(limit),
 			tr::rich),
 		tr::lng_links_limit2_final(tr::rich)
 	) | rpl::map([](TextWithEntities &&a, TextWithEntities &&b) {
@@ -623,12 +552,9 @@ void PublicLinksLimitBox(
 
 	SimpleLimitBox(
 		box,
-		nullptr,
-		session,
 		tr::lng_links_limit_title(),
 		std::move(text),
-		"channels_public",
-		{ defaultLimit, current, premiumLimit, &st::premiumIconLinks },
+		{ limit, &st::premiumIconLinks },
 		true);
 
 	AddSubtitle(box->verticalLayout(), tr::lng_links_revoke_title());
@@ -644,7 +570,7 @@ void PublicLinksLimitBox(
 	delegate->setContent(content);
 	controller->setDelegate(delegate);
 
-	const auto count = defaultLimit;
+	const auto count = limit;
 	const auto placeholder = box->addRow(
 		object_ptr<PeerListDummy>(box, count, st::defaultPeerList),
 		style::margins());
@@ -661,74 +587,47 @@ void FilterChatsLimitBox(
 		not_null<Main::Session*> session,
 		int currentCount,
 		bool include) {
-	const auto premium = session->premium();
-
-	const auto limits = Data::PremiumLimits(session);
-	const auto defaultLimit = float64(limits.dialogFiltersChatsDefault());
-	const auto premiumLimit = float64(limits.dialogFiltersChatsPremium());
-	const auto current = std::clamp(
-		float64(currentCount),
-		defaultLimit,
-		premiumLimit);
+	const auto limit = float64(
+		Data::PremiumLimits(session).dialogFiltersChatsCurrent());
 
 	auto text = (include
 		? tr::lng_filter_chats_limit1
 		: tr::lng_filter_chats_exlude_limit1)(
 			lt_count,
-			rpl::single(premium ? premiumLimit : defaultLimit),
+			rpl::single(limit),
 			tr::rich);
 
 	SimpleLimitBox(
 		box,
-		nullptr,
-		session,
 		tr::lng_filter_chats_limit_title(),
 		std::move(text),
-		"dialog_filters_chats",
-		{ defaultLimit, current, premiumLimit, &st::premiumIconChats });
+		{ std::max(float64(currentCount), limit), &st::premiumIconChats });
 }
 
 void FilterLinksLimitBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session) {
-	const auto premium = session->premium();
-
-	const auto limits = Data::PremiumLimits(session);
-	const auto defaultLimit = float64(limits.dialogFiltersLinksDefault());
-	const auto premiumLimit = float64(limits.dialogFiltersLinksPremium());
-	const auto current = (premium ? premiumLimit : defaultLimit);
+	const auto limit = float64(
+		Data::PremiumLimits(session).dialogFiltersLinksCurrent());
 
 	auto text = tr::lng_filter_links_limit1(
 		lt_count,
-		rpl::single(premium ? premiumLimit : defaultLimit),
+		rpl::single(limit),
 		tr::rich);
 
 	SimpleLimitBox(
 		box,
-		nullptr,
-		session,
 		tr::lng_filter_links_limit_title(),
 		std::move(text),
-		"chatlist_invites",
-		{
-			defaultLimit,
-			current,
-			premiumLimit,
-			&st::premiumIconChats,
-			std::nullopt,
-			/*true */}); // Don't use real ratio, "Free" doesn't fit.
+		{ limit, &st::premiumIconChats });
 }
-
 
 void FiltersLimitBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session,
 		std::optional<int> filtersCountOverride) {
-	const auto premium = session->premium();
-
-	const auto limits = Data::PremiumLimits(session);
-	const auto defaultLimit = float64(limits.dialogFiltersDefault());
-	const auto premiumLimit = float64(limits.dialogFiltersPremium());
+	const auto limit = float64(
+		Data::PremiumLimits(session).dialogFiltersCurrent());
 	const auto cloud = int(ranges::count_if(
 		session->data().chatsFilters().list(),
 		[](const Data::ChatFilter &f) { return f.id() != FilterId(); }));
@@ -736,100 +635,69 @@ void FiltersLimitBox(
 
 	auto text = tr::lng_filters_limit1(
 		lt_count,
-		rpl::single(premium ? premiumLimit : defaultLimit),
+		rpl::single(limit),
 		tr::rich);
 	SimpleLimitBox(
 		box,
-		nullptr,
-		session,
 		tr::lng_filters_limit_title(),
 		std::move(text),
-		"dialog_filters",
-		{ defaultLimit, current, premiumLimit, &st::premiumIconFolders });
+		{ current, &st::premiumIconFolders });
 }
 
 void ShareableFiltersLimitBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session) {
-	const auto premium = session->premium();
-
-	const auto limits = Data::PremiumLimits(session);
-	const auto defaultLimit = float64(limits.dialogShareableFiltersDefault());
-	const auto premiumLimit = float64(limits.dialogShareableFiltersPremium());
+	const auto limit = float64(
+		Data::PremiumLimits(session).dialogShareableFiltersCurrent());
 	const auto current = float64(ranges::count_if(
 		session->data().chatsFilters().list(),
 		[](const Data::ChatFilter &f) { return f.chatlist(); }));
 
 	auto text = tr::lng_filter_shared_limit1(
 		lt_count,
-		rpl::single(premium ? premiumLimit : defaultLimit),
+		rpl::single(limit),
 		tr::rich);
 	SimpleLimitBox(
 		box,
-		nullptr,
-		session,
 		tr::lng_filter_shared_limit_title(),
 		std::move(text),
-		"chatlists_joined",
-		{
-			defaultLimit,
-			current,
-			premiumLimit,
-			&st::premiumIconFolders,
-			std::nullopt,
-			/*true*/ }); // Don't use real ratio, "Free" doesn't fit.
+		{ current, &st::premiumIconFolders });
 }
 
 void FilterPinsLimitBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session,
 		FilterId filterId) {
-	const auto limits = Data::PremiumLimits(session);
 	SimplePinsLimitBox(
 		box,
-		session,
-		"dialog_filters_pinned",
-		limits.dialogFiltersChatsDefault(),
-		limits.dialogFiltersChatsPremium(),
+		Data::PremiumLimits(session).dialogFiltersChatsCurrent(),
 		PinsCount(session->data().chatsFilters().chatsList(filterId)));
 }
 
 void FolderPinsLimitBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session) {
-	const auto limits = Data::PremiumLimits(session);
 	SimplePinsLimitBox(
 		box,
-		session,
-		"dialogs_folder_pinned",
-		limits.dialogsFolderPinnedDefault(),
-		limits.dialogsFolderPinnedPremium(),
+		Data::PremiumLimits(session).dialogsFolderPinnedCurrent(),
 		PinsCount(session->data().folder(Data::Folder::kId)->chatsList()));
 }
 
 void PinsLimitBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session) {
-	const auto limits = Data::PremiumLimits(session);
 	SimplePinsLimitBox(
 		box,
-		session,
-		"dialog_pinned",
-		limits.dialogsPinnedDefault(),
-		limits.dialogsPinnedPremium(),
+		Data::PremiumLimits(session).dialogsPinnedCurrent(),
 		PinsCount(session->data().chatsList()));
 }
 
 void SublistsPinsLimitBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session) {
-	const auto limits = Data::PremiumLimits(session);
 	SimplePinsLimitBox(
 		box,
-		session,
-		"saved_dialog_pinned",
-		limits.savedSublistsPinnedDefault(),
-		limits.savedSublistsPinnedPremium(),
+		Data::PremiumLimits(session).savedSublistsPinnedCurrent(),
 		PinsCount(session->data().savedMessages().chatsList()));
 }
 
@@ -844,44 +712,9 @@ void ForumPinsLimitBox(
 		tr::rich);
 	SimpleLimitBox(
 		box,
-		nullptr,
-		&forum->session(),
-		false,
 		tr::lng_filter_pin_limit_title(),
 		std::move(text),
-		QString(),
-		{ current, current, current * 2, &st::premiumIconPins });
-}
-
-void CaptionLimitBox(
-		not_null<Ui::GenericBox*> box,
-		not_null<Main::Session*> session,
-		int remove,
-		const style::PremiumLimits *stOverride) {
-	const auto premium = session->premium();
-
-	const auto limits = Data::PremiumLimits(session);
-	const auto defaultLimit = float64(limits.captionLengthDefault());
-	const auto premiumLimit = float64(limits.captionLengthPremium());
-	const auto currentLimit = premium ? premiumLimit : defaultLimit;
-	const auto current = std::clamp(
-		remove + currentLimit,
-		defaultLimit,
-		premiumLimit);
-
-	auto text = tr::lng_caption_limit1(
-		lt_count,
-		rpl::single(currentLimit),
-		tr::rich);
-
-	SimpleLimitBox(
-		box,
-		stOverride,
-		session,
-		tr::lng_caption_limit_title(),
-		std::move(text),
-		"caption_length",
-		{ defaultLimit, current, premiumLimit, &st::premiumIconChats });
+		{ current, &st::premiumIconPins });
 }
 
 void CaptionLimitReachedBox(
@@ -898,50 +731,21 @@ void CaptionLimitReachedBox(
 
 void FileSizeLimitBox(
 		not_null<Ui::GenericBox*> box,
-		not_null<Main::Session*> session,
-		uint64 fileSizeBytes,
-		const style::PremiumLimits *stOverride) {
-	const auto limits = Data::PremiumLimits(session);
-	const auto defaultLimit = float64(limits.uploadMaxDefault());
-	const auto premiumLimit = float64(limits.uploadMaxPremium());
-
-	const auto defaultGb = float64(int(defaultLimit + 999) / 2000);
-	const auto premiumGb = float64(int(premiumLimit + 999) / 2000);
-
-	const auto tooLarge = (fileSizeBytes > premiumLimit * 512ULL * 1024);
-	const auto showLimit = tooLarge ? premiumGb : defaultGb;
-	const auto showPremiumRow = !tooLarge && session->premium();
-
-	const auto current = (fileSizeBytes && showPremiumRow)
-		? std::clamp(
-			float64(((fileSizeBytes / uint64(1024 * 1024)) + 499) / 1000),
-			defaultGb,
-			premiumGb)
-		: showLimit;
-	const auto gb = [](int count) {
-		return tr::lng_file_size_limit(tr::now, lt_count, count);
-	};
+		not_null<Main::Session*> session) {
+	const auto parts = Data::PremiumLimits(session).uploadMaxCurrent();
+	const auto gb = float64((parts + 999) / 2000);
 
 	auto text = tr::lng_file_size_limit1(
 		lt_size,
-		rpl::single(tr::bold(gb(showLimit))),
+		rpl::single(tr::bold(
+			tr::lng_file_size_limit(tr::now, lt_count, gb))),
 		tr::rich);
 
 	SimpleLimitBox(
 		box,
-		stOverride,
-		session,
-		showPremiumRow,
 		tr::lng_file_size_limit_title(),
 		std::move(text),
-		"upload_max_fileparts",
-		{
-			defaultGb,
-			current,
-			(tooLarge ? showLimit * 2 : premiumGb),
-			&st::premiumIconFiles,
-			tr::lng_file_size_limit
-		});
+		{ gb, &st::premiumIconFiles, tr::lng_file_size_limit });
 }
 
 // LoogriGram: this used to offer a way out - free a place by subscribing on

@@ -1044,7 +1044,6 @@ void Options::insertOption(
 
 void Options::initOptionField(not_null<Ui::InputField*> field) {
 	if (const auto emojiPanel = _emojiPanel) {
-		const auto isPremium = _controller->session().user()->isPremium();
 		const auto emojiToggle = Ui::AddEmojiToggleToField(
 			field,
 			_box,
@@ -1064,14 +1063,6 @@ void Options::initOptionField(not_null<Ui::InputField*> field) {
 					Ui::InsertEmojiAtCursor(field->textCursor(), data.emoji);
 				}
 			}, _emojiPanelLifetime);
-			if (isPremium) {
-				emojiPanel->selector()->customEmojiChosen(
-				) | rpl::on_next([=](ChatHelpers::FileChosen data) {
-					if (field->hasFocus()) {
-						Data::InsertCustomEmoji(field, data.document);
-					}
-				}, _emojiPanelLifetime);
-			}
 		}, emojiToggle->lifetime());
 	}
 	DisableFieldMarkdown(field);
@@ -1354,7 +1345,6 @@ not_null<Ui::InputField*> CreatePollBox::setupQuestion(
 	using namespace Settings;
 
 	const auto session = &_controller->session();
-	const auto isPremium = session->user()->isPremium();
 	Ui::AddSubsectionTitle(container, tr::lng_polls_create_question());
 
 	const auto question = container->add(
@@ -1405,14 +1395,6 @@ not_null<Ui::InputField*> CreatePollBox::setupQuestion(
 				Ui::InsertEmojiAtCursor(question->textCursor(), data.emoji);
 			}
 		}, emojiToggle->lifetime());
-		if (isPremium) {
-			emojiPanel->selector()->customEmojiChosen(
-			) | rpl::on_next([=](ChatHelpers::FileChosen data) {
-				if (question->hasFocus()) {
-					Data::InsertCustomEmoji(question, data.document);
-				}
-			}, emojiToggle->lifetime());
-		}
 	}
 	DisableFieldMarkdown(question);
 
@@ -1444,7 +1426,6 @@ not_null<Ui::InputField*> CreatePollBox::setupQuestion(
 not_null<Ui::InputField*> CreatePollBox::setupDescription(
 		not_null<Ui::VerticalLayout*> container) {
 	const auto session = &_controller->session();
-	const auto isPremium = session->user()->isPremium();
 	const auto description = container->add(
 		object_ptr<Ui::InputField>(
 			container,
@@ -1480,14 +1461,6 @@ not_null<Ui::InputField*> CreatePollBox::setupDescription(
 						data.emoji);
 				}
 			}, emojiToggle->lifetime());
-			if (isPremium) {
-				emojiPanel->selector()->customEmojiChosen(
-				) | rpl::on_next([=](ChatHelpers::FileChosen data) {
-					if (description->hasFocus()) {
-						Data::InsertCustomEmoji(description, data.document);
-					}
-				}, emojiToggle->lifetime());
-			}
 		}, emojiToggle->lifetime());
 	}
 
@@ -1978,14 +1951,12 @@ object_ptr<Ui::RpWidget> CreatePollBox::setupContent() {
 				showToast(tr::lng_attach_failed(tr::now));
 				return;
 			}
-			const auto premium = _controller->session().premium();
 			asyncReupload(
 				strong,
 				[=] {
 					return Storage::PrepareMediaList(
 						QStringList{ path },
-						st::sendMediaPreviewSize,
-						premium);
+						st::sendMediaPreviewSize);
 				},
 				nullptr,
 				name,
@@ -2016,15 +1987,13 @@ object_ptr<Ui::RpWidget> CreatePollBox::setupContent() {
 			if (!strong) {
 				return;
 			}
-			const auto premium = _controller->session().premium();
 			asyncReupload(
 				strong,
 				[=] {
 					if (!path.isEmpty()) {
 						return Storage::PrepareMediaList(
 							QStringList{ path },
-							st::sendMediaPreviewSize,
-							premium);
+							st::sendMediaPreviewSize);
 					}
 					if (!content.isEmpty()) {
 						auto image = QImage::fromData(content);
@@ -2309,9 +2278,7 @@ object_ptr<Ui::RpWidget> CreatePollBox::setupContent() {
 	const auto applyPhotoOrVideoDrop = ApplyDropFn([=](
 			std::shared_ptr<PollMediaState> media,
 			not_null<const QMimeData*> data) {
-		auto list = FileListFromMimeData(
-			data,
-			_controller->session().premium());
+		auto list = FileListFromMimeData(data);
 		if (list.error != Ui::PreparedList::Error::None
 			|| list.files.empty()) {
 			return false;
@@ -2385,18 +2352,11 @@ object_ptr<Ui::RpWidget> CreatePollBox::setupContent() {
 	const auto applyFileDrop = ApplyDropFn([=](
 			std::shared_ptr<PollMediaState> media,
 			not_null<const QMimeData*> data) {
-		auto list = FileListFromMimeData(
-			data,
-			_controller->session().premium());
+		auto list = FileListFromMimeData(data);
 		if (list.error == Ui::PreparedList::Error::TooLargeFile) {
-			const auto fileSize = list.files.empty()
-				? 0
-				: list.files.front().size;
 			_controller->show(Box(
 				FileSizeLimitBox,
-				&_controller->session(),
-				fileSize,
-				nullptr));
+				&_controller->session()));
 			return false;
 		}
 		if (list.error != Ui::PreparedList::Error::None
@@ -2434,8 +2394,7 @@ object_ptr<Ui::RpWidget> CreatePollBox::setupContent() {
 				std::move(result),
 				checkResult,
 				showError,
-				st::sendMediaPreviewSize,
-				_controller->session().premium());
+				st::sendMediaPreviewSize);
 			if (!list) {
 				return;
 			}
@@ -2460,17 +2419,11 @@ object_ptr<Ui::RpWidget> CreatePollBox::setupContent() {
 			}
 			auto list = Storage::PrepareMediaList(
 				result.paths.mid(0, 1),
-				st::sendMediaPreviewSize,
-				_controller->session().premium());
+				st::sendMediaPreviewSize);
 			if (list.error == Ui::PreparedList::Error::TooLargeFile) {
-				const auto fileSize = list.files.empty()
-					? 0
-					: list.files.front().size;
 				_controller->show(Box(
 					FileSizeLimitBox,
-					&_controller->session(),
-					fileSize,
-					nullptr));
+					&_controller->session()));
 				return;
 			} else if (list.error != Ui::PreparedList::Error::None
 				|| list.files.empty()) {

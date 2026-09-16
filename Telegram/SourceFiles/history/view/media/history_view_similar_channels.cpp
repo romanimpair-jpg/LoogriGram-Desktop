@@ -504,7 +504,7 @@ QSize SimilarChannels::countOptimalSize() {
 	const auto inner = QRect(0, 0, photo, photo);
 	const auto outer = inner.marginsAdded(st::chatSimilarChannelPadding);
 	const auto limit = Data::PremiumLimits(
-		&channel->session()).similarChannelsDefault();
+		&channel->session()).similarChannelsCurrent();
 	const auto take = (similar.more > 0 || similar.list.size() > 2 * limit)
 		? limit
 		: int(similar.list.size());

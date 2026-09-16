@@ -63,11 +63,6 @@ void ForumPinsLimitBox(
 void SublistsPinsLimitBox(
 	not_null<Ui::GenericBox*> box,
 	not_null<Main::Session*> session);
-void CaptionLimitBox(
-	not_null<Ui::GenericBox*> box,
-	not_null<Main::Session*> session,
-	int remove,
-	const style::PremiumLimits *stOverride = nullptr);
 void CaptionLimitReachedBox(
 	not_null<Ui::GenericBox*> box,
 	not_null<Main::Session*> session,
@@ -75,9 +70,7 @@ void CaptionLimitReachedBox(
 	const style::PremiumLimits *stOverride = nullptr);
 void FileSizeLimitBox(
 	not_null<Ui::GenericBox*> box,
-	not_null<Main::Session*> session,
-	uint64 fileSizeBytes,
-	const style::PremiumLimits *stOverride = nullptr);
+	not_null<Main::Session*> session);
 void AccountsLimitBox(
 	not_null<Ui::GenericBox*> box,
 	not_null<Main::Session*> session);

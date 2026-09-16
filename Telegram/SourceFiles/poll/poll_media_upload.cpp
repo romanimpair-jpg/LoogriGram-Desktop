@@ -135,15 +135,13 @@ QVector<MTPDocumentAttribute> ExtractAudioAttributes(
 }
 
 Ui::PreparedList FileListFromMimeData(
-		not_null<const QMimeData*> data,
-		bool premium) {
+		not_null<const QMimeData*> data) {
 	using Error = Ui::PreparedList::Error;
 	const auto urls = Core::ReadMimeUrls(data);
 	if (!urls.isEmpty()) {
 		return Storage::PrepareMediaList(
 			urls.mid(0, 1),
-			st::sendMediaPreviewSize,
-			premium);
+			st::sendMediaPreviewSize);
 	} else if (auto read = Core::ReadMimeImage(data)) {
 		return Storage::PrepareMediaFromImage(
 			std::move(read.image),
@@ -944,8 +942,7 @@ void PollMediaUploader::choosePhotoOrVideo(
 			std::move(result),
 			checkResult,
 			showError,
-			st::sendMediaPreviewSize,
-			_session->premium());
+			st::sendMediaPreviewSize);
 		if (!list) {
 			return;
 		}
@@ -973,8 +970,7 @@ void PollMediaUploader::chooseDocument(
 		}
 		auto list = Storage::PrepareMediaList(
 			result.paths.mid(0, 1),
-			st::sendMediaPreviewSize,
-			_session->premium());
+			st::sendMediaPreviewSize);
 		if (list.error != Ui::PreparedList::Error::None
 			|| list.files.empty()) {
 			return;
@@ -1008,7 +1004,7 @@ void PollMediaUploader::installDropToWidget(
 			return base::EventFilterResult::Continue;
 		}
 		if (type == QEvent::Drop) {
-			auto list = FileListFromMimeData(data, _session->premium());
+			auto list = FileListFromMimeData(data);
 			if (list.error != Ui::PreparedList::Error::None
 				|| list.files.empty()) {
 				return base::EventFilterResult::Continue;
@@ -1039,7 +1035,7 @@ void PollMediaUploader::installDropToField(
 		if (action == Ui::InputField::MimeAction::Check) {
 			return ValidateFileDragData(data);
 		} else if (action == Ui::InputField::MimeAction::Insert) {
-			auto list = FileListFromMimeData(data, _session->premium());
+			auto list = FileListFromMimeData(data);
 			if (list.error != Ui::PreparedList::Error::None
 				|| list.files.empty()) {
 				return false;

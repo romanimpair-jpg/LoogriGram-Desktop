@@ -2235,8 +2235,7 @@ void Widget::resolveImportedLocalMedia(BlocksImportResult &&imported) {
 			auto single = content.isEmpty()
 				? Storage::PrepareMediaList(
 					QStringList{ media[i].path },
-					st::sendMediaPreviewSize,
-					SessionPremium(_session))
+					st::sendMediaPreviewSize)
 				: image.isNull()
 				? Ui::PreparedList()
 				: Storage::PrepareMediaFromImage(
@@ -2712,8 +2711,7 @@ bool Widget::handleClipboardKey(QKeyEvent *e) {
 		}
 		if (mimeData && _applyPreparedMedia) {
 			if (auto list = PreparedMediaFromClipboard(
-					not_null<const QMimeData*>(mimeData),
-					SessionPremium(_session))) {
+					not_null<const QMimeData*>(mimeData))) {
 				_applyPreparedMedia(
 					not_null<Widget*>(this),
 					std::move(*list),
@@ -5156,8 +5154,7 @@ void Widget::replaceMediaFromClipboard(
 		return;
 	}
 	auto list = PreparedMediaFromClipboard(
-		not_null<const QMimeData*>(data),
-		SessionPremium(_session));
+		not_null<const QMimeData*>(data));
 	if (!list) {
 		return;
 	}
@@ -7614,9 +7611,7 @@ bool Widget::handleIvClipboardMime(
 	}
 	if (action == Ui::InputField::MimeAction::Check) {
 		return CanPrepareMediaFromClipboard(data);
-	} else if (auto list = PreparedMediaFromClipboard(
-			data,
-			SessionPremium(_session))) {
+	} else if (auto list = PreparedMediaFromClipboard(data)) {
 		if (_applyPreparedMedia) {
 			auto target = preparedMediaPasteTarget();
 			crl::on_main(this, [=, list = std::move(*list)]() mutable {
@@ -10838,9 +10833,7 @@ void Widget::dropEvent(QDropEvent *e) {
 	if (!target) {
 		return;
 	}
-	auto list = PreparedMediaFromClipboard(
-		e->mimeData(),
-		SessionPremium(_session));
+	auto list = PreparedMediaFromClipboard(e->mimeData());
 	if (!list) {
 		return;
 	}

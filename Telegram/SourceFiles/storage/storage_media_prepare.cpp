@@ -152,7 +152,7 @@ MimeDataState ComputeMimeDataState(const QMimeData *data) {
 
 		using namespace Core;
 		const auto filesize = info.size();
-		if (filesize > kFileSizePremiumLimit) {
+		if (filesize > kFileSizeLimit) {
 			return MimeDataState::None;
 		//} else if (filesize > kFileSizeLimit) {
 		//	return MimeDataState::PremiumFile;
@@ -187,7 +187,6 @@ MimeDataState ComputeMimeDataState(const QMimeData *data) {
 PreparedList PrepareMediaList(
 		const QList<QUrl> &files,
 		int previewWidth,
-		bool premium,
 		Fn<void(const PreparedList &)> errorCallback) {
 	auto locals = QStringList();
 	locals.reserve(files.size());
@@ -207,14 +206,12 @@ PreparedList PrepareMediaList(
 	return PrepareMediaList(
 		locals,
 		previewWidth,
-		premium,
 		std::move(errorCallback));
 }
 
 PreparedList PrepareMediaList(
 		const QStringList &files,
 		int previewWidth,
-		bool premium,
 		Fn<void(const PreparedList &)> errorCallback) {
 	auto result = PreparedList();
 	result.files.reserve(files.size());
@@ -242,8 +239,7 @@ PreparedList PrepareMediaList(
 			}
 			errorCallback(errorResult);
 			continue;
-		} else if (filesize > kFileSizePremiumLimit
-			|| (filesize > kFileSizeLimit && !premium)) {
+		} else if (filesize > kFileSizeLimit) {
 			auto errorResult = PreparedList(
 				PreparedList::Error::TooLargeFile,
 				file);
@@ -293,14 +289,13 @@ std::optional<PreparedList> PreparedFileFromFilesDialog(
 		FileDialog::OpenResult &&result,
 		Fn<bool(const Ui::PreparedList&)> checkResult,
 		Fn<void(tr::phrase<>)> errorCallback,
-		int previewWidth,
-		bool premium) {
+		int previewWidth) {
 	if (result.paths.isEmpty() && result.remoteContent.isEmpty()) {
 		return std::nullopt;
 	}
 
 	auto list = result.remoteContent.isEmpty()
-		? PrepareMediaList(result.paths, previewWidth, premium)
+		? PrepareMediaList(result.paths, previewWidth)
 		: PrepareMediaFromImage(
 			QImage(),
 			std::move(result.remoteContent),

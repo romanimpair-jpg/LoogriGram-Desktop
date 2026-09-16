@@ -73,8 +73,7 @@ private:
 [[nodiscard]] bool ValidateFileDragData(not_null<const QMimeData*> data);
 
 [[nodiscard]] Ui::PreparedList FileListFromMimeData(
-	not_null<const QMimeData*> data,
-	bool premium);
+	not_null<const QMimeData*> data);
 
 class PollMediaButton final : public Ui::RippleButton {
 public:

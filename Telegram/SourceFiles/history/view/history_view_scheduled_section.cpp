@@ -536,11 +536,9 @@ void ScheduledWidget::chooseAttach() {
 				uploadFile(result.remoteContent, SendMediaType::File);
 			}
 		} else {
-			const auto premium = controller()->session().user()->isPremium();
 			auto list = Storage::PrepareMediaList(
 				result.paths,
-				st::sendMediaPreviewSize,
-				premium);
+				st::sendMediaPreviewSize);
 			confirmSendingFiles(std::move(list));
 		}
 	}), nullptr);
@@ -551,7 +549,6 @@ bool ScheduledWidget::confirmSendingFiles(
 	std::optional<bool> overrideSendImagesAsPhotos,
 	const QString &insertTextOnCancel) {
 	const auto hasImage = data->hasImage();
-	const auto premium = controller()->session().user()->isPremium();
 
 	if (const auto urls = Core::ReadMimeUrls(data); !urls.empty()) {
 		const auto folder = Storage::SingleFolderPath(urls);
@@ -562,8 +559,7 @@ bool ScheduledWidget::confirmSendingFiles(
 				if (!files.isEmpty()) {
 					auto list = Storage::PrepareMediaList(
 						files,
-						st::sendMediaPreviewSize,
-						premium);
+						st::sendMediaPreviewSize);
 					confirmSendingFiles(std::move(list), QString());
 				}
 			} else {
@@ -583,8 +579,7 @@ bool ScheduledWidget::confirmSendingFiles(
 		}
 		auto list = Storage::PrepareMediaList(
 			urls,
-			st::sendMediaPreviewSize,
-			premium);
+			st::sendMediaPreviewSize);
 		if (list.error != Ui::PreparedList::Error::NonLocalUrl) {
 			if (list.error == Ui::PreparedList::Error::None
 				|| !hasImage) {

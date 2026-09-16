@@ -51,7 +51,7 @@ using SetFlag = StickersSetFlag;
 	return tr::bold(tr::lng_saved_gif_limit_title(
 		tr::now,
 		lt_count,
-		limits.gifsDefault()));
+		limits.gifsCurrent()));
 }
 
 [[nodiscard]] TextWithEntities FaveStickersToast(
@@ -59,7 +59,7 @@ using SetFlag = StickersSetFlag;
 	return tr::bold(tr::lng_fave_sticker_limit_title(
 		tr::now,
 		lt_count,
-		limits.stickersFavedDefault()));
+		limits.stickersFavedCurrent()));
 }
 
 void ShowLimitReachedToast(

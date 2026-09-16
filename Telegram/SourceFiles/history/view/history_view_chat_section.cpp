@@ -417,23 +417,6 @@ ChatWidget::ChatWidget(
 			) | rpl::map([=] {
 				return session().scheduledMessages().count(_history) > 0;
 			}) | rpl::type_erased,
-		.processShortcut = [=](QString shortcut) {
-			// LoogriGram: as in history_widget - the quick-replies settings
-			// are gone with the rest of Business, and the pitch with them.
-			if (shortcut.isEmpty() || !_peer->session().premium()) {
-				return;
-			}
-			const auto messages = &_peer->owner().shortcutMessages();
-			if (const auto shortcutId = messages->lookupShortcutId(
-					shortcut)) {
-				session().api().sendShortcutMessages(_peer, shortcutId);
-				session().api().finishForwarding(prepareSendAction({}));
-				if (const auto field = _composeControls->fieldForMention()) {
-					_composeControls->setText(field->getTextWithTagsPart(
-						field->textCursor().position()));
-				}
-			}
-		},
 		.moderateKeyActivateCallback = [=](int key) {
 			const auto context = [=](FullMsgId itemId) {
 				return _inner->prepareClickContext(Qt::LeftButton, itemId);
@@ -1923,11 +1906,9 @@ void ChatWidget::chooseAttach(
 				uploadFile(result.remoteContent, SendMediaType::File);
 			}
 		} else {
-			const auto premium = controller()->session().user()->isPremium();
 			auto list = Storage::PrepareMediaList(
 				result.paths,
-				st::sendMediaPreviewSize,
-				premium);
+				st::sendMediaPreviewSize);
 			list.overrideSendImagesAsPhotos = overrideSendImagesAsPhotos;
 			confirmSendingFiles(std::move(list));
 		}
@@ -1942,7 +1923,6 @@ bool ChatWidget::confirmSendingFiles(
 		_composeSearch->hideAnimated();
 	}
 	const auto hasImage = data->hasImage();
-	const auto premium = controller()->session().user()->isPremium();
 
 	if (const auto urls = Core::ReadMimeUrls(data); !urls.empty()) {
 		const auto folder = Storage::SingleFolderPath(urls);
@@ -1953,8 +1933,7 @@ bool ChatWidget::confirmSendingFiles(
 				if (!files.isEmpty()) {
 					auto list = Storage::PrepareMediaList(
 						files,
-						st::sendMediaPreviewSize,
-						premium);
+						st::sendMediaPreviewSize);
 					confirmSendingFiles(std::move(list), QString());
 				}
 			} else {
@@ -1974,8 +1953,7 @@ bool ChatWidget::confirmSendingFiles(
 		}
 		auto list = Storage::PrepareMediaList(
 			urls,
-			st::sendMediaPreviewSize,
-			premium);
+			st::sendMediaPreviewSize);
 		if (list.error != Ui::PreparedList::Error::NonLocalUrl) {
 			if (list.error == Ui::PreparedList::Error::None
 				|| !hasImage) {
@@ -2375,8 +2353,7 @@ void ChatWidget::sendRichDraft(
 		controller()->showToast(tr::lng_attach_failed(tr::now));
 		return;
 	}
-	if (!session().premium()
-		&& Iv::RichPageUsesPremiumFormatting(*page)) {
+	if (Iv::RichPageUsesPremiumFormatting(*page)) {
 		if (Iv::RichPageIsFlattenSafe(*page)) {
 			const auto weak = base::make_weak(this);
 			Iv::Editor::OfferRichMessagePremiumChoice(
@@ -3783,9 +3760,8 @@ bool ChatWidget::confirmSendingFiles(not_null<const QMimeData*> data) {
 bool ChatWidget::confirmSendingFiles(
 		const QStringList &files,
 		const QString &insertTextOnCancel) {
-	const auto premium = controller()->session().user()->isPremium();
 	return confirmSendingFiles(
-		Storage::PrepareMediaList(files, st::sendMediaPreviewSize, premium),
+		Storage::PrepareMediaList(files, st::sendMediaPreviewSize),
 		insertTextOnCancel);
 }
 
@@ -5555,9 +5531,7 @@ void ChatWidget::refreshAboutView(bool force) {
 			&& !user->phoneCountryCode().isEmpty()) {
 			refresh();
 		} else if (_inner->isEmpty()) {
-			if ((user->requiresPremiumToWrite()
-					&& !user->session().premium())
-				|| user->isFullLoaded()) {
+			if (user->requiresPremiumToWrite() || user->isFullLoaded()) {
 				refresh();
 			} else {
 				session().api().requestFullPeer(user);

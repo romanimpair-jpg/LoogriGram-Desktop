@@ -448,12 +448,6 @@ HistoryWidget::HistoryWidget(
 	) | rpl::on_next([=] {
 		fieldChanged();
 	}, _field->lifetime());
-	Data::AmPremiumValue(&session()) | rpl::on_next([=] {
-		checkCharsLimitation();
-		updateSendAsFileVisibility();
-		updateExpandButtonVisibility();
-		updateSendButtonType();
-	}, lifetime());
 	controller->widget()->shownValue(
 	) | rpl::skip(1) | rpl::on_next([=] {
 		windowIsVisibleChanged();
@@ -1834,25 +1828,6 @@ void HistoryWidget::initFieldAutocomplete() {
 	if (!_peer) {
 		return;
 	}
-	const auto processShortcut = [=](QString shortcut) {
-		if (!_peer) {
-			return;
-		}
-		// LoogriGram: an empty shortcut opened the quick-replies settings,
-		// gone with the rest of Business, and a shortcut typed by someone
-		// who cannot use quick replies opened the pitch for them. Sending
-		// one that exists is all that is left.
-		if (shortcut.isEmpty() || !_peer->session().premium()) {
-			return;
-		}
-		const auto messages = &_peer->owner().shortcutMessages();
-		if (const auto shortcutId = messages->lookupShortcutId(shortcut)) {
-			session().api().sendShortcutMessages(_peer, shortcutId);
-			session().api().finishForwarding(prepareSendAction({}));
-			setFieldText(_field->getTextWithTagsPart(
-				_field->textCursor().position()));
-		}
-	};
 	ChatHelpers::InitFieldAutocomplete(_autocomplete, {
 		.parent = this,
 		.show = controller()->uiShow(),
@@ -1891,7 +1866,6 @@ void HistoryWidget::initFieldAutocomplete() {
 				session().api().finishForwarding(prepareSendAction({}));
 			}
 		},
-		.processShortcut = processShortcut,
 		.moderateKeyActivateCallback = [=](int key) {
 			const auto context = [=](FullMsgId itemId) {
 				return _list->prepareClickContext(Qt::LeftButton, itemId);
@@ -2338,7 +2312,6 @@ void HistoryWidget::fileChosen(ChatHelpers::FileChosen &&data) {
 	if (const auto info = data.document->sticker()
 		; info && info->setType == Data::StickersType::Emoji) {
 		if (data.document->isPremiumEmoji()
-			&& !session().premium()
 			&& (!_peer
 				|| !Data::AllowEmojiWithoutPremium(
 					_peer,
@@ -5264,8 +5237,7 @@ void HistoryWidget::sendRichDraft(
 			return;
 		}
 	}
-	if (!session().premium()
-		&& Iv::RichPageUsesPremiumFormatting(*page)) {
+	if (Iv::RichPageUsesPremiumFormatting(*page)) {
 		if (Iv::RichPageIsFlattenSafe(*page)) {
 			const auto weak = base::make_weak(this);
 			Iv::Editor::OfferRichMessagePremiumChoice(
@@ -5817,11 +5789,9 @@ void HistoryWidget::chooseAttach(
 				uploadFile(result.remoteContent, SendMediaType::File);
 			}
 		} else {
-			const auto premium = controller()->session().user()->isPremium();
 			auto list = Storage::PrepareMediaList(
 				result.paths,
-				st::sendMediaPreviewSize,
-				premium);
+				st::sendMediaPreviewSize);
 			list.overrideSendImagesAsPhotos = overrideSendImagesAsPhotos;
 			confirmSendingFiles(std::move(list));
 		}
@@ -6234,7 +6204,6 @@ void HistoryWidget::updateSendButtonType() {
 	const auto richPage = shownRichMessage();
 	const auto richMessage = (richPage != nullptr);
 	_sendLockBadge.fire(richMessage
-		&& !session().premium()
 		&& Iv::RichPageUsesPremiumFormatting(*richPage));
 	_send->setState({
 		.type = (delay > 0) ? Type::Slowmode : type,
@@ -7171,9 +7140,8 @@ bool HistoryWidget::confirmSendingFiles(not_null<const QMimeData*> data) {
 bool HistoryWidget::confirmSendingFiles(
 		const QStringList &files,
 		const QString &insertTextOnCancel) {
-	const auto premium = controller()->session().user()->isPremium();
 	return confirmSendingFiles(
-		Storage::PrepareMediaList(files, st::sendMediaPreviewSize, premium),
+		Storage::PrepareMediaList(files, st::sendMediaPreviewSize),
 		insertTextOnCancel);
 }
 
@@ -7313,7 +7281,6 @@ bool HistoryWidget::confirmSendingFiles(
 	}
 
 	const auto hasImage = data->hasImage();
-	const auto premium = controller()->session().user()->isPremium();
 
 	if (const auto urls = Core::ReadMimeUrls(data); !urls.empty()) {
 		const auto folder = Storage::SingleFolderPath(urls);
@@ -7323,8 +7290,7 @@ bool HistoryWidget::confirmSendingFiles(
 				if (!files.isEmpty()) {
 					auto list = Storage::PrepareMediaList(
 						files,
-						st::sendMediaPreviewSize,
-						premium);
+						st::sendMediaPreviewSize);
 					confirmSendingFiles(std::move(list), QString());
 				}
 			} else {
@@ -7344,8 +7310,7 @@ bool HistoryWidget::confirmSendingFiles(
 		}
 		auto list = Storage::PrepareMediaList(
 			urls,
-			st::sendMediaPreviewSize,
-			premium);
+			st::sendMediaPreviewSize);
 		if (list.error != Ui::PreparedList::Error::NonLocalUrl) {
 			if (list.error == Ui::PreparedList::Error::None
 				|| !hasImage) {

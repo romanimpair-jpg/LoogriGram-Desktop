@@ -572,13 +572,11 @@ void Paint::handleMimeData(const QMimeData *data) {
 	};
 
 	using Error = Ui::PreparedList::Error;
-	const auto premium = false; // Don't support > 2GB files here.
 	const auto list = Core::ReadMimeUrls(data);
 	auto result = !list.isEmpty()
 		? Storage::PrepareMediaList(
 			list.mid(0, 1),
-			_imageSize.width() / 2,
-			premium)
+			_imageSize.width() / 2)
 		: Ui::PreparedList(Error::EmptyFile, QString());
 	if (result.error == Error::None) {
 		add(base::take(result.files.front().preview));

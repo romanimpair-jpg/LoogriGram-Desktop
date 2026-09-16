@@ -718,11 +718,9 @@ QString InterpretSendPath(
 	const auto history = window->session().data().historyLoaded(toId);
 	const auto sendTo = [=](not_null<Data::Thread*> thread) {
 		window->showThread(thread);
-		const auto premium = thread->session().user()->isPremium();
 		auto list = Storage::PrepareMediaList(
 			QStringList(filePath),
-			st::sendMediaPreviewSize,
-			premium);
+			st::sendMediaPreviewSize);
 		if (!list.files.empty()) {
 			list.files.back().caption.text = caption;
 			thread->session().api().sendFiles(

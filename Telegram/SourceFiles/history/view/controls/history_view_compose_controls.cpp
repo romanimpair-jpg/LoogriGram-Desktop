@@ -1155,7 +1155,6 @@ ComposeControls::ComposeControls(
 		.lockFromBottom = descriptor.voiceLockFromBottom,
 	}))
 , _sendMenuDetails(descriptor.sendMenuDetails)
-, _processShortcut(std::move(descriptor.processShortcut))
 , _moderateKeyActivateCallback(
 	std::move(descriptor.moderateKeyActivateCallback))
 , _unavailableEmojiPasted(std::move(descriptor.unavailableEmojiPasted))
@@ -2649,11 +2648,6 @@ void ComposeControls::initFieldAutocomplete() {
 		.sendBotCommand = [=](QString command) {
 			_sendCommandRequests.fire_copy(command);
 		},
-		.processShortcut = (_processShortcut
-			? Fn<void(QString)>([=](QString shortcut) {
-				_processShortcut(shortcut);
-			})
-			: nullptr),
 		.moderateKeyActivateCallback = (_moderateKeyActivateCallback
 			? Fn<bool(int)>([=](int key) {
 				return _moderateKeyActivateCallback(key);

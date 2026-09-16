@@ -227,7 +227,6 @@ struct FieldAutocompleteDescriptor {
 	Fn<void(FileChosen&&)> stickerChosen;
 	Fn<void(TextWithTags)> setText;
 	Fn<void(QString)> sendBotCommand;
-	Fn<void(QString)> processShortcut;
 	Fn<bool(int)> moderateKeyActivateCallback;
 };
 void InitFieldAutocomplete(

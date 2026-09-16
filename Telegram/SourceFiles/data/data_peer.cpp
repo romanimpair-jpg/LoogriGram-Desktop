@@ -1622,7 +1622,7 @@ Data::RestrictionCheckResult PeerData::amRestricted(
 		}
 	};
 	if (const auto user = asUser()) {
-		if (user->requiresPremiumToWrite() && !user->session().premium()) {
+		if (user->requiresPremiumToWrite()) {
 			return Result::Explicit();
 		}
 		return (right == ChatRestriction::SendVoiceMessages

@@ -1641,15 +1641,13 @@ std::optional<ClipboardData> BlockClipboardDataFromFieldTags(
 }
 
 std::optional<Ui::PreparedList> PreparedMediaFromClipboard(
-		not_null<const QMimeData*> data,
-		bool premium) {
+		not_null<const QMimeData*> data) {
 	const auto hasImage = data->hasImage();
 	const auto urls = Core::ReadMimeUrls(data);
 	if (!urls.empty()) {
 		auto list = Storage::PrepareMediaList(
 			urls,
-			st::sendMediaPreviewSize,
-			premium);
+			st::sendMediaPreviewSize);
 		if (list.error != Ui::PreparedList::Error::NonLocalUrl) {
 			return list;
 		} else if (!hasImage) {

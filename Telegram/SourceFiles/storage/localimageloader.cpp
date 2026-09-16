@@ -910,7 +910,7 @@ void FileLoadTask::process(ProcessArgs &&args) {
 	}
 	_result->filesize = qMin(filesize, qint64(UINT_MAX));
 
-	if (!filesize || filesize > kFileSizePremiumLimit) {
+	if (!filesize || filesize > kFileSizeLimit) {
 		return;
 	}
 
@@ -1241,7 +1241,6 @@ void FileLoadTask::finish() {
 	if (!session) {
 		return;
 	}
-	const auto premium = session->user()->isPremium();
 	if (!_result || !_result->filesize || _result->filesize < 0) {
 		Ui::show(
 			Ui::MakeInformBox((_result && _result->archive)
@@ -1249,10 +1248,9 @@ void FileLoadTask::finish() {
 				: tr::lng_send_image_empty(tr::now, lt_name, _filepath)),
 			Ui::LayerOption::KeepOther);
 		removeFromAlbum();
-	} else if (_result->filesize > kFileSizePremiumLimit
-		|| (_result->filesize > kFileSizeLimit && !premium)) {
+	} else if (_result->filesize > kFileSizeLimit) {
 		Ui::show(
-			Box(FileSizeLimitBox, session, _result->filesize, nullptr),
+			Box(FileSizeLimitBox, session),
 			Ui::LayerOption::KeepOther);
 		removeFromAlbum();
 	} else if (_album && _album->preparedMusicBatching()) {

@@ -13,88 +13,53 @@ class Session;
 
 namespace Data {
 
+// LoogriGram: every limit here came as a Default / Premium / Current triple,
+// where Current picked by the account's premium flag. The account is never
+// premium, so each limit is now the one Current getter, reading the default
+// key. The three *Premium getters that remain are not about this account:
+// see maxPinnedChatsLimitValue() in data_session.cpp.
 class PremiumLimits final {
 public:
 	PremiumLimits(not_null<Main::Session*> session);
 
-	[[nodiscard]] int channelsDefault() const;
-	[[nodiscard]] int channelsPremium() const;
 	[[nodiscard]] int channelsCurrent() const;
-
-	[[nodiscard]] int similarChannelsDefault() const;
-	[[nodiscard]] int similarChannelsPremium() const;
 	[[nodiscard]] int similarChannelsCurrent() const;
-
-	[[nodiscard]] int gifsDefault() const;
-	[[nodiscard]] int gifsPremium() const;
 	[[nodiscard]] int gifsCurrent() const;
-
-	[[nodiscard]] int stickersFavedDefault() const;
-	[[nodiscard]] int stickersFavedPremium() const;
 	[[nodiscard]] int stickersFavedCurrent() const;
-
-	[[nodiscard]] int dialogFiltersDefault() const;
-	[[nodiscard]] int dialogFiltersPremium() const;
 	[[nodiscard]] int dialogFiltersCurrent() const;
-
-	[[nodiscard]] int dialogShareableFiltersDefault() const;
-	[[nodiscard]] int dialogShareableFiltersPremium() const;
 	[[nodiscard]] int dialogShareableFiltersCurrent() const;
 
-	[[nodiscard]] int dialogFiltersChatsDefault() const;
-	[[nodiscard]] int dialogFiltersChatsPremium() const;
 	[[nodiscard]] int dialogFiltersChatsCurrent() const;
+	[[nodiscard]] int dialogFiltersChatsPremium() const;
 
-	[[nodiscard]] int dialogFiltersLinksDefault() const;
-	[[nodiscard]] int dialogFiltersLinksPremium() const;
 	[[nodiscard]] int dialogFiltersLinksCurrent() const;
 
-	[[nodiscard]] int dialogsPinnedDefault() const;
-	[[nodiscard]] int dialogsPinnedPremium() const;
 	[[nodiscard]] int dialogsPinnedCurrent() const;
+	[[nodiscard]] int dialogsPinnedPremium() const;
 
-	[[nodiscard]] int dialogsFolderPinnedDefault() const;
-	[[nodiscard]] int dialogsFolderPinnedPremium() const;
 	[[nodiscard]] int dialogsFolderPinnedCurrent() const;
+	[[nodiscard]] int dialogsFolderPinnedPremium() const;
 
 	[[nodiscard]] int topicsPinnedCurrent() const;
 
-	[[nodiscard]] int savedSublistsPinnedDefault() const;
-	[[nodiscard]] int savedSublistsPinnedPremium() const;
 	[[nodiscard]] int savedSublistsPinnedCurrent() const;
+	[[nodiscard]] int savedSublistsPinnedPremium() const;
 
-	[[nodiscard]] int channelsPublicDefault() const;
-	[[nodiscard]] int channelsPublicPremium() const;
 	[[nodiscard]] int channelsPublicCurrent() const;
-
-	[[nodiscard]] int captionLengthDefault() const;
-	[[nodiscard]] int captionLengthPremium() const;
 	[[nodiscard]] int captionLengthCurrent() const;
-	[[nodiscard]] int messageLengthDefault() const;
-	[[nodiscard]] int messageLengthPremium() const;
 	[[nodiscard]] int messageLengthCurrent() const;
-
-	[[nodiscard]] int uploadMaxDefault() const;
-	[[nodiscard]] int uploadMaxPremium() const;
 	[[nodiscard]] int uploadMaxCurrent() const;
-
-	[[nodiscard]] int aboutLengthDefault() const;
-	[[nodiscard]] int aboutLengthPremium() const;
 	[[nodiscard]] int aboutLengthCurrent() const;
-
 	[[nodiscard]] int contactNoteLengthCurrent() const;
 
 	[[nodiscard]] int maxBoostLevel() const;
 
-	[[nodiscard]] int botsCreateDefault() const;
-	[[nodiscard]] int botsCreatePremium() const;
-
+	[[nodiscard]] int botsCreateCurrent() const;
 
 private:
 	[[nodiscard]] int appConfigLimit(
 		const QString &key,
 		int fallback) const;
-	[[nodiscard]] bool isPremium() const;
 
 	const not_null<Main::Session*> _session;
 

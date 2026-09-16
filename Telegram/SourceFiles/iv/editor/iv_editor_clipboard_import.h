@@ -109,8 +109,7 @@ struct BlocksImportResult {
 	not_null<const QMimeData*> data);
 
 [[nodiscard]] std::optional<Ui::PreparedList> PreparedMediaFromClipboard(
-	not_null<const QMimeData*> data,
-	bool premium);
+	not_null<const QMimeData*> data);
 
 [[nodiscard]] bool IsAcceptableDropMedia(not_null<const QMimeData*> data);
 

@@ -389,9 +389,6 @@ public:
 
 	void cancelLocalItem(not_null<HistoryItem*> item);
 
-	void sendShortcutMessages(
-		not_null<PeerData*> peer,
-		BusinessShortcutId id);
 	void sendRichMessage(
 		not_null<HistoryItem*> item,
 		const MTPInputRichMessage &richMessage,

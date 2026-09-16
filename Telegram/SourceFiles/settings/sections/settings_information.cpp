@@ -594,13 +594,12 @@ void SetupBio(
 		not_null<Ui::VerticalLayout*> container,
 		not_null<UserData*> self,
 		InformationHighlightTargets *targets) {
-	const auto limits = Data::PremiumLimits(&self->session());
-	const auto defaultLimit = limits.aboutLengthDefault();
-	const auto premiumLimit = limits.aboutLengthPremium();
+	const auto limit = Data::PremiumLimits(
+		&self->session()).aboutLengthCurrent();
 	const auto bioStyle = [=] {
 		auto result = st::settingsBio;
 		result.textMargins.setRight(st::boxTextFont->spacew
-			+ st::boxTextFont->width('-' + QString::number(premiumLimit)));
+			+ st::boxTextFont->width('-' + QString::number(limit)));
 		return result;
 	};
 	const auto style = Ui::AttachAsChild(container, bioStyle());
@@ -647,7 +646,6 @@ void SetupBio(
 			text = bio->getLastText();
 		}
 		changed->fire(*current != text);
-		const auto limit = self->isPremium() ? premiumLimit : defaultLimit;
 		const auto countLeft = limit - Ui::ComputeFieldCharacterCount(bio);
 		countdown->setText(QString::number(countLeft));
 		countdown->setTextColorOverride(
@@ -693,7 +691,7 @@ void SetupBio(
 		}
 	});
 
-	bio->setMaxLength(premiumLimit * 2);
+	bio->setMaxLength(limit * 2);
 	bio->setSubmitSettings(Ui::InputField::SubmitSettings::Both);
 	auto cursor = bio->textCursor();
 	cursor.setPosition(bio->getLastText().size());

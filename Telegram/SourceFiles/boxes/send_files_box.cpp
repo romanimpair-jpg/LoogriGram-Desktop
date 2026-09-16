@@ -100,7 +100,6 @@ void FileDialogCallback(
 		FileDialog::OpenResult &&result,
 		Fn<bool(const Ui::PreparedList&)> checkResult,
 		Fn<void(Ui::PreparedList)> callback,
-		bool premium,
 		std::shared_ptr<Ui::Show> show) {
 	auto showError = [=](tr::phrase<> text) {
 		show->showToast(text(tr::now));
@@ -110,8 +109,7 @@ void FileDialogCallback(
 		std::move(result),
 		checkResult,
 		showError,
-		st::sendMediaPreviewSize,
-		premium);
+		st::sendMediaPreviewSize);
 
 	if (!list) {
 		return;
@@ -890,12 +888,10 @@ void SendFilesBox::openDialogToAddFileToAlbum() {
 		return true;
 	};
 	const auto callback = [=](FileDialog::OpenResult &&result) {
-		const auto premium = _show->session().premium();
 		FileDialogCallback(
 			std::move(result),
 			checkResult,
 			[=](Ui::PreparedList list) { addFiles(std::move(list)); },
-			premium,
 			show);
 	};
 
@@ -1250,12 +1246,10 @@ void SendFilesBox::pushBlock(int from, int till) {
 			return checkSlowmode(list) && checkRights(list);
 		};
 		const auto callback = [=](FileDialog::OpenResult &&result) {
-			const auto premium = _show->session().premium();
 			FileDialogCallback(
 				std::move(result),
 				checkResult,
 				replace,
-				premium,
 				show);
 		};
 
@@ -1312,12 +1306,10 @@ void SendFilesBox::pushBlock(int from, int till) {
 			return true;
 		};
 		const auto callback = [=](FileDialog::OpenResult &&result) {
-			const auto premium = _show->session().premium();
 			FileDialogCallback(
 				std::move(result),
 				checkResult,
 				replace,
-				premium,
 				show);
 		};
 
@@ -1899,11 +1891,6 @@ void SendFilesBox::checkCharsLimitation() {
 				_emojiToggle.data(),
 				style::al_top);
 			_charsLimitation->show();
-			Data::AmPremiumValue(
-				&_show->session()
-			) | rpl::on_next([=] {
-				checkCharsLimitation();
-			}, _charsLimitation->lifetime());
 		}
 		_charsLimitation->setLeft(remove);
 	} else {
@@ -1954,7 +1941,6 @@ void SendFilesBox::setupEmojiPanel() {
 		// clicked is the whole of the message.
 		if (!info
 			|| info->setType != Data::StickersType::Emoji
-			|| _show->session().premium()
 			|| Data::AllowEmojiWithoutPremium(_toPeer, data.document)) {
 			Data::InsertCustomEmoji(_caption.data(), data.document);
 		}
@@ -2002,7 +1988,6 @@ void SendFilesBox::captionResized() {
 bool SendFilesBox::addFiles(
 		not_null<const QMimeData*> data,
 		std::optional<bool> overrideSendImagesAsPhotos) {
-	const auto premium = _show->session().premium();
 	const auto urls = Core::ReadMimeUrls(data);
 	const auto folder = Storage::SingleFolderPath(urls);
 	if (!folder.isEmpty()) {
@@ -2011,8 +1996,7 @@ bool SendFilesBox::addFiles(
 			return !files.isEmpty()
 				&& addFiles(Storage::PrepareMediaList(
 					files,
-					st::sendMediaPreviewSize,
-					premium));
+					st::sendMediaPreviewSize));
 		}
 		auto list = Ui::PreparedList();
 		list.files.push_back(Storage::PrepareFolderArchive(folder));
@@ -2022,8 +2006,7 @@ bool SendFilesBox::addFiles(
 		auto result = CanAddUrls(urls)
 			? Storage::PrepareMediaList(
 				urls,
-				st::sendMediaPreviewSize,
-				premium)
+				st::sendMediaPreviewSize)
 			: Ui::PreparedList(
 				Ui::PreparedList::Error::EmptyFile,
 				QString());

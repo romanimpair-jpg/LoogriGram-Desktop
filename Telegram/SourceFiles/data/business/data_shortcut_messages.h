@@ -78,8 +78,6 @@ public:
 	[[nodiscard]] rpl::producer<ShortcutIdChange> shortcutIdChanged() const;
 	[[nodiscard]] BusinessShortcutId emplaceShortcut(QString name);
 	[[nodiscard]] Shortcut lookupShortcut(BusinessShortcutId id) const;
-	[[nodiscard]] BusinessShortcutId lookupShortcutId(
-		const QString &name) const;
 	void editShortcut(
 		BusinessShortcutId id,
 		QString name,

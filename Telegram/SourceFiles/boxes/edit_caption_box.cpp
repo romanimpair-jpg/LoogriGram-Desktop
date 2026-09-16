@@ -77,15 +77,13 @@ namespace {
 constexpr auto kChangesDebounceTimeout = crl::time(1000);
 
 [[nodiscard]] Ui::PreparedList ListFromMimeData(
-		not_null<const QMimeData*> data,
-		bool premium) {
+		not_null<const QMimeData*> data) {
 	using Error = Ui::PreparedList::Error;
 	const auto list = Core::ReadMimeUrls(data);
 	auto result = !list.isEmpty()
 		? Storage::PrepareMediaList(
 			list.mid(0, 1), // When we edit media, we need only 1 file.
-			st::sendMediaPreviewSize,
-			premium)
+			st::sendMediaPreviewSize)
 		: Ui::PreparedList(Error::EmptyFile, QString());
 	if (result.error == Error::None) {
 		return result;
@@ -159,13 +157,11 @@ void ChooseReplacement(
 			}
 			return true;
 		};
-		const auto premium = strong->session().premium();
 		auto list = Storage::PreparedFileFromFilesDialog(
 			std::move(result),
 			checkResult,
 			showError,
-			st::sendMediaPreviewSize,
-			premium);
+			st::sendMediaPreviewSize);
 
 		if (list) {
 			chosen(std::move(*list));
@@ -955,7 +951,6 @@ void EditCaptionBox::setupEditCoverHandler() {
 		return true;
 	};
 	const auto callback = [=](FileDialog::OpenResult &&result) {
-		const auto premium = show->session().premium();
 		const auto showError = [=](tr::phrase<> t) {
 			show->showToast(t(tr::now));
 		};
@@ -963,8 +958,7 @@ void EditCaptionBox::setupEditCoverHandler() {
 			std::move(result),
 			checkResult,
 			showError,
-			st::sendMediaPreviewSize,
-			premium);
+			st::sendMediaPreviewSize);
 		if (list) {
 			replace(std::move(*list));
 		}
@@ -1048,9 +1042,7 @@ void EditCaptionBox::setupEmojiPanel() {
 		const auto info = data.document->sticker();
 		// LoogriGram: as in send_files_box - a premium custom emoji is not
 		// inserted, and no longer answers with the subscription pitch.
-		if (!info
-			|| info->setType != Data::StickersType::Emoji
-			|| _controller->session().premium()) {
+		if (!info || info->setType != Data::StickersType::Emoji) {
 			Data::InsertCustomEmoji(_field.get(), data.document);
 		}
 	}, lifetime());
@@ -1086,8 +1078,7 @@ void EditCaptionBox::updateEmojiPanelGeometry() {
 }
 
 bool EditCaptionBox::fileFromClipboard(not_null<const QMimeData*> data) {
-	const auto premium = _controller->session().premium();
-	return setPreparedList(ListFromMimeData(data, premium));
+	return setPreparedList(ListFromMimeData(data));
 }
 
 bool EditCaptionBox::setPreparedList(Ui::PreparedList &&list) {

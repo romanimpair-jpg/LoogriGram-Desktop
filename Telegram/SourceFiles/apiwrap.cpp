@@ -4353,22 +4353,6 @@ void ApiWrap::cancelLocalItem(not_null<HistoryItem*> item) {
 	}
 }
 
-void ApiWrap::sendShortcutMessages(
-		not_null<PeerData*> peer,
-		BusinessShortcutId id) {
-	auto ids = QVector<MTPint>();
-	auto randomIds = QVector<MTPlong>();
-	request(MTPmessages_SendQuickReplyMessages(
-		peer->input(),
-		MTP_int(id),
-		MTP_vector<MTPint>(ids),
-		MTP_vector<MTPlong>(randomIds)
-	)).done([=](const MTPUpdates &result) {
-		applyUpdates(result);
-	}).fail([=](const MTP::Error &error) {
-	}).send();
-}
-
 void ApiWrap::sendRichMessage(
 		std::shared_ptr<const Iv::RichPage> page,
 		const MTPInputRichMessage &richMessage,
