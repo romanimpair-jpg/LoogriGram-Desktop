@@ -44,13 +44,14 @@ struct ActivateArgs {
 // upgrade / restore subscription pitch, and PremiumGrace at 6, which offered
 // to repair a lapsed subscription through @premiumbot. Both were already
 // unreachable: one asked premium() && !premium(), which is a
-// contradiction here, and the other asked premiumCanBuy() outright. The
+// contradiction here, and the other asked premiumCanBuy() outright.
+// LowCreditsSubs at 5, a warning that the stars balance would not cover
+// the next channel subscription renewal, went with the balance. The
 // numbers are a sort order rather than an index, so the gaps are harmless and
 // the rest keep their relative places.
 enum class Priority : int {
 	UserpicSetup     = 1,
 	BirthdaySetup    = 3,
-	LowCreditsSubs   = 5,
 	CustomPromo      = 7,
 	UnreviewedAuth   = 9,
 };
@@ -66,7 +67,6 @@ struct Spec {
 
 [[nodiscard]] Spec MakeBirthdaySetupSpec();
 [[nodiscard]] Spec MakeCustomPromoSpec();
-[[nodiscard]] Spec MakeLowCreditsSubsSpec();
 [[nodiscard]] Spec MakeUnreviewedAuthSpec();
 [[nodiscard]] Spec MakeUserpicSetupSpec();
 

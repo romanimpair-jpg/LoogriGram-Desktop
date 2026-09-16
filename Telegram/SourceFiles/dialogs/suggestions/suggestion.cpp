@@ -13,7 +13,6 @@ std::vector<Spec> AllSpecs() {
 	auto result = std::vector<Spec>();
 	result.push_back(MakeBirthdaySetupSpec());
 	result.push_back(MakeCustomPromoSpec());
-	result.push_back(MakeLowCreditsSubsSpec());
 	result.push_back(MakeUnreviewedAuthSpec());
 	result.push_back(MakeUserpicSetupSpec());
 	return result;

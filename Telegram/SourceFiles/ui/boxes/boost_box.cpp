@@ -19,12 +19,15 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/widgets/buttons.h"
 #include "ui/wrap/fade_wrap.h"
 #include "ui/painter.h"
+#include "ui/round_rect.h"
+#include "ui/widgets/labels.h"
 #include "ui/rect.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_giveaway.h"
 #include "styles/style_layers.h"
 #include "styles/style_premium.h"
 
+#include <QtGui/QClipboard>
 #include <QtGui/QGuiApplication>
 
 namespace Ui {
@@ -276,6 +279,92 @@ void StartFireworks(not_null<QWidget*> parent) {
 // a subscription to get more; PremiumForBoostsBox asked outright whether to
 // subscribe. AskBoostBox below is a different thing and stays - it tells a
 // channel's own admin what level their channel needs for a feature.
+
+// LoogriGram: restored after the credits deletion took it with the gift
+// code boxes. AskBoostBox, which is kept, shows the boost link in it.
+object_ptr<Ui::RpWidget> MakeLinkLabel(
+		not_null<QWidget*> parent,
+		rpl::producer<QString> text,
+		rpl::producer<QString> link,
+		std::shared_ptr<Ui::Show> show,
+		object_ptr<Ui::RpWidget> right) {
+	auto result = object_ptr<Ui::AbstractButton>(parent);
+	const auto raw = result.data();
+
+	const auto rawRight = right.release();
+	if (rawRight) {
+		rawRight->setParent(raw);
+		rawRight->show();
+	}
+
+	struct State {
+		State(
+			not_null<QWidget*> parent,
+			rpl::producer<QString> value,
+			rpl::producer<QString> link)
+		: text(std::move(value))
+		, link(std::move(link))
+		, label(parent, text.value(), st::giveawayGiftCodeLink)
+		, bg(st::roundRadiusLarge, st::windowBgOver) {
+		}
+
+		rpl::variable<QString> text;
+		rpl::variable<QString> link;
+		Ui::FlatLabel label;
+		Ui::RoundRect bg;
+	};
+
+	const auto state = raw->lifetime().make_state<State>(
+		raw,
+		rpl::duplicate(text),
+		std::move(link));
+	state->label.setSelectable(true);
+
+	rpl::combine(
+		raw->widthValue(),
+		std::move(text)
+	) | rpl::on_next([=](int outer, const auto&) {
+		const auto textWidth = state->label.textMaxWidth();
+		const auto skipLeft = st::giveawayGiftCodeLink.margin.left();
+		const auto skipRight = rawRight
+			? rawRight->width()
+			: st::giveawayGiftCodeLink.margin.right();
+		const auto available = outer - skipRight - skipLeft;
+		const auto use = std::min(textWidth, available);
+		state->label.resizeToWidth(use);
+		const auto forCenter = (outer - use) / 2;
+		const auto x = (forCenter < skipLeft)
+			? skipLeft
+			: (forCenter > outer - skipRight - use)
+			? (outer - skipRight - use)
+			: forCenter;
+		state->label.moveToLeft(x, st::giveawayGiftCodeLink.margin.top());
+	}, raw->lifetime());
+
+	raw->paintRequest() | rpl::on_next([=] {
+		auto p = QPainter(raw);
+		state->bg.paint(p, raw->rect());
+	}, raw->lifetime());
+
+	state->label.setAttribute(Qt::WA_TransparentForMouseEvents);
+
+	raw->resize(raw->width(), st::giveawayGiftCodeLinkHeight);
+	if (rawRight) {
+		raw->widthValue() | rpl::on_next([=](int width) {
+			rawRight->move(width - rawRight->width(), 0);
+		}, raw->lifetime());
+	}
+	raw->setClickedCallback([=] {
+		QGuiApplication::clipboard()->setText(state->link.current());
+		show->showToast({
+			.text = { tr::lng_username_copied(tr::now) },
+			.iconLottie = u"toast/voip_invite"_q,
+			.iconLottieSize = st::toastLottieIconSize,
+		});
+	});
+
+	return result;
+}
 
 void AskBoostBox(
 		not_null<GenericBox*> box,
