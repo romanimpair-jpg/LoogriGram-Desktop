@@ -263,10 +263,18 @@ What actually solved the crash took one log line. Prefer ground truth:
 - **The Windows Application event log records both the crash time and the
   process start time**, so "how long was it alive" is measurable — enough to
   tell a startup-path fault from something triggered by a user action.
-- **Crash reports are off** (`DESKTOP_APP_DISABLE_CRASH_REPORTS=ON`) and there
-  are no symbols (debug info is blanked for Release), so fault offsets cannot
-  be resolved. Logging is the tool available; add it deliberately rather than
-  inferring from behaviour.
+- **Crash reports are off** (`DESKTOP_APP_DISABLE_CRASH_REPORTS=ON`): that is
+  upstream's breakpad, which offers to upload dumps to Telegram, so it stays
+  off. Windows writes a full dump anyway, to `%LOCALAPPDATA%\CrashDumps`.
+- **Reading a dump.** Every `mode=build` run uploads a private artifact,
+  `LoogriGram x64 Release symbols <tag>`, holding `LoogriGram.pdb` for exactly
+  that executable (debug info is on for the `Telegram` and `td_ui` targets
+  only; see the comment in `Telegram/CMakeLists.txt`). Put the PDB beside the
+  crashed exe and open the dump in WinDbg / `cdb -z <dump> -y <dir>`, then
+  `!analyze -v` and `kb`. A dump is only readable against the PDB of the build
+  that crashed, so builds from before this was added (up to `bd75c09660`) have
+  none. Frames inside `lib_ui` and other dependencies still resolve to
+  exported names only.
 - **Do not dispatch a build to test a hypothesis that logging could settle**,
   and ask before dispatching at all. A wrong 25m build is cheap only once;
   the habit of building instead of thinking is what cost the time here.
@@ -398,7 +406,10 @@ Each of these burned at least one multi-hour build. Do not relearn them.
    the strip leaves `/Fd` and `/FS` with no `/Zi`, which fails `C1083` on
    kimageformats. Doing neither leaves `-Z7` in 2157 objects, which the linker
    merges into one oversized PDB and fails `LNK1201`. For Release, blank the
-   format: no debug arguments at all, self-consistent, and faster.
+   format: no debug arguments at all, self-consistent, and faster. The two
+   targets holding our own code set it back per target in
+   `Telegram/CMakeLists.txt`, which is what makes crash dumps readable; the PDB
+   is moved out of `out/` before the cache is saved.
 6. **kimageformats is the only target that links `libdav1d.a`**, while ffmpeg's
    libavcodec references dav1d regardless. Disabling the Qt plugins therefore
    produces 14 unresolved `dav1d_*` symbols. `libdav1d.a` is now passed to the

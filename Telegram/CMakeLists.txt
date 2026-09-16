@@ -2027,6 +2027,21 @@ endif()
 
 target_link_options(Telegram PRIVATE /PDBPAGESIZE:8192)
 
+# LoogriGram: symbols for our own code, so a crash dump from a Release build
+# resolves to function names. CI builds with an empty
+# CMAKE_MSVC_DEBUG_INFORMATION_FORMAT, because debug info for every library
+# merged into one PDB fails LNK1201. Only the two targets holding the app's
+# own code get it back: Embedded (/Z7) keeps the information in the objects,
+# and options_win.cmake then links Telegram with /DEBUG since its format is
+# no longer empty. /DEBUG turns identical-COMDAT folding off by default, so
+# /OPT:ICF restores it and the executable stays as optimized as before.
+# /PDBALTPATH records only the file name, not the CI build path. The PDB never
+# ships: the workflow moves it out of the build tree into a private artifact.
+set_target_properties(Telegram td_ui PROPERTIES
+    MSVC_DEBUG_INFORMATION_FORMAT Embedded
+)
+target_link_options(Telegram PRIVATE /OPT:ICF /PDBALTPATH:%_PDB%)
+
 # LoogriGram: names the produced executable.
 set(output_name "LoogriGram")
 set_target_properties(Telegram PROPERTIES OUTPUT_NAME ${output_name})
