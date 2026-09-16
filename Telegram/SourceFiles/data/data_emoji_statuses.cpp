@@ -11,7 +11,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_channel.h"
 #include "data/data_user.h"
 #include "data/data_session.h"
-#include "data/data_star_gift.h"
 #include "data/data_document.h"
 #include "data/data_wall_paper.h"
 #include "data/stickers/data_stickers.h"
@@ -27,21 +26,6 @@ namespace {
 constexpr auto kRefreshDefaultListEach = 60 * 60 * crl::time(1000);
 constexpr auto kRecentRequestTimeout = 10 * crl::time(1000);
 constexpr auto kMaxTimeout = 6 * 60 * 60 * crl::time(1000);
-
-[[nodiscard]] EmojiStatusCollectible ParseEmojiStatusCollectible(
-		const MTPDemojiStatusCollectible &data) {
-	return EmojiStatusCollectible{
-		.id = data.vcollectible_id().v,
-		.documentId = data.vdocument_id().v,
-		.title = qs(data.vtitle()),
-		.slug = qs(data.vslug()),
-		.patternDocumentId = data.vpattern_document_id().v,
-		.centerColor = Ui::ColorFromSerialized(data.vcenter_color()),
-		.edgeColor = Ui::ColorFromSerialized(data.vedge_color()),
-		.patternColor = Ui::ColorFromSerialized(data.vpattern_color()),
-		.textColor = Ui::ColorFromSerialized(data.vtext_color()),
-	};
-}
 
 } // namespace
 
@@ -85,10 +69,6 @@ void EmojiStatuses::refreshChannelColored() {
 	requestChannelColored();
 }
 
-void EmojiStatuses::refreshCollectibles() {
-	requestCollectibles();
-}
-
 void EmojiStatuses::refreshRecentDelayed() {
 	if (_recentRequestId || _recentRequestScheduled) {
 		return;
@@ -108,7 +88,6 @@ const std::vector<EmojiStatusId> &EmojiStatuses::list(Type type) const {
 	case Type::Colored: return _colored;
 	case Type::ChannelDefault: return _channelDefault;
 	case Type::ChannelColored: return _channelColored;
-	case Type::Collectibles: return _collectibles;
 	}
 	Unexpected("Type in EmojiStatuses::list.");
 }
@@ -119,17 +98,10 @@ EmojiStatusData EmojiStatuses::parse(const MTPEmojiStatus &status) {
 			.id = { .documentId = data.vdocument_id().v },
 			.until = data.vuntil().value_or_empty(),
 		};
-	}, [&](const MTPDemojiStatusCollectible &data) {
-		const auto collectibleId = data.vcollectible_id().v;
-		auto &collectible = _collectibleData[collectibleId];
-		if (!collectible) {
-			collectible = std::make_shared<EmojiStatusCollectible>(
-				ParseEmojiStatusCollectible(data));
-		}
-		return EmojiStatusData{
-			.id = { .collectible = collectible },
-			.until = data.vuntil().value_or_empty(),
-		};
+	}, [](const MTPDemojiStatusCollectible &) {
+		// LoogriGram: a collectible gift worn as a status. Not parsed; the
+		// peer shows no status, as if it had none.
+		return EmojiStatusData();
 	}, [](const MTPDinputEmojiStatusCollectible &) {
 		return EmojiStatusData();
 	}, [](const MTPDemojiStatusEmpty &) {
@@ -147,10 +119,6 @@ rpl::producer<> EmojiStatuses::defaultUpdates() const {
 
 rpl::producer<> EmojiStatuses::channelDefaultUpdates() const {
 	return _channelDefaultUpdated.events();
-}
-
-rpl::producer<> EmojiStatuses::collectiblesUpdates() const {
-	return _collectiblesUpdated.events();
 }
 
 void EmojiStatuses::registerAutomaticClear(
@@ -382,7 +350,6 @@ void EmojiStatuses::requestColored() {
 		_coloredRequestId = 0;
 		result.match([&](const MTPDmessages_stickerSet &data) {
 			updateColored(data);
-			refreshCollectibles();
 		}, [](const MTPDmessages_stickerSetNotModified &) {
 			LOG(("API Error: Unexpected messages.stickerSetNotModified."));
 		});
@@ -430,25 +397,6 @@ void EmojiStatuses::requestChannelColored() {
 	}).send();
 }
 
-void EmojiStatuses::requestCollectibles() {
-	if (_collectiblesRequestId) {
-		return;
-	}
-	auto &api = _owner->session().api();
-	_collectiblesRequestId = api.request(
-		MTPaccount_GetCollectibleEmojiStatuses(MTP_long(_collectiblesHash))
-	).done([=](const MTPaccount_EmojiStatuses &result) {
-		_collectiblesRequestId = 0;
-		result.match([&](const MTPDaccount_emojiStatuses &data) {
-			updateCollectibles(data);
-		}, [&](const MTPDaccount_emojiStatusesNotModified &) {
-		});
-	}).fail([=] {
-		_collectiblesRequestId = 0;
-		_collectiblesHash = 0;
-	}).send();
-}
-
 void EmojiStatuses::updateRecent(const MTPDaccount_emojiStatuses &data) {
 	_recentHash = data.vhash().v;
 	_recent = parse(data);
@@ -493,13 +441,6 @@ void EmojiStatuses::updateChannelColored(
 	_channelColoredUpdated.fire({});
 }
 
-void EmojiStatuses::updateCollectibles(
-	const MTPDaccount_emojiStatuses &data) {
-	_collectiblesHash = data.vhash().v;
-	_collectibles = parse(data);
-	_collectiblesUpdated.fire({});
-}
-
 void EmojiStatuses::set(EmojiStatusId id, TimeId until) {
 	set(_owner->session().user(), id, until);
 }
@@ -524,14 +465,8 @@ void EmojiStatuses::set(
 		}).send();
 	};
 	using EFlag = MTPDemojiStatus::Flag;
-	using CFlag = MTPDinputEmojiStatusCollectible::Flag;
 	const auto status = !id
 		? MTP_emojiStatusEmpty()
-		: id.collectible
-		? MTP_inputEmojiStatusCollectible(
-			MTP_flags(until ? CFlag::f_until : CFlag()),
-			MTP_long(id.collectible->id),
-			MTP_int(until))
 		: MTP_emojiStatus(
 			MTP_flags(until ? EFlag::f_until : EFlag()),
 			MTP_long(id.documentId),
@@ -541,32 +476,6 @@ void EmojiStatuses::set(
 	} else if (const auto channel = peer->asChannel()) {
 		send(MTPchannels_UpdateEmojiStatus(channel->inputChannel(), status));
 	}
-}
-
-EmojiStatusId EmojiStatuses::fromUniqueGift(
-		const Data::UniqueGift &gift) {
-	const auto collectibleId = gift.id;
-	auto &collectible = _collectibleData[collectibleId];
-	if (!collectible) {
-		collectible = std::make_shared<EmojiStatusCollectible>(
-			EmojiStatusCollectible{
-				.id = gift.id,
-				.documentId = gift.model.document->id,
-				.title = Data::UniqueGiftName(gift),
-				.slug = gift.slug,
-				.patternDocumentId = gift.pattern.document->id,
-				.centerColor = gift.backdrop.centerColor,
-				.edgeColor = gift.backdrop.edgeColor,
-				.patternColor = gift.backdrop.patternColor,
-				.textColor = gift.backdrop.textColor,
-			});
-	}
-	return { .collectible = collectible };
-}
-
-EmojiStatusCollectible *EmojiStatuses::collectibleInfo(CollectibleId id) {
-	const auto i = _collectibleData.find(id);
-	return (i != end(_collectibleData)) ? i->second.get() : nullptr;
 }
 
 } // namespace Data

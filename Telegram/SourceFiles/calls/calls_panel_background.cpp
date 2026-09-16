@@ -199,10 +199,6 @@ std::optional<QColor> PanelBackground::edgeColor() const {
 
 std::optional<QColor> PanelBackground::textColorOverride(
 		const style::color &defaultColor) const {
-	const auto collectible = _peer->emojiStatusId().collectible;
-	if (collectible && collectible->textColor.isValid()) {
-		return collectible->textColor;
-	}
 	const auto edge = edgeColor();
 	if (!edge) {
 		return std::nullopt;

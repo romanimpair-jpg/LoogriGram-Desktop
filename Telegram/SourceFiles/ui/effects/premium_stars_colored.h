@@ -47,12 +47,4 @@ private:
 
 };
 
-[[nodiscard]] std::unique_ptr<Text::CustomEmoji> MakeCollectibleEmoji(
-	QStringView entityData,
-	QColor centerColor,
-	QColor edgeColor,
-	std::unique_ptr<Text::CustomEmoji> inner,
-	Fn<void()> update,
-	int size);
-
 } // namespace Ui::Premium

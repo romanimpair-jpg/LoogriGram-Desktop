@@ -138,7 +138,9 @@ DocumentData *Document::readFromStreamHelper(
 				|| info->setId == Data::Stickers::CloudRecentAttachedSetId
 				|| info->setId == Data::Stickers::FavedSetId
 				|| info->setId == Data::Stickers::CustomSetId
-				|| info->setId == Data::Stickers::CollectibleSetId) {
+				// LoogriGram: the id the collectible statuses section used,
+				// which older builds may have written; still a special set.
+				|| info->setId == 0xFFFFFFFFFFFFFFF8ULL) {
 				typeOfSet = StickerSetTypeEmpty;
 			}
 

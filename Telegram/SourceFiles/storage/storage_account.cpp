@@ -2283,8 +2283,7 @@ void Account::writeInstalledStickers() {
 	writeStickerSets(_installedStickersKey, [](const Data::StickersSet &set) {
 		if (set.id == Data::Stickers::CloudRecentSetId
 			|| set.id == Data::Stickers::FavedSetId
-			|| set.id == Data::Stickers::CloudRecentAttachedSetId
-			|| set.id == Data::Stickers::CollectibleSetId) {
+			|| set.id == Data::Stickers::CloudRecentAttachedSetId) {
 			// separate files for them
 			return StickerSetCheckResult::Skip;
 		} else if (set.flags & SetFlag::Special) {
@@ -2311,8 +2310,7 @@ void Account::writeFeaturedStickers() {
 	writeStickerSets(_featuredStickersKey, [](const Data::StickersSet &set) {
 		if (set.id == Data::Stickers::CloudRecentSetId
 			|| set.id == Data::Stickers::FavedSetId
-			|| set.id == Data::Stickers::CloudRecentAttachedSetId
-			|| set.id == Data::Stickers::CollectibleSetId) {
+			|| set.id == Data::Stickers::CloudRecentAttachedSetId) {
 			// separate files for them
 			return StickerSetCheckResult::Skip;
 		} else if ((set.flags & SetFlag::Special)

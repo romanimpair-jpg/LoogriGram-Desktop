@@ -82,7 +82,6 @@ void EmojiStatusPanel::show(
 		.button = button,
 		.animationSizeTag = animationSizeTag,
 		.ensureAddedEmojiId = controller->session().user()->emojiStatusId(),
-		.withCollectibles = true,
 	});
 }
 
@@ -214,7 +213,6 @@ void EmojiStatusPanel::create(const Descriptor &descriptor) {
 	const auto controller = descriptor.controller;
 	const auto body = controller->window().widget()->bodyWidget();
 	auto features = ChatHelpers::ComposeFeatures();
-	features.collectibleStatus = descriptor.withCollectibles;
 	_panel = base::make_unique_q<ChatHelpers::TabbedPanel>(
 		body,
 		controller,
@@ -259,10 +257,7 @@ void EmojiStatusPanel::create(const Descriptor &descriptor) {
 	auto statusChosen = _panel->selector()->customEmojiChosen(
 	) | rpl::map([=](ChatHelpers::FileChosen data) {
 		return Chosen{
-			.id = {
-				data.collectible ? DocumentId() : data.document->id,
-				data.collectible,
-			},
+			.id = { data.document->id },
 			.until = data.options.scheduled,
 			.animation = data.messageSendingFrom,
 		};
@@ -336,9 +331,7 @@ void EmojiStatusPanel::startAnimation(
 	if (!_panelButton || !statusId) {
 		return;
 	}
-	const auto documentId = statusId.collectible
-		? statusId.collectible->documentId
-		: statusId.documentId;
+	const auto documentId = statusId.documentId;
 	auto args = Ui::ReactionFlyAnimationArgs{
 		.id = { { documentId } },
 		.flyIcon = from.frame,

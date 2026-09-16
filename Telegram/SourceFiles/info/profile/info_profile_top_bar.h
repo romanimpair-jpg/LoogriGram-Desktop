@@ -130,7 +130,6 @@ public:
 	void setRoundEdges(bool value);
 	void setColorProfileIndex(std::optional<uint8> index);
 	void setPatternEmojiId(std::optional<DocumentId> patternEmojiId);
-	void setLocalEmojiStatusId(EmojiStatusId emojiStatusId);
 	void addTopBarEditButton(
 		not_null<Window::SessionController*> controller,
 		Wrap wrap);
@@ -215,8 +214,6 @@ private:
 
 	[[nodiscard]] auto effectiveColorProfile()
 	const -> std::optional<Data::ColorProfileSet>;
-	[[nodiscard]] auto effectiveCollectible()
-	const -> std::shared_ptr<Data::EmojiStatusCollectible>;
 
 	const not_null<PeerData*> _peer;
 	Data::ForumTopic *_topic = nullptr;
@@ -332,7 +329,6 @@ private:
 
 	std::optional<uint8> _localColorProfileIndex;
 	std::optional<DocumentId> _localPatternEmojiId;
-	std::shared_ptr<Data::EmojiStatusCollectible> _localCollectible;
 
 };
 

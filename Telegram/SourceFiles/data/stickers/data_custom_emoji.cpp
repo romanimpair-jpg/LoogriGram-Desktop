@@ -114,10 +114,6 @@ private:
 	return u"force-static:"_q;
 }
 
-[[nodiscard]] QString CollectiblePrefix() {
-	return u"collectible:"_q;
-}
-
 [[nodiscard]] QString InternalPadding(QMargins value) {
 	return value.isNull() ? QString() : QString(",%1,%2,%3,%4"
 	).arg(value.left()
@@ -574,20 +570,6 @@ std::unique_ptr<Ui::Text::CustomEmoji> CustomEmojiManager::create(
 		const auto ratio = style::DevicePixelRatio();
 		const auto size = EmojiSizeFromTag(tag) / ratio;
 		return userpic(data, std::move(update), size);
-	} else if (data.startsWith(CollectiblePrefix())) {
-		const auto id = data.mid(CollectiblePrefix().size()).toULongLong();
-		const auto emojiStatuses = &session().data().emojiStatuses();
-		auto info = emojiStatuses->collectibleInfo(id);
-		Assert(info != nullptr);
-		const auto documentId = info->documentId;
-		auto inner = create(documentId, base::duplicate(update), tag);
-		return Ui::Premium::MakeCollectibleEmoji(
-			data,
-			info->centerColor,
-			info->edgeColor,
-			std::move(inner),
-			std::move(update),
-			FrameSizeFromTag(tag) / style::DevicePixelRatio());
 	} else if (const auto parsed = Data::ParseTopicIconEmojiEntity(data)) {
 		return MakeTopicIconEmoji(parsed, std::move(update), tag);
 	}
@@ -1108,14 +1090,8 @@ Ui::Text::CustomEmojiFactory ReactedMenuFactory(
 	};
 }
 
-QString CollectibleCustomEmojiId(Data::EmojiStatusCollectible &data) {
-	return CollectiblePrefix() + QString::number(data.id);
-}
-
 QString EmojiStatusCustomId(const EmojiStatusId &id) {
-	return id.collectible
-		? CollectibleCustomEmojiId(*id.collectible)
-		: SerializeCustomEmojiId(id.documentId);
+	return SerializeCustomEmojiId(id.documentId);
 }
 
 } // namespace Data

@@ -56,7 +56,6 @@ public:
 		Fn<QColor()> customTextColor;
 		bool backgroundEmojiMode = false;
 		bool channelStatusMode = false;
-		bool withCollectibles = false;
 	};
 	void show(Descriptor &&descriptor);
 	void hideFast();

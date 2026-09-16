@@ -41,7 +41,6 @@ TabbedSearch {
 
 ComposeIcons {
 	settings: icon;
-	collectibles: icon;
 
 	recent: icon;
 	recentActive: icon;
@@ -695,7 +694,6 @@ sendBoxAlbumGroupButtonMediaDelete: icon {{ "send_media/send_media_cross", round
 
 defaultComposeIcons: ComposeIcons {
 	settings: icon {{ "emoji/emoji_settings", emojiIconFg }};
-	collectibles: icon {{ "menu/unique", emojiIconFg }};
 
 	recent: icon {{ "emoji/emoji_recent", emojiIconFg }};
 	recentActive: icon {{ "emoji/emoji_recent", emojiSubIconFgActive }};

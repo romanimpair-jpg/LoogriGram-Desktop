@@ -63,7 +63,6 @@ struct FileChosen {
 	not_null<DocumentData*> document;
 	Api::SendOptions options;
 	Ui::MessageSendingAnimationFrom messageSendingFrom;
-	std::shared_ptr<Data::EmojiStatusCollectible> collectible;
 	TextWithTags caption;
 	bool needsCaption = false;
 };

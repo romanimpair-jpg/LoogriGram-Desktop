@@ -2662,8 +2662,7 @@ base::unique_qptr<Ui::PopupMenu> FillStickerSetContextMenu(
 		const style::PopupMenu &menuSt,
 		const style::ComposeIcons &icons) {
 	if (set->shortName.isEmpty()
-		|| (set->id == Data::Stickers::MegagroupSetId)
-		|| (set->id == Data::Stickers::CollectibleSetId)) {
+		|| (set->id == Data::Stickers::MegagroupSetId)) {
 		return nullptr;
 	}
 	const auto type = set->type();

@@ -204,7 +204,6 @@ private:
 		bool collapsed = false;
 	};
 	struct CustomOne {
-		std::shared_ptr<Data::EmojiStatusCollectible> collectible;
 		not_null<Ui::Text::CustomEmoji*> custom;
 		not_null<DocumentData*> document;
 		EmojiPtr emoji = nullptr;
@@ -295,7 +294,6 @@ private:
 	};
 	struct ResolvedCustom {
 		DocumentData *document = nullptr;
-		std::shared_ptr<Data::EmojiStatusCollectible> collectible;
 
 		explicit operator bool() const {
 			return document != nullptr;
@@ -319,7 +317,6 @@ private:
 		Visible,
 		Hidden,
 	};
-	void refreshEmojiStatusCollectibles();
 	void refreshMegagroupStickers(
 		Fn<void(uint64 setId, bool installed)> push,
 		GroupStickersPlace place);

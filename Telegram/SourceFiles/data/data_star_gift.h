@@ -114,7 +114,7 @@ struct UniqueGiftValue {
 };
 
 struct UniqueGift {
-	CollectibleId id = 0;
+	uint64 id = 0;
 	uint64 initialGiftId = 0;
 	QString slug;
 	QString title;

@@ -227,28 +227,7 @@ struct PatternColors {
 
 [[nodiscard]] PatternColors CalculatePatternColors(
 		const std::optional<Data::ColorProfileSet> &colorProfile,
-		const std::shared_ptr<Data::EmojiStatusCollectible> &collectible,
-		const std::optional<QColor> &edgeColor,
 		bool isDark) {
-	if (collectible && collectible->patternColor.isValid()) {
-		auto blended = Ui::BlendColors(
-			collectible->patternColor,
-			Qt::black,
-			isDark ? (140. / 255) : (160. / 255));
-		auto result = !edgeColor
-			? std::move(blended)
-			: (Ui::CountContrast(blended, *edgeColor)
-				> Ui::CountContrast(collectible->patternColor, *edgeColor))
-			? std::move(blended)
-			: collectible->patternColor;
-		return {
-			.patternColor = std::move(result),
-			// .patternColor = collectible->patternColor.lighter(isDark
-			// 	? 140
-			// 	: 160),
-			.useOverlayBlend = false
-		};
-	}
 	if (colorProfile && !colorProfile->bg.empty()) {
 		return {
 			.patternColor = QColor(0, 0, 0, int(0.6 * 255)),
@@ -520,9 +499,7 @@ TopBar::TopBar(
 
 	// LoogriGram: a ring of the peer's pinned collectible gifts orbited the
 	// userpic here, requested on every pin or unpin. Tapping one opened the
-	// gift's own box, where it is for sale or for transfer. Only the
-	// collectible colour behind the userpic is left, which is a property of
-	// the profile rather than a thing to browse.
+	// gift's own box, where it is for sale or for transfer.
 	rpl::merge(
 		style::PaletteChanged(),
 		_peer->session().changes().peerFlagsValue(
@@ -577,18 +554,13 @@ void TopBar::adjustColors(const std::optional<QColor> &edgeColor) {
 		return edgeColor
 			&& (kMinContrast > Ui::CountContrast(color->c, *edgeColor));
 	};
-	const auto collectible = effectiveCollectible();
 	const auto shouldOverrideTitle = shouldOverride(_title->st().textFg);
 	const auto shouldOverrideStatus = shouldOverrideTitle
 		|| shouldOverride(_status->st().textFg);
-	_title->setTextColorOverride(collectible
-		? collectible->textColor
-		: shouldOverrideTitle
+	_title->setTextColorOverride(shouldOverrideTitle
 		? std::optional<QColor>(st::groupCallMembersFg->c)
 		: std::nullopt);
-	_tabSubtitleOverride = collectible
-		? collectible->textColor
-		: shouldOverrideStatus
+	_tabSubtitleOverride = shouldOverrideStatus
 		? std::optional<QColor>(st::groupCallVideoSubTextFg->c)
 		: std::nullopt;
 	update();
@@ -629,9 +601,7 @@ void TopBar::adjustColors(const std::optional<QColor> &edgeColor) {
 				updateStatusPosition(_progress.current());
 			}, _status->lifetime());
 		}
-		_status->setTextColorOverride(collectible
-			? collectible->textColor
-			: shouldOverrideStatus
+		_status->setTextColorOverride(shouldOverrideStatus
 			? std::optional<QColor>(st::groupCallVideoSubTextFg->c)
 			: std::nullopt);
 		if (!_customStatus) {
@@ -671,10 +641,10 @@ void TopBar::updateCollectibleStatus() {
 	// wearing a different hat - and this fork has no premium surfaces. Killing
 	// the three inputs here turns every painter below into its plain branch,
 	// which is the same one a peer without any of this always took.
-	// The collectible and colour profile are still read below, for the badge
-	// and text colours that have to stay legible - only the background they
-	// also drove is dropped.
-	const auto collectible = effectiveCollectible();
+	// The colour profile is still read below, for the badge and text colours
+	// that have to stay legible - only the background it also drove is
+	// dropped. A collectible gift worn as a status fed these too; it is not
+	// parsed any more.
 	const auto colorProfile = effectiveColorProfile();
 	_hasGradientBg = false;
 	_solidBg = std::nullopt;
@@ -685,12 +655,6 @@ void TopBar::updateCollectibleStatus() {
 	_patternEmoji = nullptr;
 	_animatedPoints.clear();
 	const auto verifiedFg = [&]() -> std::optional<QColor> {
-		if (collectible) {
-			return Ui::BlendColors(
-				collectible->edgeColor,
-				collectible->centerColor,
-				0.2);
-		}
 		if (colorProfile && !colorProfile->palette.empty()) {
 			return Ui::BlendColors(
 				colorProfile->palette.back(),
@@ -725,9 +689,7 @@ void TopBar::updateCollectibleStatus() {
 		_verifiedSt = nullptr;
 	}
 	update();
-	adjustColors(collectible
-		? std::optional<QColor>(collectible->edgeColor)
-		: (colorProfile && !colorProfile->bg.empty())
+	adjustColors((colorProfile && !colorProfile->bg.empty())
 		? std::optional<QColor>(colorProfile->bg.front())
 		: std::nullopt);
 }
@@ -1625,13 +1587,6 @@ void TopBar::setPatternEmojiId(std::optional<DocumentId> patternEmojiId) {
 	updateCollectibleStatus();
 }
 
-// LoogriGram: only the background preview is left - the badge this also used
-// to fill in is gone, so there is nothing to show the chosen status on.
-void TopBar::setLocalEmojiStatusId(EmojiStatusId emojiStatusId) {
-	_localCollectible = emojiStatusId.collectible;
-	updateCollectibleStatus();
-}
-
 std::optional<Data::ColorProfileSet> TopBar::effectiveColorProfile() const {
 	return _localColorProfileIndex
 		? _peer->session().api().peerColors().colorProfileFor(
@@ -1639,15 +1594,6 @@ std::optional<Data::ColorProfileSet> TopBar::effectiveColorProfile() const {
 		: _source == Source::Preview
 		? std::nullopt
 		: _peer->session().api().peerColors().colorProfileFor(_peer);
-}
-
-auto TopBar::effectiveCollectible() const
--> std::shared_ptr<Data::EmojiStatusCollectible> {
-	return _localCollectible
-		? _localCollectible
-		: _localColorProfileIndex
-		? nullptr
-		: _peer->emojiStatusId().collectible;
 }
 
 bool TopBar::clipTouchesRoundedCorners(const QRect &clip) const {
@@ -2503,10 +2449,6 @@ void TopBar::applyTabSwapProgress(float64 progress) {
 
 void TopBar::resizeEvent(QResizeEvent *e) {
 	_cachedClipPath = QPainterPath();
-	const auto collectible = effectiveCollectible();
-	if (collectible && !_animatedPoints.empty()) {
-		setupAnimatedPattern();
-	}
 	if (_hasGradientBg && e->oldSize().width() != e->size().width()) {
 		_cachedClipPath = QPainterPath();
 		_cachedGradient = QImage();
@@ -2628,21 +2570,13 @@ void TopBar::paintEvent(QPaintEvent *e) {
 	const auto clipBounds = e->region().boundingRect();
 
 	if (_hasGradientBg && _cachedGradient.isNull()) {
-		const auto collectible = effectiveCollectible();
 		const auto colorProfile = effectiveColorProfile();
 		const auto offset = QPoint(
 			0,
 			_hasActions
 				? -st::infoProfileTopBarPhotoBgShift
 				: -st::infoProfileTopBarPhotoBgNoActionsShift);
-		if (collectible) {
-			_cachedGradient = Ui::CreateTopBgGradient(
-				QSize(width(), maximumHeight()),
-				collectible->centerColor,
-				collectible->edgeColor,
-				false,
-				offset);
-		} else if (colorProfile && colorProfile->bg.size() > 1) {
+		if (colorProfile && colorProfile->bg.size() > 1) {
 			_cachedGradient = Ui::CreateTopBgGradient(
 				QSize(width(), maximumHeight()),
 				colorProfile->bg[1],
@@ -2981,8 +2915,6 @@ void TopBar::paintAnimatedPattern(
 	if (_basePatternImage.isNull()) {
 		auto patternColors = CalculatePatternColors(
 			effectiveColorProfile(),
-			effectiveCollectible(),
-			_edgeColor.current(),
 			Window::Theme::IsNightMode());
 		const auto ratio = style::DevicePixelRatio();
 		const auto scale = 0.910;
@@ -3175,11 +3107,6 @@ void TopBar::updateStoryOutline(std::optional<QColor> edgeColor) {
 				QRectF(userpicGeometry()),
 				colorProfile->story[0],
 				colorProfile->story[1])
-			: _localCollectible
-			? Ui::UnreadStoryOutlineGradient(
-				QRectF(userpicGeometry()),
-				Ui::BlendColors(_localCollectible->edgeColor, Qt::white, .5),
-				Ui::BlendColors(_localCollectible->edgeColor, Qt::white, .5))
 			: Ui::UnreadStoryOutlineGradient(QRectF(userpicGeometry()));
 		_storySegments.push_back({
 			.brush = QBrush(previewBrush),
