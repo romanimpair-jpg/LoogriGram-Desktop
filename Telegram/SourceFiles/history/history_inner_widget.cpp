@@ -3294,20 +3294,6 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 			&st::menuIconUnpin);
 	};
 
-	const auto addTodoListAction = [&](HistoryItem *item) {
-		if (!item || !Window::PeerMenuShowAddTodoListTasks(item)) {
-			return;
-		}
-		const auto itemId = item->fullId();
-		_menu->addAction(
-			tr::lng_todo_add_title(tr::now),
-			crl::guard(this, [=] {
-				if (const auto item = session->data().message(itemId)) {
-					Window::PeerMenuAddTodoListTasks(_controller, item);
-				}
-			}),
-			&st::menuIconAdd);
-	};
 	const auto lnkPhoto = link
 		? reinterpret_cast<PhotoData*>(
 			link->property(kPhotoLinkMediaProperty).toULongLong())
@@ -3506,7 +3492,6 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 			addItemActions(item, editItem);
 		} else {
 			addReplyAction(partItemOrLeader);
-			addTodoListAction(partItemOrLeader);
 			addItemActions(item, albumPartItem);
 			if (item && !isUponSelected) {
 				const auto media = (view ? view->media() : nullptr);

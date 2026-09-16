@@ -224,17 +224,6 @@ struct State {
 			}
 		}
 	}, context->subscriptions[session]);
-	Data::AmPremiumValue(
-		session
-	) | rpl::skip(1) | rpl::filter(
-		rpl::mappers::_1
-	) | rpl::on_next([=] {
-		for (auto &[item, cache] : context->cachedRead) {
-			if (cache.data.current().state == Ui::WhoReadState::MyHidden) {
-				cache.data = Peers{ .state = Ui::WhoReadState::Unknown };
-			}
-		}
-	}, context->subscriptions[session]);
 	session->api().globalPrivacy().hideReadTime(
 	) | rpl::skip(1) | rpl::filter(
 		!rpl::mappers::_1

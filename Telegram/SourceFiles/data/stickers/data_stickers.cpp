@@ -67,8 +67,6 @@ void ShowLimitReachedToast(
 		TextWithEntities text) {
 	if (!show) {
 		return;
-	} else if (show->session().user()->isPremium()) {
-		return;
 	}
 	show->showToast({
 		.text = std::move(text),
@@ -1451,38 +1449,17 @@ std::vector<not_null<DocumentData*>> Stickers::getListByEmoji(
 		return true;
 	};
 
-	if (session().premium()) {
-		const auto normalsPerPremium = appConfig->get<int>(
-			u"stickers_normal_by_emoji_per_premium_num"_q,
-			2);
-		do {
-			// Add "stickers_normal_by_emoji_per_premium_num" non-premium.
-			for (auto i = 0; i < normalsPerPremium; ++i) {
-				if (!take(false)) {
-					break;
-				}
-			}
-			// Then one premium.
-		} while (!done(false) && take(true));
+	// All non-premium.
+	while (take(false)) {
+	}
 
-		// Add what's left.
-		while (take(false)) {
-		}
-		while (take(true)) {
-		}
-	} else {
-		// All non-premium.
-		while (take(false)) {
-		}
-
-		// In the end add "stickers_premium_by_emoji_num" premium.
-		const auto premiumsToEnd = appConfig->get<int>(
-			u"stickers_premium_by_emoji_num"_q,
-			0);
-		for (auto i = 0; i < premiumsToEnd; ++i) {
-			if (!take(true)) {
-				break;
-			}
+	// In the end add "stickers_premium_by_emoji_num" premium.
+	const auto premiumsToEnd = appConfig->get<int>(
+		u"stickers_premium_by_emoji_num"_q,
+		0);
+	for (auto i = 0; i < premiumsToEnd; ++i) {
+		if (!take(true)) {
+			break;
 		}
 	}
 

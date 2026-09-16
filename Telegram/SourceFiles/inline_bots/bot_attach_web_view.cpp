@@ -2753,21 +2753,6 @@ std::unique_ptr<Ui::DropdownMenu> MakeAttachBotsMenu(
 				sendMenuDetails());
 		}, &st::menuIconCreatePoll);
 	}
-	if (peer->canCreateTodoLists(false)) {
-		++minimal;
-		raw->addAction(tr::lng_todo_menu_item(tr::now), [=] {
-			const auto action = actionFactory();
-			const auto source = action.options.scheduled
-				? Api::SendType::Scheduled
-				: Api::SendType::Normal;
-			Window::PeerMenuCreateTodoList(
-				controller,
-				peer,
-				action.replyTo,
-				source,
-				sendMenuDetails());
-		}, &st::menuIconCreateTodoList);
-	}
 	if (Iv::Editor::CanAuthorRichMessages(&controller->session())
 		&& Data::CanSendAnyOf(peer, ChatRestriction::SendOther, false)) {
 		raw->addAction(tr::lng_article_menu_item(tr::now), [=] {

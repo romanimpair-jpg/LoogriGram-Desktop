@@ -22,7 +22,6 @@ struct ForwardedMessagePhraseArgs final {
 	bool singleMessage = false;
 	PeerData *to1 = nullptr;
 	PeerData *to2 = nullptr;
-	bool toSelfWithPremiumIsEmpty = true;
 };
 
 [[nodiscard]] rpl::producer<TextWithEntities> ForwardedMessagePhrase(

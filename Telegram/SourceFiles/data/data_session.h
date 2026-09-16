@@ -125,11 +125,6 @@ struct SentFromScheduled {
 	MsgId sentId = 0;
 };
 
-struct RecentSelfForwards {
-	PeerId fromPeerId = 0;
-	MessageIdsList ids;
-};
-
 struct RecentJoinChat {
 	PeerId fromPeerId = 0;
 	PeerId joinedPeerId = 0;
@@ -992,9 +987,6 @@ public:
 	void setPendingStarsRating(StarsRatingPending value);
 	[[nodiscard]] StarsRatingPending pendingStarsRating() const;
 
-	void addRecentSelfForwards(const RecentSelfForwards &data);
-	[[nodiscard]] rpl::producer<RecentSelfForwards> recentSelfForwards() const;
-
 	void addRecentJoinChat(const RecentJoinChat &data);
 	[[nodiscard]] rpl::producer<RecentJoinChat> recentJoinChat() const;
 
@@ -1422,7 +1414,6 @@ private:
 		not_null<PeerData*>,
 		NextToUpgradeGift> _nextForUpgradeGifts;
 
-	rpl::event_stream<RecentSelfForwards> _recentSelfForwards;
 	rpl::event_stream<RecentJoinChat> _recentJoinChat;
 
 	rpl::lifetime _lifetime;

@@ -109,11 +109,9 @@ constexpr auto kTopReactionsLimit = 14;
 }
 
 [[nodiscard]] int SentReactionsLimit(not_null<HistoryItem*> item) {
-	const auto session = &item->history()->session();
-	const auto config = &session->appConfig();
-	return session->premium()
-		? config->get<int>("reactions_user_max_premium", 3)
-		: config->get<int>("reactions_user_max_default", 1);
+	return item->history()->session().appConfig().get<int>(
+		"reactions_user_max_default",
+		1);
 }
 
 [[nodiscard]] bool IsMyRecent(
@@ -166,7 +164,6 @@ PossibleItemReactionsRef LookupPossibleReactions(
 	const auto &all = item->reactions();
 	const auto &allowed = PeerAllowedReactions(peer);
 	const auto limit = UniqueReactionsLimit(peer);
-	const auto premiumAllowed = session->premium();
 	const auto limited = (all.size() >= limit) && [&] {
 		const auto my = item->chosenReactions();
 		if (my.empty()) {
@@ -190,14 +187,12 @@ PossibleItemReactionsRef LookupPossibleReactions(
 		auto &&all = ranges::views::concat(myTags, tags);
 		result.recent.reserve(myTags.size() + tags.size());
 		for (const auto &reaction : all) {
-			if (premiumAllowed
-				|| ranges::contains(tags, reaction.id, &Reaction::id)) {
+			if (ranges::contains(tags, reaction.id, &Reaction::id)) {
 				if (added.emplace(reaction.id).second) {
 					result.recent.push_back(&reaction);
 				}
 			}
 		}
-		result.customAllowed = premiumAllowed;
 		result.tags = true;
 	} else if (limited) {
 		result.recent.reserve(all.size());
@@ -218,13 +213,10 @@ PossibleItemReactionsRef LookupPossibleReactions(
 			: full.size());
 		add([&](const Reaction &reaction) {
 			const auto id = reaction.id;
-			if (id.custom() && !premiumAllowed) {
+			if (id.custom()) {
 				return false;
 			} else if ((allowed.type == AllowedReactionsType::Some)
 				&& !ranges::contains(allowed.some, id)) {
-				return false;
-			} else if (id.custom()
-				&& allowed.type == AllowedReactionsType::Default) {
 				return false;
 			}
 			return true;
@@ -238,17 +230,6 @@ PossibleItemReactionsRef LookupPossibleReactions(
 				}
 			}
 		}
-		result.customAllowed = (allowed.type == AllowedReactionsType::All)
-			&& premiumAllowed;
-
-		const auto favoriteId = reactions->favoriteId();
-		if (favoriteId.custom()
-			&& result.customAllowed
-			&& !ranges::contains(result.recent, favoriteId, &Reaction::id)) {
-			if (const auto temp = reactions->lookupTemporary(favoriteId)) {
-				result.recent.insert(begin(result.recent), temp);
-			}
-		}
 	}
 	if (!item->reactionsAreTags()) {
 		const auto toFront = [&](ReactionId id) {
@@ -260,13 +241,6 @@ PossibleItemReactionsRef LookupPossibleReactions(
 		if (!limited) {
 			const auto &extra = session->settings().extraFavoriteReactions();
 			for (const auto &id : extra | ranges::views::reverse) {
-				if (id.custom()
-					&& result.customAllowed
-					&& !ranges::contains(result.recent, id, &Reaction::id)) {
-					if (const auto temp = reactions->lookupTemporary(id)) {
-						result.recent.insert(begin(result.recent), temp);
-					}
-				}
 				toFront(id);
 			}
 		}
@@ -282,17 +256,15 @@ PossibleItemReactionsRef LookupPossibleReactions(
 	const auto &full = reactions->list(Reactions::Type::Active);
 	const auto &top = reactions->list(Reactions::Type::Top);
 	const auto &recent = reactions->list(Reactions::Type::Recent);
-	const auto premiumAllowed = session->premium();
 	auto added = base::flat_set<ReactionId>();
 	result.recent.reserve(full.size());
 	for (const auto &reaction : ranges::views::concat(top, recent, full)) {
-		if (premiumAllowed || !reaction.id.custom()) {
+		if (!reaction.id.custom()) {
 			if (added.emplace(reaction.id).second) {
 				result.recent.push_back(&reaction);
 			}
 		}
 	}
-	result.customAllowed = premiumAllowed;
 	const auto i = ranges::find(
 		result.recent,
 		reactions->favoriteId(),

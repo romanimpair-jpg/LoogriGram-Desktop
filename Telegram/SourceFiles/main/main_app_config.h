@@ -99,9 +99,6 @@ public:
 	[[nodiscard]] int pollAnswerDeletePeriod() const;
 	[[nodiscard]] int pollCountriesMax() const;
 	[[nodiscard]] QString phoneCountryIso2() const;
-	[[nodiscard]] int todoListItemsLimit() const;
-	[[nodiscard]] int todoListTitleLimit() const;
-	[[nodiscard]] int todoListItemTextLimit() const;
 
 	[[nodiscard]] int suggestedPostCommissionStars() const;
 	[[nodiscard]] int suggestedPostCommissionTon() const;

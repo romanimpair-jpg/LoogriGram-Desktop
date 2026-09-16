@@ -37,7 +37,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/select_future_owner_box.h"
 #include "boxes/choose_filter_box.h"
 #include "boxes/create_poll_box.h"
-#include "boxes/edit_todo_list_box.h"
 #include "boxes/pin_messages_box.h"
 #include "boxes/premium_limits_box.h"
 #include "boxes/report_messages_box.h"
@@ -72,7 +71,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_blocked_peers.h"
 #include "api/api_chat_filters.h"
 #include "api/api_polls.h"
-#include "api/api_todo_lists.h"
 #include "api/api_updates.h"
 #include "mtproto/mtproto_config.h"
 #include "history/history.h"
@@ -314,7 +312,6 @@ private:
 	void addManageTopic();
 	void addManageChat();
 	void addCreatePoll();
-	void addCreateTodoList();
 	void addThemeEdit();
 	void addToggleNoForwards();
 	void addBlockUser();
@@ -1401,38 +1398,6 @@ void Filler::addCreatePoll() {
 		&st::menuIconCreatePoll);
 }
 
-void Filler::addCreateTodoList() {
-	if (skipCreateActions()) {
-		return;
-	}
-	const auto can = _topic
-		? (_peer->session().premium()
-			&& Data::CanSend(_topic, ChatRestriction::SendPolls))
-		: _peer->canCreateTodoLists();
-	if (!can) {
-		return;
-	}
-	const auto peer = _peer;
-	const auto controller = _controller;
-	const auto source = (_request.section == Section::Scheduled)
-		? Api::SendType::Scheduled
-		: Api::SendType::Normal;
-	const auto replyTo = _request.currentReplyTo;
-	const auto sendMenuDetails = createSendMenuDetails();
-	auto callback = [=] {
-		PeerMenuCreateTodoList(
-			controller,
-			peer,
-			replyTo,
-			source,
-			sendMenuDetails);
-	};
-	_addAction(
-		tr::lng_todo_create(tr::now),
-		std::move(callback),
-		&st::menuIconCreateTodoList);
-}
-
 void Filler::addThemeEdit() {
 	if (_peer->isVerifyCodes() || _peer->isRepliesChat()) {
 		return;
@@ -1860,7 +1825,6 @@ void Filler::fillHistoryActions() {
 	addStoryArchive();
 	addSupportInfo();
 	addCreatePoll();
-	addCreateTodoList();
 	addThemeEdit();
 	addToggleNoForwards();
 	addViewDiscussion();
@@ -1907,14 +1871,12 @@ void Filler::fillRepliesActions() {
 		addManageTopic();
 	}
 	addCreatePoll();
-	addCreateTodoList();
 	addToggleTopicClosed();
 	addDeleteTopic();
 }
 
 void Filler::fillScheduledActions() {
 	addCreatePoll();
-	addCreateTodoList();
 }
 
 void Filler::fillWelcomeMessagesActions() {
@@ -2328,174 +2290,6 @@ void PeerMenuCreatePoll(
 	};
 	box->submitRequests(
 	) | rpl::on_next(state->create, box->lifetime());
-	controller->show(std::move(box), Ui::LayerOption::CloseOther);
-}
-
-void PeerMenuTodoWantsPremium(TodoWantsPremium type) {
-	const auto window = Core::App().activeWindow();
-	if (!window) {
-		return;
-	}
-	// LoogriGram: "Only subscribers of Telegram Premium can create
-	// Checklists" is true either way and stays; the name of the
-	// subscription is plain semibold text rather than a link into the page
-	// that sells it, so the toast needs no click filter.
-	const auto link = tr::semibold(tr::lng_todo_premium_link(tr::now));
-	const auto text = [&] {
-		switch (type) {
-		case TodoWantsPremium::Create: return tr::lng_todo_create_premium;
-		case TodoWantsPremium::Add: return tr::lng_todo_add_premium;
-		case TodoWantsPremium::Mark: return tr::lng_todo_mark_premium;
-		}
-		Unexpected("Type in PeerMenuTodoWantsPremium.");
-	}();
-	constexpr auto kToastDuration = crl::time(4000);
-	window->uiShow()->showToast(Ui::Toast::Config{
-		.text = text(
-			tr::now,
-			lt_link,
-			link,
-			tr::marked),
-		.duration = kToastDuration,
-	});
-}
-
-void PeerMenuCreateTodoList(
-		not_null<Window::SessionController*> controller,
-		not_null<PeerData*> peer,
-		FullReplyTo replyTo,
-		Api::SendType sendType,
-		SendMenu::Details sendMenuDetails) {
-	if (ShowEphemeralReplyTextOnlyError(
-			controller->uiShow(),
-			&peer->session(),
-			replyTo.messageId)) {
-		return;
-	}
-	if (!peer->session().premium()) {
-		PeerMenuTodoWantsPremium(TodoWantsPremium::Create);
-		return;
-	}
-	auto box = Box<EditTodoListBox>(
-		controller,
-		sendType,
-		sendMenuDetails);
-	struct State {
-		Fn<void(const EditTodoListBox::Result &)> create;
-		bool lock = false;
-	};
-	const auto weak = base::make_weak(box);
-	const auto state = box->lifetime().make_state<State>();
-	state->create = [=](const EditTodoListBox::Result &result) {
-		auto action = Api::SendAction(
-			peer->owner().history(peer),
-			result.options);
-		action.replyTo = replyTo;
-		if (ShowEphemeralReplyTextOnlyError(
-				controller->uiShow(),
-				&peer->session(),
-				replyTo.messageId)) {
-			return;
-		}
-
-		if (std::exchange(state->lock, true)) {
-			return;
-		}
-
-		const auto local = action.history->localDraft(
-			replyTo.topicRootId,
-			replyTo.monoforumPeerId);
-		if (Iv::Editor::IsComposeBoxOpen(
-				&peer->session(),
-				peer->id,
-				replyTo.topicRootId,
-				replyTo.monoforumPeerId)) {
-			action.clearDraft = false;
-		} else if (local) {
-			action.clearDraft = local->textWithTags.text.isEmpty();
-		} else {
-			action.clearDraft = false;
-		}
-		const auto api = &peer->session().api();
-		api->todoLists().create(result.todolist, action, crl::guard(weak, [=] {
-			state->create = nullptr;
-			weak->closeBox();
-		}), crl::guard(weak, [=](const QString &error) {
-			state->lock = false;
-			weak->submitFailed(error);
-		}));
-	};
-	box->submitRequests(
-	) | rpl::on_next(state->create, box->lifetime());
-	controller->show(std::move(box), Ui::LayerOption::CloseOther);
-}
-
-void PeerMenuEditTodoList(
-		not_null<Window::SessionController*> controller,
-		not_null<HistoryItem*> item) {
-	const auto media = item->media();
-	const auto todolist = media ? media->todolist() : nullptr;
-	if (!todolist) {
-		return;
-	} else if (!item->history()->session().premium()) {
-		PeerMenuTodoWantsPremium(TodoWantsPremium::Add);
-		return;
-	}
-	auto box = Box<EditTodoListBox>(controller, item);
-	const auto weak = base::make_weak(box);
-	box->submitRequests(
-	) | rpl::on_next([=](const EditTodoListBox::Result &result) {
-		const auto api = &item->history()->session().api();
-		api->todoLists().edit(
-			item,
-			result.todolist,
-			result.options,
-			crl::guard(weak, [=] { weak->closeBox(); }),
-			crl::guard(weak, [=](const QString &error) {
-				weak->submitFailed(error);
-			}));
-	}, box->lifetime());
-	controller->show(std::move(box), Ui::LayerOption::CloseOther);
-}
-
-bool PeerMenuShowAddTodoListTasks(not_null<HistoryItem*> item) {
-	const auto media = item ? item->media() : nullptr;
-	const auto todolist = media ? media->todolist() : nullptr;
-	const auto appConfig = &item->history()->session().appConfig();
-	return item->isRegular()
-		&& !item->Has<HistoryMessageForwarded>()
-		&& todolist
-		&& (todolist->items.size() < appConfig->todoListItemsLimit())
-		&& (item->out()
-			|| item->history()->peer->isSelf()
-			|| todolist->othersCanAppend());
-}
-
-void PeerMenuAddTodoListTasks(
-		not_null<Window::SessionController*> controller,
-		not_null<HistoryItem*> item) {
-	const auto session = &item->history()->session();
-	if (!session->premium()) {
-		PeerMenuTodoWantsPremium(TodoWantsPremium::Add);
-		return;
-	}
-	const auto media = item->media();
-	const auto todolist = media ? media->todolist() : nullptr;
-	if (!todolist) {
-		return;
-	}
-	auto box = Box<AddTodoListTasksBox>(controller, item);
-	const auto raw = box.data();
-	box->submitRequests(
-	) | rpl::on_next([=](const AddTodoListTasksBox::Result &result) {
-		const auto show = raw->uiShow();
-		raw->closeBox();
-		session->api().todoLists().add(
-			item,
-			result.items,
-			[] {},
-			[=](const QString &error) { show->showToast(error); });
-	}, box->lifetime());
 	controller->show(std::move(box), Ui::LayerOption::CloseOther);
 }
 

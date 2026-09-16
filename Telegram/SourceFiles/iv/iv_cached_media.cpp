@@ -391,7 +391,7 @@ void CachedPagePhotoRuntime::releaseHeavyData() {
 	const auto video = document->video();
 	return {
 		.hasQualitiesList = video && !video->qualities.empty(),
-		.skipPremiumEffect = !session->premium(),
+		.skipPremiumEffect = true,
 		.spoiler = spoiler,
 	};
 }

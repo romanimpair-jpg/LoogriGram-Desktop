@@ -798,7 +798,7 @@ HistoryItem::HistoryItem(
 	using Args = Data::MediaFile::Args;
 	_media = std::make_unique<Data::MediaFile>(this, document, Args{
 		.hasQualitiesList = video && !video->qualities.empty(),
-		.skipPremiumEffect = !history->session().premium(),
+		.skipPremiumEffect = true,
 		.spoiler = mediaSpoiler,
 	});
 	setText(caption);

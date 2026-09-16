@@ -172,20 +172,6 @@ QString AppConfig::phoneCountryIso2() const {
 	return get<QString>(u"phone_country_iso2"_q, QString());
 }
 
-int AppConfig::todoListItemsLimit() const {
-	return get<int>(
-		u"todo_items_max"_q,
-		_account->mtp().isTestMode() ? 10 : 30);
-}
-
-int AppConfig::todoListTitleLimit() const {
-	return get<int>(u"todo_title_length_max"_q, 32);
-}
-
-int AppConfig::todoListItemTextLimit() const {
-	return get<int>(u"todo_item_length_max"_q, 64);
-}
-
 int AppConfig::suggestedPostCommissionStars() const {
 	return get<int>(u"stars_suggested_post_commission_permille"_q, 850);
 }

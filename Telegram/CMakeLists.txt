@@ -187,8 +187,6 @@ PRIVATE
     api/api_text_entities.h
     api/api_rich_tasks.cpp
     api/api_rich_tasks.h
-    api/api_todo_lists.cpp
-    api/api_todo_lists.h
     api/api_toggling_media.cpp
     api/api_toggling_media.h
     api/api_transcribes.cpp
@@ -306,8 +304,6 @@ PRIVATE
     boxes/edit_caption_box.h
     boxes/edit_privacy_box.cpp
     boxes/edit_privacy_box.h
-    boxes/edit_todo_list_box.cpp
-    boxes/edit_todo_list_box.h
     boxes/language_box.cpp
     boxes/language_box.h
     boxes/max_invite_box.cpp

@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/weak_ptr.h"
 
 namespace Ui {
-class RippleAnimation;
 class FireworksAnimation;
 } // namespace Ui
 
@@ -57,10 +56,6 @@ public:
 		const QRect &bubble,
 		crl::time ms) const override;
 
-	void clickHandlerPressedChanged(
-		const ClickHandlerPtr &handler,
-		bool pressed) override;
-
 	void unloadHeavyPart() override;
 	bool hasHeavyPart() const override;
 
@@ -73,8 +68,6 @@ private:
 
 	QSize countOptimalSize() override;
 	QSize countCurrentSize(int newWidth) override;
-
-	[[nodiscard]] bool canComplete() const;
 
 	[[nodiscard]] int countTaskTop(
 		const Task &task,
@@ -99,12 +92,6 @@ private:
 		int width,
 		int outerWidth,
 		const PaintContext &context) const;
-	void paintRadio(
-		Painter &p,
-		const Task &task,
-		int left,
-		int top,
-		const PaintContext &context) const;
 	void paintStatus(
 		Painter &p,
 		const Task &task,
@@ -125,9 +112,6 @@ private:
 
 	void radialAnimationCallback() const;
 
-	void toggleRipple(Task &task, bool pressed);
-	void toggleCompletion(int id);
-
 	[[nodiscard]] int bottomButtonHeight() const;
 
 	const not_null<TodoListData*> _todolist;
@@ -143,8 +127,6 @@ private:
 	Ui::Text::String _completionStatusLabel;
 
 	mutable std::unique_ptr<Ui::FireworksAnimation> _fireworksAnimation;
-	mutable QPoint _lastLinkPoint;
-	mutable QImage _userpicCircleCache;
 	mutable QImage _fillingIconCache;
 
 };

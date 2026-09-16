@@ -907,7 +907,7 @@ std::unique_ptr<Media> MediaFile::clone(not_null<HistoryItem*> parent) {
 		.videoCover = _videoCover,
 		.videoTimestamp = _videoTimestamp,
 		.hasQualitiesList = _hasQualitiesList,
-		.skipPremiumEffect = !_document->session().premium(),
+		.skipPremiumEffect = true,
 		.spoiler = _spoiler,
 	});
 }
@@ -2142,10 +2142,6 @@ TextForMimeData MediaTodoList::clipboardText() const {
 		result.append(u"\n- "_q).append(item.text);
 	}
 	return TextForMimeData::Rich(std::move(result));
-}
-
-bool MediaTodoList::allowsEdit() const {
-	return parent()->out() || parent()->history()->peer->isSelf();
 }
 
 bool MediaTodoList::updateInlineResultMedia(const MTPMessageMedia &media) {

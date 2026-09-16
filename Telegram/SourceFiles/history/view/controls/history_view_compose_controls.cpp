@@ -4925,12 +4925,6 @@ void ComposeControls::editMessage(not_null<HistoryItem*> item) {
 	} else if (_voiceRecordBar->isActive()) {
 		_show->showToast(tr::lng_edit_caption_voice(tr::now));
 		return;
-	} else if (const auto media = item->media()) {
-		if (media->todolist()) {
-			Assert(_regularWindow != nullptr);
-			Window::PeerMenuEditTodoList(_regularWindow, item);
-			return;
-		}
 	}
 
 	if (!isEditingMessage()) {

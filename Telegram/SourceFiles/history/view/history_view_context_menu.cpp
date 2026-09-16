@@ -849,30 +849,6 @@ bool AddReplyToMessageAction(
 	return true;
 }
 
-bool AddTodoListAction(
-		not_null<Ui::PopupMenu*> menu,
-		const ContextMenuRequest &request,
-		not_null<ListWidget*> list) {
-	const auto context = list->elementContext();
-	const auto item = request.item;
-	if (!item
-		|| !Window::PeerMenuShowAddTodoListTasks(item)
-		|| (context != Context::History
-			&& context != Context::Replies
-			&& context != Context::Monoforum
-			&& context != Context::Pinned)) {
-		return false;
-	}
-	const auto itemId = item->fullId();
-	const auto controller = list->controller();
-	menu->addAction(tr::lng_todo_add_title(tr::now), [=] {
-		if (const auto item = controller->session().data().message(itemId)) {
-			Window::PeerMenuAddTodoListTasks(controller, item);
-		}
-	}, &st::menuIconAdd);
-	return true;
-}
-
 bool AddViewRepliesAction(
 		not_null<Ui::PopupMenu*> menu,
 		const ContextMenuRequest &request,
@@ -1785,7 +1761,6 @@ void FillContextMenuItems(
 			}
 		}
 	}
-	AddTodoListAction(result, request, list);
 
 	if (request.overSelection
 		&& !list->hasCopyRestrictionForSelected()

@@ -1747,9 +1747,6 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 		const auto donePhraseArgs = CreateForwardedMessagePhraseArgs(
 			result,
 			msgIds);
-		const auto showRecentForwardsToSelf = result.size() == 1
-			&& result.front()->peer()->isSelf()
-			&& history->session().premium();
 		for (const auto &thread : result) {
 			const auto peer = thread->peer();
 			const auto threadHistory = thread->owningHistory();
@@ -1783,13 +1780,6 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 			const auto requestDone = [=](
 					const MTPUpdates &updates,
 					mtpRequestId requestKey) {
-				if (showRecentForwardsToSelf) {
-					ApiWrap::ProcessRecentSelfForwards(
-						&threadHistory->session(),
-						updates,
-						peer->id,
-						history->peer->id);
-				}
 				state->requests.remove(requestKey);
 				if (state->requests.empty()) {
 					if (show->valid()) {

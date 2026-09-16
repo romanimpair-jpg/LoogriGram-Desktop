@@ -5949,14 +5949,6 @@ StarsRatingPending Session::pendingStarsRating() const {
 	return _pendingStarsRating ? *_pendingStarsRating : StarsRatingPending();
 }
 
-void Session::addRecentSelfForwards(const RecentSelfForwards &data) {
-	_recentSelfForwards.fire_copy(data);
-}
-
-rpl::producer<RecentSelfForwards> Session::recentSelfForwards() const {
-	return _recentSelfForwards.events();
-}
-
 void Session::addRecentJoinChat(const RecentJoinChat &data) {
 	_recentJoinChat.fire_copy(data);
 }

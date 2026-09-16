@@ -908,7 +908,7 @@ FilterId ChatFilters::defaultId() const {
 FilterId ChatFilters::lookupId(int index) const {
 	Expects(index >= 0 && index < _list.size());
 
-	if (_owner->session().user()->isPremium() || !_list.front().id()) {
+	if (!_list.front().id()) {
 		return _list[index].id();
 	}
 	const auto i = ranges::find(_list, FilterId(0), &ChatFilter::id);

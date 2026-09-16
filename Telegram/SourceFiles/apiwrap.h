@@ -84,7 +84,6 @@ class ConfirmPhone;
 class PeerPhoto;
 class PeerColors;
 class Polls;
-class TodoLists;
 class RichTasks;
 class ChatParticipants;
 class Communities;
@@ -452,7 +451,6 @@ public:
 	[[nodiscard]] Api::ConfirmPhone &confirmPhone();
 	[[nodiscard]] Api::PeerPhoto &peerPhoto();
 	[[nodiscard]] Api::Polls &polls();
-	[[nodiscard]] Api::TodoLists &todoLists();
 	[[nodiscard]] Api::RichTasks &richTasks();
 	[[nodiscard]] Api::ChatParticipants &chatParticipants();
 	[[nodiscard]] Api::Communities &communities();
@@ -468,11 +466,6 @@ public:
 
 	static constexpr auto kJoinErrorDuration = 5 * crl::time(1000);
 
-	static void ProcessRecentSelfForwards(
-		not_null<Main::Session*> session,
-		const MTPUpdates &updates,
-		PeerId targetPeerId,
-		PeerId fromPeerId);
 
 private:
 	struct MessageDataRequest {
@@ -824,7 +817,6 @@ private:
 	const std::unique_ptr<Api::ConfirmPhone> _confirmPhone;
 	const std::unique_ptr<Api::PeerPhoto> _peerPhoto;
 	const std::unique_ptr<Api::Polls> _polls;
-	const std::unique_ptr<Api::TodoLists> _todoLists;
 	const std::unique_ptr<Api::RichTasks> _richTasks;
 	const std::unique_ptr<Api::ChatParticipants> _chatParticipants;
 	const std::unique_ptr<Api::Communities> _communities;

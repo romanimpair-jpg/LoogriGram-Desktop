@@ -24,7 +24,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_sending.h"
 #include "api/api_text_entities.h"
 #include "api/api_rich_tasks.h"
-#include "api/api_todo_lists.h"
 #include "api/api_self_destruct.h"
 #include "api/api_sensitive_content.h"
 #include "api/api_global_privacy.h"
@@ -217,7 +216,6 @@ ApiWrap::ApiWrap(not_null<Main::Session*> session)
 , _confirmPhone(std::make_unique<Api::ConfirmPhone>(this))
 , _peerPhoto(std::make_unique<Api::PeerPhoto>(this))
 , _polls(std::make_unique<Api::Polls>(this))
-, _todoLists(std::make_unique<Api::TodoLists>(this))
 , _richTasks(std::make_unique<Api::RichTasks>(this))
 , _chatParticipants(std::make_unique<Api::ChatParticipants>(this))
 , _communities(std::make_unique<Api::Communities>(this))
@@ -244,27 +242,6 @@ ApiWrap::ApiWrap(not_null<Main::Session*> session)
 }
 
 ApiWrap::~ApiWrap() = default;
-
-void ApiWrap::ProcessRecentSelfForwards(
-		not_null<Main::Session*> session,
-		const MTPUpdates &updates,
-		PeerId targetPeerId,
-		PeerId fromPeerId) {
-	auto newIds = MessageIdsList();
-	updates.match([&](const MTPDupdates &data) {
-		for (const auto &update : data.vupdates().v) {
-			update.match([&](const MTPDupdateMessageID &d) {
-				newIds.push_back(FullMsgId(targetPeerId, d.vid().v));
-			}, [](const auto &) {});
-		}
-	}, [](const auto &) {});
-	if (!newIds.empty()) {
-		session->data().addRecentSelfForwards({
-			.fromPeerId = fromPeerId,
-			.ids = newIds,
-		});
-	}
-}
 
 Main::Session &ApiWrap::session() const {
 	return *_session;
@@ -2109,28 +2086,26 @@ void ApiWrap::saveDraftToCloudDelayed(not_null<Data::Thread*> thread) {
 
 void ApiWrap::updatePrivacyLastSeens() {
 	const auto now = base::unixtime::now();
-	if (!_session->premium()) {
-		_session->data().enumerateUsers([&](not_null<UserData*> user) {
-			if (user->isSelf()
-				|| !user->isLoaded()
-				|| user->lastseen().isHidden()) {
-				return;
-			}
+	_session->data().enumerateUsers([&](not_null<UserData*> user) {
+		if (user->isSelf()
+			|| !user->isLoaded()
+			|| user->lastseen().isHidden()) {
+			return;
+		}
 
-			const auto till = user->lastseen().onlineTill();
-			user->updateLastseen((till + 3 * 86400 >= now)
-				? Data::LastseenStatus::Recently(true)
-				: (till + 7 * 86400 >= now)
-				? Data::LastseenStatus::WithinWeek(true)
-				: (till + 30 * 86400 >= now)
-				? Data::LastseenStatus::WithinMonth(true)
-				: Data::LastseenStatus::LongAgo(true));
-			session().changes().peerUpdated(
-				user,
-				Data::PeerUpdate::Flag::OnlineStatus);
-			session().data().maybeStopWatchForOffline(user);
-		});
-	}
+		const auto till = user->lastseen().onlineTill();
+		user->updateLastseen((till + 3 * 86400 >= now)
+			? Data::LastseenStatus::Recently(true)
+			: (till + 7 * 86400 >= now)
+			? Data::LastseenStatus::WithinWeek(true)
+			: (till + 30 * 86400 >= now)
+			? Data::LastseenStatus::WithinMonth(true)
+			: Data::LastseenStatus::LongAgo(true));
+		session().changes().peerUpdated(
+			user,
+			Data::PeerUpdate::Flag::OnlineStatus);
+		session().data().maybeStopWatchForOffline(user);
+	});
 
 	if (_contactsStatusesRequestId) {
 		request(_contactsStatusesRequestId).cancel();
@@ -3972,13 +3947,6 @@ void ApiWrap::forwardMessages(
 				if (shared && !--shared->requestsLeft) {
 					shared->callback();
 				}
-				if (peer->isSelf() && _session->premium()) {
-					ProcessRecentSelfForwards(
-						_session,
-						result,
-						peer->id,
-						forwardFrom->id);
-				}
 			},
 			[=](const MTP::Error &error, const MTP::Response &) {
 				if (idsCopy) {
@@ -5575,10 +5543,6 @@ Api::PeerPhoto &ApiWrap::peerPhoto() {
 
 Api::Polls &ApiWrap::polls() {
 	return *_polls;
-}
-
-Api::TodoLists &ApiWrap::todoLists() {
-	return *_todoLists;
 }
 
 Api::RichTasks &ApiWrap::richTasks() {
