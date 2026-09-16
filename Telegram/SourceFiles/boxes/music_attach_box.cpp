@@ -530,7 +530,6 @@ GlobalMusicSearchSection::GlobalMusicSearchSection(
 , _api(&controller->session().mtp())
 , _titleWrap(this)
 , _hiddenMark(std::make_unique<StickerPremiumMark>(
-		&controller->session(),
 		st::giftBoxHiddenMark,
 		RectPart::Center)) {
 	setMouseTracking(true);

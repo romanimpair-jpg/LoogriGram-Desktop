@@ -32,7 +32,6 @@ class Show;
 class StickerPremiumMark final {
 public:
 	StickerPremiumMark(
-		not_null<Main::Session*> session,
 		const style::icon &lockIcon,
 		RectPart part = RectPart::Bottom);
 
@@ -46,13 +45,10 @@ public:
 
 private:
 	void validateLock(const QImage &frame, QImage &backCache);
-	void validateStar();
 
 	const style::icon &_lockIcon;
 	QImage _lockGray;
-	QImage _star;
 	RectPart _part = RectPart::Bottom;
-	bool _premium = false;
 
 	rpl::lifetime _lifetime;
 

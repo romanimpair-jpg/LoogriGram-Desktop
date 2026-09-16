@@ -762,7 +762,6 @@ private:
 	void resetFakeUnreadWhileOpened();
 
 	void checkInvitePeek();
-	void setupPremiumToast();
 
 	void pushDefaultChatBackground();
 	void cacheChatTheme(

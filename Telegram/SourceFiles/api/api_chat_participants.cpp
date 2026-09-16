@@ -234,11 +234,6 @@ void ApplyBotsList(
 				result.list.push_back(channel);
 			}
 		}
-		if constexpr (MTPDmessages_chatsSlice::Is<decltype(data)>()) {
-			if (session->premium()) {
-				result.more = data.vcount().v - data.vchats().v.size();
-			}
-		}
 	});
 	return result;
 }
@@ -258,11 +253,6 @@ void ApplyBotsList(
 		result.list.reserve(list.size());
 		for (const auto &user : list) {
 			result.list.push_back(session->data().processUser(user));
-		}
-		if constexpr (MTPDusers_usersSlice::Is<decltype(data)>()) {
-			if (session->premium()) {
-				result.more = data.vcount().v - data.vusers().v.size();
-			}
 		}
 	});
 	return result;
@@ -859,12 +849,10 @@ void ChatParticipants::applyKicked(
 }
 
 void ChatParticipants::loadSimilarPeers(not_null<PeerData*> peer) {
-	if (const auto i = _similar.find(peer); i != end(_similar)) {
-		if (i->second.requestId
-			|| !i->second.peers.more
-			|| !peer->session().premium()) {
-			return;
-		}
+	// LoogriGram: a second load fetched the rest of the list, which the
+	// server returns only to premium accounts.
+	if (_similar.contains(peer)) {
+		return;
 	}
 	if (const auto channel = peer->asBroadcast()) {
 		using Flag = MTPchannels_GetChannelRecommendations::Flag;
@@ -932,7 +920,6 @@ void ChatParticipants::loadRecommendations() {
 		_recommendations.requestId = 0;
 		auto parsed = ParseSimilarChannels(_session, result);
 		_recommendations.peers = std::move(parsed);
-		_recommendations.peers.more = 0;
 		_recommendationsLoaded = true;
 	}).send();
 }

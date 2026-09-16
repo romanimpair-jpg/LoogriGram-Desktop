@@ -227,7 +227,6 @@ void ValidatePremiumStarFg(const style::icon &lockIcon, QImage &image) {
 } // namespace
 
 StickerPremiumMark::StickerPremiumMark(
-	not_null<Main::Session*> session,
 	const style::icon &lockIcon,
 	RectPart part)
 : _lockIcon(lockIcon)
@@ -235,13 +234,6 @@ StickerPremiumMark::StickerPremiumMark(
 	style::PaletteChanged(
 	) | rpl::on_next([=] {
 		_lockGray = QImage();
-		_star = QImage();
-	}, _lifetime);
-
-	Data::AmPremiumValue(
-		session
-	) | rpl::on_next([=](bool premium) {
-		_premium = premium;
 	}, _lifetime);
 }
 
@@ -264,12 +256,7 @@ void StickerPremiumMark::paint(
 		: (singleSize.height() - (bg.height() / factor) - radius);
 	const auto point = position + QPoint(shiftx, shifty);
 	p.drawImage(point, bg);
-	if (_premium && _part != RectPart::Center) {
-		validateStar();
-		p.drawImage(point, _star);
-	} else {
-		_lockIcon.paint(p, point, outerWidth);
-	}
+	_lockIcon.paint(p, point, outerWidth);
 }
 
 void StickerPremiumMark::validateLock(
@@ -277,10 +264,6 @@ void StickerPremiumMark::validateLock(
 		QImage &backCache) {
 	auto &image = frame.isNull() ? _lockGray : backCache;
 	ValidatePremiumLockBg(_lockIcon, image, frame, _part);
-}
-
-void StickerPremiumMark::validateStar() {
-	ValidatePremiumStarFg(_lockIcon, _star);
 }
 
 class StickerSetBox::Inner final : public Ui::RpWidget {
@@ -1175,7 +1158,6 @@ void StickerSetBox::Inner::applySet(const TLStickerSet &set) {
 	_selected = -1;
 	setCursor(style::cur_default);
 	const auto owner = &_session->data();
-	const auto premiumAllowed = _session->premium();
 	set.match([&](const MTPDmessages_stickerSet &data) {
 		const auto &v = data.vdocuments().v;
 		_pack.reserve(v.size());
@@ -1187,7 +1169,7 @@ void StickerSetBox::Inner::applySet(const TLStickerSet &set) {
 				continue;
 			}
 			_pack.push_back(document);
-			if (!document->isPremiumSticker() || premiumAllowed) {
+			if (!document->isPremiumSticker()) {
 				_elements.push_back({
 					document,
 					document->createMediaView(),

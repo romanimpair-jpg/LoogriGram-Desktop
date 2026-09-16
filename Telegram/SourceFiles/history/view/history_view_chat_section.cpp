@@ -17,7 +17,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_group_members_widget.h"
 #include "history/view/history_view_top_bar_widget.h"
 #include "history/view/history_view_schedule_box.h"
-#include "history/view/history_view_sticker_toast.h"
 #include "history/view/history_view_cursor_state.h"
 #include "history/view/history_view_scheduled_section.h"
 #include "history/view/history_view_service_message.h"
@@ -396,9 +395,6 @@ ChatWidget::ChatWidget(
 	this,
 	ComposeControlsDescriptor{
 		.show = controller->uiShow(),
-		.unavailableEmojiPasted = [=](not_null<DocumentData*> emoji) {
-			listShowPremiumToast(emoji);
-		},
 		.mode = ComposeControls::Mode::Normal,
 		.sendMenuDetails = [=] { return sendMenuDetails(); },
 		.regularWindow = controller,
@@ -5278,16 +5274,6 @@ CopyRestrictionType ChatWidget::listSelectRestrictionType() {
 auto ChatWidget::listAllowedReactionsValue()
 -> rpl::producer<Data::AllowedReactions> {
 	return Data::PeerAllowedReactionsValue(_peer);
-}
-
-void ChatWidget::listShowPremiumToast(not_null<DocumentData*> document) {
-	if (!_stickerToast) {
-		_stickerToast = std::make_unique<HistoryView::StickerToast>(
-			controller(),
-			this,
-			[=] { _stickerToast = nullptr; });
-	}
-	_stickerToast->showFor(document);
 }
 
 bool ChatWidget::handleDrawToReplyRequest(Data::DrawToReplyRequest request) {

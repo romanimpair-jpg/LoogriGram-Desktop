@@ -1157,7 +1157,6 @@ ComposeControls::ComposeControls(
 , _sendMenuDetails(descriptor.sendMenuDetails)
 , _moderateKeyActivateCallback(
 	std::move(descriptor.moderateKeyActivateCallback))
-, _unavailableEmojiPasted(std::move(descriptor.unavailableEmojiPasted))
 , _saveDraftTimer([=] { saveDraft(); })
 , _saveCloudDraftTimer([=] { saveCloudDraft(); }) {
 	if (_st.radius > 0) {
@@ -2571,21 +2570,9 @@ void ComposeControls::initField() {
 		updateSendAsFileVisibility();
 		updateExpandButtonVisibility();
 	}, _field->lifetime());
-	Data::AmPremiumValue(&session()) | rpl::on_next([=] {
-		checkCharsLimitation();
-		updateSendAsFileVisibility();
-		updateExpandButtonVisibility();
-		updateSendLockBadge();
-	}, _wrap->lifetime());
 	_chatStyle = InitMessageField(_show, _field, [=](not_null<DocumentData*> emoji) {
-		if (_history
-			&& Data::AllowEmojiWithoutPremium(_history->peer, emoji)) {
-			return true;
-		}
-		if (_unavailableEmojiPasted) {
-			_unavailableEmojiPasted(emoji);
-		}
-		return false;
+		return _history
+			&& Data::AllowEmojiWithoutPremium(_history->peer, emoji);
 	});
 	InitMessageFieldFade(_field, _st.field.textBg);
 	_field->setEditLinkCallback(
@@ -3300,16 +3287,11 @@ void ComposeControls::initTabbedSelector() {
 	) | rpl::on_next([=](ChatHelpers::FileChosen &&data) {
 		if (const auto info = data.document->sticker()
 			; info && info->setType == Data::StickersType::Emoji) {
-			if (data.document->isPremiumEmoji()
-				&& !session().premium()
-				&& (!_history
-					|| !Data::AllowEmojiWithoutPremium(
+			if (!data.document->isPremiumEmoji()
+				|| (_history
+					&& Data::AllowEmojiWithoutPremium(
 						_history->peer,
 						data.document))) {
-				if (_unavailableEmojiPasted) {
-					_unavailableEmojiPasted(data.document);
-				}
-			} else {
 				Data::InsertCustomEmoji(_field, data.document);
 			}
 		} else if (data.needsCaption && _history) {
@@ -4219,7 +4201,6 @@ void ComposeControls::updateSendButtonType() {
 void ComposeControls::updateSendLockBadge() {
 	const auto page = shownRichMessage();
 	_sendLockBadge.fire(page
-		&& !session().premium()
 		&& Iv::RichPageUsesPremiumFormatting(*page));
 }
 

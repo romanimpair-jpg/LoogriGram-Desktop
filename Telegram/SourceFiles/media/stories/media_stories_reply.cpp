@@ -156,9 +156,6 @@ ReplyArea::ReplyArea(not_null<Controller*> controller)
 	HistoryView::ComposeControlsDescriptor{
 		.stOverride = &st::storiesComposeControls,
 		.show = _controller->uiShow(),
-		.unavailableEmojiPasted = [=](not_null<DocumentData*> emoji) {
-			showPremiumToast(emoji);
-		},
 		.mode = HistoryView::ComposeControlsMode::Normal,
 		.sendMenuDetails = sendMenuDetails(),
 		.stickerOrEmojiChosen = _controller->stickerOrEmojiChosen(),
@@ -842,10 +839,6 @@ void ReplyArea::tryProcessKeyInput(not_null<QKeyEvent*> e) {
 
 Ui::RpWidget *ReplyArea::likeAnimationTarget() const {
 	return _controls->likeAnimationTarget();
-}
-
-void ReplyArea::showPremiumToast(not_null<DocumentData*> emoji) {
-	// #TODO stories
 }
 
 } // namespace Media::Stories

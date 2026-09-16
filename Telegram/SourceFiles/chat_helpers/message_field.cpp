@@ -108,12 +108,16 @@ constexpr auto kLinkProtocols = {
 				if (!emoji) {
 					i = all.erase(i);
 					continue;
-				} else if (!session->premium()) {
+				} else {
+					// LoogriGram: upstream also refused here whenever a
+					// subscription could not be bought, which after
+					// premiumPossible() went took the group's own emoji pack
+					// with it. Only the emoji a peer allows without premium
+					// are kept, which is what those accounts get.
 					const auto document = session->data().document(emoji);
 					if (document->isPremiumEmoji()) {
 						if (!allowPremiumEmoji
 							|| premiumSkipped
-							|| !session->premium()
 							|| !allowPremiumEmoji(document)) {
 							premiumSkipped = document;
 							i = all.erase(i);

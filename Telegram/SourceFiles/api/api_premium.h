@@ -23,16 +23,6 @@ class Premium final {
 public:
 	explicit Premium(not_null<ApiWrap*> api);
 
-	void reload();
-
-	[[nodiscard]] auto stickers() const
-		-> const std::vector<not_null<DocumentData*>> &;
-	[[nodiscard]] rpl::producer<> stickersUpdated() const;
-
-	[[nodiscard]] auto cloudSet() const
-		-> const std::vector<not_null<DocumentData*>> &;
-	[[nodiscard]] rpl::producer<> cloudSetUpdated() const;
-
 	[[nodiscard]] auto helloStickers() const
 		-> const std::vector<not_null<DocumentData*>> &;
 	[[nodiscard]] rpl::producer<> helloStickersUpdated() const;
@@ -42,23 +32,11 @@ public:
 	void resolveMessageMoneyRestrictions(not_null<UserData*> user);
 
 private:
-	void reloadStickers();
-	void reloadCloudSet();
 	void reloadHelloStickers();
 	void requestPremiumRequiredSlice();
 
 	const not_null<Main::Session*> _session;
 	MTP::Sender _api;
-
-	mtpRequestId _stickersRequestId = 0;
-	uint64 _stickersHash = 0;
-	std::vector<not_null<DocumentData*>> _stickers;
-	rpl::event_stream<> _stickersUpdated;
-
-	mtpRequestId _cloudSetRequestId = 0;
-	uint64 _cloudSetHash = 0;
-	std::vector<not_null<DocumentData*>> _cloudSet;
-	rpl::event_stream<> _cloudSetUpdated;
 
 	mtpRequestId _helloStickersRequestId = 0;
 	uint64 _helloStickersHash = 0;

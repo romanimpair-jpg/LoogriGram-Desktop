@@ -47,7 +47,6 @@ class Element;
 class TopBarWidget;
 class WelcomeMessagesMemento;
 class ComposeControls;
-class StickerToast;
 
 class WelcomeMessagesWidget final
 	: public Window::SectionWidget
@@ -142,7 +141,6 @@ public:
 	CopyRestrictionType listSelectRestrictionType() override;
 	auto listAllowedReactionsValue()
 		-> rpl::producer<Data::AllowedReactions> override;
-	void listShowPremiumToast(not_null<DocumentData*> document) override;
 	void listOpenPhoto(
 		not_null<PhotoData*> photo,
 		FullMsgId context) override;
@@ -248,7 +246,6 @@ private:
 	bool _skipScrollEvent = false;
 	bool _choosingAttach = false;
 
-	std::unique_ptr<HistoryView::StickerToast> _stickerToast;
 
 	CornerButtons _cornerButtons;
 

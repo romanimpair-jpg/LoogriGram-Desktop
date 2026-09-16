@@ -505,10 +505,10 @@ QSize SimilarChannels::countOptimalSize() {
 	const auto outer = inner.marginsAdded(st::chatSimilarChannelPadding);
 	const auto limit = Data::PremiumLimits(
 		&channel->session()).similarChannelsCurrent();
-	const auto take = (similar.more > 0 || similar.list.size() > 2 * limit)
+	const auto take = (similar.list.size() > 2 * limit)
 		? limit
 		: int(similar.list.size());
-	const auto more = similar.more + int(similar.list.size() - take);
+	const auto more = int(similar.list.size() - take);
 	auto &&peers = ranges::views::all(similar.list)
 		| ranges::views::take(limit);
 	for (const auto &peer : peers) {

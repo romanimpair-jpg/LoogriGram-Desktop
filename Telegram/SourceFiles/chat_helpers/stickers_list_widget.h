@@ -257,8 +257,7 @@ private:
 	};
 
 	static std::vector<Sticker> PrepareStickers(
-		const QVector<DocumentData*> &pack,
-		bool skipPremium);
+		const QVector<DocumentData*> &pack);
 
 	void setupSearch();
 	void preloadMoreOfficial();
@@ -457,7 +456,6 @@ private:
 	base::flat_set<not_null<DocumentData*>> _favedStickersMap;
 	std::weak_ptr<Lottie::FrameRenderer> _lottieRenderer;
 
-	bool _paintAsPremium = false;
 	bool _showingSetById = false;
 	crl::time _lastScrolledAt = 0;
 	crl::time _lastFullUpdatedAt = 0;

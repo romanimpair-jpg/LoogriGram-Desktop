@@ -175,7 +175,6 @@ ListWidget::ListWidget(
 , _selectedLimit(MaxSelectedItems)
 , _storiesAddToAlbumId(controller->storiesAddToAlbumId())
 , _hiddenMark(std::make_unique<StickerPremiumMark>(
-		&_controller->session(),
 		st::giftBoxHiddenMark,
 		RectPart::Center)) {
 	_zoom = std::make_unique<ListZoom>(this);

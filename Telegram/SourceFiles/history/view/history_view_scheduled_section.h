@@ -68,7 +68,6 @@ class Element;
 class TopBarWidget;
 class ScheduledMemento;
 class ComposeControls;
-class StickerToast;
 
 class ScheduledWidget final
 	: public Window::SectionWidget
@@ -166,7 +165,6 @@ public:
 	CopyRestrictionType listSelectRestrictionType() override;
 	auto listAllowedReactionsValue()
 		-> rpl::producer<Data::AllowedReactions> override;
-	void listShowPremiumToast(not_null<DocumentData*> document) override;
 	void listOpenPhoto(
 		not_null<PhotoData*> photo,
 		FullMsgId context) override;
@@ -303,7 +301,6 @@ private:
 	base::weak_ptr<Element> _processingVideoView;
 	rpl::lifetime _processingVideoLifetime;
 
-	std::unique_ptr<HistoryView::StickerToast> _stickerToast;
 	std::unique_ptr<Ui::ImportantTooltip> _processingVideoTooltip;
 	base::Timer _processingVideoTipTimer;
 	bool _processingVideoUpdateScheduled = false;

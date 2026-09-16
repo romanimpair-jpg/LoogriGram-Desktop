@@ -398,18 +398,6 @@ Session::Session(not_null<Main::Session*> session)
 	subscribeForTopicRepliesLists();
 
 	crl::on_main(_session, [=] {
-		AmPremiumValue(
-			_session
-		) | rpl::on_next([=] {
-			for (const auto &[document, items] : _documentItems) {
-				if (document->isVoiceMessage()) {
-					for (const auto &item : items) {
-						requestItemResize(item);
-					}
-				}
-			}
-		}, _lifetime);
-
 		_stories->loadMore(Data::StorySourcesList::NotHidden);
 	});
 

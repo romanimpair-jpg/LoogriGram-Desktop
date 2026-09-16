@@ -237,7 +237,6 @@ auto SuggestionsWidget::lookupCustom(const std::vector<Row> &rows) const
 		return {};
 	}
 	auto custom = base::flat_multi_map<int, Custom>();
-	const auto premium = _session->premium();
 	const auto stickers = &_session->data().stickers();
 	for (const auto setId : stickers->emojiSetsOrder()) {
 		const auto i = stickers->sets().find(setId);
@@ -245,8 +244,7 @@ auto SuggestionsWidget::lookupCustom(const std::vector<Row> &rows) const
 			continue;
 		}
 		for (const auto &document : i->second->stickers) {
-			if (!premium
-				&& document->isPremiumEmoji()
+			if (document->isPremiumEmoji()
 				&& (!_allowCustomWithoutPremium
 					|| !_allowCustomWithoutPremium(document))) {
 				// Skip the whole premium emoji set.

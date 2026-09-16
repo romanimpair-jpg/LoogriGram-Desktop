@@ -1426,15 +1426,16 @@ AttachSelectorResult AttachSelectorToMenu(
 		QPoint desiredPosition,
 		not_null<HistoryItem*> item,
 		Fn<void(ChosenReaction)> chosen,
-		TextWithEntities about,
 		IconFactory iconFactory) {
+	// LoogriGram: the item's picker also took an "about" line, which for tags
+	// said "Subscribe to Premium to tag messages" and was otherwise empty.
 	const auto result = AttachSelectorToMenu(
 		menu,
 		desiredPosition,
 		st::reactPanelEmojiPan,
 		controller->uiShow(),
 		Data::LookupPossibleReactions(item),
-		std::move(about),
+		TextWithEntities(),
 		std::move(iconFactory));
 	if (!result) {
 		return result.error();
@@ -1530,18 +1531,6 @@ auto AttachSelectorToMenu(
 	return selector;
 }
 
-TextWithEntities ItemReactionsAbout(not_null<HistoryItem*> item) {
-	return !item->reactionsAreTags()
-		? TextWithEntities()
-		: item->history()->session().premium()
-		? TextWithEntities{ tr::lng_add_tag_about(tr::now) }
-		: tr::lng_subscribe_tag_about(
-			tr::now,
-			lt_link,
-			tr::link(
-				tr::lng_subscribe_tag_link(tr::now),
-				u"internal:about_tags"_q),
-			tr::marked);
-}
+
 
 } // namespace HistoryView::Reactions

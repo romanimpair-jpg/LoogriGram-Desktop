@@ -131,7 +131,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_reply.h"
 #include "history/view/history_view_requests_bar.h"
 #include "history/view/history_view_self_forwards_tagger.h"
-#include "history/view/history_view_sticker_toast.h"
 #include "history/view/history_view_subsection_tabs.h"
 #include "history/view/history_view_translate_bar.h"
 #include "history/view/media/history_view_media.h"
@@ -498,11 +497,7 @@ HistoryWidget::HistoryWidget(
 
 	_fieldChatStyle = InitMessageField(controller, _field, [=](
 			not_null<DocumentData*> document) {
-		if (_peer && Data::AllowEmojiWithoutPremium(_peer, document)) {
-			return true;
-		}
-		showPremiumToast(document);
-		return false;
+		return _peer && Data::AllowEmojiWithoutPremium(_peer, document);
 	});
 	InitMessageFieldFade(_field, st::historyComposeField.textBg);
 
@@ -2316,7 +2311,6 @@ void HistoryWidget::fileChosen(ChatHelpers::FileChosen &&data) {
 				|| !Data::AllowEmojiWithoutPremium(
 					_peer,
 					data.document))) {
-			showPremiumToast(data.document);
 		} else if (!_field->isHidden()) {
 			Data::InsertCustomEmoji(_field.data(), data.document);
 		}
@@ -5593,7 +5587,6 @@ void HistoryWidget::showAnimated(
 		? params.withTopBarShadow
 		: !params.withTopBarShadow);
 	_preserveScrollTop = false;
-	_stickerToast = nullptr;
 
 	auto newContentCache = Ui::GrabWidget(this);
 
@@ -9192,25 +9185,6 @@ void HistoryWidget::showHiddenSenderTooltip(
 		_scroll->scrolls(),
 		globalArea,
 		text);
-}
-
-void HistoryWidget::showPremiumStickerTooltip(
-		not_null<const HistoryView::Element*> view) {
-	if (const auto media = view->data()->media()) {
-		if (const auto document = media->document()) {
-			showPremiumToast(document);
-		}
-	}
-}
-
-void HistoryWidget::showPremiumToast(not_null<DocumentData*> document) {
-	if (!_stickerToast) {
-		_stickerToast = std::make_unique<HistoryView::StickerToast>(
-			controller(),
-			this,
-			[=] { _stickerToast = nullptr; });
-	}
-	_stickerToast->showFor(document);
 }
 
 void HistoryWidget::validateSubsectionTabs() {

@@ -52,39 +52,12 @@ namespace {
 
 } // namespace
 
+// LoogriGram: this also kept the premium sticker list (never read) and the
+// premium-only cloud sticker set, refetching both whenever the account's
+// premium status changed. The account is never premium.
 Premium::Premium(not_null<ApiWrap*> api)
 : _session(&api->session())
 , _api(&api->instance()) {
-	crl::on_main(_session, [=] {
-		// You can't use _session->user() in the constructor,
-		// only queued, because it is not constructed yet.
-		Data::AmPremiumValue(
-			_session
-		) | rpl::on_next([=] {
-			reload();
-			if (_session->premium()) {
-				reloadCloudSet();
-			}
-		}, _session->lifetime());
-	});
-}
-
-auto Premium::stickers() const
--> const std::vector<not_null<DocumentData*>> & {
-	return _stickers;
-}
-
-rpl::producer<> Premium::stickersUpdated() const {
-	return _stickersUpdated.events();
-}
-
-auto Premium::cloudSet() const
--> const std::vector<not_null<DocumentData*>> & {
-	return _cloudSet;
-}
-
-rpl::producer<> Premium::cloudSetUpdated() const {
-	return _cloudSetUpdated.events();
 }
 
 auto Premium::helloStickers() const
@@ -97,67 +70,6 @@ auto Premium::helloStickers() const
 
 rpl::producer<> Premium::helloStickersUpdated() const {
 	return _helloStickersUpdated.events();
-}
-
-// LoogriGram: reload() also fetched help.getPremiumPromo, which is the
-// subscription's price list, its pitch text and the videos shown beside it.
-// The section that displayed all three is deleted.
-void Premium::reload() {
-	reloadStickers();
-}
-
-void Premium::reloadStickers() {
-	if (_stickersRequestId) {
-		return;
-	}
-	_stickersRequestId = _api.request(MTPmessages_GetStickers(
-		MTP_string("\xe2\xad\x90\xef\xb8\x8f\xe2\xad\x90\xef\xb8\x8f"),
-		MTP_long(_stickersHash)
-	)).done([=](const MTPmessages_Stickers &result) {
-		_stickersRequestId = 0;
-		result.match([&](const MTPDmessages_stickersNotModified &) {
-		}, [&](const MTPDmessages_stickers &data) {
-			_stickersHash = data.vhash().v;
-			const auto owner = &_session->data();
-			_stickers.clear();
-			for (const auto &sticker : data.vstickers().v) {
-				const auto document = owner->processDocument(sticker);
-				if (document->isPremiumSticker()) {
-					_stickers.push_back(document);
-				}
-			}
-			_stickersUpdated.fire({});
-		});
-	}).fail([=] {
-		_stickersRequestId = 0;
-	}).send();
-}
-
-void Premium::reloadCloudSet() {
-	if (_cloudSetRequestId) {
-		return;
-	}
-	_cloudSetRequestId = _api.request(MTPmessages_GetStickers(
-		MTP_string("\xf0\x9f\x93\x82\xe2\xad\x90\xef\xb8\x8f"),
-		MTP_long(_cloudSetHash)
-	)).done([=](const MTPmessages_Stickers &result) {
-		_cloudSetRequestId = 0;
-		result.match([&](const MTPDmessages_stickersNotModified &) {
-		}, [&](const MTPDmessages_stickers &data) {
-			_cloudSetHash = data.vhash().v;
-			const auto owner = &_session->data();
-			_cloudSet.clear();
-			for (const auto &sticker : data.vstickers().v) {
-				const auto document = owner->processDocument(sticker);
-				if (document->isPremiumSticker()) {
-					_cloudSet.push_back(document);
-				}
-			}
-			_cloudSetUpdated.fire({});
-		});
-	}).fail([=] {
-		_cloudSetRequestId = 0;
-	}).send();
 }
 
 void Premium::reloadHelloStickers() {
@@ -279,8 +191,7 @@ MessageMoneyRestriction ResolveMessageMoneyRestrictions(
 		return { .known = true };
 	} else if (user->messageMoneyRestrictionsKnown()) {
 		return {
-			.premiumRequired = (user->requiresPremiumToWrite()
-				&& !user->session().premium()),
+			.premiumRequired = user->requiresPremiumToWrite(),
 			.known = true,
 		};
 	} else if (!user->hasRequirePremiumToWrite()) {
@@ -313,7 +224,7 @@ MessageMoneyRestriction ResolveMessageMoneyRestrictions(
 		&& maybeHistory->loadedAtTop() // And no incoming messages.
 		&& maybeHistory->loadedAtBottom()) {
 		return {
-			.premiumRequired = !user->session().premium(),
+			.premiumRequired = true,
 			.known = true,
 		};
 	}

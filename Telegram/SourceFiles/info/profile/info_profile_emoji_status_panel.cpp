@@ -315,7 +315,7 @@ bool EmojiStatusPanel::filter(
 		EmojiStatusId chosenId) const {
 	if (_chooseFilter) {
 		return _chooseFilter(chosenId);
-	} else if (chosenId && !controller->session().premium()) {
+	} else if (chosenId) {
 		// LoogriGram: the status is still refused - the server only accepts
 		// one from a subscriber - without the pitch that used to follow.
 		return false;

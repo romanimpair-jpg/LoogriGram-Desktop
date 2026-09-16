@@ -205,7 +205,7 @@ void ReactionPanel::create() {
 	) | rpl::on_next([=](Chosen reaction) {
 		// LoogriGram: a custom-emoji reaction is still refused - the server
 		// only accepts one from a subscriber - without the pitch.
-		if (!reaction.id.custom() || _show->session().premium()) {
+		if (!reaction.id.custom()) {
 			hide();
 			// Fire last: a consumer may synchronously destroy the
 			// MessageField that owns this ReactionPanel.
@@ -461,9 +461,7 @@ void MessageField::createControls(PeerData *peer) {
 		const auto info = data.document->sticker();
 		// LoogriGram: a premium custom emoji is not inserted, and no longer
 		// answers with the subscription pitch.
-		if (!info
-			|| info->setType != Data::StickersType::Emoji
-			|| _show->session().premium()) {
+		if (!info || info->setType != Data::StickersType::Emoji) {
 			Data::InsertCustomEmoji(_field, data.document);
 		}
 	}, lifetime());

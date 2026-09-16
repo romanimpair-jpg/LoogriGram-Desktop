@@ -279,7 +279,6 @@ AttachSelectorResult AttachSelectorToMenu(
 	QPoint desiredPosition,
 	not_null<HistoryItem*> item,
 	Fn<void(ChosenReaction)> chosen,
-	TextWithEntities about,
 	IconFactory iconFactory = nullptr);
 
 [[nodiscard]] auto AttachSelectorToMenu(
@@ -292,8 +291,5 @@ AttachSelectorResult AttachSelectorToMenu(
 	IconFactory iconFactory = nullptr,
 	Fn<bool()> paused = nullptr
 ) -> base::expected<not_null<Selector*>, AttachSelectorResult>;
-
-[[nodiscard]] TextWithEntities ItemReactionsAbout(
-	not_null<HistoryItem*> item);
 
 } // namespace HistoryView::Reactions

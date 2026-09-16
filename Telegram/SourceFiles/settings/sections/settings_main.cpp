@@ -594,7 +594,6 @@ void Main::setupContent() {
 	session->api().reloadContactSignupSilent();
 	session->api().sensitiveContent().reload();
 	session->api().globalPrivacy().reload();
-	session->api().premium().reload();
 	session->data().cloudThemes().refresh();
 	session->faqSuggestions().request();
 }

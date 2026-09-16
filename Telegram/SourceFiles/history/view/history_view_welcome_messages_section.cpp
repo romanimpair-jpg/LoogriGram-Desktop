@@ -22,7 +22,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_user.h"
 #include "history/view/controls/history_view_compose_controls.h"
 #include "history/view/history_view_service_message.h"
-#include "history/view/history_view_sticker_toast.h"
 #include "history/view/history_view_top_bar_widget.h"
 #include "history/history.h"
 #include "history/history_item_helpers.h"
@@ -104,9 +103,6 @@ WelcomeMessagesWidget::WelcomeMessagesWidget(
 	this,
 	ComposeControlsDescriptor{
 		.show = controller->uiShow(),
-		.unavailableEmojiPasted = [=](not_null<DocumentData*> emoji) {
-			listShowPremiumToast(emoji);
-		},
 		.mode = ComposeControls::Mode::Normal,
 		.sendMenuDetails = [] { return SendMenu::Details(); },
 		.regularWindow = controller,
@@ -1153,17 +1149,6 @@ CopyRestrictionType WelcomeMessagesWidget::listSelectRestrictionType() {
 auto WelcomeMessagesWidget::listAllowedReactionsValue()
 -> rpl::producer<Data::AllowedReactions> {
 	return rpl::single(Data::AllowedReactions());
-}
-
-void WelcomeMessagesWidget::listShowPremiumToast(
-		not_null<DocumentData*> document) {
-	if (!_stickerToast) {
-		_stickerToast = std::make_unique<HistoryView::StickerToast>(
-			controller(),
-			this,
-			[=] { _stickerToast = nullptr; });
-	}
-	_stickerToast->showFor(document);
 }
 
 void WelcomeMessagesWidget::listOpenPhoto(

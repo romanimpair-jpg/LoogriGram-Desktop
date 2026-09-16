@@ -108,8 +108,6 @@ private:
 	HistoryView::CopyRestrictionType listSelectRestrictionType() override;
 	auto listAllowedReactionsValue()
 		-> rpl::producer<Data::AllowedReactions> override;
-	void listShowPremiumToast(
-		not_null<DocumentData*> document) override;
 	void listOpenPhoto(
 		not_null<PhotoData*> photo,
 		FullMsgId context) override;
@@ -428,10 +426,6 @@ auto InlineSublistInner::listSelectRestrictionType()
 auto InlineSublistInner::listAllowedReactionsValue()
 -> rpl::producer<Data::AllowedReactions> {
 	return Data::PeerAllowedReactionsValue(_history->peer);
-}
-
-void InlineSublistInner::listShowPremiumToast(
-		not_null<DocumentData*> document) {
 }
 
 void InlineSublistInner::listOpenPhoto(

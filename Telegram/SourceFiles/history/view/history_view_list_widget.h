@@ -174,7 +174,6 @@ public:
 	virtual CopyRestrictionType listSelectRestrictionType() = 0;
 	virtual auto listAllowedReactionsValue()
 		-> rpl::producer<Data::AllowedReactions> = 0;
-	virtual void listShowPremiumToast(not_null<DocumentData*> document) = 0;
 	virtual void listOpenPhoto(
 		not_null<PhotoData*> photo,
 		FullMsgId context) = 0;
@@ -881,8 +880,6 @@ private:
 	void maybeMarkReactionsRead(not_null<HistoryItem*> item);
 
 	void startMessageSendingAnimation(not_null<HistoryItem*> item);
-	void showPremiumStickerTooltip(
-		not_null<const HistoryView::Element*> view);
 
 	void paintUserpics(
 		Painter &p,

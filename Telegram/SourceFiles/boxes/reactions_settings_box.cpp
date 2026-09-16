@@ -614,7 +614,6 @@ void ReactionsSettingsBox(
 
 	const auto session = &controller->session();
 	const auto reactions = &session->data().reactions();
-	const auto premium = session->premium();
 	const auto state = box->lifetime().make_state<State>();
 	state->extras = session->settings().extraFavoriteReactions();
 
@@ -646,7 +645,7 @@ void ReactionsSettingsBox(
 	}
 
 	const auto allowed = [=](const Data::ReactionId &id) {
-		return id && (premium || !id.custom());
+		return id && !id.custom();
 	};
 	const auto selectedIds = [=] {
 		auto result = std::vector<Data::ReactionId>();
@@ -702,17 +701,12 @@ void ReactionsSettingsBox(
 			island,
 			controller->uiShow(),
 			Window::GifPauseReason::Layer,
-			(premium
-				? TabbedSelector::Mode::FullReactions
-				: TabbedSelector::Mode::RecentReactions)),
+			TabbedSelector::Mode::RecentReactions),
 		QMargins(
 			st::boxRadius,
 			st::boxRadius,
 			st::boxRadius,
 			st::boxRadius));
-	if (premium) {
-		selector->setAllowEmojiWithoutPremium(false);
-	}
 	selector->setRoundRadius(0);
 	selector->resize(
 		st::boxWideWidth

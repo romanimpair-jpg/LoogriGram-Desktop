@@ -126,7 +126,6 @@ extern const ChatHelpers::PauseReason kDefaultPanelsLevel;
 struct ComposeControlsDescriptor {
 	const style::ComposeControls *stOverride = nullptr;
 	std::shared_ptr<ChatHelpers::Show> show;
-	Fn<void(not_null<DocumentData*>)> unavailableEmojiPasted;
 	ComposeControlsMode mode = ComposeControlsMode::Normal;
 	Fn<SendMenu::Details()> sendMenuDetails = nullptr;
 	Window::SessionController *regularWindow = nullptr;
@@ -555,7 +554,6 @@ private:
 
 	const Fn<SendMenu::Details()> _sendMenuDetails;
 	const Fn<bool(int)> _moderateKeyActivateCallback;
-	const Fn<void(not_null<DocumentData*>)> _unavailableEmojiPasted;
 
 	rpl::event_stream<Api::SendOptions> _sendCustomRequests;
 	rpl::event_stream<Qt::KeyboardModifiers> _fieldSubmits;

@@ -647,7 +647,7 @@ rpl::producer<int> SimilarPeersCountValue(
 		rpl::mappers::_1 == peer
 	) | rpl::map([=] {
 		const auto &similar = participants->similar(peer);
-		return int(similar.list.size()) + similar.more;
+		return int(similar.list.size());
 	});
 }
 

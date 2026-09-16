@@ -84,7 +84,6 @@ class ComposeControls;
 class ComposeSearch;
 class TopControls;
 class SendActionPainter;
-class StickerToast;
 class EmptyPainter;
 class PullToNextChannel;
 class SubsectionTabs;
@@ -226,7 +225,6 @@ public:
 	CopyRestrictionType listSelectRestrictionType() override;
 	auto listAllowedReactionsValue()
 		->rpl::producer<Data::AllowedReactions> override;
-	void listShowPremiumToast(not_null<DocumentData*> document) override;
 	bool handleDrawToReplyRequest(Data::DrawToReplyRequest request);
 	void listOpenPhoto(
 		not_null<PhotoData*> photo,
@@ -564,7 +562,6 @@ private:
 	bool _ignoreReplyCancelledExternal = false;
 	bool _kbShown = false;
 	bool _fieldHasSendText = false;
-	std::unique_ptr<HistoryView::StickerToast> _stickerToast;
 	InfoTooltip _topToast;
 
 	FullMsgId _lastShownAt;

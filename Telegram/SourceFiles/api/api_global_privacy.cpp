@@ -168,8 +168,8 @@ void GlobalPrivacy::update(
 	using DisallowedFlag = MTPDdisallowedGiftsSettings::Flag;
 
 	_api.request(_requestId).cancel();
-	const auto newRequirePremiumAllowed = _session->premium()
-		|| _session->appConfig().newRequirePremiumFree();
+	const auto newRequirePremiumAllowed
+		= _session->appConfig().newRequirePremiumFree();
 	const auto showGiftIcon
 		= (disallowedGiftTypes & DisallowedGiftType::SendHide);
 	const auto flags = Flag()

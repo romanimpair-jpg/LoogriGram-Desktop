@@ -243,8 +243,7 @@ bool CanSendAnyOf(
 			|| user->isRepliesChat()
 			|| user->isVerifyCodes()) {
 			return false;
-		} else if (user->requiresPremiumToWrite()
-			&& !user->session().premium()) {
+		} else if (user->requiresPremiumToWrite()) {
 			return false;
 		} else if (rights
 			& ~(ChatRestriction::SendVoiceMessages
@@ -305,8 +304,7 @@ SendError RestrictionError(
 		});
 	} else if (const auto restricted = peer->amRestricted(restriction)) {
 		if (const auto user = peer->asUser()) {
-			if (user->requiresPremiumToWrite()
-				&& !user->session().premium()) {
+			if (user->requiresPremiumToWrite()) {
 				return SendError({
 					.text = tr::lng_restricted_send_non_premium(
 						tr::now,

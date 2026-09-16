@@ -24,7 +24,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "export/export_settings.h"
 #include "window/notifications_manager.h"
 #include "window/window_controller.h"
-#include "data/data_peer_values.h" // Data::AmPremiumValue.
 
 namespace Main {
 
@@ -348,12 +347,6 @@ void Domain::watchSession(not_null<Account*> account) {
 		) | rpl::on_next([=] {
 			scheduleUpdateUnreadBadge();
 		}, session->lifetime());
-
-		Data::AmPremiumValue(
-			session
-		) | rpl::on_next([=] {
-			_lastMaxAccounts = maxAccounts();
-		}, session->lifetime());
 	}, account->lifetime());
 
 	account->sessionChanges(
@@ -515,18 +508,15 @@ void Domain::scheduleWriteAccounts() {
 	});
 }
 
+// LoogriGram: each premium account also raised the cap by one. Test-mode
+// accounts still do; kPremiumMaxAccounts stays the ceiling storage reads to.
 int Domain::maxAccounts() const {
-	const auto premiumCount = ranges::count_if(accounts(), [](
+	const auto testCount = ranges::count_if(accounts(), [](
 			const Main::Domain::AccountWithIndex &d) {
 		return d.account->sessionExists()
-			&& (d.account->session().premium()
-				|| d.account->session().isTestMode());
+			&& d.account->session().isTestMode();
 	});
-	return std::min(int(premiumCount) + kMaxAccounts, kPremiumMaxAccounts);
-}
-
-rpl::producer<int> Domain::maxAccountsChanges() const {
-	return _lastMaxAccounts.changes();
+	return std::min(int(testCount) + kMaxAccounts, kPremiumMaxAccounts);
 }
 
 } // namespace Main

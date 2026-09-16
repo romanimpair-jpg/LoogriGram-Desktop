@@ -273,7 +273,6 @@ private:
 	void setMegagroupSelectedSet(const StickerSetIdentifier &set);
 
 	int countMaxNameWidth(bool installedSet) const;
-	[[nodiscard]] bool skipPremium() const;
 
 	const style::PeerListItem &_st;
 	const std::shared_ptr<ChatHelpers::Show> _show;
@@ -2453,10 +2452,6 @@ bool StickersBox::Inner::appendSet(not_null<StickersSet*> set) {
 	return true;
 }
 
-bool StickersBox::Inner::skipPremium() const {
-	return !_session->premium();
-}
-
 int StickersBox::Inner::countMaxNameWidth(bool installedSet) const {
 	int namex = _st.namePosition.x();
 	if (!_megagroupSet && _isInstalledTab) {
@@ -2585,11 +2580,10 @@ void StickersBox::Inner::fillSetCover(
 }
 
 int StickersBox::Inner::fillSetCount(not_null<StickersSet*> set) const {
-	const auto skipPremium = this->skipPremium();
 	int result = set->stickers.isEmpty()
 		? set->count
 		: set->stickers.size();
-	if (skipPremium && !set->stickers.isEmpty()) {
+	if (!set->stickers.isEmpty()) {
 		result -= ranges::count(
 			set->stickers,
 			true,

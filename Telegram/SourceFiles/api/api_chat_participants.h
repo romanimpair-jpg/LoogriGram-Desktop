@@ -146,7 +146,6 @@ public:
 
 	struct Peers {
 		std::vector<not_null<PeerData*>> list;
-		int more = 0;
 
 		friend inline bool operator==(
 			const Peers &,

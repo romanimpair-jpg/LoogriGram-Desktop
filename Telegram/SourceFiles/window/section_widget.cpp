@@ -544,7 +544,7 @@ bool ShowSendPremiumError(
 	// subscription - the server refuses it - but the refusal opened the
 	// "Unlock Premium Stickers" pitch. It refuses quietly now, like the
 	// reaction cases below.
-	return document->isPremiumSticker() && !document->session().premium();
+	return document->isPremiumSticker();
 }
 
 void ShowReactRestrictionToast(not_null<SessionController*> controller) {
@@ -569,12 +569,11 @@ bool ShowReactPremiumError(
 	// from the same predicate, so these are the fallback for a favourite
 	// reaction left over from a subscription that has since lapsed.
 	if (item->reactionsAreTags()) {
-		return !controller->session().premium();
+		return true;
 	} else if (!item->canReact()) {
 		ShowReactRestrictionToast(controller);
 		return true;
-	} else if (controller->session().premium()
-		|| ranges::contains(
+	} else if (ranges::contains(
 			item->reactions(),
 			id,
 			&Data::MessageReaction::id)

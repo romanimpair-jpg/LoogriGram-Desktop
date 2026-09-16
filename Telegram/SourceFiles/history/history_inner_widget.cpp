@@ -3761,8 +3761,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 			controller,
 			desiredPosition,
 			reactItem,
-			[=](ChosenReaction reaction) { reactionChosen(reaction); },
-			ItemReactionsAbout(reactItem))
+			[=](ChosenReaction reaction) { reactionChosen(reaction); })
 		: AttachSelectorResult::Skipped;
 	if (attached == AttachSelectorResult::Failed) {
 		_menu = nullptr;
@@ -5083,13 +5082,8 @@ void HistoryInner::elementStartInteraction(not_null<const Element*> view) {
 void HistoryInner::elementStartPremium(
 		not_null<const Element*> view,
 		Element *replacing) {
-	const auto already = !_emojiInteractions->playPremiumEffect(
-		view,
-		replacing);
+	_emojiInteractions->playPremiumEffect(view, replacing);
 	_animatedStickersPlayed.emplace(view->data());
-	if (already) {
-		_widget->showPremiumStickerTooltip(view);
-	}
 }
 
 void HistoryInner::elementCancelPremium(not_null<const Element*> view) {
@@ -5776,9 +5770,7 @@ void HistoryInner::refreshAboutView(bool force) {
 			&& !user->phoneCountryCode().isEmpty()) {
 			refresh();
 		} else if (!historyHeight()) {
-			if ((user->requiresPremiumToWrite()
-					&& !user->session().premium())
-				|| user->isFullLoaded()) {
+			if (user->requiresPremiumToWrite() || user->isFullLoaded()) {
 				refresh();
 			} else {
 				session().api().requestFullPeer(user);

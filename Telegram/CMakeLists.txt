@@ -1039,8 +1039,6 @@ PRIVATE
     history/view/history_view_send_action.h
     history/view/history_view_service_message.cpp
     history/view/history_view_service_message.h
-    history/view/history_view_sticker_toast.cpp
-    history/view/history_view_sticker_toast.h
     history/view/history_view_subsection_tabs.cpp
     history/view/history_view_subsection_tabs.h
     history/view/history_view_summary_header.cpp

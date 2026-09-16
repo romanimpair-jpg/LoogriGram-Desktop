@@ -507,7 +507,6 @@ EmojiListWidget::EmojiListWidget(
 , _overBg(st::emojiPanRadius, st().overBg)
 , _markedBg(st::emojiPanRadius, st::stickersEmojiPickerSelectedBg)
 , _premiumMark(std::make_unique<StickerPremiumMark>(
-	&session(),
 	st::emojiPremiumLock))
 , _collapsedBg(st::emojiPanExpand.height / 2, st().headerFg)
 , _searchRequestTimer([=] { sendSearchRequest(); })
@@ -599,23 +598,12 @@ EmojiListWidget::EmojiListWidget(
 		updateSelected();
 	}, lifetime());
 
-	// LoogriGram: was combined with premiumPossibleValue(), which is gone —
-	// it had become this same value. skip(1) drops only the initial emission;
-	// a second one would run refreshCustom() before _footer exists.
-	Data::AmPremiumValue(
-		&session()
-	) | rpl::skip(1) | rpl::on_next([=] {
-		refreshCustom();
-		resizeToWidth(width());
-	}, lifetime());
-
 	rpl::single(
 		rpl::empty
 	) | rpl::then(
 		style::PaletteChanged()
 	) | rpl::on_next([=] {
 		initButton(_add, tr::lng_stickers_featured_add(tr::now), false);
-		initButton(_unlock, tr::lng_emoji_featured_unlock(tr::now), true);
 		initButton(_restore, tr::lng_emoji_premium_restore(tr::now), true);
 	}, lifetime());
 
@@ -730,7 +718,7 @@ void EmojiListWidget::applyNextSearchQuery() {
 			});
 		}
 	}
-	if (_mode != Mode::Full || session().premium()) {
+	if (_mode != Mode::Full) {
 		appendPremiumSearchResults();
 	}
 
@@ -1130,7 +1118,7 @@ void EmojiListWidget::showSearchResults() {
 				});
 			}
 		}
-		if (_mode != Mode::Full || session().premium()) {
+		if (_mode != Mode::Full) {
 			appendPremiumSearchResults();
 		}
 		fillCloudSearchResults();
@@ -1731,10 +1719,9 @@ bool EmojiListWidget::enumerateSections(Callback callback) const {
 		++i;
 		for (auto &section : _searchSets) {
 			info.section = i++;
-			info.premiumRequired = section.premiumRequired;
 			info.count = int(section.list.size());
 			info.collapsed = !section.expanded
-				&& (!section.canRemove || section.premiumRequired)
+				&& !section.canRemove
 				&& (info.count > _columnCount * kCollapsedRows);
 			if (!next()) {
 				return false;
@@ -1751,10 +1738,9 @@ bool EmojiListWidget::enumerateSections(Callback callback) const {
 	}
 	for (auto &section : _custom) {
 		info.section = i++;
-		info.premiumRequired = section.premiumRequired;
 		info.count = int(section.list.size());
 		info.collapsed = !section.expanded
-			&& (!section.canRemove || section.premiumRequired)
+			&& !section.canRemove
 			&& (info.count > _columnCount * kCollapsedRows);
 		if (!next()) {
 			return false;
@@ -2349,8 +2335,6 @@ void EmojiListWidget::paint(
 	validateEmojiPaintContext(context);
 	paintSearchShortcuts(p, clip);
 
-	_paintAsPremium = session().premium();
-
 	auto fromColumn = floorclamp(
 		clip.x() - _rowsLeft,
 		_singleSize.width(),
@@ -2390,9 +2374,7 @@ void EmojiListWidget::paint(
 		const auto buttonSelected = selectedButton
 			? (selectedButton->section == info.section)
 			: false;
-		const auto titleLeft = (info.premiumRequired
-			? st().headerLockedLeft
-			: st().headerLeft) - st().margin.left();
+		const auto titleLeft = st().headerLeft - st().margin.left();
 		auto widthForTitle = emojiRight()
 			- titleLeft
 			- paintButtonGetWidth(p, info, buttonSelected, clip);
@@ -2436,13 +2418,6 @@ void EmojiListWidget::paint(
 				titleWidth = st::emojiPanHeaderFont->width(titleText);
 			}
 			const auto top = info.top + st().headerTop;
-			if (info.premiumRequired) {
-				st::emojiPremiumRequired.paint(
-					p,
-					st().headerLockLeft - st().margin.left(),
-					top,
-					width());
-			}
 			const auto textBaseline = top + st::emojiPanHeaderFont->ascent;
 			p.setFont(st::emojiPanHeaderFont);
 			p.setPen(st().headerFg);
@@ -2603,7 +2578,6 @@ void EmojiListWidget::drawRecent(
 		const RecentOne &recent) {
 	_recentPainted = true;
 	const auto locked = (_mode == Mode::MessageEffects)
-		&& !_paintAsPremium
 		&& v::is<RecentEmojiDocument>(recent.id.data)
 		&& !_freeEffects.contains(
 			v::get<RecentEmojiDocument>(recent.id.data).id);
@@ -2959,13 +2933,6 @@ void EmojiListWidget::mouseReleaseEvent(QMouseEvent *e) {
 		} else if (hasAddButton(button->section)) {
 			_localSetsManager->install(id);
 		}
-		// LoogriGram: the remaining case is a set marked premiumRequired,
-		// which wears a padlock. The padlock stays - it says the set cannot
-		// be used, which is true - but pressing it opened one of five
-		// subscription pages chosen by which picker was open, and now does
-		// nothing. _jumpedToPremium, which told the reactions selector to
-		// close because it was about to be covered by that page, went with
-		// them; nothing else listened.
 	}
 }
 
@@ -3034,7 +3001,7 @@ void EmojiListWidget::selectEmoji(EmojiChosen data) {
 
 void EmojiListWidget::selectCustom(FileChosen data) {
 	const auto document = data.document;
-	const auto skip = (document->isPremiumEmoji() && !session().premium());
+	const auto skip = document->isPremiumEmoji();
 	if (!skip && _mode == Mode::Full) {
 		auto &settings = Core::App().settings();
 		settings.incrementRecentEmoji({ RecentEmojiDocument{
@@ -3133,7 +3100,7 @@ bool EmojiListWidget::hasRemoveButton(int index) const {
 		}
 		return !set.list.empty() && _megagroupSet->canEditEmoji();
 	}
-	return set.canRemove && !set.premiumRequired;
+	return set.canRemove;
 }
 
 QRect EmojiListWidget::removeButtonRect(int index) const {
@@ -3157,7 +3124,7 @@ bool EmojiListWidget::hasAddButton(int index) const {
 	if (_searchMode) {
 		if (index > 0 && index <= int(_searchSets.size())) {
 			const auto &set = searchSetBySection(index);
-			return !set.canRemove && !set.premiumRequired;
+			return !set.canRemove;
 		}
 		return false;
 	}
@@ -3167,37 +3134,11 @@ bool EmojiListWidget::hasAddButton(int index) const {
 	}
 	const auto &set = _custom[index - _staticCount];
 	return !set.canRemove
-		&& !set.premiumRequired
 		&& set.id != Data::Stickers::MegagroupSetId;
 }
 
 QRect EmojiListWidget::addButtonRect(int index) const {
 	return buttonRect(sectionInfo(index), _add);
-}
-
-bool EmojiListWidget::hasUnlockButton(int index) const {
-	if (_searchMode) {
-		if (index > 0 && index <= int(_searchSets.size())) {
-			return searchSetBySection(index).premiumRequired;
-		}
-		return false;
-	}
-	if (index < _staticCount
-		|| index >= _staticCount + _custom.size()) {
-		return false;
-	}
-	const auto &set = _custom[index - _staticCount];
-	return set.premiumRequired;
-}
-
-QRect EmojiListWidget::unlockButtonRect(int index) const {
-	Expects((_searchMode
-			&& index > 0
-			&& index <= int(_searchSets.size()))
-		|| (index >= _staticCount
-			&& index < _staticCount + _custom.size()));
-
-	return buttonRect(sectionInfo(index), rightButton(index));
 }
 
 bool EmojiListWidget::hasButton(int index) const {
@@ -3222,7 +3163,7 @@ QRect EmojiListWidget::buttonRect(int index) const {
 		? removeButtonRect(index)
 		: hasAddButton(index)
 		? addButtonRect(index)
-		: unlockButtonRect(index);
+		: buttonRect(sectionInfo(index), rightButton(index));
 }
 
 QRect EmojiListWidget::buttonRect(
@@ -3239,20 +3180,12 @@ auto EmojiListWidget::rightButton(int index) const -> const RightButton & {
 	if (_searchMode) {
 		Expects(index > 0 && index <= int(_searchSets.size()));
 
-		return hasAddButton(index)
-			? _add
-			: searchSetBySection(index).canRemove
-			? _restore
-			: _unlock;
+		return hasAddButton(index) ? _add : _restore;
 	}
 	Expects(index >= _staticCount
 		&& index < _staticCount + _custom.size());
 
-	return hasAddButton(index)
-		? _add
-		: _custom[index - _staticCount].canRemove
-		? _restore
-		: _unlock;
+	return hasAddButton(index) ? _add : _restore;
 }
 
 int EmojiListWidget::emojiRight() const {
@@ -3464,10 +3397,9 @@ void EmojiListWidget::refreshCustom() {
 	const auto wasSectionTop = sectionInfoByOffset(wasTop).top;
 	auto old = base::take(_custom);
 	const auto session = &this->session();
-	// LoogriGram: premiumMayBeBought asked for premiumPossible() and not
-	// premium() at once, which was only ever true where a subscription could
-	// be bought. It cannot, so no set is marked as requiring one.
-	const auto onlyUnicodeEmoji = _onlyUnicodeEmoji || !session->premium();
+	// LoogriGram: a set holding premium emoji is left out. Upstream showed it
+	// with a padlock and an Unlock button when a subscription could be
+	// bought, which it cannot, and the account is never premium.
 	const auto owner = &session->data();
 	const auto &sets = owner->stickers().sets();
 	const auto push = [&](uint64 setId, bool installed) {
@@ -3525,17 +3457,16 @@ void EmojiListWidget::refreshCustom() {
 				}
 				return true;
 			}();
-			if (premium && onlyUnicodeEmoji) {
+			if (premium) {
 				return;
 			} else if (valid) {
 				i->thumbnailDocument = it->second->lookupThumbnailDocument();
 				i->title = it->second->title;
-				if (i->canRemove != canRemove || i->premiumRequired) {
+				if (i->canRemove != canRemove) {
 					i->canRemove = canRemove;
-					i->premiumRequired = false;
 					i->ripple.reset();
 				}
-				if (i->canRemove && !i->premiumRequired) {
+				if (i->canRemove) {
 					i->expanded = false;
 				}
 				_custom.push_back(std::move(*i));
@@ -3559,7 +3490,7 @@ void EmojiListWidget::refreshCustom() {
 				}
 			}
 		}
-		if (premium && onlyUnicodeEmoji) {
+		if (premium) {
 			return;
 		}
 		_custom.push_back({

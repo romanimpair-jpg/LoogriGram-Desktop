@@ -738,8 +738,7 @@ bool AboutView::refresh() {
 		} else if (user && !user->isSelf() && displayedEmpty()) {
 			if (_item) {
 				return false;
-			} else if (user->requiresPremiumToWrite()
-				&& !user->session().premium()) {
+			} else if (user->requiresPremiumToWrite()) {
 				setItem(makePremiumRequired(), nullptr);
 			} else if (user->isBlocked()) {
 				setItem(makeBlocked(), nullptr);

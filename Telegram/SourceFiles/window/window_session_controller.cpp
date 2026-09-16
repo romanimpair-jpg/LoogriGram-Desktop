@@ -1575,7 +1575,6 @@ SessionController::SessionController(
 
 	crl::on_main(this, [=] {
 		activateFirstChatsFilter();
-		setupPremiumToast();
 	});
 
 	// LoogriGram: a debug-only block opened the gift crafting box on
@@ -2036,31 +2035,6 @@ void SessionController::closeForum() {
 	}
 	_shownForumLifetime.destroy();
 	_shownForum = nullptr;
-}
-
-void SessionController::setupPremiumToast() {
-	rpl::combine(
-		Data::AmPremiumValue(&session()),
-		session().changes().peerUpdates(
-			Data::PeerUpdate::Flag::FullInfo
-		)
-	) | rpl::filter([=] {
-		return session().user()->isFullLoaded();
-	}) | rpl::map([=](bool premium, const auto&) {
-		return premium;
-	}) | rpl::distinct_until_changed() | rpl::skip(
-		1
-	) | rpl::filter([=](bool premium) {
-		session().mtp().requestConfig();
-		return premium;
-	}) | rpl::on_next([=] {
-		MainWindowShow(this).showToast({
-			.text = { tr::lng_premium_success(tr::now) },
-			.iconLottie = u"toast/star_premium_2"_q,
-			.iconLottieSize = st::toastLottieIconSize,
-			.adaptive = true,
-		});
-	}, _lifetime);
 }
 
 const rpl::variable<Data::Folder*> &SessionController::openedFolder() const {

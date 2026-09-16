@@ -156,7 +156,6 @@ private:
 
 	[[nodiscard]] Fn<SendMenu::Details()> sendMenuDetails() const;
 
-	void showPremiumToast(not_null<DocumentData*> emoji);
 	[[nodiscard]] bool showSlowmodeError();
 
 	const not_null<Controller*> _controller;

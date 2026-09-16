@@ -921,14 +921,6 @@ void AccountsList::setup() {
 		}
 		rebuild();
 	}, _outer->lifetime());
-
-	Core::App().domain().maxAccountsChanges(
-	) | rpl::on_next([=] {
-		for (auto i = _watched.begin(); i != _watched.end(); i++) {
-			i->second = nullptr;
-		}
-		rebuild();
-	}, _outer->lifetime());
 }
 
 
@@ -1092,9 +1084,7 @@ void AccountsList::rebuild() {
 		premiumLimit,
 		std::max(1, count - premiumLimit));
 
-	_addAccount->toggle(
-		(count < ::Main::Domain::kPremiumMaxAccounts),
-		anim::type::instant);
+	_addAccount->toggle((count < premiumLimit), anim::type::instant);
 
 	_reorder->start();
 }

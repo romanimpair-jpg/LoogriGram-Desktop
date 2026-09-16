@@ -106,7 +106,6 @@ struct FileChosen;
 } // namespace ChatHelpers
 
 namespace HistoryView {
-class StickerToast;
 class SelfForwardsTagger;
 class TopBarWidget;
 class ContactStatus;
@@ -315,9 +314,6 @@ public:
 	void showHiddenSenderTooltip(
 		QRect globalArea,
 		const TextWithEntities &text);
-	void showPremiumStickerTooltip(
-		not_null<const HistoryView::Element*> view);
-	void showPremiumToast(not_null<DocumentData*> document);
 
 	// Tabbed selector management.
 	bool pushTabbedSelectorToThirdSection(
@@ -946,7 +942,6 @@ private:
 
 	HistoryView::InfoTooltip _topToast;
 	HistoryView::AnchoredTooltip _hiddenSenderTooltip;
-	std::unique_ptr<HistoryView::StickerToast> _stickerToast;
 	std::unique_ptr<HistoryView::SelfForwardsTagger> _selfForwardsTagger;
 	std::unique_ptr<ChooseMessagesForReport> _chooseForReport;
 

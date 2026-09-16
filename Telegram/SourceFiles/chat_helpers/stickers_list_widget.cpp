@@ -143,14 +143,16 @@ struct StickersListWidget::Set {
 	bool externalLayout = false;
 };
 
+// LoogriGram: premium stickers are left out of every set shown here; that
+// was already so for accounts without premium, and the account is never
+// premium.
 auto StickersListWidget::PrepareStickers(
-	const QVector<DocumentData*> &pack,
-	bool skipPremium)
+	const QVector<DocumentData*> &pack)
 -> std::vector<Sticker> {
 	return ranges::views::all(
 		pack
 	) | ranges::views::filter([&](DocumentData *document) {
-		return !skipPremium || !document->isPremiumSticker();
+		return !document->isPremiumSticker();
 	}) | ranges::views::transform([](DocumentData *document) {
 		return Sticker{ document };
 	}) | ranges::to_vector;
@@ -248,7 +250,6 @@ StickersListWidget::StickersListWidget(
 , _settings(this, tr::lng_stickers_you_have(tr::now))
 , _previewTimer([=] { showPreview(); })
 , _premiumMark(std::make_unique<StickerPremiumMark>(
-	&session(),
 	st::stickersPremiumLock))
 , _searchRequestTimer([=] { sendSearchRequest(); }) {
 	setMouseTracking(true);
@@ -301,16 +302,7 @@ StickersListWidget::StickersListWidget(
 		TabbedSelector::Action::Update
 	) | rpl::start_to_stream(_choosingUpdated, lifetime());
 
-	if (_isEffects) {
-		refreshStickers();
-	} else {
-		rpl::merge(
-			Data::AmPremiumValue(&session()) | rpl::to_empty,
-			session().api().premium().cloudSetUpdated()
-		) | rpl::on_next([=] {
-			refreshStickers();
-		}, lifetime());
-	}
+	refreshStickers();
 }
 
 rpl::producer<FileChosen> StickersListWidget::chosen() const {
@@ -868,10 +860,8 @@ bool StickersListWidget::addSearchShortcut(not_null<StickersSet*> set) {
 	if (ranges::contains(_searchShortcutSets, set->id, &Set::id)) {
 		return false;
 	}
-	const auto skipPremium = !session().premium();
 	auto elements = PrepareStickers(
-		set->stickers.empty() ? set->covers : set->stickers,
-		skipPremium);
+		set->stickers.empty() ? set->covers : set->stickers);
 	if (elements.empty()) {
 		return false;
 	}
@@ -897,10 +887,8 @@ void StickersListWidget::fillSelectedSearchShortcut() {
 		return;
 	}
 	const auto set = it->second.get();
-	const auto skipPremium = !session().premium();
 	auto elements = PrepareStickers(
-		set->stickers.empty() ? set->covers : set->stickers,
-		skipPremium);
+		set->stickers.empty() ? set->covers : set->stickers);
 	if (elements.empty()) {
 		_searchSelectedSetId = 0;
 		return;
@@ -1552,7 +1540,6 @@ void StickersListWidget::paintStickers(Painter &p, QRect clip) {
 		toColumn = _columnCount - toColumn;
 	}
 
-	_paintAsPremium = session().premium();
 	_pathGradient->startFrame(0, width(), width() / 2);
 	paintSearchShortcuts(p, clip);
 
@@ -2279,26 +2266,7 @@ void StickersListWidget::paintSticker(
 		p.setOpacity(1.);
 	}
 
-	auto cornerPainted = false;
-	const auto corner = (set.id == Data::Stickers::RecentSetId)
-		? &_cornerEmoji
-		: (set.id == SearchEmojiSectionSetId())
-		? &_filterStickersCornerEmoji
-		: nullptr;
-	if (corner && !corner->empty() && _paintAsPremium) {
-		Assert(index < corner->size());
-		if (const auto emoji = (*corner)[index]) {
-			const auto size = Ui::Emoji::GetSizeNormal();
-			const auto ratio = style::DevicePixelRatio();
-			const auto radius = st::roundRadiusSmall;
-			const auto position = pos
-				+ QPoint(_singleSize.width(), _singleSize.height())
-				- QPoint(size / ratio + radius, size / ratio + radius);
-			Ui::Emoji::Draw(p, emoji, size, position.x(), position.y());
-			cornerPainted = true;
-		}
-	}
-	if (!cornerPainted && premium) {
+	if (premium) {
 		_premiumMark->paint(
 			p,
 			lottieFrame,
@@ -3099,11 +3067,9 @@ void StickersListWidget::refreshSearchSets() {
 	refreshSearchIndex();
 
 	const auto &sets = session().data().stickers().sets();
-	const auto skipPremium = !session().premium();
 	const auto refreshElements = [&](Set &entry, not_null<StickersSet*> set) {
 		auto elements = PrepareStickers(
-			set->stickers.empty() ? set->covers : set->stickers,
-			skipPremium);
+			set->stickers.empty() ? set->covers : set->stickers);
 		if (!elements.empty()) {
 			entry.lottiePlayer = nullptr;
 			entry.stickers = std::move(elements);
@@ -3207,12 +3173,10 @@ bool StickersListWidget::appendSet(
 			return false;
 		}
 	}
-	const auto skipPremium = !session().premium();
 	auto elements = PrepareStickers(
 		((set->stickers.empty() && externalLayout)
 			? set->covers
-			: set->stickers),
-		skipPremium);
+			: set->stickers));
 	if (elements.empty()) {
 		return false;
 	}
@@ -3368,11 +3332,10 @@ void StickersListWidget::refreshFavedStickers() {
 	if (it == sets.cend()) {
 		return;
 	}
-	const auto skipPremium = !session().premium();
 	const auto set = it->second.get();
 	const auto externalLayout = false;
 	const auto shortName = QString();
-	auto elements = PrepareStickers(set->stickers, skipPremium);
+	auto elements = PrepareStickers(set->stickers);
 	if (elements.empty()) {
 		return;
 	}
@@ -3448,8 +3411,7 @@ void StickersListWidget::refreshMegagroupStickers(GroupStickersPlace place) {
 		} else if (isShownHere(hidden)) {
 			const auto shortName = QString();
 			const auto externalLayout = false;
-			const auto skipPremium = !session().premium();
-			auto elements = PrepareStickers(set->stickers, skipPremium);
+			auto elements = PrepareStickers(set->stickers);
 			if (!elements.empty()) {
 				_mySets.emplace_back(
 					Data::Stickers::MegagroupSetId,

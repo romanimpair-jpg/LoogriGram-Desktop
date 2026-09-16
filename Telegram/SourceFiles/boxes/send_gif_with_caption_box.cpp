@@ -105,8 +105,7 @@ void SetupCaptionFieldInBox(
 		// premiumFeature parameter existed to choose, so it is gone too.
 		if (!info
 			|| info->setType != Data::StickersType::Emoji
-			|| allowWithoutPremium(data.document)
-			|| controller->session().premium()) {
+			|| allowWithoutPremium(data.document)) {
 			Data::InsertCustomEmoji(field, data.document);
 		}
 	}, field->lifetime());
@@ -130,9 +129,6 @@ void SetupCaptionFieldInBox(
 					emojiButton,
 					style::al_top);
 				state->charsLimitation->show();
-				Data::AmPremiumValue(session) | rpl::on_next([=] {
-					repeat(repeat);
-				}, state->charsLimitation->lifetime());
 			}
 			state->charsLimitation->setLeft(remove);
 			state->charsLimitation->show();

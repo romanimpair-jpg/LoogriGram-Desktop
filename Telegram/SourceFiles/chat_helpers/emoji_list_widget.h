@@ -200,7 +200,6 @@ private:
 		int rowsCount = 0;
 		int rowsTop = 0;
 		int rowsBottom = 0;
-		bool premiumRequired = false;
 		bool collapsed = false;
 	};
 	struct CustomOne {
@@ -219,7 +218,6 @@ private:
 		bool painted = false;
 		bool expanded = false;
 		bool canRemove = false;
-		bool premiumRequired = false;
 	};
 	struct CustomEmojiInstance;
 	struct RightButton {
@@ -432,8 +430,6 @@ private:
 	[[nodiscard]] QRect removeButtonRect(const SectionInfo &info) const;
 	[[nodiscard]] bool hasAddButton(int index) const;
 	[[nodiscard]] QRect addButtonRect(int index) const;
-	[[nodiscard]] bool hasUnlockButton(int index) const;
-	[[nodiscard]] QRect unlockButtonRect(int index) const;
 	[[nodiscard]] bool hasButton(int index) const;
 	[[nodiscard]] QRect buttonRect(int index) const;
 	[[nodiscard]] QRect buttonRect(
@@ -519,7 +515,6 @@ private:
 	std::unique_ptr<Ui::Text::CustomEmojiPaintContext> _emojiPaintContext;
 	bool _recentPainted = false;
 	bool _grabbingChosen = false;
-	bool _paintAsPremium = false;
 	QVector<EmojiPtr> _emoji[kEmojiSectionCount];
 	std::vector<CustomSet> _custom;
 	base::flat_set<DocumentId> _restrictedCustomList;
@@ -583,7 +578,6 @@ private:
 	QPoint _customPosition;
 
 	RightButton _add;
-	RightButton _unlock;
 	RightButton _restore;
 	Ui::RoundRect _collapsedBg;
 

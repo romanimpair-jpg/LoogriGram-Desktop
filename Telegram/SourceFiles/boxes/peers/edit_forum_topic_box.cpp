@@ -26,7 +26,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "history/history.h"
 #include "history/view/history_view_chat_section.h"
-#include "history/view/history_view_sticker_toast.h"
 #include "lang/lang_keys.h"
 #include "info/profile/info_profile_emoji_status_panel.h"
 #include "window/window_session_controller.h"
@@ -255,7 +254,6 @@ struct IconSelector {
 
 	struct State {
 		std::unique_ptr<Ui::EmojiFlyAnimation> animation;
-		std::unique_ptr<HistoryView::StickerToast> toast;
 		rpl::variable<DocumentId> iconId;
 		QPointer<QWidget> button;
 	};
@@ -330,18 +328,6 @@ struct IconSelector {
 		selector->setMinimalHeight(selector->width(), height);
 	}, body->lifetime());
 
-	const auto showToast = [=](not_null<DocumentData*> document) {
-		if (!state->toast) {
-			state->toast = std::make_unique<HistoryView::StickerToast>(
-				controller,
-				controller->widget()->bodyWidget(),
-				[=] { state->toast = nullptr; });
-		}
-		state->toast->showFor(
-			document,
-			HistoryView::StickerToast::Section::TopicIcon);
-	};
-
 	selector->customChosen(
 	) | rpl::on_next([=](ChatHelpers::FileChosen data) {
 		const auto owner = &controller->session().data();
@@ -350,8 +336,7 @@ struct IconSelector {
 		const auto custom = (id != kDefaultIconId);
 		const auto premium = custom
 			&& !ranges::contains(document->owner().forumIcons().list(), id);
-		if (premium && !controller->session().premium()) {
-			showToast(document);
+		if (premium) {
 			return;
 		}
 		const auto body = controller->window().widget()->bodyWidget();

@@ -130,7 +130,6 @@ private:
 	CopyRestrictionType listSelectRestrictionType() override;
 	auto listAllowedReactionsValue()
 		-> rpl::producer<Data::AllowedReactions> override;
-	void listShowPremiumToast(not_null<DocumentData*> document) override;
 	void listOpenPhoto(
 		not_null<PhotoData*> photo,
 		FullMsgId context) override;
@@ -813,9 +812,6 @@ CopyRestrictionType Item::listSelectRestrictionType() {
 auto Item::listAllowedReactionsValue()
 -> rpl::producer<Data::AllowedReactions> {
 	return rpl::single(Data::AllowedReactions());
-}
-
-void Item::listShowPremiumToast(not_null<DocumentData*> document) {
 }
 
 void Item::listOpenPhoto(

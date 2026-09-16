@@ -11,7 +11,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_empty_list_bubble.h"
 #include "history/view/history_view_top_bar_widget.h"
 #include "history/view/history_view_schedule_box.h"
-#include "history/view/history_view_sticker_toast.h"
 #include "data/data_chat_participant_status.h"
 #include "history/history.h"
 #include "history/history_drag_area.h"
@@ -159,9 +158,6 @@ ScheduledWidget::ScheduledWidget(
 	this,
 	ComposeControlsDescriptor{
 		.show = controller->uiShow(),
-		.unavailableEmojiPasted = [=](not_null<DocumentData*> emoji) {
-			listShowPremiumToast(emoji);
-		},
 		.mode = ComposeControls::Mode::Scheduled,
 		.sendMenuDetails = crl::guard(this, [=] {
 			return sendMenuDetails();
@@ -1648,17 +1644,6 @@ CopyRestrictionType ScheduledWidget::listSelectRestrictionType() {
 auto ScheduledWidget::listAllowedReactionsValue()
 -> rpl::producer<Data::AllowedReactions> {
 	return rpl::single(Data::AllowedReactions());
-}
-
-void ScheduledWidget::listShowPremiumToast(
-		not_null<DocumentData*> document) {
-	if (!_stickerToast) {
-		_stickerToast = std::make_unique<HistoryView::StickerToast>(
-			controller(),
-			this,
-			[=] { _stickerToast = nullptr; });
-	}
-	_stickerToast->showFor(document);
 }
 
 void ScheduledWidget::listOpenPhoto(

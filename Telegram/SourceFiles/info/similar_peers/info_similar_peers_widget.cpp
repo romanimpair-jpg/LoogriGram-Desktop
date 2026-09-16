@@ -89,12 +89,8 @@ void ListController::prepare() {
 
 	const auto participants = &_peer->session().api().chatParticipants();
 
-	Data::AmPremiumValue(
-		&_peer->session()
-	) | rpl::on_next([=] {
-		participants->loadSimilarPeers(_peer);
-		rebuild();
-	}, lifetime());
+	participants->loadSimilarPeers(_peer);
+	rebuild();
 
 	participants->similarLoaded(
 	) | rpl::filter(

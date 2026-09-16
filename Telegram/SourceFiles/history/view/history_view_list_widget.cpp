@@ -2631,12 +2631,7 @@ void ListWidget::elementStartInteraction(not_null<const Element*> view) {
 void ListWidget::elementStartPremium(
 		not_null<const Element*> view,
 		Element *replacing) {
-	const auto already = !_emojiInteractions->playPremiumEffect(
-		view,
-		replacing);
-	if (already) {
-		showPremiumStickerTooltip(view);
-	}
+	_emojiInteractions->playPremiumEffect(view, replacing);
 }
 
 void ListWidget::elementCancelPremium(not_null<const Element*> view) {
@@ -2764,15 +2759,6 @@ void ListWidget::startMessageSendingAnimation(
 		.view = [=] { return viewForItem(item); },
 		.paintContext = [=] { return preparePaintContext({}); },
 	});
-}
-
-void ListWidget::showPremiumStickerTooltip(
-		not_null<const HistoryView::Element*> view) {
-	if (const auto media = view->data()->media()) {
-		if (const auto document = media->document()) {
-			_delegate->listShowPremiumToast(document);
-		}
-	}
 }
 
 void ListWidget::revealItemsCallback() {
@@ -4134,8 +4120,7 @@ void ListWidget::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 			controller(),
 			desiredPosition,
 			reactItem,
-			[=](ChosenReaction reaction) { reactionChosen(reaction); },
-			ItemReactionsAbout(reactItem))
+			[=](ChosenReaction reaction) { reactionChosen(reaction); })
 		: AttachSelectorResult::Skipped;
 	if (attached == AttachSelectorResult::Failed) {
 		_menu = nullptr;

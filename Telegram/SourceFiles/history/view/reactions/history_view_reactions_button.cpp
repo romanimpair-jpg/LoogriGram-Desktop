@@ -874,12 +874,6 @@ void SetupManagerList(
 		if (sessionChanged) {
 			state->sessionLifetime.destroy();
 			state->session = session;
-			Data::AmPremiumValue(
-				session
-			) | rpl::skip(
-				1
-			) | rpl::on_next(push, state->sessionLifetime);
-
 			session->changes().messageUpdates(
 				Data::MessageUpdate::Flag::Destroyed
 			) | rpl::on_next([=](const Data::MessageUpdate &update) {
