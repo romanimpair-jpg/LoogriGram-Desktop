@@ -152,12 +152,9 @@ void FiltersMenu::setup() {
 		_container->move(0, 0);
 	}, _outer.lifetime());
 
-	auto premium = Data::AmPremiumValue(&_session->session());
-
 	const auto filters = &_session->session().data().chatsFilters();
-	rpl::combine(
-		rpl::single(rpl::empty) | rpl::then(filters->changed()),
-		std::move(premium)
+	rpl::single(rpl::empty) | rpl::then(
+		filters->changed()
 	) | rpl::on_next([=] {
 		refresh();
 	}, _outer.lifetime());
@@ -349,21 +346,21 @@ void FiltersMenu::refresh() {
 		return;
 	}
 	const auto oldTop = _scroll.scrollTop();
-	const auto reorderAll = premium();
 	if (!_list) {
 		setupList();
 	}
 	_reorder->cancel();
 
 	_reorder->clearPinnedIntervals();
-	const auto maxLimit = (reorderAll ? 1 : 0)
-		+ Data::PremiumLimits(&_session->session()).dialogFiltersCurrent();
-	const auto premiumFrom = (reorderAll ? 0 : 1) + maxLimit;
-	if (!reorderAll) {
-		_reorder->addPinnedInterval(0, 1);
-	}
+	// LoogriGram: premium accounts could also move All Chats and had one
+	// more folder unlocked. Here All Chats stays first and folders past the
+	// free cap stay locked.
+	const auto maxLimit = Data::PremiumLimits(
+		&_session->session()).dialogFiltersCurrent();
+	const auto lockedFrom = 1 + maxLimit;
+	_reorder->addPinnedInterval(0, 1);
 	_reorder->addPinnedInterval(
-		premiumFrom,
+		lockedFrom,
 		std::max(1, int(filters->list().size()) - maxLimit));
 
 	// Remember which folder holds keyboard focus so the roving Tab-stop can be
@@ -381,7 +378,7 @@ void FiltersMenu::refresh() {
 	auto now = base::flat_map<int, base::unique_qptr<Ui::SideBarButton>>();
 	const auto &currentFilter = _session->activeChatsFilterCurrent();
 	for (const auto &filter : filters->list()) {
-		const auto nextIsLocked = (now.size() >= premiumFrom);
+		const auto nextIsLocked = (now.size() >= lockedFrom);
 		if (nextIsLocked && (currentFilter == filter.id())) {
 			_session->setActiveChatsFilter(FilterId(0));
 		}
@@ -517,10 +514,6 @@ void FiltersMenu::destroyFavorite() {
 			_favorite = nullptr;
 		}
 	});
-}
-
-bool FiltersMenu::premium() const {
-	return _session->session().user()->isPremium();
 }
 
 Ui::ChatsFiltersTabsMode FiltersMenu::tabsMode() const {
@@ -811,10 +804,8 @@ void FiltersMenu::applyReorder(
 
 	const auto filters = &_session->session().data().chatsFilters();
 	const auto &list = filters->list();
-	if (!premium()) {
-		if (list[0].id() != FilterId()) {
-			filters->moveAllToFront();
-		}
+	if (list[0].id() != FilterId()) {
+		filters->moveAllToFront();
 	}
 	Assert(oldPosition >= 0 && oldPosition < list.size());
 	Assert(newPosition >= 0 && newPosition < list.size());

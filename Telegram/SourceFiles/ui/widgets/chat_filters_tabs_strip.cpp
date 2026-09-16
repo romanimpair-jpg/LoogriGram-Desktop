@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/shortcuts.h"
 #include "core/ui_integration.h"
 #include "data/data_chat_filters.h"
-#include "data/data_peer_values.h" // Data::AmPremiumValue.
 #include "data/data_premium_limits.h"
 #include "data/data_session.h"
 #include "data/data_unread_value.h"
@@ -149,10 +148,8 @@ void ShowFiltersListMenu(
 		parent,
 		st::popupMenuWithIcons);
 
-	const auto reorderAll = session->user()->isPremium();
-	const auto maxLimit = (reorderAll ? 1 : 0)
+	const auto lockedFrom = 1
 		+ Data::PremiumLimits(session).dialogFiltersCurrent();
-	const auto premiumFrom = (reorderAll ? 0 : 1) + maxLimit;
 
 	for (auto i = 0; i < list.size(); ++i) {
 		const auto title = list[i].title();
@@ -177,7 +174,7 @@ void ShowFiltersListMenu(
 			action,
 			icon,
 			icon);
-		action->setEnabled(i < premiumFrom);
+		action->setEnabled(i < lockedFrom);
 		if (!title.text.empty()) {
 			const auto context = Core::TextContext({
 				.session = session,
@@ -266,10 +263,8 @@ not_null<Ui::RpWidget*> AddChatFiltersTabsStrip(
 
 			const auto filters = &session->data().chatsFilters();
 			const auto &list = filters->list();
-			if (!session->user()->isPremium()) {
-				if (list[0].id() != FilterId()) {
-					filters->moveAllToFront();
-				}
+			if (list[0].id() != FilterId()) {
+				filters->moveAllToFront();
 			}
 			Assert(oldPosition >= 0 && oldPosition < list.size());
 			Assert(newPosition >= 0 && newPosition < list.size());
@@ -412,24 +407,21 @@ not_null<Ui::RpWidget*> AddChatFiltersTabsStrip(
 		state->rebuildLifetime.destroy();
 		slider->fitWidthToSections();
 		{
-			const auto reorderAll = session->user()->isPremium();
-			const auto maxLimit = (reorderAll ? 1 : 0)
-				+ Data::PremiumLimits(session).dialogFiltersCurrent();
-			const auto premiumFrom = (reorderAll ? 0 : 1) + maxLimit;
-			slider->setLockedFrom((premiumFrom >= list.size())
+			const auto maxLimit = Data::PremiumLimits(
+				session).dialogFiltersCurrent();
+			const auto lockedFrom = 1 + maxLimit;
+			slider->setLockedFrom((lockedFrom >= list.size())
 				? 0
-				: premiumFrom);
+				: lockedFrom);
 			slider->lockedClicked() | rpl::on_next([=] {
 				controller->show(Box(FiltersLimitBox, session, std::nullopt));
 			}, state->rebuildLifetime);
 			if (state->reorder) {
 				state->reorder->cancel();
 				state->reorder->clearPinnedIntervals();
-				if (!reorderAll) {
-					state->reorder->addPinnedInterval(0, 1);
-				}
+				state->reorder->addPinnedInterval(0, 1);
 				state->reorder->addPinnedInterval(
-					premiumFrom,
+					lockedFrom,
 					std::max(1, int(list.size()) - maxLimit));
 			}
 		}
@@ -511,9 +503,7 @@ not_null<Ui::RpWidget*> AddChatFiltersTabsStrip(
 			state->reorder->start();
 		}
 	};
-	rpl::combine(
-		session->data().chatsFilters().changed(),
-		Data::AmPremiumValue(session) | rpl::to_empty
+	session->data().chatsFilters().changed(
 	) | rpl::on_next(rebuild, wrap->lifetime());
 	Core::App().settings().chatFiltersTabsModeValue(
 	) | rpl::on_next([=](ChatsFiltersTabsMode mode) {

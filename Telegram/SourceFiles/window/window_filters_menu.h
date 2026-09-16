@@ -51,7 +51,6 @@ private:
 		not_null<Ui::RpWidget*> widget,
 		int oldPosition,
 		int newPosition);
-	[[nodiscard]] bool premium() const;
 	[[nodiscard]] Ui::ChatsFiltersTabsMode tabsMode() const;
 	[[nodiscard]] const style::SideBarButton &buttonStyle() const;
 	[[nodiscard]] base::unique_qptr<Ui::SideBarButton> prepareAll();
