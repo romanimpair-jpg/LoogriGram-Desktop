@@ -68,10 +68,10 @@ private:
 
 	void apply();
 	void applyForPeer();
-	void applyForPeer(bool both);
+	void setForPeer();
 	void applyForEveryone();
-	void uploadForPeer(bool both);
-	void setExistingForPeer(const Data::WallPaper &paper, bool both);
+	void uploadForPeer();
+	void setExistingForPeer(const Data::WallPaper &paper);
 	void share();
 	void radialAnimationCallback(crl::time now);
 	QRect radialRect() const;
@@ -141,7 +141,6 @@ private:
 	float64 _uploadProgress = 0.;
 	rpl::lifetime _uploadLifetime;
 
-	std::unique_ptr<Ui::FadeWrap<Ui::RpWidget>> _forBothOverlay;
 
 	rpl::variable<QColor> _paletteServiceBg;
 	rpl::lifetime _serviceBgLifetime;

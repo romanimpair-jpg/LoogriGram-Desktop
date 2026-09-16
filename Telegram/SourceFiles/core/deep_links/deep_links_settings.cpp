@@ -1463,14 +1463,6 @@ void RegisterSettingsHandlers(Router &router) {
 	});
 
 	router.add(u"settings"_q, {
-		.path = u"language/translate-chats"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowLanguageBox(ctx, u"language/translate-chats"_q);
-		}},
-		.requiresAuth = false,
-	});
-
-	router.add(u"settings"_q, {
 		.path = u"language/do-not-translate"_q,
 		.action = CodeBlock{ [](const Context &ctx) {
 			return ShowLanguageBox(ctx, u"language/do-not-translate"_q);

@@ -401,9 +401,7 @@ void TrackMessageMoneyRestrictionsChanges(
 		not_null<PeerListController*> controller,
 		rpl::lifetime &lifetime) {
 	const auto session = &controller->session();
-	rpl::merge(
-		Data::AmPremiumValue(session) | rpl::to_empty,
-		session->api().premium().someMessageMoneyRestrictionsResolved()
+	session->api().premium().someMessageMoneyRestrictionsResolved(
 	) | rpl::on_next([=] {
 		const auto st = &controller->computeListSt().item;
 		const auto delegate = controller->delegate();

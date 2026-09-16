@@ -48,9 +48,7 @@ private:
 	Window::SessionController *_controller = nullptr;
 	QString _highlightId;
 	QPointer<Ui::RpWidget> _showButtonToggle;
-	QPointer<Ui::RpWidget> _translateChatsToggle;
 	QPointer<Ui::RpWidget> _doNotTranslateButton;
-	rpl::event_stream<bool> _translateChatTurnOff;
 	Fn<void()> _setInnerFocus;
 	Fn<Ui::ScrollToRequest(int rows)> _jump;
 

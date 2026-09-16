@@ -320,7 +320,6 @@ private:
 	void addDirectMessages();
 	void addToggleTopicClosed();
 	void addExportChat();
-	void addTranslate();
 	void addReport();
 	void addNewContact();
 	void addShareContact();
@@ -1066,23 +1065,6 @@ void Filler::addExportChat() {
 		&st::menuIconExport);
 }
 
-void Filler::addTranslate() {
-	if (_peer->translationFlag() != PeerData::TranslationFlag::Disabled
-		|| !_peer->session().premium()
-		|| !Core::App().settings().translateChatEnabled()) {
-		return;
-	}
-	const auto history = _peer->owner().historyLoaded(_peer);
-	if (!history
-		|| !history->translateOfferedFrom()
-		|| history->translatedTo()) {
-		return;
-	}
-	_addAction(tr::lng_context_translate(tr::now), [=] {
-		history->peer->saveTranslationDisabled(false);
-	}, &st::menuIconTranslate);
-}
-
 void Filler::addReport() {
 	const auto chat = _peer->asChat();
 	const auto channel = _peer->asChannel();
@@ -1520,10 +1502,9 @@ void Filler::addToggleNoForwards() {
 	};
 	const auto disabledNow = !user->allowsForwarding();
 	// LoogriGram: turning sharing off is subscriber-only on the server, so
-	// the item is offered only when it can act - always to turn it back on,
-	// and to turn it off only for a subscriber. Upstream offered it to
+	// the item is offered only to turn it back on. Upstream offered it to
 	// everyone and answered with the pitch.
-	if (!disabledNow && !peer->session().premium()) {
+	if (!disabledNow) {
 		return;
 	}
 	_addAction(disabledNow
@@ -1830,7 +1811,6 @@ void Filler::fillHistoryActions() {
 	addViewDiscussion();
 	addDirectMessages();
 	addExportChat();
-	addTranslate();
 	addReport();
 	addClearHistory();
 	addDeleteChat();

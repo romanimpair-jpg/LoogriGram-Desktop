@@ -1544,9 +1544,6 @@ void LanguageBox::showFinished() {
 				u"language/show-button"_q,
 				_showButtonToggle.data());
 			window->checkHighlightControl(
-				u"language/translate-chats"_q,
-				_translateChatsToggle.data());
-			window->checkHighlightControl(
 				u"language/do-not-translate"_q,
 				_doNotTranslateButton.data());
 		}
@@ -1608,38 +1605,8 @@ void LanguageBox::setupTop(not_null<Ui::VerticalLayout*> container) {
 		}
 	}
 
-	using namespace rpl::mappers;
-	auto premium = Data::AmPremiumValue(&_controller->session());
-	const auto translateChat = container->add(object_ptr<Ui::SettingsButton>(
-		container,
-		tr::lng_translate_settings_chat(),
-		st::settingsButtonNoIconLocked
-	))->toggleOn(rpl::merge(
-		rpl::combine(
-			Core::App().settings().translateChatEnabledValue(),
-			rpl::duplicate(premium),
-			_1 && _2),
-		_translateChatTurnOff.events()));
-	_translateChatsToggle = translateChat;
-	std::move(premium) | rpl::on_next([=](bool value) {
-		translateChat->setToggleLocked(!value);
-	}, translateChat->lifetime());
-
-	translateChat->toggledValue(
-	) | rpl::filter([=](bool checked) {
-		const auto premium = _controller->session().premium();
-		// LoogriGram: the toggle stays locked and still snaps back - chat
-		// translation is subscriber-only on the server - without the pitch
-		// that used to open alongside.
-		if (checked && !premium) {
-			_translateChatTurnOff.fire(false);
-		}
-		return premium
-			&& (checked != Core::App().settings().translateChatEnabled());
-	}) | rpl::on_next([=](bool checked) {
-		Core::App().settings().setTranslateChatEnabled(checked);
-		Core::App().saveSettingsDelayed();
-	}, translateChat->lifetime());
+	// LoogriGram: a "Translate Entire Chats" toggle sat here. It is
+	// premium-only, so it stayed locked and snapped back when pressed.
 
 	using Languages = std::vector<LanguageId>;
 	const auto translateSkipWrap = container->add(
@@ -1649,10 +1616,7 @@ void LanguageBox::setupTop(not_null<Ui::VerticalLayout*> container) {
 	translateSkipWrap->toggle(
 		translateEnabled->toggled(),
 		anim::type::normal);
-	translateSkipWrap->toggleOn(rpl::combine(
-		translateEnabled->toggledValue(),
-		translateChat->toggledValue(),
-		rpl::mappers::_1 || rpl::mappers::_2));
+	translateSkipWrap->toggleOn(translateEnabled->toggledValue());
 	const auto translateSkip = Settings::AddButtonWithLabel(
 		translateSkipWrap->entity(),
 		tr::lng_translate_settings_choose(),

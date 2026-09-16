@@ -79,7 +79,7 @@ int Row::paintNameIconGetWidth(
 		int availableWidth,
 		int outerWidth,
 		bool selected) {
-	if (_premiumRequired && !peer()->session().premium()) {
+	if (_premiumRequired) {
 		const auto &icon = st::emojiPremiumRequired;
 		availableWidth -= icon.width();
 		const auto x = nameLeft + std::min(nameWidth, availableWidth);
@@ -102,15 +102,6 @@ ListController::ListController(
 : PeerListController()
 , _list(std::move(list))
 , _selected(selected) {
-	Data::AmPremiumValue(
-		&selected->session()
-	) | rpl::skip(1) | rpl::on_next([=] {
-		const auto count = delegate()->peerListFullRowsCount();
-		for (auto i = 0; i != count; ++i) {
-			delegate()->peerListUpdateRow(
-				delegate()->peerListRowAt(i));
-		}
-	}, lifetime());
 }
 
 Main::Session &ListController::session() const {
@@ -228,9 +219,7 @@ void SetupSendAsButton(
 				list,
 				sendAs,
 				&Main::SendAsPeer::peer);
-			if (i != end(list)
-				&& i->premiumRequired
-				&& !sendAs->session().premium()) {
+			if (i != end(list) && i->premiumRequired) {
 				// LoogriGram: still says why this channel cannot be used to
 				// comment - that is the server's rule - but the name of the
 				// subscription no longer links into the page selling it.

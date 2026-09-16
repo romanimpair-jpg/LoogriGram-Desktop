@@ -748,9 +748,7 @@ ShareBox::Inner::Inner(
 
 	if (_descriptor.moneyRestrictionError) {
 		const auto session = _descriptor.session;
-		rpl::merge(
-			Data::AmPremiumValue(session) | rpl::to_empty,
-			session->api().premium().someMessageMoneyRestrictionsResolved()
+		session->api().premium().someMessageMoneyRestrictionsResolved(
 		) | rpl::on_next([=] {
 			refreshRestrictedRows();
 		}, lifetime());

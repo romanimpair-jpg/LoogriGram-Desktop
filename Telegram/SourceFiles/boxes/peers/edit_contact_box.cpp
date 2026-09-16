@@ -494,9 +494,7 @@ void Controller::setupNotesField() {
 		const auto info = data.document->sticker();
 		// LoogriGram: as in send_files_box - a premium custom emoji is not
 		// inserted, and no longer answers with the subscription pitch.
-		if (!info
-			|| info->setType != Data::StickersType::Emoji
-			|| _window->session().premium()) {
+		if (!info || info->setType != Data::StickersType::Emoji) {
 			Data::InsertCustomEmoji(_notesField, data.document);
 		}
 	}, _notesField->lifetime());

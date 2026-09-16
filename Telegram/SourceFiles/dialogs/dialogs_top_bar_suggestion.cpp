@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "core/core_settings.h"
 #include "data/components/promo_suggestions.h"
-#include "data/data_peer_values.h" // Data::AmPremiumValue.
 #include "dialogs/suggestions/suggestion.h"
 #include "dialogs/ui/dialogs_top_bar_suggestion_content.h"
 #include "main/main_session.h"
@@ -234,8 +233,7 @@ rpl::producer<Ui::SlideWrap<Ui::RpWidget>*> TopBarSuggestionValue(
 
 		rpl::merge(
 			session->promoSuggestions().value(),
-			session->api().authorizations().unreviewedChanges(),
-			Data::AmPremiumValue(session) | rpl::skip(1) | rpl::to_empty
+			session->api().authorizations().unreviewedChanges()
 		) | rpl::on_next([=] {
 			const auto was = state->wrap.get();
 			const auto weak = base::make_weak(was);

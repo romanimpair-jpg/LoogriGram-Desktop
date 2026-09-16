@@ -882,12 +882,6 @@ bool ChatInviteForbidden(
 				box->closeBox();
 			});
 		}, box->lifetime());
-
-		Data::AmPremiumValue(
-			&peer->session()
-		) | rpl::skip(1) | rpl::on_next([=] {
-			box->closeBox();
-		}, box->lifetime());
 	};
 	show->showBox(
 		Box<PeerListBox>(std::move(controller), std::move(initBox)));

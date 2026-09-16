@@ -568,9 +568,6 @@ void BackgroundPreviewBox::recreateBlurCheckbox() {
 
 	_blur->setDisabled(_paper.document() && _full.isNull());
 
-	if (_forBothOverlay) {
-		_forBothOverlay->raise();
-	}
 }
 
 void BackgroundPreviewBox::apply() {
@@ -581,7 +578,7 @@ void BackgroundPreviewBox::apply() {
 	}
 }
 
-void BackgroundPreviewBox::uploadForPeer(bool both) {
+void BackgroundPreviewBox::uploadForPeer() {
 	Expects(_forPeer != nullptr);
 
 	if (_uploadId) {
@@ -640,7 +637,7 @@ void BackgroundPreviewBox::uploadForPeer(bool both) {
 					"Got wallPaperNoFile after account.UploadWallPaper."));
 			});
 			if (const auto paper = Data::WallPaper::Create(session, result)) {
-				setExistingForPeer(*paper, both);
+				setExistingForPeer(*paper);
 			}
 		}).send();
 	}, _uploadLifetime);
@@ -650,8 +647,7 @@ void BackgroundPreviewBox::uploadForPeer(bool both) {
 }
 
 void BackgroundPreviewBox::setExistingForPeer(
-		const Data::WallPaper &paper,
-		bool both) {
+		const Data::WallPaper &paper) {
 	Expects(_forPeer != nullptr);
 
 	if (const auto already = _forPeer->wallPaper()) {
@@ -665,7 +661,6 @@ void BackgroundPreviewBox::setExistingForPeer(
 	api->request(MTPmessages_SetChatWallPaper(
 		MTP_flags((_fromMessageId ? Flag::f_id : Flag())
 			| (_fromMessageId ? Flag() : Flag::f_wallpaper)
-			| (both ? Flag::f_for_both : Flag())
 			| Flag::f_settings),
 		_forPeer->input(),
 		paper.mtpInput(&_controller->session()),
@@ -694,7 +689,7 @@ void BackgroundPreviewBox::checkLevelForChannel() {
 			? limits.channelCustomWallpaperLevelMin()
 			: limits.channelWallpaperLevelMin();
 		if (level >= required) {
-			applyForPeer(false);
+			setForPeer();
 			return std::optional<Ui::AskBoostReason>();
 		}
 		return std::make_optional(Ui::AskBoostReason{
@@ -715,105 +710,24 @@ void BackgroundPreviewBox::applyForPeer() {
 		}
 	}
 
+	// LoogriGram: premium accounts were offered to set the wallpaper for
+	// both sides of the chat, in an overlay with three buttons. Here it is
+	// only ever set for this side.
 	if (forChannel()) {
 		checkLevelForChannel();
-		return;
-	} else if (_fromMessageId || !_forPeer->session().premium()) {
-		applyForPeer(false);
-		return;
-	} else if (_forBothOverlay) {
-		return;
+	} else {
+		setForPeer();
 	}
-	const auto size = this->size() * style::DevicePixelRatio();
-	const auto bg = Images::DitherImage(
-		Images::BlurLargeImage(
-			Ui::GrabWidgetToImage(this).scaled(
-				size / style::ConvertScale(4),
-				Qt::IgnoreAspectRatio,
-				Qt::SmoothTransformation),
-			24).scaled(
-				size,
-				Qt::IgnoreAspectRatio,
-				Qt::SmoothTransformation));
-
-	_forBothOverlay = std::make_unique<Ui::FadeWrap<>>(
-		this,
-		object_ptr<Ui::RpWidget>(this));
-	const auto overlay = _forBothOverlay->entity();
-
-	sizeValue() | rpl::on_next([=](QSize size) {
-		_forBothOverlay->setGeometry({ QPoint(), size });
-		overlay->setGeometry({ QPoint(), size });
-	}, _forBothOverlay->lifetime());
-
-	overlay->paintRequest(
-	) | rpl::on_next([=](QRect clip) {
-		auto p = QPainter(overlay);
-		p.drawImage(0, 0, bg);
-		p.fillRect(clip, QColor(0, 0, 0, 64));
-	}, overlay->lifetime());
-
-	using namespace Ui;
-	const auto forMe = CreateChild<RoundButton>(
-		overlay,
-		tr::lng_background_apply_me(),
-		st::backgroundConfirm);
-	forMe->setClickedCallback([=] {
-		applyForPeer(false);
-	});
-	// LoogriGram: this was a padlocked button that answered a non-subscriber
-	// with the wallpaper pitch. It could not be reached by one: the overlay
-	// it sits in is only built when premium() is true, so the lock was never
-	// engaged and the pitch never shown. Plain button, one thing it does.
-	const auto forBoth = CreateChild<RoundButton>(
-		overlay,
-		tr::lng_background_apply_both(
-			lt_user,
-			rpl::single(_forPeer->shortName())),
-		st::backgroundConfirm);
-	forBoth->setClickedCallback([=] {
-		applyForPeer(true);
-	});
-	const auto cancel = CreateChild<RoundButton>(
-		overlay,
-		tr::lng_cancel(),
-		st::backgroundConfirmCancel);
-	cancel->setClickedCallback([=] {
-		const auto raw = _forBothOverlay.release();
-		raw->shownValue() | rpl::filter(
-			!rpl::mappers::_1
-		) | rpl::take(1) | rpl::on_next(crl::guard(raw, [=] {
-			delete raw;
-		}), raw->lifetime());
-		raw->toggle(false, anim::type::normal);
-	});
-	overlay->sizeValue(
-	) | rpl::on_next([=](QSize size) {
-		const auto padding = st::backgroundConfirmPadding;
-		const auto width = size.width()
-			- padding.left()
-			- padding.right();
-		const auto height = cancel->height();
-		auto top = size.height() - padding.bottom() - height;
-		cancel->setGeometry(padding.left(), top, width, height);
-		top -= height + padding.top();
-		forBoth->setGeometry(padding.left(), top, width, height);
-		top -= height + padding.top();
-		forMe->setGeometry(padding.left(), top, width, height);
-	}, _forBothOverlay->lifetime());
-
-	_forBothOverlay->hide(anim::type::instant);
-	_forBothOverlay->show(anim::type::normal);
 }
 
-void BackgroundPreviewBox::applyForPeer(bool both) {
+void BackgroundPreviewBox::setForPeer() {
 	using namespace Data;
 	if (forChannel() && !_paperEmojiId.isEmpty()) {
-		setExistingForPeer(WallPaper::FromEmojiId(_paperEmojiId), both);
+		setExistingForPeer(WallPaper::FromEmojiId(_paperEmojiId));
 	} else if (IsCustomWallPaper(_paper)) {
-		uploadForPeer(both);
+		uploadForPeer();
 	} else {
-		setExistingForPeer(_paper, both);
+		setExistingForPeer(_paper);
 	}
 }
 

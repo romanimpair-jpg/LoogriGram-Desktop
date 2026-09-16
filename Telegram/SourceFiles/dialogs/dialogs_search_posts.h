@@ -57,7 +57,6 @@ private:
 	void requestState(const QString &query, bool force = false);
 	void setFloodStateFrom(const MTPDsearchPostsFlood &data);
 	void pushStateUpdate(const Entry &entry);
-	void maybePushPremiumUpdate();
 
 	const not_null<Main::Session*> _session;
 

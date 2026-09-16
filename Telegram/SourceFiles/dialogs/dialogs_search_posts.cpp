@@ -33,9 +33,6 @@ PostsSearch::PostsSearch(not_null<Main::Session*> session)
 , _api(&_session->api().instance())
 , _timer([=] { applyQuery(); })
 , _recheckTimer([=] { recheck(); }) {
-	Data::AmPremiumValue(_session) | rpl::on_next([=] {
-		maybePushPremiumUpdate();
-	}, _lifetime);
 }
 
 rpl::producer<PostsSearchState> PostsSearch::stateUpdates() const {
@@ -129,25 +126,11 @@ void PostsSearch::pushStateUpdate(const Entry &entry) {
 		Assert(_floodState.has_value());
 		auto copy = _floodState;
 		copy->query = *_queryExact;
-		copy->needsPremium = !_session->premium();
+		copy->needsPremium = true;
 		_stateUpdates.fire(PostsSearchState{
 			.intro = std::move(copy),
 		});
 	}
-}
-
-void PostsSearch::maybePushPremiumUpdate() {
-	if (!_floodState || !_query) {
-		return;
-	}
-	auto &entry = _entries[*_query];
-	if (!entry.pages.empty()
-		|| entry.loaded
-		|| entry.checkId
-		|| entry.searchId) {
-		return;
-	}
-	pushStateUpdate(entry);
 }
 
 void PostsSearch::applyQuery() {

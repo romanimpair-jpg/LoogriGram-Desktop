@@ -509,7 +509,7 @@ void Set(
 bool ShowPremiumPreview(
 		std::shared_ptr<ChatHelpers::Show> show,
 		not_null<PeerData*> peer) {
-	return peer->isSelf() && !show->session().premium();
+	return peer->isSelf();
 }
 
 void Apply(
@@ -1475,12 +1475,10 @@ void EditPeerColorSection(
 	// LoogriGram: this button read "Buy for N stars" while a resale gift was
 	// selected. Nothing is selected that way any more, so it is the plain
 	// apply button.
-	button->setText(rpl::combine(
-		tr::lng_settings_color_apply(),
-		Data::AmPremiumValue(&peer->session())
-	) | rpl::map([=](const QString &text, bool premium) {
+	button->setText(tr::lng_settings_color_apply(
+	) | rpl::map([=](const QString &text) {
 		auto result = TextWithEntities();
-		if (!premium && peer->isSelf()) {
+		if (peer->isSelf()) {
 			result.append(Ui::Text::IconEmoji(&st::giftBoxLock));
 		}
 		result.append(text);
@@ -1636,12 +1634,10 @@ void EditPeerProfileColorSection(
 			profileState->applying = false;
 		}));
 	});
-	button->setText(rpl::combine(
-		tr::lng_settings_color_apply(),
-		Data::AmPremiumValue(&peer->session())
-	) | rpl::map([=](const QString &text, bool premium) {
+	button->setText(tr::lng_settings_color_apply(
+	) | rpl::map([=](const QString &text) {
 		auto result = TextWithEntities();
-		if (!premium && peer->isSelf()) {
+		if (peer->isSelf()) {
 			result.append(Ui::Text::IconEmoji(&st::giftBoxLock));
 		}
 		result.append(text);
