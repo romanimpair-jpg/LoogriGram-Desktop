@@ -358,8 +358,6 @@ struct FoldersState {
 	rpl::variable<int> count;
 	rpl::variable<int> suggested;
 	Fn<void(const FilterRowButton*, Fn<void(Data::ChatFilter)>)> save;
-	Ui::Animations::Simple tagsEnabledAnimation;
-	rpl::event_stream<bool> tagsButtonEnabled;
 };
 
 not_null<Ui::VerticalLayout*> SetupFoldersList(
@@ -865,21 +863,10 @@ void SetupRecommendedSection(
 		});
 	}
 
-	const auto setTagsProgress = [=](float64 value) {
-		for (const auto &row : state->rows) {
-			row.button->setColorIndexProgress(value);
-		}
-	};
-	state->tagsButtonEnabled.events() | rpl::distinct_until_changed(
-	) | rpl::on_next([=](bool value) {
-		state->tagsEnabledAnimation.stop();
-		state->tagsEnabledAnimation.start(
-			setTagsProgress,
-			value ? .0 : 1.,
-			value ? 1. : .0,
-			st::universalDuration);
-	}, container->lifetime());
-	setTagsProgress(session->data().chatsFilters().tagsEnabled());
+	for (const auto &row : state->rows) {
+		row.button->setColorIndexProgress(
+			session->data().chatsFilters().tagsEnabled() ? 1. : 0.);
+	}
 
 	rpl::single(rpl::empty) | rpl::then(
 		session->data().chatsFilters().suggestedUpdated()
@@ -918,9 +905,8 @@ void SetupRecommendedSection(
 
 	auto showSuggestions = rpl::combine(
 		state->suggested.value(),
-		state->count.value(),
-		Data::AmPremiumValue(session)
-	) | rpl::map([limit](int suggested, int count, bool) {
+		state->count.value()
+	) | rpl::map([limit](int suggested, int count) {
 		return suggested > 0 && count < limit();
 	});
 	nonEmptyAbout->toggleOn(std::move(showSuggestions));
@@ -987,113 +973,6 @@ void BuildFoldersListSection(
 			state,
 			ctx.highlights,
 			wrap);
-		return SectionBuilder::WidgetToAdd{};
-	});
-}
-
-void BuildTagsSection(SectionBuilder &builder, not_null<FoldersState*> state) {
-	if (!builder.session()->premium()) {
-		return;
-	}
-
-	builder.addDivider();
-	builder.addSkip();
-
-	const auto session = builder.session();
-
-	builder.add([=](const WidgetContext &ctx) {
-		const auto controller = ctx.controller;
-		const auto content = ctx.container;
-
-		struct TagsState final {
-			rpl::event_stream<bool> tagsTurnOff;
-			base::Timer requestTimer;
-			Fn<void()> sendCallback;
-		};
-
-		auto premium = Data::AmPremiumValue(session);
-		const auto tagsButton = content->add(
-			object_ptr<Ui::SettingsButton>(
-				content,
-				tr::lng_filters_enable_tags(),
-				st::settingsButtonNoIconLocked));
-		if (ctx.highlights) {
-			ctx.highlights->push_back({ u"folders/show-tags"_q, { tagsButton } });
-		}
-		const auto tagsState = tagsButton->lifetime().make_state<TagsState>();
-		tagsButton->toggleOn(rpl::merge(
-			rpl::combine(
-				session->data().chatsFilters().tagsEnabledValue(),
-				rpl::duplicate(premium),
-				rpl::mappers::_1 && rpl::mappers::_2),
-			tagsState->tagsTurnOff.events()));
-		rpl::duplicate(premium) | rpl::on_next([=](bool value) {
-			tagsButton->setToggleLocked(!value);
-		}, tagsButton->lifetime());
-
-		const auto send = [=,
-				weak = base::make_weak(tagsButton)](bool checked) {
-			session->data().chatsFilters().requestToggleTags(checked, [=] {
-				if ([[maybe_unused]] const auto strong = weak.get()) {
-					tagsState->tagsTurnOff.fire(!checked);
-				}
-			});
-		};
-
-		tagsButton->toggledValue(
-		) | rpl::filter([=](bool checked) {
-			const auto premium = session->premium();
-			// LoogriGram: the toggle still snaps back - folder tags are
-			// subscriber-only - without opening the pitch alongside.
-			if (checked && !premium) {
-				tagsState->tagsTurnOff.fire(false);
-			}
-			if (!premium) {
-				state->tagsButtonEnabled.fire(false);
-			} else {
-				state->tagsButtonEnabled.fire_copy(checked);
-			}
-			const auto proceed = premium
-				&& (checked != session->data().chatsFilters().tagsEnabled());
-			if (!proceed) {
-				tagsState->requestTimer.cancel();
-			}
-			return proceed;
-		}) | rpl::on_next([=](bool v) {
-			tagsState->sendCallback = [=] { send(v); };
-			tagsState->requestTimer.cancel();
-			tagsState->requestTimer.setCallback([=] { send(v); });
-			tagsState->requestTimer.callOnce(500);
-		}, tagsButton->lifetime());
-
-		tagsButton->lifetime().add([=] {
-			if (tagsState->requestTimer.isActive()) {
-				if (tagsState->sendCallback) {
-					tagsState->sendCallback();
-				}
-			}
-		});
-
-		return SectionBuilder::WidgetToAdd{};
-	}, [] {
-		return SearchEntry{
-			.id = u"folders/show-tags"_q,
-			.title = tr::lng_filters_enable_tags(tr::now),
-			.keywords = { u"tags"_q, u"colors"_q, u"premium"_q },
-		};
-	});
-
-	builder.addSkip();
-
-	builder.add([=](const WidgetContext &ctx) {
-		// LoogriGram: for a non-subscriber this line read "Subscribe to
-		// Telegram Premium to display folder names..." and was a link into
-		// the page selling it. Everyone gets the plain description of what
-		// the setting does; the toggle above stays locked, which is what
-		// says it cannot be turned on.
-		Ui::AddDividerText(
-			ctx.container,
-			tr::lng_filters_enable_tags_about(tr::rich));
 		return SectionBuilder::WidgetToAdd{};
 	});
 }
@@ -1251,7 +1130,6 @@ void Folders::setupContent() {
 
 		BuildTopContent(builder, std::move(showFinishedDup));
 		BuildFoldersListSection(builder, state.get());
-		BuildTagsSection(builder, state.get());
 		BuildViewSection(builder);
 
 		std::move(showFinished) | rpl::on_next([=] {
@@ -1297,16 +1175,6 @@ const auto kMeta = BuildHelper({
 			.keywords = { u"suggested"_q, u"recommended"_q },
 		};
 	});
-
-	if (builder.session()->premium()) {
-		builder.add(nullptr, [] {
-			return SearchEntry{
-				.id = u"folders/show-tags"_q,
-				.title = tr::lng_filters_enable_tags(tr::now),
-				.keywords = { u"tags"_q, u"colors"_q, u"premium"_q },
-			};
-		});
-	}
 
 	builder.add(nullptr, [] {
 		return SearchEntry{

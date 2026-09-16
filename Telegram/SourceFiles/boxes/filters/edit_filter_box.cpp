@@ -26,22 +26,18 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_chat_filters.h"
 #include "data/data_document.h"
 #include "data/data_peer.h"
-#include "data/data_peer_values.h" // Data::AmPremiumValue.
 #include "data/data_premium_limits.h"
 #include "data/data_session.h"
 #include "data/data_user.h"
 #include "history/history.h"
-#include "info/userpic/info_userpic_color_circle_button.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "settings/settings_common.h"
-#include "ui/chat/chats_filter_tag.h"
 #include "ui/controls/emoji_button_factory.h"
 #include "ui/controls/emoji_button.h"
 #include "ui/effects/animation_value_f.h"
 #include "ui/effects/animations.h"
 #include "ui/effects/panel_animation.h"
-#include "ui/empty_userpic.h"
 #include "ui/filter_icon_panel.h"
 #include "ui/filter_icons.h"
 #include "ui/layers/generic_box.h"
@@ -571,11 +567,6 @@ void EditFilterBox(
 	box->setCloseByOutsideClick(false);
 
 	const auto session = &window->session();
-	Data::AmPremiumValue(
-		session
-	) | rpl::on_next([=] {
-		box->closeBox();
-	}, box->lifetime());
 
 	const auto content = box->verticalLayout();
 	const auto current = state->title.current();
@@ -675,9 +666,7 @@ void EditFilterBox(
 		const auto info = data.document->sticker();
 		// LoogriGram: a premium custom emoji is not inserted, and no
 		// longer answers with the subscription pitch.
-		if (!info
-			|| info->setType != Data::StickersType::Emoji
-			|| window->session().premium()) {
+		if (!info || info->setType != Data::StickersType::Emoji) {
 			Data::InsertCustomEmoji(name, data.document);
 		}
 	}, name->lifetime());
@@ -789,192 +778,9 @@ void EditFilterBox(
 	Ui::AddDividerText(excludeInner, tr::lng_filters_exclude_about());
 	Ui::AddSkip(excludeInner);
 
-	{
-		const auto wrap = content->add(
-			object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-				content,
-				object_ptr<Ui::VerticalLayout>(content)));
-		const auto colors = wrap->entity();
-		const auto session = &window->session();
-
-		wrap->toggleOn(
-			rpl::combine(
-				session->data().chatsFilters().tagsEnabledValue(),
-				Data::AmPremiumValue(session)
-			) | rpl::map([=] (bool tagsEnabled, bool premium) {
-				return premium && tagsEnabled;
-			}),
-			anim::type::instant);
-
-		const auto &padding = st::defaultSubsectionTitlePadding;
-		const auto isPremium = session->premium();
-		const auto titleWrap = colors->add(
-			object_ptr<Ui::FixedHeightWidget>(
-				colors,
-				rect::m::sum::v(padding)
-					+ st::defaultSubsectionTitle.style.font->height));
-		const auto title = Ui::CreateChild<Ui::FlatLabel>(
-			titleWrap,
-			tr::lng_filters_tag_color_subtitle(),
-			st::defaultSubsectionTitle);
-		title->move(rect::m::pos::tl(padding));
-		const auto preview = Ui::CreateChild<Ui::RpWidget>(titleWrap);
-		rpl::combine(
-			title->sizeValue(),
-			titleWrap->widthValue()
-		) | rpl::on_next([=](const QSize &s, int w) {
-			const auto h = st::normalFont->height;
-			const auto left = padding.left()
-				+ s.width()
-				+ st::settingsFilterTagPreviewSkip;
-			preview->setGeometry(
-				left,
-				padding.top() + (s.height() - h) / 2,
-				w - left,
-				h);
-		}, preview->lifetime());
-
-		struct TagState {
-			Ui::Animations::Simple animation;
-			Ui::ChatsFilterTagContext context;
-			QImage frame;
-			float64 alpha = 1.;
-		};
-		const auto tag = preview->lifetime().make_state<TagState>();
-		tag->context.textContext = Core::TextContext({ .session = session });
-		const auto shift = st::settingsFilterTagPreviewSkip / 2;
-		preview->paintRequest() | rpl::on_next([=] {
-			auto p = QPainter(preview);
-			p.setOpacity(tag->alpha);
-			const auto size = tag->frame.size() / style::DevicePixelRatio();
-			const auto rect = QRect(
-				preview->width()
-					- size.width()
-					- st::boxRowPadding.right()
-					- shift,
-				(st::normalFont->height - size.height()) / 2,
-				size.width(),
-				size.height());
-			p.drawImage(rect.topLeft(), tag->frame);
-			if (p.opacity() < 1) {
-				p.setOpacity(1. - p.opacity());
-				p.setFont(st::normalFont);
-				p.setPen(st::windowSubTextFg);
-				p.drawText(
-					preview->rect().translated(-shift, 0) - st::boxRowPadding,
-					tr::lng_filters_tag_color_no(tr::now),
-					style::al_right);
-			}
-		}, preview->lifetime());
-
-		const auto side = st::userpicBuilderEmojiAccentColorSize;
-		const auto line = colors->add(
-			Ui::CreateSkipWidget(colors, side),
-			st::boxRowPadding);
-		auto buttons = std::vector<not_null<UserpicBuilder::CircleButton*>>();
-		const auto palette = [](int i) {
-			return Ui::EmptyUserpic::UserpicColor(i).color2;
-		};
-		const auto upperTitle = [=] {
-			auto value = state->title.current();
-			value.text = value.text.toUpper();
-			return value;
-		};
-		state->title.changes(
-		) | rpl::on_next([=] {
-			tag->context.color = palette(state->colorIndex.current())->c;
-			tag->frame = Ui::ChatsFilterTag(
-				upperTitle(),
-				tag->context);
-			preview->update();
-		}, preview->lifetime());
-		for (auto i = 0; i < kColorsCount; ++i) {
-			const auto button = Ui::CreateChild<UserpicBuilder::CircleButton>(
-				line);
-			button->resize(side, side);
-			const auto progress = isPremium
-				? (state->colorIndex.current() == i)
-				: (i == kNoTag);
-			button->setSelectedProgress(progress);
-			const auto color = palette(i);
-			button->setBrush(color);
-			if (progress == 1) {
-				tag->context.color = color->c;
-				tag->frame = Ui::ChatsFilterTag(
-					upperTitle(),
-					tag->context);
-				if (i == kNoTag) {
-					tag->alpha = 0.;
-				}
-			}
-			buttons.push_back(button);
-		}
-		for (auto i = 0; i < kColorsCount; ++i) {
-			const auto &button = buttons[i];
-			button->setClickedCallback([=] {
-				const auto was = state->colorIndex.current();
-				const auto now = i;
-				if (was != now) {
-					const auto c1 = palette(was);
-					const auto c2 = palette(now);
-					const auto a1 = (was == kNoTag) ? 0. : 1.;
-					const auto a2 = (now == kNoTag) ? 0. : 1.;
-					tag->animation.stop();
-					tag->animation.start([=](float64 progress) {
-						if (was >= 0) {
-							buttons[was]->setSelectedProgress(1. - progress);
-						}
-						buttons[now]->setSelectedProgress(progress);
-						tag->context.color = anim::color(c1, c2, progress);
-						tag->frame = Ui::ChatsFilterTag(
-							upperTitle(),
-							tag->context);
-						tag->alpha = anim::interpolateF(a1, a2, progress);
-						preview->update();
-					}, 0., 1., st::universalDuration);
-				}
-				state->colorIndex = now;
-			});
-			// LoogriGram: for a non-subscriber these colour buttons had
-			// their handler replaced by one that opened the folder-tags
-			// pitch. Choosing a colour is subscriber-only, so they simply
-			// do not respond.
-			if (!session->premium()) {
-				button->setClickedCallback(nullptr);
-			}
-		}
-		line->sizeValue() | rpl::on_next([=](const QSize &size) {
-			const auto totalWidth = buttons.size() * side;
-			const auto spacing = (size.width() - totalWidth)
-				/ (buttons.size() - 1);
-			for (auto i = 0; i < kColorsCount; ++i) {
-				const auto &button = buttons[i];
-				button->moveToLeft(i * (side + spacing), 0);
-			}
-		}, line->lifetime());
-
-		{
-			const auto last = buttons.back();
-			const auto icon = Ui::CreateChild<Ui::RpWidget>(last);
-			icon->resize(side, side);
-			icon->paintRequest() | rpl::on_next([=] {
-				auto p = QPainter(icon);
-				(session->premium()
-					? st::windowFilterSmallRemove.icon
-					: st::historySendDisabledIcon).paintInCenter(
-						p,
-						QRectF(icon->rect()),
-						st::historyPeerUserpicFg->c);
-			}, icon->lifetime());
-			icon->setAttribute(Qt::WA_TransparentForMouseEvents);
-			last->setBrush(st::historyPeerArchiveUserpicBg);
-		}
-
-		Ui::AddSkip(colors);
-		Ui::AddSkip(colors);
-		Ui::AddDividerText(colors, tr::lng_filters_tag_color_about());
-		Ui::AddSkip(colors);
-	}
+	// LoogriGram: a folder's tag colour picker sat here. Tags are a premium
+	// feature and the account is never premium; a colour the folder already
+	// has is kept as it is when the folder is saved.
 
 	const auto collect = [=]() -> std::optional<Data::ChatFilter> {
 		auto title = state->title.current();
