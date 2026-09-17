@@ -97,9 +97,7 @@ void ShowRichPasteToast(RichPasteToastArgs &&args) {
 	const auto undo = (args.offer == RichPasteOffer::Plain);
 	const auto field = (args.offer == RichPasteOffer::Field);
 	const auto markdown = (args.offer == RichPasteOffer::Markdown);
-	const auto locked = !undo
-		&& !field
-		&& !Iv::Editor::SessionPremium(session);
+	const auto locked = !undo && !field;
 	const auto button = locked
 		? QString()
 		: undo

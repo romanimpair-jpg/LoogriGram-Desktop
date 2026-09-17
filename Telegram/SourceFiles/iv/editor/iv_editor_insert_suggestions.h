@@ -62,7 +62,6 @@ class InsertSuggestions final : public Ui::RpWidget {
 public:
 	InsertSuggestions(
 		QWidget *parent,
-		rpl::producer<bool> premium,
 		bool media,
 		bool map);
 	~InsertSuggestions();
@@ -95,7 +94,6 @@ struct InsertSuggestionsDescriptor {
 	not_null<Ui::RpWidget*> host;
 	not_null<QWidget*> outer;
 	Fn<Ui::InputField*()> field;
-	rpl::producer<bool> premium;
 	Fn<void(InsertSuggestionCommand)> chosen;
 	bool media = false;
 	bool map = false;
@@ -128,7 +126,6 @@ private:
 	const Fn<void(InsertSuggestionCommand)> _chosen;
 	const bool _media = false;
 	const bool _map = false;
-	rpl::producer<bool> _premium;
 	base::unique_qptr<InsertSuggestions> _panel;
 	QRect _query;
 	bool _active = false;

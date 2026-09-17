@@ -1079,7 +1079,6 @@ Widget::Widget(
 			.field = [=] {
 				return _field->isHidden() ? nullptr : _field.get();
 			},
-			.premium = AmPremiumValue(_session),
 			.chosen = [=](InsertSuggestionCommand command) {
 				applyInsertSuggestion(command);
 			},

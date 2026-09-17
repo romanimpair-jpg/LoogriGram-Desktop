@@ -270,10 +270,6 @@ private:
 	Unexpected("Request media type.");
 }
 
-[[nodiscard]] bool CanUseRichMessages(not_null<Main::Session*> session) {
-	return session->premium();
-}
-
 enum class RichMessagePosting {
 	Disabled,
 	Premium,
@@ -1061,52 +1057,25 @@ private:
 		if (simple) {
 			return submitSimpleText(std::move(*simple));
 		}
-		if (!CanUseRichMessages(_session)) {
-			const auto page = _state->richPage();
-			if (!RichPageIsFlattenSafe(page)) {
-				ShowRichMessagesUnavailableToast(resolveShow());
-				return false;
-			}
-			OfferRichMessagePremiumChoice(
-				resolveShow(),
-				_session,
-				page,
-				[=] {
-					if (const auto strong = weak.get()) {
-						strong->submitWithoutFormatting(page);
-					}
-				},
-				_mode == Mode::Edit);
+		// LoogriGram: a page that cannot be sent as a plain message is a rich
+		// message, which only premium accounts may send. The rest of this
+		// function sent one; what remains offers to drop the formatting.
+		const auto page = _state->richPage();
+		if (!RichPageIsFlattenSafe(page)) {
+			ShowRichMessagesUnavailableToast(resolveShow());
 			return false;
 		}
-		auto page = std::shared_ptr<const RichPage>(
-			std::make_shared<RichPage>(_state->richPage()));
-		if (const auto error = ValidateRichMessage(*page, _limits)) {
-			showRichMessageLimitToast(*error);
-			return false;
-		}
-		if (welcomeTemplatesCompose() && welcomeTemplatesLimitReached()) {
-			showWelcomeTemplatesLimitToast();
-			return false;
-		}
-		_submittedPage = page;
-		if (submittedAttachmentsReady()
-			&& serializeSubmittedPage().status
-				== SerializeInputRichMessageStatus::EmptyContent) {
-			_submittedPage = nullptr;
-			showEmptySubmittedPageToast();
-			return false;
-		}
-		if (!applySubmittedLocalState(page)) {
-			_submittedPage = nullptr;
-			showToast(tr::lng_edit_error(tr::now));
-			return false;
-		}
-		_submitDeferred = false;
-		cancelRichDraftAutosave();
-		_backgroundHold = shared_from_this();
-		maybeContinueSubmittedRequest();
-		return true;
+		OfferRichMessagePremiumChoice(
+			resolveShow(),
+			_session,
+			page,
+			[=] {
+				if (const auto strong = weak.get()) {
+					strong->submitWithoutFormatting(page);
+				}
+			},
+			_mode == Mode::Edit);
+		return false;
 	}
 
 	[[nodiscard]] bool submitSimpleText(TextWithEntities text) {
@@ -2289,8 +2258,7 @@ private:
 				return true;
 			},
 			showError,
-			st::sendMediaPreviewSize,
-			_session->premium());
+			st::sendMediaPreviewSize);
 		if (!list) {
 			return;
 		}
@@ -4848,14 +4816,6 @@ bool CanAuthorRichMessages(not_null<Main::Session*> session) {
 	return RichMessagePostingMode(session) != RichMessagePosting::Disabled;
 }
 
-bool SessionPremium(not_null<Main::Session*> session) {
-	return session->premium();
-}
-
-rpl::producer<bool> AmPremiumValue(not_null<Main::Session*> session) {
-	return ::Data::AmPremiumValue(session);
-}
-
 bool IsEmojiDocument(not_null<DocumentData*> document) {
 	const auto info = document->sticker();
 	return info && (info->setType == ::Data::StickersType::Emoji);
@@ -4866,7 +4826,6 @@ bool PremiumEmojiForbidden(
 		not_null<PeerData*> peer,
 		not_null<DocumentData*> document) {
 	return document->isPremiumEmoji()
-		&& !session->premium()
 		&& !::Data::AllowEmojiWithoutPremium(peer, document);
 }
 

@@ -274,8 +274,7 @@ class ToolbarStarButton final : public Ui::RippleButton {
 public:
 	ToolbarStarButton(
 		QWidget *parent,
-		const style::IconButton &st,
-		not_null<Main::Session*> session);
+		const style::IconButton &st);
 
 	void setIconOverride(const style::icon *icon);
 	void setIconColorOverride(std::optional<QColor> color);
@@ -296,7 +295,6 @@ private:
 	const style::color *_rippleColorOverride = nullptr;
 	std::optional<QColor> _iconColorOverride;
 	QImage _frame;
-	bool _premium = false;
 
 };
 
@@ -584,16 +582,10 @@ private:
 
 ToolbarStarButton::ToolbarStarButton(
 	QWidget *parent,
-	const style::IconButton &st,
-	not_null<Main::Session*> session)
+	const style::IconButton &st)
 : RippleButton(parent, st.ripple)
 , _st(st) {
 	resize(_st.width, _st.height);
-	AmPremiumValue(session) | rpl::on_next([=](bool premium) {
-		_premium = premium;
-		_frame = QImage();
-		update();
-	}, lifetime());
 	style::PaletteChanged() | rpl::on_next([=] {
 		_frame = QImage();
 		update();
@@ -655,9 +647,7 @@ void ToolbarStarButton::validateFrame() {
 	} else {
 		icon->paint(p, position, width());
 	}
-	if (!_premium) {
-		PaintPremiumStar(p, rect());
-	}
+	PaintPremiumStar(p, rect());
 }
 
 void ToolbarStarButton::onStateChanged(
@@ -749,8 +739,7 @@ not_null<ToolbarStarButton*> Toolbar::addStarPillButton(
 		Fn<QString()> tooltip) {
 	auto owned = object_ptr<ToolbarStarButton>(
 		pill.get(),
-		st::ivEditorToolbarButton,
-		_session);
+		st::ivEditorToolbarButton);
 	const auto raw = owned.data();
 	raw->setIconOverride(icon);
 	SetupToolbarButtonState(
@@ -930,9 +919,7 @@ void Toolbar::buildPills() {
 }
 
 void Toolbar::fillHeadingMenu(not_null<Ui::PopupMenu*> menu) {
-	const auto starSize = SessionPremium(_session)
-		? 0
-		: st::ivEditorStyleMenuPremiumStarSize;
+	const auto starSize = st::ivEditorStyleMenuPremiumStarSize;
 	for (const auto level : std::array{ 1, 2, 3, 4, 5, 6 }) {
 		const auto icon = HeadingIcon(level);
 		const auto shortcut = (level == 1)
@@ -968,10 +955,7 @@ void Toolbar::fillBlockStyleMenu(not_null<Ui::PopupMenu*> menu) {
 			_editor->insertBlock({ .type = type });
 		}
 	};
-	const auto premium = SessionPremium(_session);
-	const auto starSize = premium
-		? 0
-		: st::ivEditorStyleMenuPremiumStarSize;
+	const auto starSize = st::ivEditorStyleMenuPremiumStarSize;
 	auto sub = std::make_unique<Ui::PopupMenu>(menu, st::popupMenuWithIcons);
 	fillHeadingMenu(not_null<Ui::PopupMenu*>(sub.get()));
 	menu->addAction(
@@ -1069,10 +1053,7 @@ void Toolbar::showBlockStyleMenu(not_null<Ui::IconButton*> button) {
 
 void Toolbar::fillTextStyleMenu(not_null<Ui::PopupMenu*> menu) {
 	using Action = Widget::ToolbarFormatAction;
-	const auto premium = SessionPremium(_session);
-	const auto starSize = premium
-		? 0
-		: st::ivEditorStyleMenuPremiumStarSize;
+	const auto starSize = st::ivEditorStyleMenuPremiumStarSize;
 	const auto add = [&](
 			Action action,
 			const QString &label,
@@ -1150,9 +1131,7 @@ void Toolbar::showTextStyleMenu(not_null<Ui::IconButton*> button) {
 }
 
 void Toolbar::fillAttachMenu(not_null<Ui::PopupMenu*> menu) {
-	const auto starSize = SessionPremium(_session)
-		? 0
-		: st::ivEditorStyleMenuPremiumStarSize;
+	const auto starSize = st::ivEditorStyleMenuPremiumStarSize;
 	Menu::AddActiveColorAction(
 		menu,
 		tr::lng_attach_photo_or_video(tr::now),
@@ -1233,9 +1212,7 @@ void Toolbar::fillListStyleMenu(not_null<Ui::PopupMenu*> menu) {
 			_editor->insertBlock({ .type = type });
 		}
 	};
-	const auto starSize = SessionPremium(_session)
-		? 0
-		: st::ivEditorStyleMenuPremiumStarSize;
+	const auto starSize = st::ivEditorStyleMenuPremiumStarSize;
 	const auto lists = !_editor || _editor->canInsertListAtCaret();
 	const auto addInserts = [=](not_null<Ui::PopupMenu*> target) {
 		if (lists) {
@@ -1839,10 +1816,8 @@ void WindowHost::Impl::setupWindow(ShowWindowDescriptor &&descriptor) {
 		const auto session = descriptor.session;
 		const auto state = _state;
 		const auto editor = not_null<Widget*>(_editor.data());
-		const auto premium = lock->lifetime().make_state<bool>(true);
 		const auto refresh = [=] {
-			const auto locked = !*premium
-				&& !state->articleEmpty()
+			const auto locked = !state->articleEmpty()
 				&& !Iv::CanSerializeAsSimple(state->richPage(), session);
 			lock->setVisible(locked);
 			if (locked) {
@@ -1850,12 +1825,7 @@ void WindowHost::Impl::setupWindow(ShowWindowDescriptor &&descriptor) {
 			}
 			updateBottomMask();
 		};
-		AmPremiumValue(
-			session
-		) | rpl::on_next([=](bool value) {
-			*premium = value;
-			refresh();
-		}, lock->lifetime());
+		refresh();
 		editor->toolbarStateChanges() | rpl::on_next([=] {
 			refresh();
 		}, lock->lifetime());

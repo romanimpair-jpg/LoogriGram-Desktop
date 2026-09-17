@@ -258,7 +258,6 @@ public:
 	Inner(
 		QWidget *parent,
 		const style::Menu &st,
-		rpl::producer<bool> premium,
 		bool media,
 		bool map);
 
@@ -293,7 +292,6 @@ private:
 	const bool _map = false;
 	std::vector<not_null<const Entry*>> _entries;
 	QImage _premiumStar;
-	bool _premium = false;
 	int _selected = -1;
 	int _pressed = -1;
 	rpl::event_stream<Command> _chosen;
@@ -304,7 +302,6 @@ private:
 InsertSuggestions::Inner::Inner(
 	QWidget *parent,
 	const style::Menu &st,
-	rpl::producer<bool> premium,
 	bool media,
 	bool map)
 : RpWidget(parent)
@@ -316,15 +313,6 @@ InsertSuggestions::Inner::Inner(
 , _map(map) {
 	setMouseTracking(true);
 
-	std::move(premium) | rpl::on_next([=](bool value) {
-		if (_premium == value) {
-			return;
-		}
-		_premium = value;
-		refreshPremiumStar();
-		update();
-	}, lifetime());
-
 	style::PaletteChanged() | rpl::on_next([=] {
 		refreshPremiumStar();
 		update();
@@ -334,9 +322,7 @@ InsertSuggestions::Inner::Inner(
 }
 
 void InsertSuggestions::Inner::refreshPremiumStar() {
-	_premiumStar = _premium
-		? QImage()
-		: PremiumStarImage(st::ivEditorStyleMenuPremiumStarSize);
+	_premiumStar = PremiumStarImage(st::ivEditorStyleMenuPremiumStarSize);
 }
 
 int InsertSuggestions::Inner::rowHeight() const {
@@ -527,7 +513,6 @@ void InsertSuggestions::Inner::leaveEventHook(QEvent *e) {
 
 InsertSuggestions::InsertSuggestions(
 	QWidget *parent,
-	rpl::producer<bool> premium,
 	bool media,
 	bool map)
 : RpWidget(parent)
@@ -539,7 +524,6 @@ InsertSuggestions::InsertSuggestions(
 , _inner(_scroll->setOwnedWidget(object_ptr<Inner>(
 	_scroll.data(),
 	_st,
-	std::move(premium),
 	media,
 	map))) {
 	_scroll->show();
@@ -689,8 +673,7 @@ InsertSuggestionsController::InsertSuggestionsController(
 , _field(std::move(descriptor.field))
 , _chosen(std::move(descriptor.chosen))
 , _media(descriptor.media)
-, _map(descriptor.map)
-, _premium(std::move(descriptor.premium)) {
+, _map(descriptor.map) {
 }
 
 InsertSuggestionsController::~InsertSuggestionsController() = default;
@@ -705,7 +688,6 @@ void InsertSuggestionsController::ensurePanel() {
 	}
 	_panel = base::make_unique_q<InsertSuggestions>(
 		_outer,
-		std::move(_premium),
 		_media,
 		_map);
 	_panel->chosen() | rpl::on_next([=](InsertSuggestionCommand command) {
