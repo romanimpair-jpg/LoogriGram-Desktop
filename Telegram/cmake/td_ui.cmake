@@ -39,7 +39,6 @@ set(style_files
     settings/sections/settings_notifications.style
     ui/boxes/calendar_box.style
     ui/boxes/choose_date_time.style
-    ui/boxes/collectible_info_box.style
     ui/boxes/country_select_box.style
     ui/widgets/color_editor.style
     ui/widgets/marquee_label.style
@@ -352,8 +351,6 @@ PRIVATE
     ui/boxes/choose_language_box.h
     ui/boxes/choose_time.cpp
     ui/boxes/choose_time.h
-    ui/boxes/collectible_info_box.cpp
-    ui/boxes/collectible_info_box.h
     ui/boxes/confirm_box.cpp
     ui/boxes/confirm_box.h
     ui/boxes/confirm_phone_box.cpp

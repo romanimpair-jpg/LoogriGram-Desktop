@@ -1414,7 +1414,7 @@ Section DetailsFiller::makeInfo() {
 			return;
 		}
 		static const auto kPrefix = QRegularExpression(u"^internal:"
-			"(collectible_username|username_link|username_regular)/"
+			"(username_link|username_regular)/"
 			"([a-zA-Z0-9\\-\\_\\.]+)@"_q);
 		const auto match = kPrefix.match(url);
 		if (!match.hasMatch()) {
@@ -1469,7 +1469,6 @@ Section DetailsFiller::makeInfo() {
 				} else {
 					phoneLabel->fillContextMenu(request);
 				}
-				AddPhoneMenu(request.menu, user);
 				AddPhoneSpoilerMenu(request.menu, user);
 			};
 			phoneLabel->setContextMenuHook(hook);

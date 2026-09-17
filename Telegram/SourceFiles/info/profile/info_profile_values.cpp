@@ -146,14 +146,10 @@ rpl::producer<TextWithEntities> PhoneOrHiddenValue(not_null<UserData*> user) {
 			const QString &username,
 			const QString &about,
 			const QString &hidden) {
-		if (phone.text.isEmpty() && username.isEmpty() && about.isEmpty()) {
-			return tr::marked(hidden);
-		} else if (IsCollectiblePhone(user)) {
-			return tr::link(phone, u"internal:collectible_phone/"_q
-				+ user->phone() + '@' + QString::number(user->id.value));
-		} else {
-			return phone;
-		}
+		// LoogriGram: a number sold on Fragment linked to its sale record.
+		return (phone.text.isEmpty() && username.isEmpty() && about.isEmpty())
+			? tr::marked(hidden)
+			: phone;
 	});
 }
 
@@ -197,9 +193,9 @@ QString UsernameUrl(
 		not_null<PeerData*> peer,
 		const QString &username,
 		bool link) {
-	const auto type = !peer->isUsernameEditable(username)
-		? u"collectible_username"_q
-		: link
+	// LoogriGram: a username that cannot be edited was taken to be one
+	// bought on Fragment, and opened its sale record instead of copying.
+	const auto type = link
 		? u"username_link"_q
 		: u"username_regular"_q;
 	return u"internal:"_q

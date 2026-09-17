@@ -14,7 +14,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_session.h"
 #include "data/data_user.h"
 #include "lang/lang_keys.h"
-#include "main/main_app_config_values.h"
 #include "main/main_session.h"
 #include "mtproto/sender.h"
 #include "ui/layers/generic_box.h"
@@ -50,8 +49,6 @@ protected:
 private:
 	void updateFail(const QString &error);
 	void checkFail(const QString &error);
-
-	void checkInfoPurchaseAvailable();
 
 	void check();
 	void changed();
@@ -253,15 +250,6 @@ void UsernameEditor::checkInfoChange() {
 	}
 }
 
-void UsernameEditor::checkInfoPurchaseAvailable() {
-	_username->setFocus();
-	_username->showError();
-	_errorText = u".bad."_q;
-
-	_checkInfoChanged.fire(
-		UsernameCheckInfo::PurchaseAvailable(_checkUsername, _peer));
-}
-
 void UsernameEditor::updateFail(const QString &error) {
 	if ((error == u"USERNAME_NOT_MODIFIED"_q)
 		|| (_sentUsername == editableUsername())) {
@@ -279,13 +267,14 @@ void UsernameEditor::updateFail(const QString &error) {
 		_errorText = tr::lng_username_invalid(tr::now);
 		checkInfoChange();
 	} else if ((error == u"USERNAME_OCCUPIED"_q)
-		|| (error == u"USERNAMES_UNAVAILABLE"_q)) {
+		|| (error == u"USERNAMES_UNAVAILABLE"_q)
+		|| (error == u"USERNAME_PURCHASE_AVAILABLE"_q)) {
+		// LoogriGram: a username for sale on Fragment linked to the sale.
+		// It is simply taken.
 		_username->setFocus();
 		_username->showError();
 		_errorText = tr::lng_username_occupied(tr::now);
 		checkInfoChange();
-	} else if (error == u"USERNAME_PURCHASE_AVAILABLE"_q) {
-		checkInfoPurchaseAvailable();
 	} else {
 		_username->setFocus();
 	}
@@ -295,12 +284,11 @@ void UsernameEditor::checkFail(const QString &error) {
 	if (error == u"USERNAME_INVALID"_q) {
 		_errorText = tr::lng_username_invalid(tr::now);
 		checkInfoChange();
-	} else if ((error == u"USERNAME_OCCUPIED"_q)
-		&& (_checkUsername != editableUsername())) {
+	} else if (((error == u"USERNAME_OCCUPIED"_q)
+			&& (_checkUsername != editableUsername()))
+		|| (error == u"USERNAME_PURCHASE_AVAILABLE"_q)) {
 		_errorText = tr::lng_username_occupied(tr::now);
 		checkInfoChange();
-	} else if (error == u"USERNAME_PURCHASE_AVAILABLE"_q) {
-		checkInfoPurchaseAvailable();
 	} else {
 		_goodText = QString();
 		_username->setFocus();
@@ -341,15 +329,8 @@ void FillUsernamesBox(
 				return d1.append("\n\n").append(std::move(d2));
 			});
 		}
-		if (const auto url = AppConfig::FragmentLink(&peer->session())) {
-			const auto link = tr::link(
-				tr::lng_bot_username_description1_link(tr::now),
-				*url);
-			return tr::lng_bot_username_description1(
-				lt_link,
-				rpl::single(link),
-				tr::rich);
-		}
+		// LoogriGram: for a bot this pointed at Fragment to buy more
+		// usernames.
 		return rpl::single<TextWithEntities>({});
 	}();
 	container->add(object_ptr<Ui::DividerLabel>(
@@ -440,26 +421,4 @@ void AddUsernameCheckLabel(
 		label->resizeToWidth(w - padding.left() - padding.right());
 	}, label->lifetime());
 	Ui::AddSkip(container, skip);
-}
-
-UsernameCheckInfo UsernameCheckInfo::PurchaseAvailable(
-		const QString &username,
-		not_null<PeerData*> peer) {
-	if (const auto fragmentLink = AppConfig::FragmentLink(&peer->session())) {
-		return {
-			.type = UsernameCheckInfo::Type::Default,
-			.text = tr::lng_username_purchase_available(
-				tr::now,
-				lt_link,
-				tr::link(
-					tr::lng_username_purchase_available_link(tr::now),
-					(*fragmentLink) + u"/username/"_q + username),
-				tr::rich),
-		};
-	} else {
-		return {
-			.type = UsernameCheckInfo::Type::Error,
-			.text = { u"INTERNAL_SERVER_ERROR"_q },
-		};
-	}
 }

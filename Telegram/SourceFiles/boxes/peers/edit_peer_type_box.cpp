@@ -773,11 +773,9 @@ void Controller::checkUsernameAvailability() {
 			}
 		} else if (type == u"USERNAME_INVALID"_q) {
 			showUsernameError(tr::lng_create_channel_link_invalid());
-		} else if (type == u"USERNAME_PURCHASE_AVAILABLE"_q) {
-			_goodUsername = false;
-			_usernameCheckInfo.fire(
-				UsernameCheckInfo::PurchaseAvailable(checking, _peer));
-		} else if (type == u"USERNAME_OCCUPIED"_q && checking != username) {
+		} else if ((type == u"USERNAME_PURCHASE_AVAILABLE"_q)
+			|| (type == u"USERNAME_OCCUPIED"_q && checking != username)) {
+			// LoogriGram: for sale on Fragment linked to the sale; taken.
 			showUsernameError(tr::lng_create_channel_link_occupied());
 		}
 	}).send();

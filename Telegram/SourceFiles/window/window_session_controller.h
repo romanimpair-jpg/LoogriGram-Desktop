@@ -311,10 +311,6 @@ public:
 		Dialogs::Key inChat,
 		PeerData *searchFrom = nullptr);
 
-	void resolveCollectible(
-		PeerId ownerId,
-		const QString &entity,
-		Fn<void(QString)> fail = nullptr);
 	void resolveConferenceCall(
 		QString slug,
 		FullMsgId contextId);
@@ -378,10 +374,6 @@ private:
 	History *_showingRepliesHistory = nullptr;
 	MsgId _showingRepliesRootId = 0;
 	mtpRequestId _showingRepliesRequestId = 0;
-
-
-	QString _collectibleEntity;
-	mtpRequestId _collectibleRequestId = 0;
 
 	QString _conferenceCallSlug;
 	MsgId _conferenceCallInviteMsgId;

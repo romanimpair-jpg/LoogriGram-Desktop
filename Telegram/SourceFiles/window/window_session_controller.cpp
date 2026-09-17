@@ -89,7 +89,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/group/calls_group_common.h"
 #include "calls/group/calls_group_invite_controller.h"
 #include "ui/boxes/calendar_box.h"
-#include "ui/boxes/collectible_info_box.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/dynamic_thumbnails.h"
 #include "ui/ui_utility.h"
@@ -187,27 +186,6 @@ private:
 		}
 	}
 	return false;
-}
-
-[[nodiscard]] Ui::CollectibleInfo Parse(
-		const QString &entity,
-		not_null<PeerData*> owner,
-		const MTPfragment_CollectibleInfo &info) {
-	const auto &data = info.data();
-	return {
-		.entity = entity,
-		.copyText = (entity.startsWith('+')
-			? QString()
-			: owner->session().createInternalLinkFull(entity)),
-		.ownerUserpic = Ui::MakeUserpicThumbnail(owner, true),
-		.ownerName = owner->name(),
-		.cryptoAmount = data.vcrypto_amount().v,
-		.amount = data.vamount().v,
-		.cryptoCurrency = qs(data.vcrypto_currency()),
-		.currency = qs(data.vcurrency()),
-		.url = qs(data.vurl()),
-		.date = data.vpurchase_date().v,
-	};
 }
 
 MainWindowShow::MainWindowShow(not_null<SessionController*> controller)
@@ -858,34 +836,6 @@ void SessionNavigation::showPeerByLinkResolved(
 // ended in one of five boxes that either sold a subscription or offered to
 // gift one. Every restriction it was offered against still reports itself;
 // what is gone is the offer to lift it.
-
-void SessionNavigation::resolveCollectible(
-		PeerId ownerId,
-		const QString &entity,
-		Fn<void(QString)> fail) {
-	if (_collectibleEntity == entity) {
-		return;
-	}
-	_collectibleEntity = entity;
-	_api.request(base::take(_collectibleRequestId)).cancel();
-	_collectibleRequestId = _api.request(MTPfragment_GetCollectibleInfo(
-		((Ui::DetectCollectibleType(entity) == Ui::CollectibleType::Phone)
-			? MTP_inputCollectiblePhone(MTP_string(entity))
-			: MTP_inputCollectibleUsername(MTP_string(entity)))
-	)).done([=](const MTPfragment_CollectibleInfo &result) {
-		const auto entity = base::take(_collectibleEntity);
-		_collectibleRequestId = 0;
-		uiShow()->show(Box(
-			Ui::CollectibleInfoBox,
-			Parse(entity, _session->data().peer(ownerId), result)));
-	}).fail([=](const MTP::Error &error) {
-		_collectibleEntity = QString();
-		_collectibleRequestId = 0;
-		if (fail) {
-			fail(error.type());
-		}
-	}).send();
-}
 
 void SessionNavigation::resolveConferenceCall(
 		QString slug,

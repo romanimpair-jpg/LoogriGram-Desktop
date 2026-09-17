@@ -24,10 +24,6 @@ void UsernamesBoxWithCallback(
 	Fn<void()> onSaved);
 
 struct UsernameCheckInfo final {
-	[[nodiscard]] static UsernameCheckInfo PurchaseAvailable(
-		const QString &username,
-		not_null<PeerData*> peer);
-
 	enum class Type {
 		Good,
 		Error,

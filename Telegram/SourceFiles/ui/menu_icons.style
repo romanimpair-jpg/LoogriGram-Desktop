@@ -165,7 +165,6 @@ menuIconCaptionShow: icon {{ "menu/caption_show", menuIconColor }};
 menuIconCaptionHide: icon {{ "menu/caption_hide", menuIconColor }};
 menuIconAsTopics: icon {{ "menu/mode_topics", menuIconColor }};
 menuIconAsMessages: icon {{ "menu/mode_messages", menuIconColor }};
-menuIconTagSell: icon {{ "menu/tag_sell", menuIconColor }};
 menuIconGroupsHide: icon {{ "menu/hide_members", menuIconColor }};
 menuIconFont: icon {{ "menu/fonts", menuIconColor }};
 menuIconFactcheck: icon {{ "menu/factcheck", menuIconColor }};

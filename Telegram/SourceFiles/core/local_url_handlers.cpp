@@ -1080,48 +1080,6 @@ bool ShowEditPersonalChannel(
 	return true;
 }
 
-bool ShowCollectiblePhone(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	const auto phone = match->captured(1);
-	const auto peerId = PeerId(match->captured(2).toULongLong());
-	controller->resolveCollectible(
-		peerId,
-		phone.startsWith('+') ? phone : '+' + phone);
-	return true;
-}
-
-bool ShowCollectibleUsername(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	const auto username = match->captured(1);
-	const auto peerId = PeerId(match->captured(2).toULongLong());
-	const auto weak = base::make_weak(controller);
-	controller->resolveCollectible(peerId, username, [=](const QString &e) {
-		if (e == u"COLLECTIBLE_NOT_FOUND"_q) {
-			if (const auto strong = weak.get()) {
-				TextUtilities::SetClipboardText({
-					strong->session().createInternalLinkFull(username)
-				});
-				strong->showToast({
-					.text = { tr::lng_username_copied(tr::now) },
-					.iconLottie = u"toast/voip_invite"_q,
-					.iconLottieSize = st::toastLottieIconSize,
-				});
-			}
-		}
-	});
-	return true;
-}
-
 bool CopyUsernameLink(
 		Window::SessionController *controller,
 		const Match &match,
@@ -1591,14 +1549,6 @@ const std::vector<LocalUrlHandler> &InternalUrlHandlers() {
 		{
 			u"^edit_personal_channel(?::(?:(\\d{2,})|(remove)))?$"_q,
 			ShowEditPersonalChannel,
-		},
-		{
-			u"^collectible_phone/([\\+0-9\\-\\s]+)@([0-9]+)$"_q,
-			ShowCollectiblePhone,
-		},
-		{
-			u"^collectible_username/([a-zA-Z0-9\\-\\_\\.]+)@([0-9]+)$"_q,
-			ShowCollectibleUsername,
 		},
 		{
 			u"^username_link/([a-zA-Z0-9\\-\\_\\.]+)@([0-9]+)$"_q,
