@@ -964,7 +964,6 @@ bool ShowEditBirthday(
 			) | rpl::map([=](const Api::UserPrivacy::Rule &value) {
 				return (value.option == Api::UserPrivacy::Option::Contacts)
 					&& value.always.peers.empty()
-					&& !value.always.premiums
 					&& value.never.peers.empty();
 			}) | rpl::distinct_until_changed();
 			Ui::AddSkip(container);
@@ -1113,25 +1112,6 @@ bool CopyUsername(
 		.iconLottie = u"toast/copy"_q,
 		.iconLottieSize = st::toastLottieIconSize,
 	});
-	return true;
-}
-
-bool EditPaidMessagesFee(
-		Window::SessionController *controller,
-		const Match &match,
-		const QVariant &context) {
-	if (!controller) {
-		return false;
-	}
-	const auto peerId = PeerId(match->captured(1).toULongLong());
-	if (const auto id = peerToChannel(peerId)) {
-		const auto channel = controller->session().data().channelLoaded(id);
-		if (channel && channel->canEditPermissions()) {
-			ShowEditChatPermissions(controller, channel);
-		}
-	} else {
-		controller->show(Box(EditMessagesPrivacyBox, controller));
-	}
 	return true;
 }
 
@@ -1557,10 +1537,6 @@ const std::vector<LocalUrlHandler> &InternalUrlHandlers() {
 		{
 			u"^username_regular/([a-zA-Z0-9\\-\\_\\.]+)@([0-9]+)$"_q,
 			CopyUsername,
-		},
-		{
-			u"^edit_paid_messages_fee/([0-9]+)$"_q,
-			EditPaidMessagesFee,
 		},
 		{
 			u"^common_groups/([0-9]+)$"_q,

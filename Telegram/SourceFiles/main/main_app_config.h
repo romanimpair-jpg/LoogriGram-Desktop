@@ -40,8 +40,6 @@ public:
 	[[nodiscard]] rpl::producer<> refreshed() const;
 	[[nodiscard]] rpl::producer<> value() const;
 
-	[[nodiscard]] bool newRequirePremiumFree() const;
-
 	[[nodiscard]] auto ignoredRestrictionReasons() const
 		-> const std::vector<QString> & {
 		return _ignoreRestrictionReasons;

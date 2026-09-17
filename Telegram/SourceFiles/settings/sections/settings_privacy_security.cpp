@@ -54,7 +54,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/sections/settings_websites.h"
 #include "storage/storage_domain.h"
 #include "ui/boxes/confirm_box.h"
-#include "ui/effects/premium_graphics.h"
 #include "ui/layers/generic_box.h"
 #include "ui/rect.h"
 #include "ui/text/format_values.h"
@@ -98,23 +97,13 @@ QString PrivacyBase(Privacy::Key key, const Privacy::Rule &rule) {
 	default:
 		switch (rule.option) {
 		case Option::Everyone:
-			return rule.never.miniapps
-				? tr::lng_edit_privacy_no_miniapps(tr::now)
-				: tr::lng_edit_privacy_everyone(tr::now);
+			return tr::lng_edit_privacy_everyone(tr::now);
 		case Option::Contacts:
-			return rule.always.premiums
-				? tr::lng_edit_privacy_contacts_and_premium(tr::now)
-				: rule.always.miniapps
-				? tr::lng_edit_privacy_contacts_and_miniapps(tr::now)
-				: tr::lng_edit_privacy_contacts(tr::now);
+			return tr::lng_edit_privacy_contacts(tr::now);
 		case Option::CloseFriends:
 			return tr::lng_edit_privacy_close_friends(tr::now);
 		case Option::Nobody:
-			return rule.always.premiums
-				? tr::lng_edit_privacy_premium(tr::now)
-				: rule.always.miniapps
-				? tr::lng_edit_privacy_miniapps(tr::now)
-				: tr::lng_edit_privacy_nobody(tr::now);
+			return tr::lng_edit_privacy_nobody(tr::now);
 		}
 		Unexpected("Value in Privacy::Option.");
 	}
@@ -834,25 +823,8 @@ void BuildPrivacySection(SectionBuilder &builder) {
 
 	// LoogriGram: "Voice Messages" privacy sat here. Restricting who can send
 	// them is premium-only, and its box closed itself for everyone else.
-
-	const auto privacy = &session->api().globalPrivacy();
-	auto messagesLabel = privacy->newRequirePremium(
-	) | rpl::map([=](bool requirePremium) {
-		return requirePremium
-			? tr::lng_edit_privacy_contacts_and_premium()
-			: tr::lng_edit_privacy_everyone();
-	}) | rpl::flatten_latest();
-
-	builder.addButton({
-		.id = u"privacy/messages"_q,
-		.title = tr::lng_settings_messages_privacy(),
-		.st = &st::settingsButtonNoIcon,
-		.label = std::move(messagesLabel),
-		.onClick = [=] {
-			controller->show(Box(EditMessagesPrivacyBox, controller));
-		},
-		.keywords = { u"messages"_q, u"new"_q, u"unknown"_q },
-	});
+	// "Messages" followed it: "Everybody" or "My Contacts and Premium Users",
+	// the second premium-only to pick. See the note in edit_privacy_box.cpp.
 
 	builder.addPrivacyButton({
 		.id = u"privacy/birthday"_q,

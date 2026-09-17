@@ -954,17 +954,6 @@ void RegisterSettingsHandlers(Router &router) {
 	});
 
 	router.add(u"settings"_q, {
-		.path = u"privacy/messages"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			ctx.controller->show(Box(EditMessagesPrivacyBox, ctx.controller));
-			return Result::Handled;
-		}},
-	});
-
-	router.add(u"settings"_q, {
 		.path = u"privacy/invites"_q,
 		.action = CodeBlock{ [](const Context &ctx) {
 			return ShowPrivacyBox(

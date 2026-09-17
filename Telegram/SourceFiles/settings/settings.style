@@ -157,7 +157,6 @@ settingsPrivacyOption: Checkbox(settingsCheckbox) {
 settingsPrivacySecurityPadding: 12px;
 settingsPrivacySkip: 14px;
 settingsPrivacySkipTop: 4px;
-settingsPrivacyPremium: icon{{ "profile_premium", premiumButtonFg }};
 
 settingsCloudPasswordIconSize: 100px;
 
@@ -561,17 +560,6 @@ settingsLevelBadgeLock: IconEmoji{
 	padding: margins(0px, 4px, 0px, 0px);
 	useIconColor: true;
 }
-
-messagePrivacyTopSkip: 8px;
-messagePrivacyRadioSkip: 6px;
-messagePrivacyBottomSkip: 10px;
-messagePrivacyCheck: Checkbox(settingsPrivacyOption) {
-	textPosition: point(13px, 1px);
-}
-// LoogriGram: messagePrivacySubscribe styled the "Subscribe to Telegram
-// Premium" row under the message and voice privacy options. The lock beside
-// the options it sold access to is still drawn, and stays.
-messagePrivacyLock: icon {{ "info/info_rights_lock", checkboxFg }};
 
 peerAppearanceButton: SettingsButton(settingsButtonLight) {
 	padding: margins(60px, 8px, 22px, 8px);

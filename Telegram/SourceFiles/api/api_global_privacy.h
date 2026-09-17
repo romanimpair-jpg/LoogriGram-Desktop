@@ -46,19 +46,13 @@ public:
 	[[nodiscard]] bool hideReadTimeCurrent() const;
 	[[nodiscard]] rpl::producer<bool> hideReadTime() const;
 
-	[[nodiscard]] bool newRequirePremiumCurrent() const;
-	[[nodiscard]] rpl::producer<bool> newRequirePremium() const;
-
-	void updateMessagesPrivacy(bool requirePremium);
-
 private:
 	void apply(const MTPGlobalPrivacySettings &settings);
 
 	void update(
 		bool archiveAndMute,
 		UnarchiveOnNewMessage unarchiveOnNewMessage,
-		bool hideReadTime,
-		bool newRequirePremium);
+		bool hideReadTime);
 
 	const not_null<Main::Session*> _session;
 	MTP::Sender _api;
@@ -68,7 +62,6 @@ private:
 		= UnarchiveOnNewMessage::None;
 	rpl::variable<bool> _showArchiveAndMute = false;
 	rpl::variable<bool> _hideReadTime = false;
-	rpl::variable<bool> _newRequirePremium = false;
 	std::vector<Fn<void()>> _callbacks;
 
 };

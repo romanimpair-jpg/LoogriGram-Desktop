@@ -87,8 +87,7 @@ void GlobalPrivacy::updateHideReadTime(bool hide) {
 	update(
 		archiveAndMuteCurrent(),
 		unarchiveOnNewMessageCurrent(),
-		hide,
-		newRequirePremiumCurrent());
+		hide);
 }
 
 bool GlobalPrivacy::hideReadTimeCurrent() const {
@@ -99,22 +98,6 @@ rpl::producer<bool> GlobalPrivacy::hideReadTime() const {
 	return _hideReadTime.value();
 }
 
-bool GlobalPrivacy::newRequirePremiumCurrent() const {
-	return _newRequirePremium.current();
-}
-
-rpl::producer<bool> GlobalPrivacy::newRequirePremium() const {
-	return _newRequirePremium.value();
-}
-
-void GlobalPrivacy::updateMessagesPrivacy(bool requirePremium) {
-	update(
-		archiveAndMuteCurrent(),
-		unarchiveOnNewMessageCurrent(),
-		hideReadTimeCurrent(),
-		requirePremium);
-}
-
 // LoogriGram: a paid reaction could be shown as coming from you, from one of
 // your channels or anonymously, and the choice was a server-side privacy
 // setting. Paid reactions are deleted, so there is nothing to attribute.
@@ -123,8 +106,7 @@ void GlobalPrivacy::updateArchiveAndMute(bool value) {
 	update(
 		value,
 		unarchiveOnNewMessageCurrent(),
-		hideReadTimeCurrent(),
-		newRequirePremiumCurrent());
+		hideReadTimeCurrent());
 }
 
 void GlobalPrivacy::updateUnarchiveOnNewMessage(
@@ -132,23 +114,22 @@ void GlobalPrivacy::updateUnarchiveOnNewMessage(
 	update(
 		archiveAndMuteCurrent(),
 		value,
-		hideReadTimeCurrent(),
-		newRequirePremiumCurrent());
+		hideReadTimeCurrent());
 }
 
 void GlobalPrivacy::update(
 		bool archiveAndMute,
 		UnarchiveOnNewMessage unarchiveOnNewMessage,
-		bool hideReadTime,
-		bool newRequirePremium) {
+		bool hideReadTime) {
 	using Flag = MTPDglobalPrivacySettings::Flag;
 
 	_api.request(_requestId).cancel();
-	const auto newRequirePremiumAllowed
-		= _session->appConfig().newRequirePremiumFree();
 	// LoogriGram: which gifts others may send, and whether a gift button
 	// shows in their message field, are premium-only settings; without a
 	// subscription upstream always sends them empty, and so does this.
+	// "Only contacts and Premium users may message me" is premium-only too
+	// and is never set, so a rule set elsewhere is cleared by any change
+	// made here.
 	const auto flags = Flag()
 		| (archiveAndMute
 			? Flag::f_archive_and_mute_new_noncontact_peers
@@ -160,9 +141,6 @@ void GlobalPrivacy::update(
 			? Flag::f_keep_archived_folders
 			: Flag())
 		| (hideReadTime ? Flag::f_hide_read_marks : Flag())
-		| ((newRequirePremium && newRequirePremiumAllowed)
-			? Flag::f_new_noncontact_peers_require_premium
-			: Flag())
 		| Flag::f_disallowed_gifts;
 	_requestId = _api.request(MTPaccount_SetGlobalPrivacySettings(
 		MTP_globalPrivacySettings(
@@ -172,20 +150,12 @@ void GlobalPrivacy::update(
 	)).done([=](const MTPGlobalPrivacySettings &result) {
 		_requestId = 0;
 		apply(result);
-	}).fail([=](const MTP::Error &error) {
+	}).fail([=] {
 		_requestId = 0;
-		if (error.type() == u"PREMIUM_ACCOUNT_REQUIRED"_q) {
-			update(
-				archiveAndMute,
-				unarchiveOnNewMessage,
-				hideReadTime,
-				false);
-		}
 	}).send();
 	_archiveAndMute = archiveAndMute;
 	_unarchiveOnNewMessage = unarchiveOnNewMessage;
 	_hideReadTime = hideReadTime;
-	_newRequirePremium = newRequirePremium;
 }
 
 void GlobalPrivacy::apply(const MTPGlobalPrivacySettings &settings) {
@@ -197,7 +167,6 @@ void GlobalPrivacy::apply(const MTPGlobalPrivacySettings &settings) {
 		? UnarchiveOnNewMessage::NotInFoldersUnmuted
 		: UnarchiveOnNewMessage::AnyUnmuted;
 	_hideReadTime = data.is_hide_read_marks();
-	_newRequirePremium = data.is_new_noncontact_peers_require_premium();
 }
 
 } // namespace Api

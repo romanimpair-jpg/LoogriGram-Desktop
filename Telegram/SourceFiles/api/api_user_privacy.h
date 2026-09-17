@@ -28,7 +28,6 @@ public:
 		CallsPeer2Peer,
 		Forwards,
 		ProfilePhoto,
-		Voices,
 		About,
 		Birthday,
 		SavedMusic,
@@ -41,8 +40,6 @@ public:
 	};
 	struct Exceptions {
 		std::vector<not_null<PeerData*>> peers;
-		bool premiums = false;
-		bool miniapps = false;
 	};
 	struct Rule {
 		Option option = Option::Everyone;

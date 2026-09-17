@@ -65,12 +65,6 @@ TLInputRules RulesToTL(const UserPrivacy::Rule &rule) {
 				MTP_inputPrivacyValueAllowChatParticipants(
 					MTP_vector<MTPlong>(chats)));
 		}
-		if (rule.always.premiums && (rule.option != Option::Everyone)) {
-			result.push_back(MTP_inputPrivacyValueAllowPremium());
-		}
-		if (rule.always.miniapps && (rule.option != Option::Everyone)) {
-			result.push_back(MTP_inputPrivacyValueAllowBots());
-		}
 	}
 	if (!rule.ignoreNever) {
 		const auto users = collectInputUsers(rule.never);
@@ -84,9 +78,6 @@ TLInputRules RulesToTL(const UserPrivacy::Rule &rule) {
 			result.push_back(
 				MTP_inputPrivacyValueDisallowChatParticipants(
 					MTP_vector<MTPlong>(chats)));
-		}
-		if (rule.never.miniapps && (rule.option != Option::Nobody)) {
-			result.push_back(MTP_inputPrivacyValueDisallowBots());
 		}
 	}
 	result.push_back([&] {
@@ -128,11 +119,13 @@ UserPrivacy::Rule TLToRules(const TLRules &rules, Data::Session &owner) {
 		}, [&](const MTPDprivacyValueAllowCloseFriends &) {
 			setOption(Option::CloseFriends);
 		}, [&](const MTPDprivacyValueAllowPremium &) {
-			result.always.premiums = true;
+			// LoogriGram: "and Premium users" as an exception. Premium is
+			// honoured for nobody, so the rule reads as if it were absent;
+			// saving the setting from here then leaves it out.
 		}, [&](const MTPDprivacyValueAllowBots &) {
-			result.always.miniapps = true;
+			// LoogriGram: mini apps as an exception, which only the deleted
+			// gift privacy offered. Read as absent, like the one above.
 		}, [&](const MTPDprivacyValueDisallowBots &) {
-			result.never.miniapps = true;
 		}, [&](const MTPDprivacyValueAllowUsers &data) {
 			const auto &users = data.vusers().v;
 			always.reserve(always.size() + users.size());
@@ -205,7 +198,6 @@ MTPInputPrivacyKey KeyToTL(UserPrivacy::Key key) {
 	case Key::CallsPeer2Peer: return MTP_inputPrivacyKeyPhoneP2P();
 	case Key::Forwards: return MTP_inputPrivacyKeyForwards();
 	case Key::ProfilePhoto: return MTP_inputPrivacyKeyProfilePhoto();
-	case Key::Voices: return MTP_inputPrivacyKeyVoiceMessages();
 	case Key::About: return MTP_inputPrivacyKeyAbout();
 	case Key::Birthday: return MTP_inputPrivacyKeyBirthday();
 	case Key::SavedMusic: return MTP_inputPrivacyKeySavedMusic();
@@ -232,8 +224,9 @@ std::optional<UserPrivacy::Key> TLToKey(mtpTypeId type) {
 	case mtpc_inputPrivacyKeyForwards: return Key::Forwards;
 	case mtpc_privacyKeyProfilePhoto:
 	case mtpc_inputPrivacyKeyProfilePhoto: return Key::ProfilePhoto;
-	case mtpc_privacyKeyVoiceMessages:
-	case mtpc_inputPrivacyKeyVoiceMessages: return Key::Voices;
+	// LoogriGram: who may send us voice messages is premium-only to
+	// restrict, so its settings row is deleted and updates to it are not
+	// tracked.
 	case mtpc_privacyKeyAbout:
 	case mtpc_inputPrivacyKeyAbout: return Key::About;
 	case mtpc_privacyKeyBirthday:

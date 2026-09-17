@@ -299,10 +299,4 @@ base::flat_map<QString, QString> AppConfig::getStringMap(
 	});
 }
 
-bool AppConfig::newRequirePremiumFree() const {
-	return get<bool>(
-		u"new_noncontact_peers_require_premium_without_ownpremium"_q,
-		false);
-}
-
 } // namespace Main

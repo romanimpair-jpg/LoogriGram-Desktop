@@ -57,14 +57,6 @@ public:
 		Exception exception) const = 0;
 	[[nodiscard]] virtual auto exceptionsDescription()
 		const -> rpl::producer<QString> = 0;
-	[[nodiscard]] virtual bool allowPremiumsToggle(
-			Exception exception) const {
-		return false;
-	}
-	[[nodiscard]] virtual bool allowMiniAppsToggle(
-			Exception exception) const {
-		return false;
-	}
 	virtual void handleExceptionsChange(
 		Exception exception,
 		rpl::producer<int> value) {
@@ -167,10 +159,6 @@ private:
 	QPointer<QWidget> _never;
 
 };
-
-void EditMessagesPrivacyBox(
-	not_null<Ui::GenericBox*> box,
-	not_null<Window::SessionController*> controller);
 
 void EditDirectMessagesBox(
 	not_null<Ui::GenericBox*> box,
