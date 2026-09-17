@@ -228,7 +228,6 @@ struct HistoryItem::CreateConfig {
 	PeerId guestChatViaFrom = 0;
 	int viewsCount = -1;
 	int forwardsCount = -1;
-	int boostsApplied = 0;
 	QString postAuthor;
 
 	MsgId originalId = 0;

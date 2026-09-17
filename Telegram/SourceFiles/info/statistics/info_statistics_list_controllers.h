@@ -17,8 +17,6 @@ class VerticalLayout;
 } // namespace Ui
 
 namespace Data {
-struct Boost;
-struct BoostsListSlice;
 struct PublicForwardsSlice;
 struct RecentPostId;
 struct StatisticsLists;
@@ -41,13 +39,6 @@ void AddMembersList(
 	Data::StatisticsLists data,
 	not_null<Ui::VerticalLayout*> container,
 	Fn<void(not_null<PeerData*>)> showPeerInfo,
-	not_null<PeerData*> peer,
-	rpl::producer<QString> title);
-
-void AddBoostsList(
-	const Data::BoostsListSlice &firstSlice,
-	not_null<Ui::VerticalLayout*> container,
-	Fn<void(const Data::Boost &)> boostClickedCallback,
 	not_null<PeerData*> peer,
 	rpl::producer<QString> title);
 

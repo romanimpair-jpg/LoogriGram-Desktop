@@ -167,9 +167,11 @@ WebPageType ParseWebPageType(
 	} else if (type == u"telegram_botapp"_q) {
 		return WebPageType::BotApp;
 	} else if (type == u"telegram_channel_boost"_q) {
-		return WebPageType::ChannelBoost;
+		// LoogriGram: a boost link previewed with a "Boost" button. It
+		// previews as the channel or group it names.
+		return WebPageType::Channel;
 	} else if (type == u"telegram_group_boost"_q) {
-		return WebPageType::GroupBoost;
+		return WebPageType::Group;
 	} else if (type == u"telegram_stickerset"_q) {
 		return WebPageType::StickerSet;
 	} else if (type == u"telegram_story_album"_q) {

@@ -29,10 +29,8 @@ enum class WebPageType : uint8 {
 
 	Group,
 	GroupWithRequest,
-	GroupBoost,
 	Channel,
 	ChannelWithRequest,
-	ChannelBoost,
 
 	Photo,
 	Video,

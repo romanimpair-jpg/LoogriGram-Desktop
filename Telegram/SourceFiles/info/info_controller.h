@@ -151,7 +151,6 @@ public:
 		SavedMusic,
 		PollResults,
 		Statistics,
-		Boosts,
 		ChannelEarn,
 		BotEarn,
 	};

@@ -88,7 +88,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "support/support_helper.h"
 #include "info/info_controller.h"
 #include "info/info_memento.h"
-#include "info/channel_statistics/boosts/info_boosts_widget.h"
 #include "info/profile/info_profile_cover.h"
 #include "info/profile/info_profile_values.h"
 #include "info/statistics/info_statistics_widget.h"
@@ -1284,15 +1283,8 @@ void Filler::addViewStatistics() {
 				}
 			}, &st::menuIconStats);
 		}
-		if (canGetStats
-			|| channel->amCreator()
-			|| channel->canPostStories()) {
-			_addAction(tr::lng_boosts_title(tr::now), [=] {
-				if ([[maybe_unused]] const auto strong = weak.get()) {
-					controller->showSection(Info::Boosts::Make(peer));
-				}
-			}, &st::menuIconBoosts);
-		}
+		// LoogriGram: a "Boosts" entry opened the page listing who boosted
+		// the channel, with its boost link and giveaways. Deleted.
 		// LoogriGram: an "Earn" entry opened the channel's ad and stars
 		// revenue page. Deleted with the earn section.
 	}

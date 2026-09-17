@@ -1697,10 +1697,8 @@ QString TryConvertUrlToLocal(QString url) {
 			")"_q, query, matchOptions)) {
 			const auto channel = privateMatch->captured(1);
 			const auto params = query.mid(privateMatch->captured(0).size()).toString();
-			if (params.indexOf("boost", 0, Qt::CaseInsensitive) >= 0
-				&& params.toLower().split('&').contains(u"boost"_q)) {
-				return u"tg://boost?channel="_q + channel;
-			}
+			// LoogriGram: ?boost became a tg://boost link, which nothing
+			// here opens any more; the link opens the chat instead.
 			const auto base = u"tg://privatepost?channel="_q + channel;
 			auto added = QString();
 			if (const auto threadPostMatch = regex_match(u"^/(\\d+)/(\\d+)(/?\\?|/?$)"_q, privateMatch->captured(2))) {
@@ -1723,14 +1721,11 @@ QString TryConvertUrlToLocal(QString url) {
 			")"_q, query, matchOptions)) {
 			const auto domain = usernameMatch->captured(1);
 			const auto params = query.mid(usernameMatch->captured(0).size()).toString();
-			if (params.indexOf("boost", 0, Qt::CaseInsensitive) >= 0
-				&& params.toLower().split('&').contains(u"boost"_q)) {
-				return u"tg://boost?domain="_q + domain;
-			} else if (domain == u"boost"_q) {
+			if (domain == u"boost"_q) {
+				// LoogriGram: t.me/boost/name led to the boost box for that
+				// channel. It opens the channel.
 				if (const auto domainMatch = regex_match(u"^/([a-zA-Z0-9\\.\\_]+)(/?\\?|/?$)"_q, usernameMatch->captured(2))) {
-					return u"tg://boost?domain="_q + domainMatch->captured(1);
-				} else if (params.indexOf("c=", 0, Qt::CaseInsensitive) >= 0) {
-					return u"tg://boost?"_q + params;
+					return u"tg://resolve?domain="_q + domainMatch->captured(1);
 				}
 			}
 			const auto base = u"tg://resolve?domain="_q + url_encode(usernameMatch->captured(1));

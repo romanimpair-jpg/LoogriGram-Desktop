@@ -32,7 +32,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_element.h"
 #include "history/history.h"
 #include "history/history_item.h"
-#include "info/channel_statistics/boosts/info_boosts_widget.h"
 #include "info/profile/tabs/info_profile_tabs_strip.h"
 #include "info/profile/info_profile_emoji_status_panel.h"
 #include "info/profile/info_profile_top_bar.h"
@@ -1581,30 +1580,18 @@ void CheckBoostLevel(
 	peer->session().api().request(MTPpremium_GetBoostsStatus(
 		peer->input()
 	)).done([=](const MTPpremium_BoostsStatus &result) {
-		const auto &data = result.data();
+		const auto level = result.data().vlevel().v;
 		if (const auto channel = peer->asChannel()) {
-			channel->updateLevelHint(data.vlevel().v);
+			channel->updateLevelHint(level);
 		}
-		const auto reason = askMore(data.vlevel().v);
+		const auto reason = askMore(level);
 		if (!reason) {
 			return;
 		}
-		const auto openStatistics = [=] {
-			if (const auto controller = show->resolveWindow()) {
-				controller->showSection(Info::Boosts::Make(peer));
-			}
-		};
-		auto counters = ParseBoostCounters(result);
-		counters.mine = 0; // Don't show current level as just-reached.
-		show->show(Box(Ui::AskBoostBox, Ui::AskBoostBoxData{
-			.link = qs(data.vboost_url()),
-			.boost = counters,
-			.features = (peer->isChannel()
-				? LookupBoostFeatures(peer->asChannel())
-				: Ui::BoostFeatures()),
-			.reason = *reason,
-			.group = !peer->isBroadcast(),
-		}, openStatistics, nullptr));
+		// LoogriGram: this opened AskBoostBox - the level bar, a boost link
+		// to share and a button into the boosts page. It says what level
+		// the feature needs, and nothing else.
+		show->showToast(Ui::AskBoostReasonText(*reason));
 		cancel();
 	}).fail([=](const MTP::Error &error) {
 		show->showToast(error.type());

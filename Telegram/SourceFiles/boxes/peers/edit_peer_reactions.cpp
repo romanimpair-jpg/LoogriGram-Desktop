@@ -553,8 +553,7 @@ void AddReactionsText(
 		not_null<Ui::VerticalLayout*> container,
 		not_null<Window::SessionNavigation*> navigation,
 		int allowedCustomReactions,
-		rpl::producer<int> customCountValue,
-		Fn<void(int required)> askForBoosts) {
+		rpl::producer<int> customCountValue) {
 	auto ownedInner = object_ptr<Ui::VerticalLayout>(container);
 	const auto inner = ownedInner.data();
 	const auto count = inner->lifetime().make_state<rpl::variable<int>>(
@@ -587,21 +586,14 @@ void AddReactionsText(
 	auto countString = count->value() | rpl::map([](int count) {
 		return TextWithEntities{ QString::number(count) };
 	});
-	auto needs = rpl::combine(
-		tr::lng_manage_peer_reactions_level(
-			lt_count,
-			count->value() | tr::to_count(),
-			lt_same_count,
-			std::move(countString),
-			tr::rich),
-		tr::lng_manage_peer_reactions_boost(
-			lt_link,
-			tr::lng_manage_peer_reactions_boost_link(tr::link),
-			tr::rich)
-	) | rpl::map([](TextWithEntities &&a, TextWithEntities &&b) {
-		a.append(' ').append(std::move(b));
-		return std::move(a);
-	});
+	// LoogriGram: this also said "Boost your channel here", linking into
+	// the boost box.
+	auto needs = tr::lng_manage_peer_reactions_level(
+		lt_count,
+		count->value() | tr::to_count(),
+		lt_same_count,
+		std::move(countString),
+		tr::rich);
 	const auto wrap = inner->add(
 		object_ptr<Ui::SlideWrap<Ui::FlatLabel>>(
 			inner,
@@ -614,11 +606,6 @@ void AddReactionsText(
 		rpl::mappers::_1 > allowedCustomReactions
 	));
 	wrap->finishAnimating();
-
-	wrap->entity()->setClickHandlerFilter([=](const auto &...) {
-		askForBoosts(count->current());
-		return false;
-	});
 }
 
 } // namespace
@@ -786,8 +773,7 @@ void EditAllowedReactionsBox(
 			container,
 			args.navigation,
 			args.allowedCustomReactions,
-			state->customCount.value(),
-			args.askForBoosts);
+			state->customCount.value());
 
 		const auto session = &args.navigation->parentController()->session();
 
@@ -923,7 +909,7 @@ void EditAllowedReactionsBox(
 				result.some,
 				&Data::ReactionId::custom);
 			if (custom > args.allowedCustomReactions) {
-				args.askForBoosts(custom);
+				args.levelRequired(custom);
 				return;
 			}
 		}

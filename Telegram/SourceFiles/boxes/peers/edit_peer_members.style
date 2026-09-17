@@ -66,9 +66,6 @@ slowmodeLabelsMargin: margins(0px, 5px, 0px, 0px);
 slowmodeLabel: LabelSimple(defaultLabelSimple) {
 	textFg: windowSubTextFg;
 }
-boostsUnrestrictLabel: FlatLabel(defaultFlatLabel) {
-	textFg: windowSubTextFg;
-}
 inviteViaLinkIcon: icon {{ "info/edit/group_manage_links", lightButtonFg }};
 inviteViaLinkIconPosition: point(23px, 2px);
 peerListWithInviteViaLink: PeerList(peerListBox) {

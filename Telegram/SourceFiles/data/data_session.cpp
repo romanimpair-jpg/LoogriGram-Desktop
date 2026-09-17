@@ -254,10 +254,8 @@ void EnumerateWebPagePhotos(
 	switch (page->type) {
 	case WebPageType::Group:
 	case WebPageType::GroupWithRequest:
-	case WebPageType::GroupBoost:
 	case WebPageType::Channel:
 	case WebPageType::ChannelWithRequest:
-	case WebPageType::ChannelBoost:
 	case WebPageType::User:
 	case WebPageType::Bot:
 	case WebPageType::Profile:

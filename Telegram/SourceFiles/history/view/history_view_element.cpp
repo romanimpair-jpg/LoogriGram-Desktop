@@ -1551,7 +1551,6 @@ void Element::overrideRightBadge(const QString &text, BadgeRole role) {
 		st::defaultTextStyle,
 		{ text },
 		Ui::NameTextOptions());
-	badge->boosts.clear();
 	if (role == BadgeRole::User) {
 		badge->width = badge->tag.maxWidth();
 	} else {

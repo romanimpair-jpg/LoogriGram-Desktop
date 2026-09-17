@@ -29,7 +29,7 @@ struct EditAllowedReactionsArgs {
 	bool isGroup = false;
 	std::vector<Data::Reaction> list;
 	Data::AllowedReactions allowed;
-	Fn<void(int required)> askForBoosts;
+	Fn<void(int required)> levelRequired;
 	Fn<void(const Data::AllowedReactions &)> save;
 };
 

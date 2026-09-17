@@ -993,7 +993,6 @@ void ChannelData::setSlowmodeSeconds(int seconds) {
 TimeId ChannelData::slowmodeLastMessage() const {
 	return (hasAdminRights()
 		|| amCreator()
-		|| unrestrictedByBoosts()
 		|| !mgInfo)
 		? 0
 		: mgInfo->slowmodeLastMessage;
@@ -1013,54 +1012,6 @@ void ChannelData::growSlowmodeLastMessage(TimeId when) {
 		info->slowmodeLastMessage = when;
 	}
 	session().changes().peerUpdated(this, UpdateFlag::Slowmode);
-}
-
-int ChannelData::boostsApplied() const {
-	if (const auto info = mgInfo.get()) {
-		return info->boostsApplied;
-	}
-	return 0;
-}
-
-int ChannelData::boostsUnrestrict() const {
-	if (const auto info = mgInfo.get()) {
-		return info->boostsUnrestrict;
-	}
-	return 0;
-}
-
-bool ChannelData::unrestrictedByBoosts() const {
-	if (const auto info = mgInfo.get()) {
-		return (info->boostsUnrestrict > 0)
-			&& (info->boostsApplied >= info->boostsUnrestrict);
-	}
-	return 0;
-}
-
-rpl::producer<bool> ChannelData::unrestrictedByBoostsValue() const {
-	return mgInfo
-		? mgInfo->unrestrictedByBoostsChanges.events_starting_with(
-			unrestrictedByBoosts())
-		: (rpl::single(false) | rpl::type_erased);
-}
-
-void ChannelData::setBoostsUnrestrict(int applied, int unrestrict) {
-	if (const auto info = mgInfo.get()) {
-		if (info->boostsApplied == applied
-			&& info->boostsUnrestrict == unrestrict) {
-			return;
-		}
-		const auto wasUnrestricted = unrestrictedByBoosts();
-		info->boostsApplied = applied;
-		info->boostsUnrestrict = unrestrict;
-		const auto nowUnrestricted = unrestrictedByBoosts();
-		if (wasUnrestricted != nowUnrestricted) {
-			info->unrestrictedByBoostsChanges.fire_copy(nowUnrestricted);
-			session().changes().peerUpdated(
-				this,
-				UpdateFlag::Rights | UpdateFlag::Slowmode);
-		}
-	}
 }
 
 void ChannelData::setInvitePeek(const QString &hash, TimeId expires) {
@@ -1453,9 +1404,9 @@ void ApplyChannelUpdate(
 		if (emojiChanged) {
 			session->changes().peerUpdated(channel, UpdateFlag::EmojiSet);
 		}
-		channel->setBoostsUnrestrict(
-			update.vboosts_applied().value_or_empty(),
-			update.vboosts_unrestrict().value_or_empty());
+		// LoogriGram: boosts_applied / boosts_unrestrict let members who
+		// boosted a group skip its restrictions. Boosting spends a Premium
+		// slot, which this account never has, so neither is kept.
 	}
 	channel->setThemeToken(qs(update.vtheme_emoticon().value_or_empty()));
 	channel->setTranslationDisabled(update.is_translations_disabled());

@@ -984,9 +984,9 @@ void Message::refreshRightBadge() {
 			? delegate()->elementAuthorRank(this)
 			: TextUtilities::RemoveEmoji(TextUtilities::SingleLine(text)))
 	};
-	const auto boosts = item->boostsApplied();
-	const auto needBadge = !tagText.empty() || boosts;
-	if (!needBadge) {
+	// LoogriGram: the badge also counted the Premium boosts its sender had
+	// given the group.
+	if (tagText.empty()) {
 		if (Has<RightBadge>()) {
 			RemoveComponents(RightBadge::Bit());
 		}
@@ -1008,27 +1008,8 @@ void Message::refreshRightBadge() {
 			tagText,
 			Ui::NameTextOptions());
 	}
-	if (boosts) {
-		const auto many = (boosts > 1);
-		auto boostText = Ui::Text::IconEmoji(many
-			? &st::boostsMessageIcon
-			: &st::boostMessageIcon
-		).append(many ? QString::number(boosts) : QString());
-		badge->boosts.setMarkedText(
-			st::defaultTextStyle,
-			boostText,
-			Ui::NameTextOptions());
-	} else {
-		badge->boosts.clear();
-	}
-	const auto boostWidth = badge->boosts.isEmpty()
-		? 0
-		: (st::msgTagBadgeBoostSkip + badge->boosts.maxWidth());
 	if (badge->role == BadgeRole::User) {
-		const auto tagWidth = badge->tag.isEmpty()
-			? 0
-			: badge->tag.maxWidth();
-		badge->width = tagWidth + boostWidth;
+		badge->width = badge->tag.maxWidth();
 	} else {
 		const auto &padding = st::msgTagBadgePadding;
 		const auto textWidth = badge->tag.maxWidth();
@@ -1038,7 +1019,7 @@ void Message::refreshRightBadge() {
 		const auto pillHeight = padding.top()
 			+ st::msgFont->height
 			+ padding.bottom();
-		badge->width = std::max(contentWidth, pillHeight) + boostWidth;
+		badge->width = std::max(contentWidth, pillHeight);
 	}
 }
 
@@ -2538,17 +2519,6 @@ void Message::paintFromName(
 				badge->tag.draw(p, {
 					.position = QPoint(badgeLeft, trect.top()),
 					.availableWidth = badge->tag.maxWidth(),
-					.now = context.now,
-				});
-			}
-			if (!badge->boosts.isEmpty()) {
-				const auto boostWidth = badge->boosts.maxWidth();
-				p.setPen(badgeColor);
-				badge->boosts.draw(p, {
-					.position = QPoint(
-						trect.left() + trect.width() - boostWidth,
-						trect.top()),
-					.availableWidth = boostWidth,
 					.now = context.now,
 				});
 			}
@@ -4107,21 +4077,7 @@ bool Message::getStateFromName(
 			const auto badgeRight = trect.left()
 				+ trect.width()
 				+ st::msgPadding.right();
-			const auto boostTextWidth = (badge && !badge->boosts.isEmpty())
-				? badge->boosts.maxWidth()
-				: 0;
-			const auto boostLeft = boostTextWidth
-				? (trect.left() + trect.width() - boostTextWidth)
-				: 0;
-			// LoogriGram: the "boosted by N" count beside a group message
-			// was a link into the boost box. The count still paints - it
-			// says something true about the sender - but clicking it did
-			// nothing but offer to spend a Premium slot, so it is no longer
-			// a hit target and boostsLink is gone from RightBadge.
-			const auto tagRight = boostTextWidth
-				? (boostLeft - st::msgTagBadgeBoostSkip)
-				: badgeRight;
-			if (point.x() >= badgeLeft && point.x() < tagRight) {
+			if (point.x() >= badgeLeft && point.x() < badgeRight) {
 				if (badge->special) {
 					return false;
 				}

@@ -20,21 +20,11 @@ class Session;
 } // namespace Main
 
 namespace Ui {
-struct BoostCounters;
-struct BoostFeatures;
 class BoxContent;
 class RpWidget;
 } // namespace Ui
 
-[[nodiscard]] Ui::BoostCounters ParseBoostCounters(
-	const MTPpremium_BoostsStatus &status);
-
-[[nodiscard]] Ui::BoostFeatures LookupBoostFeatures(
-	not_null<ChannelData*> channel);
-
 enum class UserpicsTransferType {
-	BoostReplace,
-	AuctionRecipient,
 	ChannelFutureOwner,
 	GuardBotReplace,
 };

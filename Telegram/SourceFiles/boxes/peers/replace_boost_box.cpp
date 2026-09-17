@@ -44,92 +44,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 // the channels currently holding your Premium boost slots, so one could be
 // taken back and spent somewhere else, plus the flood and single-slot
 // confirmations, and it was the whole of this file's anonymous namespace.
-// Giving a boost means spending a subscription slot, so the flow is gone.
-// What is left has nothing to do with it: reading a channel's boost level,
-// which the channel-owner screens report, and the userpic-row helpers a
-// dozen unrelated callers use.
-
-Ui::BoostCounters ParseBoostCounters(
-		const MTPpremium_BoostsStatus &status) {
-	const auto &data = status.data();
-	const auto slots = data.vmy_boost_slots();
-	return {
-		.level = data.vlevel().v,
-		.boosts = data.vboosts().v,
-		.thisLevelBoosts = data.vcurrent_level_boosts().v,
-		.nextLevelBoosts = data.vnext_level_boosts().value_or_empty(),
-		.mine = slots ? int(slots->v.size()) : 0,
-	};
-}
-
-Ui::BoostFeatures LookupBoostFeatures(not_null<ChannelData*> channel) {
-	auto nameColorsByLevel = base::flat_map<int, int>();
-	auto linkStylesByLevel = base::flat_map<int, int>();
-	auto profileColorsByLevel = base::flat_map<int, int>();
-	const auto group = channel->isMegagroup();
-	const auto peerColors = &channel->session().api().peerColors();
-	const auto &list = group
-		? peerColors->requiredLevelsGroup()
-		: peerColors->requiredLevelsChannel();
-	const auto indices = peerColors->indicesCurrent();
-	for (const auto &[index, level] : list) {
-		if (!Ui::ColorPatternIndex(indices, index, false)) {
-			++nameColorsByLevel[level];
-		}
-		++linkStylesByLevel[level];
-	}
-	{
-		const auto profileIndices = peerColors->profileColorIndices();
-		auto lowestNonZeroLevel = std::numeric_limits<int>::max();
-		auto levels = std::vector<int>();
-		levels.reserve(profileIndices.size());
-
-		for (const auto index : profileIndices) {
-			const auto level = peerColors->requiredLevelFor(
-				channel->id,
-				index,
-				group,
-				true);
-			levels.push_back(level);
-			if (level) {
-				lowestNonZeroLevel = std::min(lowestNonZeroLevel, level);
-			}
-		}
-
-		for (const auto level : levels) {
-			++profileColorsByLevel[std::max(level, lowestNonZeroLevel)];
-		}
-	}
-
-	const auto &themes = channel->owner().cloudThemes().chatThemes();
-	if (themes.empty()) {
-		channel->owner().cloudThemes().refreshChatThemes();
-	}
-	const auto levelLimits = Data::LevelLimits(&channel->session());
-	return Ui::BoostFeatures{
-		.nameColorsByLevel = std::move(nameColorsByLevel),
-		.linkStylesByLevel = std::move(linkStylesByLevel),
-		.profileColorsByLevel = std::move(profileColorsByLevel),
-		.linkLogoLevel = group ? 0 : levelLimits.channelBgIconLevelMin(),
-		.profileIconLevel = group
-			? levelLimits.groupProfileBgIconLevelMin()
-			: levelLimits.channelProfileBgIconLevelMin(),
-		.autotranslateLevel = group ? 0 : levelLimits.channelAutoTranslateLevelMin(),
-		.transcribeLevel = group ? levelLimits.groupTranscribeLevelMin() : 0,
-		.emojiPackLevel = group ? levelLimits.groupEmojiStickersLevelMin() : 0,
-		.emojiStatusLevel = group
-			? levelLimits.groupEmojiStatusLevelMin()
-			: levelLimits.channelEmojiStatusLevelMin(),
-		.wallpaperLevel = group
-			? levelLimits.groupWallpaperLevelMin()
-			: levelLimits.channelWallpaperLevelMin(),
-		.wallpapersCount = themes.empty() ? 8 : int(themes.size()),
-		.customWallpaperLevel = group
-			? levelLimits.groupCustomWallpaperLevelMin()
-			: levelLimits.channelCustomWallpaperLevelMin(),
-		.sponsoredLevel = levelLimits.channelRestrictSponsoredLevelMin(),
-	};
-}
+// Giving a boost means spending a subscription slot, so the flow is gone,
+// and so are the boost counters and per-level feature lists the boost boxes
+// showed. What is left is the userpic-row helpers other boxes use.
 
 object_ptr<Ui::RpWidget> CreateUserpicsTransfer(
 		not_null<Ui::RpWidget*> parent,
@@ -252,18 +169,14 @@ object_ptr<Ui::RpWidget> CreateUserpicsTransfer(
 		}
 		state->painting = false;
 		const auto last = state->buttons.back().get();
-		if (type != Type::AuctionRecipient) {
-			const auto boosting = (type == Type::BoostReplace);
+		{
 			const auto guard = (type == Type::GuardBotReplace);
-			const auto gradient = boosting || guard;
-			const auto back = gradient ? last : right;
+			const auto back = guard ? last : right;
 			const auto add = st::boostReplaceIconAdd;
 			const auto &icon = guard
 				? st::guardBotReplaceIcon
-				: boosting
-				? st::boostReplaceIcon
 				: st::starrefJoinIcon;
-			const auto skip = gradient ? st::boostReplaceIconSkip : 0;
+			const auto skip = guard ? st::boostReplaceIconSkip : 0;
 			const auto w = icon.width() + 2 * skip;
 			const auto h = icon.height() + 2 * skip;
 			const auto x = back->x() + back->width() - w + add.x();

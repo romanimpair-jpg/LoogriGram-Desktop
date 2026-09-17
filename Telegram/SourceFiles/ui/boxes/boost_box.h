@@ -7,48 +7,15 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
-#include "base/object_ptr.h"
-
 namespace Ui {
 
 void StartFireworks(not_null<QWidget*> parent);
 
-class Show;
-class RpWidget;
-class GenericBox;
-class VerticalLayout;
-class FlatLabel;
-
-struct BoostCounters {
-	int level = 0;
-	int boosts = 0;
-	int thisLevelBoosts = 0;
-	int nextLevelBoosts = 0; // Zero means no next level is available.
-	int mine = 0;
-
-	friend inline constexpr bool operator==(
-		BoostCounters,
-		BoostCounters) = default;
-};
-
-struct BoostFeatures {
-	base::flat_map<int, int> nameColorsByLevel;
-	base::flat_map<int, int> linkStylesByLevel;
-	base::flat_map<int, int> profileColorsByLevel;
-	int linkLogoLevel = 0;
-	int profileIconLevel = 0;
-	int autotranslateLevel = 0;
-	int transcribeLevel = 0;
-	int emojiPackLevel = 0;
-	int emojiStatusLevel = 0;
-	int wallpaperLevel = 0;
-	int wallpapersCount = 0;
-	int customWallpaperLevel = 0;
-	int sponsoredLevel = 0;
-};
-
-// LoogriGram: BoostBoxData and the five boxes that used it are gone - see
-// boost_box.cpp. Everything below is the channel-owner side.
+// LoogriGram: every boost screen is gone - the boost box itself, the
+// boosts page and AskBoostBox, which answered a locked channel feature with
+// the boost level bar, a boost link to share and the list of what each
+// level unlocks. Boosting spends a Telegram Premium slot. What is left is
+// the reason a feature is locked, stated as the padlock it is.
 
 struct AskBoostChannelColor {
 	int requiredLevel = 0;
@@ -76,14 +43,6 @@ struct AskBoostCustomReactions {
 	int count = 0;
 };
 
-struct AskBoostCpm {
-	int requiredLevel = 0;
-};
-
-struct AskBoostWearCollectible {
-	int requiredLevel = 0;
-};
-
 struct AskBoostReason {
 	std::variant<
 		AskBoostChannelColor,
@@ -91,41 +50,10 @@ struct AskBoostReason {
 		AskBoostWallpaper,
 		AskBoostEmojiStatus,
 		AskBoostEmojiPack,
-		AskBoostCustomReactions,
-		AskBoostCpm,
-		AskBoostWearCollectible> data;
+		AskBoostCustomReactions> data;
 };
 
-struct AskBoostBoxData {
-	QString link;
-	BoostCounters boost;
-	BoostFeatures features;
-	AskBoostReason reason;
-	bool group = false;
-};
-
-void AskBoostBox(
-	not_null<GenericBox*> box,
-	AskBoostBoxData data,
-	Fn<void()> openStatistics,
-	Fn<void()> startGiveaway);
-
-[[nodiscard]] object_ptr<RpWidget> MakeLinkLabel(
-	not_null<QWidget*> parent,
-	rpl::producer<QString> text,
-	rpl::producer<QString> link,
-	std::shared_ptr<Show> show,
-	object_ptr<RpWidget> right);
-
-void FillBoostLimit(
-	rpl::producer<> showFinished,
-	not_null<VerticalLayout*> container,
-	rpl::producer<BoostCounters> data,
-	style::margins limitLinePadding);
-
-[[nodiscard]] object_ptr<Ui::FlatLabel> MakeBoostFeaturesBadge(
-	not_null<QWidget*> parent,
-	rpl::producer<QString> text,
-	Fn<QBrush(QRect)> bg);
+[[nodiscard]] TextWithEntities AskBoostReasonText(
+	const AskBoostReason &reason);
 
 } // namespace Ui

@@ -24,7 +24,6 @@ msgPhotoSize: 33px;
 msgPhotoSkip: 40px;
 msgPadding: margins(11px, 8px, 11px, 8px);
 msgTagBadgePadding: margins(5px, -1px, 5px, 0px);
-msgTagBadgeBoostSkip: 2px;
 
 tagInfoIcon: icon {{ "chat/large_user_tag-48x48", windowFgActive }};
 tagInfoIconPadding: margins(8px, 8px, 8px, 8px);
@@ -966,14 +965,6 @@ repliesComposeControls: ComposeControls(defaultComposeControls) {
 	tabbedHeightMin: 220px;
 }
 
-boostMessageIcon: IconEmoji {
-	icon: icon {{ "stories/boost_mini", windowFg }};
-	padding: margins(0px, 2px, 0px, 0px);
-}
-boostsMessageIcon: IconEmoji {
-	icon: icon {{ "stories/boosts_mini", windowFg }};
-	padding: margins(0px, 2px, 0px, 0px);
-}
 historyIvIcon: IconEmoji {
 	icon: icon {{ "boosts/boost_mini2", windowFg }};
 	padding: margins(2px, 2px, 2px, 0px);

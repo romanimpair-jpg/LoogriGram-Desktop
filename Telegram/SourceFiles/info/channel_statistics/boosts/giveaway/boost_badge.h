@@ -18,17 +18,6 @@ class RpWidget;
 
 namespace Info::Statistics {
 
-[[nodiscard]] QImage CreateBadge(
-	const style::TextStyle &textStyle,
-	const QString &text,
-	int badgeHeight,
-	const style::margins &textPadding,
-	const style::color &bg,
-	const style::color &fg,
-	float64 bgOpacity,
-	const style::margins &iconPadding,
-	const style::icon &icon);
-
 [[nodiscard]] not_null<Ui::RpWidget*> InfiniteRadialAnimationWidget(
 	not_null<Ui::RpWidget*> parent,
 	int size,
@@ -37,11 +26,5 @@ namespace Info::Statistics {
 void AddChildToWidgetCenter(
 	not_null<Ui::RpWidget*> parent,
 	not_null<Ui::RpWidget*> child);
-
-void AddLabelWithBadgeToButton(
-	not_null<Ui::RpWidget*> parent,
-	rpl::producer<QString> text,
-	rpl::producer<int> number,
-	rpl::producer<bool> shown);
 
 } // namespace Info::Statistics

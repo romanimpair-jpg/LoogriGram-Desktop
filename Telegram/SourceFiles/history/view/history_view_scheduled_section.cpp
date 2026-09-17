@@ -320,7 +320,6 @@ void ScheduledWidget::setupComposeControls() {
 				return text ? Controls::WriteRestriction{
 					.text = std::move(*text),
 					.type = Controls::WriteRestrictionType::Rights,
-					.boostsToLift = text.boostsToLift,
 				} : Controls::WriteRestriction();
 			}) | rpl::type_erased;
 		}()
@@ -354,7 +353,6 @@ void ScheduledWidget::setupComposeControls() {
 				return text ? Controls::WriteRestriction{
 					.text = std::move(*text),
 					.type = Controls::WriteRestrictionType::Rights,
-					.boostsToLift = text.boostsToLift,
 				} : Controls::WriteRestriction();
 			}) | rpl::type_erased;
 		}();

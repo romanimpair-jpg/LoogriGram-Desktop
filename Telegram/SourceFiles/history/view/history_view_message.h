@@ -134,7 +134,6 @@ enum class BadgeRole : uchar {
 
 struct RightBadge : RuntimeComponent<RightBadge, Element> {
 	Ui::Text::String tag;
-	Ui::Text::String boosts;
 	mutable ClickHandlerPtr tagLink;
 	int width = 0;
 	BadgeRole role = BadgeRole::User;

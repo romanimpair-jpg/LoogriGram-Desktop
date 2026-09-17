@@ -626,9 +626,6 @@ public:
 		return _ttlDestroyAt;
 	}
 
-	[[nodiscard]] int boostsApplied() const {
-		return _boostsApplied;
-	}
 
 	[[nodiscard]] QString fromRank() const;
 
@@ -774,7 +771,6 @@ private:
 
 	TimeId _date = 0;
 	TimeId _ttlDestroyAt = 0;
-	int _boostsApplied = 0;
 	BusinessShortcutId _shortcutId = 0;
 
 	MessageGroupId _groupId = MessageGroupId();

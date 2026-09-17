@@ -604,7 +604,6 @@ PRIVATE
     data/data_audio_msg_id.h
     data/data_auto_download.cpp
     data/data_auto_download.h
-    data/data_boosts.h
     data/data_bot_app.cpp
     data/data_bot_app.h
     data/data_chat.cpp
@@ -1089,10 +1088,6 @@ PRIVATE
     history/history_view_swipe_back_session.h
     history/history_widget.cpp
     history/history_widget.h
-    info/channel_statistics/boosts/info_boosts_inner_widget.cpp
-    info/channel_statistics/boosts/info_boosts_inner_widget.h
-    info/channel_statistics/boosts/info_boosts_widget.cpp
-    info/channel_statistics/boosts/info_boosts_widget.h
     info/common_groups/info_common_groups_inner_widget.cpp
     info/common_groups/info_common_groups_inner_widget.h
     info/common_groups/info_common_groups_widget.cpp

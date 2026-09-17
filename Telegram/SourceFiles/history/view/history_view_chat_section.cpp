@@ -1481,7 +1481,6 @@ void ChatWidget::setupComposeControls() {
 		return text ? Controls::WriteRestriction{
 			.text = std::move(*text),
 			.type = Controls::WriteRestrictionType::Rights,
-			.boostsToLift = text.boostsToLift,
 		} : Controls::WriteRestriction();
 	});
 

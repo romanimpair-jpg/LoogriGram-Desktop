@@ -27,7 +27,6 @@ class MessagePreview;
 
 enum class LoadingType {
 	Statistic,
-	Boosts,
 	Earn,
 };
 

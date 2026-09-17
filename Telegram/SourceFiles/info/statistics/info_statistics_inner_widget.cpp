@@ -577,9 +577,7 @@ void FillLoading(
 	emptyWrap->toggleOn(std::move(toggleOn), anim::type::instant);
 
 	const auto content = emptyWrap->entity();
-	const auto iconName = (type == LoadingType::Boosts)
-		? u"stats_boosts"_q
-		: (type == LoadingType::Earn)
+	const auto iconName = (type == LoadingType::Earn)
 		? u"stats_earn"_q
 		: u"stats"_q;
 	auto icon = ::Settings::CreateLottieIcon(
@@ -597,9 +595,7 @@ void FillLoading(
 	content->add(
 		object_ptr<Ui::FlatLabel>(
 			content,
-			(type == LoadingType::Boosts)
-				? tr::lng_stats_boosts_loading()
-				: (type == LoadingType::Earn)
+			(type == LoadingType::Earn)
 				? tr::lng_stats_earn_loading()
 				: tr::lng_stats_loading(),
 			st::changePhoneTitle),
@@ -609,9 +605,7 @@ void FillLoading(
 	content->add(
 		object_ptr<Ui::FlatLabel>(
 			content,
-			(type == LoadingType::Boosts)
-				? tr::lng_stats_boosts_loading_subtext()
-				: (type == LoadingType::Earn)
+			(type == LoadingType::Earn)
 				? tr::lng_stats_earn_loading_subtext()
 				: tr::lng_stats_loading_subtext(),
 			st::statisticsLoadingSubtext),

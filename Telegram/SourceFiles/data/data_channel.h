@@ -139,7 +139,6 @@ public:
 	base::flat_map<not_null<UserData*>, Restricted> lastRestricted;
 	base::flat_set<not_null<PeerData*>> markupSenders;
 	base::flat_set<not_null<UserData*>> bots;
-	rpl::event_stream<bool> unrestrictedByBoostsChanges;
 
 	base::flat_set<UserId> admins;
 	base::flat_map<UserId, QString> memberRanks;
@@ -158,8 +157,6 @@ public:
 	};
 	mutable int lastParticipantsStatus = LastParticipantsUpToDate;
 	int lastParticipantsCount = 0;
-	int boostsApplied = 0;
-	int boostsUnrestrict = 0;
 
 	int slowmodeSeconds = 0;
 	TimeId slowmodeLastMessage = 0;
@@ -521,12 +518,6 @@ public:
 	void growSlowmodeLastMessage(TimeId when);
 
 
-
-	[[nodiscard]] int boostsApplied() const;
-	[[nodiscard]] int boostsUnrestrict() const;
-	[[nodiscard]] bool unrestrictedByBoosts() const;
-	[[nodiscard]] rpl::producer<bool> unrestrictedByBoostsValue() const;
-	void setBoostsUnrestrict(int applied, int unrestrict);
 
 	void setInvitePeek(const QString &hash, TimeId expires);
 	void clearInvitePeek();

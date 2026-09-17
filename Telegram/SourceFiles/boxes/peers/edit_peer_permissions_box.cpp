@@ -51,7 +51,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace {
 
 constexpr auto kSlowmodeValues = 8;
-constexpr auto kBoostsUnrestrictValues = 5;
 constexpr auto kForceDisableTooltipDuration = 3 * crl::time(1000);
 
 [[nodiscard]] auto Dependencies(PowerSaving::Flags)
@@ -237,10 +236,6 @@ int SlowmodeDelayByIndex(int index) {
 	case 7: return 60 * 60;
 	}
 	Unexpected("Index in SlowmodeDelayByIndex.");
-}
-
-[[nodiscard]] int BoostsUnrestrictByIndex(int index) {
-	return index + 1;
 }
 
 template <typename CheckboxesMap, typename DependenciesMap>
@@ -945,140 +940,6 @@ rpl::producer<int> AddSlowmodeSlider(
 	return secondsCount->value();
 }
 
-void AddBoostsUnrestrictLabels(not_null<Ui::VerticalLayout*> container) {
-	const auto labels = container->add(
-		object_ptr<Ui::FixedHeightWidget>(container, st::normalFont->height),
-		st::slowmodeLabelsMargin);
-	const auto one = Ui::Text::IconEmoji(&st::boostMessageIcon);
-	const auto many = Ui::Text::IconEmoji(&st::boostsMessageIcon);
-	for (auto i = 0; i != kBoostsUnrestrictValues; ++i) {
-		const auto label = Ui::CreateChild<Ui::FlatLabel>(
-			labels,
-			st::boostsUnrestrictLabel);
-		label->setMarkedText(
-			TextWithEntities(i ? many : one).append(QString::number(i + 1)));
-		rpl::combine(
-			labels->widthValue(),
-			label->widthValue()
-		) | rpl::on_next([=](int outer, int inner) {
-			const auto skip = st::localStorageLimitMargin;
-			const auto size = st::localStorageLimitSlider.seekSize;
-			const auto available = outer
-				- skip.left()
-				- skip.right()
-				- size.width();
-			const auto shift = (i == 0)
-				? -(size.width() / 2)
-				: (i + 1 == kBoostsUnrestrictValues)
-				? (size.width() - (size.width() / 2) - inner)
-				: (-inner / 2);
-			const auto left = skip.left()
-				+ (size.width() / 2)
-				+ (i * available) / (kBoostsUnrestrictValues - 1)
-				+ shift;
-			label->moveToLeft(left, 0, outer);
-		}, label->lifetime());
-	}
-}
-
-rpl::producer<int> AddBoostsUnrestrictSlider(
-		not_null<Ui::VerticalLayout*> container,
-		not_null<PeerData*> peer) {
-	using namespace rpl::mappers;
-
-	if (const auto chat = peer->asChat()) {
-		if (!chat->amCreator()) {
-			return rpl::single(0);
-		}
-	}
-	const auto channel = peer->asChannel();
-	auto &lifetime = container->lifetime();
-	const auto boostsUnrestrict = lifetime.make_state<rpl::variable<int>>(
-		channel ? channel->boostsUnrestrict() : 0);
-
-	Ui::AddSkip(container);
-
-	auto enabled = boostsUnrestrict->value(
-	) | rpl::map(_1 > 0);
-	container->add(object_ptr<Ui::SettingsButton>(
-		container,
-		tr::lng_rights_boosts_no_restrict(),
-		st::defaultSettingsButton
-	))->toggleOn(rpl::duplicate(enabled))->toggledValue(
-	) | rpl::on_next([=](bool toggled) {
-		if (toggled && !boostsUnrestrict->current()) {
-			*boostsUnrestrict = 1;
-		} else if (!toggled && boostsUnrestrict->current()) {
-			*boostsUnrestrict = 0;
-		}
-	}, container->lifetime());
-
-	const auto outer = container->add(
-		object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-			container,
-			object_ptr<Ui::VerticalLayout>(container)));
-	outer->toggleOn(rpl::duplicate(enabled), anim::type::normal);
-	outer->finishAnimating();
-
-	const auto inner = outer->entity();
-
-	AddBoostsUnrestrictLabels(inner);
-
-	const auto slider = inner->add(
-		object_ptr<Ui::MediaSlider>(inner, st::localStorageLimitSlider),
-		st::localStorageLimitMargin);
-	slider->resize(st::localStorageLimitSlider.seekSize);
-	slider->setPseudoDiscrete(
-		kBoostsUnrestrictValues,
-		BoostsUnrestrictByIndex,
-		boostsUnrestrict->current(),
-		[=](int boosts) {
-			(*boostsUnrestrict) = boosts;
-		});
-
-	inner->add(
-		object_ptr<Ui::DividerLabel>(
-			inner,
-			object_ptr<Ui::FlatLabel>(
-				inner,
-				rpl::conditional(
-					boostsUnrestrict->value() | rpl::map(_1 > 0),
-					tr::lng_rights_boosts_about_on(),
-					tr::lng_rights_boosts_about()),
-				st::boxDividerLabel),
-			st::proxyAboutPadding),
-		style::margins(0, st::infoProfileSkip, 0, 0));
-
-	return boostsUnrestrict->value();
-}
-
-rpl::producer<int> AddBoostsUnrestrictWrapped(
-		not_null<Ui::VerticalLayout*> container,
-		not_null<PeerData*> peer,
-		rpl::producer<bool> shown) {
-	const auto wrap = container->add(
-		object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-			container,
-			object_ptr<Ui::VerticalLayout>(container)));
-	wrap->toggleOn(std::move(shown), anim::type::normal);
-	wrap->finishAnimating();
-
-	const auto inner = wrap->entity();
-
-	auto result = AddBoostsUnrestrictSlider(inner, peer);
-
-	const auto skip = st::defaultVerticalListSkip;
-	const auto divider = inner->add(
-		object_ptr<Ui::SlideWrap<Ui::BoxContentDivider>>(
-			inner,
-			object_ptr<Ui::BoxContentDivider>(inner),
-			QMargins{ 0, skip, 0, skip }));
-	divider->toggleOn(rpl::duplicate(result) | rpl::map(!rpl::mappers::_1));
-	divider->finishAnimating();
-
-	return result;
-}
-
 void AddSuggestGigagroup(
 		not_null<Ui::VerticalLayout*> container,
 		Fn<void()> callback) {
@@ -1210,43 +1071,15 @@ void ShowEditPeerPermissionsBox(
 
 	struct State {
 		rpl::variable<int> slowmodeSeconds;
-		rpl::variable<int> boostsUnrestrict;
-		rpl::variable<bool> hasSendRestrictions;
 	};
 	const auto state = inner->lifetime().make_state<State>();
 
 	Ui::AddSkip(inner);
 	Ui::AddDivider(inner);
 
-	static constexpr auto kSendRestrictions = Flag::EmbedLinks
-		| Flag::SendReactions
-		| Flag::SendGames
-		| Flag::SendGifs
-		| Flag::SendInline
-		| Flag::SendPolls
-		| Flag::SendStickers
-		| Flag::SendPhotos
-		| Flag::SendVideos
-		| Flag::SendVideoMessages
-		| Flag::SendMusic
-		| Flag::SendVoiceMessages
-		| Flag::SendFiles
-		| Flag::SendOther;
-	state->hasSendRestrictions = ((restrictions & kSendRestrictions) != 0)
-		|| (peer->isChannel() && peer->asChannel()->slowmodeSeconds() > 0);
-	state->boostsUnrestrict = AddBoostsUnrestrictWrapped(
-		inner,
-		peer,
-		state->hasSendRestrictions.value());
+	// LoogriGram: a "Do not restrict boosters" toggle and slider sat here,
+	// letting members who boosted the group skip these restrictions.
 	state->slowmodeSeconds = AddSlowmodeSlider(inner, peer);
-	state->hasSendRestrictions = rpl::combine(
-		rpl::single(
-			restrictions
-		) | rpl::then(std::move(changes)),
-		state->slowmodeSeconds.value()
-	) | rpl::map([](ChatRestrictions restrictions, int slowmodeSeconds) {
-		return ((restrictions & kSendRestrictions) != 0) || slowmodeSeconds;
-	});
 
 	if (const auto channel = peer->asChannel()) {
 		constexpr auto kThresholdOffset = int(1000);
@@ -1266,16 +1099,9 @@ void ShowEditPeerPermissionsBox(
 
 	box->addButton(tr::lng_settings_save(), [=, rights = getRestrictions] {
 		const auto restrictions = rights();
-		const auto slowmodeSeconds = state->slowmodeSeconds.current();
-		const auto hasRestrictions = (slowmodeSeconds > 0)
-			|| ((restrictions & kSendRestrictions) != 0);
-		const auto boostsUnrestrict = hasRestrictions
-			? state->boostsUnrestrict.current()
-			: 0;
 		done({
 			restrictions,
-			slowmodeSeconds,
-			boostsUnrestrict,
+			state->slowmodeSeconds.current(),
 		});
 	});
 	box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });

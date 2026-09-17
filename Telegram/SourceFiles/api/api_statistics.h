@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "api/api_statistics_sender.h"
-#include "data/data_boosts.h"
 #include "data/data_statistics.h"
 #include "data/data_statistics_lists.h"
 
@@ -76,30 +75,6 @@ private:
 	const FullStoryId _storyId;
 
 	Data::PublicForwardsSlice _firstSlice;
-
-};
-
-
-class Boosts final {
-public:
-	explicit Boosts(not_null<PeerData*> peer);
-
-	[[nodiscard]] rpl::producer<rpl::no_value, QString> request();
-	void requestBoosts(
-		const Data::BoostsListSlice::OffsetToken &token,
-		Fn<void(Data::BoostsListSlice)> done);
-
-	[[nodiscard]] Data::BoostStatus boostStatus() const;
-
-	static constexpr auto kFirstSlice = int(10);
-	static constexpr auto kLimit = int(40);
-
-private:
-	const not_null<PeerData*> _peer;
-	Data::BoostStatus _boostStatus;
-
-	MTP::Sender _api;
-	mtpRequestId _requestId = 0;
 
 };
 

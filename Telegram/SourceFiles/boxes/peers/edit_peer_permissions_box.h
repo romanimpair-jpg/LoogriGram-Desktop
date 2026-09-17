@@ -43,7 +43,6 @@ class SessionNavigation;
 struct EditPeerPermissionsBoxResult final {
 	ChatRestrictions rights;
 	int slowmodeSeconds = 0;
-	int boostsUnrestrict = 0;
 };
 
 void ShowEditPeerPermissionsBox(

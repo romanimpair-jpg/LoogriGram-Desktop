@@ -281,9 +281,7 @@ bool CanSendAnyOf(
 			return false;
 		}
 		const auto restricted = channel->restrictions()
-			| (channel->unrestrictedByBoosts()
-				? ChatRestrictions()
-				: channel->defaultRestrictions());
+			| channel->defaultRestrictions();
 		return channel->canPostMessages()
 			|| (!channel->isBroadcast()
 				&& (channel->hasAdminRights()
@@ -388,16 +386,6 @@ SendError RestrictionError(
 				}
 				Unexpected("Restriction in Data::RestrictionErrorKey.");
 			}
-		}
-		if (all
-			&& channel
-			&& channel->boostsUnrestrict()
-			&& !channel->unrestrictedByBoosts()) {
-			return SendError({
-				.text = tr::lng_restricted_boost_group(tr::now),
-				.boostsToLift = (channel->boostsUnrestrict()
-					- channel->boostsApplied()),
-			});
 		}
 		switch (restriction) {
 		case Flag::SendPolls:

@@ -1623,8 +1623,7 @@ Data::RestrictionCheckResult PeerData::amRestricted(
 				: ChatRestrictions(0));
 		return (channel->amCreator() || allowByAdminRights(right, channel))
 			? Result::Allowed()
-			: ((defaultRestrictions & right)
-				&& !channel->unrestrictedByBoosts())
+			: (defaultRestrictions & right)
 			? Result::WithEveryone()
 			: (channel->restrictions() & right)
 			? Result::Explicit()

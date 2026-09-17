@@ -52,7 +52,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/admin_log/history_admin_log_section.h"
 #include "history/view/history_view_welcome_messages_section.h"
 #include "history/history_item.h"
-#include "info/channel_statistics/boosts/info_boosts_widget.h"
 #include "info/profile/info_profile_values.h"
 #include "info/info_memento.h"
 #include "lang/lang_hardcoded.h"
@@ -343,37 +342,6 @@ void SaveDirectMessagesAllowed(
 	api->registerModifyRequest(key, requestId);
 }
 
-void SaveBoostsUnrestrict(
-		not_null<ChannelData*> channel,
-		int boostsUnrestrict,
-		Fn<void()> done) {
-	const auto api = &channel->session().api();
-	const auto key = Api::RequestKey("boosts_unrestrict", channel->id);
-	const auto requestId = api->request(
-		MTPchannels_SetBoostsToUnblockRestrictions(
-			channel->inputChannel(),
-			MTP_int(boostsUnrestrict))
-	).done([=](const MTPUpdates &result) {
-		api->clearModifyRequest(key);
-		api->applyUpdates(result);
-		channel->setBoostsUnrestrict(
-			channel->boostsApplied(),
-			boostsUnrestrict);
-		done();
-	}).fail([=](const MTP::Error &error) {
-		api->clearModifyRequest(key);
-		if (error.type() != u"CHAT_NOT_MODIFIED"_q) {
-			return;
-		}
-		channel->setBoostsUnrestrict(
-			channel->boostsApplied(),
-			boostsUnrestrict);
-		done();
-	}).send();
-
-	api->registerModifyRequest(key, requestId);
-}
-
 void ShowEditPermissions(
 		not_null<Window::SessionNavigation*> navigation,
 		not_null<PeerData*> peer) {
@@ -392,10 +360,6 @@ void ShowEditPermissions(
 				close);
 			if (const auto channel = peer->asChannel()) {
 				SaveSlowmodeSeconds(channel, result.slowmodeSeconds, close);
-				SaveBoostsUnrestrict(
-					channel,
-					result.boostsUnrestrict,
-					close);
 			}
 		};
 		auto done = [=](EditPeerPermissionsBoxResult result) {
@@ -406,8 +370,7 @@ void ShowEditPermissions(
 
 			const auto saveFor = peer->migrateToOrMe();
 			const auto chat = saveFor->asChat();
-			if (!chat
-				|| (!result.slowmodeSeconds && !result.boostsUnrestrict)) {
+			if (!chat || !result.slowmodeSeconds) {
 				save(saveFor, result);
 				return;
 			}
@@ -1895,40 +1858,27 @@ void Controller::editReactions() {
 		_peer->input()
 	)).done([=](const MTPpremium_BoostsStatus &result) {
 		_controls.levelRequested = false;
+		const auto level = result.data().vlevel().v;
 		if (const auto channel = _peer->asChannel()) {
-			channel->updateLevelHint(result.data().vlevel().v);
+			channel->updateLevelHint(level);
 		}
-		const auto link = qs(result.data().vboost_url());
-		const auto weak = base::make_weak(_navigation->parentController());
-		auto counters = ParseBoostCounters(result);
-		counters.mine = 0; // Don't show current level as just-reached.
-		const auto askForBoosts = [=](int required) {
-			if (const auto strong = weak.get()) {
-				const auto openStatistics = [=, peer = _peer] {
-					strong->showSection(Info::Boosts::Make(peer));
-				};
-				strong->show(Box(Ui::AskBoostBox, Ui::AskBoostBoxData{
-					.link = link,
-					.boost = counters,
-					.features = (_peer->isChannel()
-						? LookupBoostFeatures(_peer->asChannel())
-						: Ui::BoostFeatures()),
-					.reason = { Ui::AskBoostCustomReactions{ required } },
-					.group = !_peer->isBroadcast(),
-				}, openStatistics, nullptr));
-			}
+		const auto show = _navigation->uiShow();
+		const auto levelRequired = [=](int required) {
+			show->showToast(Ui::AskBoostReasonText({
+				Ui::AskBoostCustomReactions{ required },
+			}));
 		};
 		_navigation->uiShow()->show(Box(
 			EditAllowedReactionsBox,
 			EditAllowedReactionsArgs{
 				.navigation = _navigation,
-				.allowedCustomReactions = counters.level,
+				.allowedCustomReactions = level,
 				.customReactionsHardLimit = Data::PremiumLimits(
 					&_peer->session()).maxBoostLevel(),
 				.list = _navigation->session().data().reactions().list(
 					Data::Reactions::Type::Active),
 				.allowed = Data::PeerAllowedReactions(_peer),
-				.askForBoosts = askForBoosts,
+				.levelRequired = levelRequired,
 				.save = done,
 			}));
 	}).send();
