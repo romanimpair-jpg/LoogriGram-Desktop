@@ -1241,7 +1241,7 @@ void EditPeerColorSection(
 		const auto iconInner = iconWrap->entity();
 
 		Ui::AddSkip(iconInner, st::settingsColorSampleSkip);
-		const auto emojiButton = iconInner->add(CreateEmojiIconButton(
+		iconInner->add(CreateEmojiIconButton(
 			iconInner,
 			show,
 			style,
@@ -1256,7 +1256,6 @@ void EditPeerColorSection(
 			iconInner,
 			tr::lng_settings_color_emoji_about_channel(),
 			st::peerAppearanceDividerTextMargin);
-
 	}
 
 	if (const auto channel = peer->asChannel()) {
