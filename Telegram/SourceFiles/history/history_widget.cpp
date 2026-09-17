@@ -890,16 +890,8 @@ HistoryWidget::HistoryWidget(
 		| PeerUpdateFlag::ChatThemeToken
 		| PeerUpdateFlag::FullInfo
 		| PeerUpdateFlag::ManagedBot
-		| PeerUpdateFlag::GiftSettings
 	) | rpl::filter([=](const Data::PeerUpdate &update) {
-		if (update.peer.get() == _peer) {
-			return true;
-		} else if (update.peer->isSelf()
-			&& (update.flags & PeerUpdateFlag::GiftSettings)) {
-					updateControlsVisibility();
-			updateControlsGeometry();
-		}
-		return false;
+		return (update.peer.get() == _peer);
 	}) | rpl::map([](const Data::PeerUpdate &update) {
 		return update.flags;
 	}) | rpl::on_next([=](Data::PeerUpdate::Flags flags) {
@@ -933,10 +925,7 @@ HistoryWidget::HistoryWidget(
 				return;
 			}
 		}
-		if (flags & PeerUpdateFlag::GiftSettings) {
-				}
-		if (flags & (PeerUpdateFlag::BotStartToken
-			| PeerUpdateFlag::GiftSettings)) {
+		if (flags & PeerUpdateFlag::BotStartToken) {
 			updateControlsVisibility();
 			updateControlsGeometry();
 		}

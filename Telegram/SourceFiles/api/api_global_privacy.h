@@ -24,18 +24,6 @@ enum class UnarchiveOnNewMessage {
 	AnyUnmuted,
 };
 
-enum class DisallowedGiftType : uchar {
-	Limited      = 0x01,
-	Unlimited    = 0x02,
-	Unique       = 0x04,
-	FromChannels = 0x08,
-	Premium      = 0x10,
-	SendHide     = 0x20,
-};
-inline constexpr bool is_flag_type(DisallowedGiftType) { return true; }
-
-using DisallowedGiftTypes = base::flags<DisallowedGiftType>;
-
 class GlobalPrivacy final {
 public:
 	explicit GlobalPrivacy(not_null<ApiWrap*> api);
@@ -63,11 +51,6 @@ public:
 
 	void updateMessagesPrivacy(bool requirePremium);
 
-	[[nodiscard]] DisallowedGiftTypes disallowedGiftTypesCurrent() const;
-	[[nodiscard]] auto disallowedGiftTypes() const
-		-> rpl::producer<DisallowedGiftTypes>;
-	void updateDisallowedGiftTypes(DisallowedGiftTypes types);
-
 private:
 	void apply(const MTPGlobalPrivacySettings &settings);
 
@@ -75,8 +58,7 @@ private:
 		bool archiveAndMute,
 		UnarchiveOnNewMessage unarchiveOnNewMessage,
 		bool hideReadTime,
-		bool newRequirePremium,
-		DisallowedGiftTypes disallowedGiftTypes);
+		bool newRequirePremium);
 
 	const not_null<Main::Session*> _session;
 	MTP::Sender _api;
@@ -87,7 +69,6 @@ private:
 	rpl::variable<bool> _showArchiveAndMute = false;
 	rpl::variable<bool> _hideReadTime = false;
 	rpl::variable<bool> _newRequirePremium = false;
-	rpl::variable<DisallowedGiftTypes> _disallowedGiftTypes;
 	std::vector<Fn<void()>> _callbacks;
 
 };

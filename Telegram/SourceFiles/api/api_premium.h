@@ -7,7 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
-#include "data/data_star_gift.h"
 #include "mtproto/sender.h"
 
 class History;
@@ -66,24 +65,5 @@ struct MessageMoneyRestriction {
 [[nodiscard]] MessageMoneyRestriction ResolveMessageMoneyRestrictions(
 	not_null<PeerData*> peer,
 	History *maybeHistory);
-
-[[nodiscard]] std::optional<Data::StarGift> FromTL(
-	not_null<Main::Session*> session,
-	const MTPstarGift &gift);
-[[nodiscard]] std::optional<Data::SavedStarGift> FromTL(
-	not_null<PeerData*> to,
-	const MTPsavedStarGift &gift);
-
-[[nodiscard]] Data::UniqueGiftModel FromTL(
-	not_null<Main::Session*> session,
-	const MTPDstarGiftAttributeModel &data);
-[[nodiscard]] Data::UniqueGiftPattern FromTL(
-	not_null<Main::Session*> session,
-	const MTPDstarGiftAttributePattern &data);
-[[nodiscard]] Data::UniqueGiftBackdrop FromTL(
-	const MTPDstarGiftAttributeBackdrop &data);
-[[nodiscard]] Data::UniqueGiftOriginalDetails FromTL(
-	not_null<Main::Session*> session,
-	const MTPDstarGiftAttributeOriginalDetails &data);
 
 } // namespace Api

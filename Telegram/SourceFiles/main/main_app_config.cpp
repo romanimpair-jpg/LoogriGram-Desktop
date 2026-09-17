@@ -60,12 +60,6 @@ int AppConfig::quoteLengthMax() const {
 	return get<int>(u"quote_length_max"_q, 1024);
 }
 
-int AppConfig::stargiftConvertPeriodMax() const {
-	return get<int>(
-		u"stargifts_convert_period_max"_q,
-		_account->mtp().isTestMode() ? 300 : (90 * 86400));
-}
-
 int AppConfig::noForwardsRequestExpirePeriod() const {
 	return get<int>(
 		u"no_forwards_request_expire_period"_q,
@@ -99,18 +93,6 @@ bool AppConfig::starsSpendTopupInvoiceDisabled() const {
 	return get<bool>(u"stars_spend_topup_invoice_disabled"_q, false);
 }
 
-int AppConfig::pinnedGiftsLimit() const {
-	return get<int>(u"stargifts_pinned_to_top_limit"_q, 6);
-}
-
-int AppConfig::giftCollectionsLimit() const {
-	return get<int>(u"stargifts_collections_limit"_q, 10);
-}
-
-int AppConfig::giftCollectionGiftsLimit() const {
-	return get<int>(u"stargifts_collection_gifts_limit"_q, 500);
-}
-
 bool AppConfig::callsDisabledForSession() const {
 	const auto authorizations = _account->sessionExists()
 		? &_account->session().api().authorizations()
@@ -128,32 +110,6 @@ int AppConfig::confcallSizeLimit() const {
 
 bool AppConfig::confcallPrioritizeVP8() const {
 	return get<bool>(u"confcall_use_vp8"_q, false);
-}
-
-int AppConfig::giftResaleStarsMin() const {
-	return get<int>(u"stars_stargift_resale_amount_min"_q, 125);
-}
-
-int AppConfig::giftResaleStarsMax() const {
-	return get<int>(u"stars_stargift_resale_amount_max"_q, 35000);
-}
-
-int AppConfig::giftResaleStarsThousandths() const {
-	return get<int>(u"stars_stargift_resale_commission_permille"_q, 800);
-}
-
-int64 AppConfig::giftResaleNanoTonMin() const {
-	return get<int64>(u"ton_stargift_resale_amount_min"_q, 250'000'000LL);
-}
-
-int64 AppConfig::giftResaleNanoTonMax() const {
-	return get<int64>(
-		u"ton_stargift_resale_amount_max"_q,
-		1'000'000'000'000'000LL);
-}
-
-int AppConfig::giftResaleNanoTonThousandths() const {
-	return get<int>(u"ton_stargift_resale_commission_permille"_q, 800);
 }
 
 int AppConfig::pollOptionsLimit() const {
@@ -623,17 +579,6 @@ auto AppConfig::groupCallColorings() const -> std::vector<StarsColoring> {
 		ranges::sort(_groupCallColorings, ranges::less(), proj);
 	}
 	return _groupCallColorings;
-}
-
-std::vector<std::vector<int>> AppConfig::craftAttributePermilles() const {
-	return get<std::vector<std::vector<int>>>(
-		u"stargifts_craft_attribute_permilles"_q,
-		{
-			{ 90 },
-			{ 80, 200 },
-			{ 70, 190, 460 },
-			{ 60, 180, 450, 1000 },
-		});
 }
 
 } // namespace Main

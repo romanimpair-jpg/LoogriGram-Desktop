@@ -94,7 +94,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace Data {
 namespace {
 
-constexpr auto kNextForUpgradeGiftTimeout = 5 * crl::time(1000);
 constexpr auto kMaxServiceNotificationMessageSize = 4096;
 
 using ViewElement = HistoryView::Element;
@@ -2021,22 +2020,6 @@ rpl::producer<not_null<HistoryItem*>> Session::newItemAdded() const {
 	return _newItemAdded.events();
 }
 
-void Session::notifyGiftUpdate(GiftUpdate &&update) {
-	_giftUpdates.fire(std::move(update));
-}
-
-rpl::producer<GiftUpdate> Session::giftUpdates() const {
-	return _giftUpdates.events();
-}
-
-void Session::notifyGiftsUpdate(GiftsUpdate &&update) {
-	_giftsUpdates.fire(std::move(update));
-}
-
-rpl::producer<GiftsUpdate> Session::giftsUpdates() const {
-	return _giftsUpdates.events();
-}
-
 HistoryItem *Session::changeMessageId(PeerId peerId, MsgId wasId, MsgId nowId) {
 	const auto list = messagesListForInsert(peerId);
 	const auto i = list->find(wasId);
@@ -2477,57 +2460,6 @@ void Session::notifyPinnedDialogsOrderUpdated() {
 
 rpl::producer<> Session::pinnedDialogsOrderUpdated() const {
 	return _pinnedDialogsOrderUpdated.events();
-}
-
-void Session::nextForUpgradeGiftInvalidate(not_null<PeerData*> owner) {
-	_nextForUpgradeGifts.remove(owner);
-}
-
-void Session::nextForUpgradeGiftRequest(
-		not_null<PeerData*> owner,
-		Fn<void(std::optional<Data::SavedStarGift>)> done) {
-	auto &entry = _nextForUpgradeGifts[owner];
-	if (entry.requestId) {
-		entry.done = std::move(done);
-		return;
-	} else if (crl::now() - entry.received < kNextForUpgradeGiftTimeout) {
-		done(entry.gift);
-		return;
-	}
-	entry.done = std::move(done);
-
-	const auto finishWith = [=](std::optional<Data::SavedStarGift> gift) {
-		auto &entry = _nextForUpgradeGifts[owner];
-		entry.requestId = 0;
-		entry.gift = std::move(gift);
-		entry.received = crl::now();
-		base::take(entry.done)(entry.gift);
-	};
-	using Flag = MTPpayments_GetSavedStarGifts::Flag;
-	entry.requestId = _session->api().request(
-		MTPpayments_GetSavedStarGifts(
-			MTP_flags(Flag::f_exclude_unique
-				| Flag::f_exclude_unlimited
-				| Flag::f_exclude_unupgradable),
-			owner->input(),
-			MTPint(), // collection_id
-			MTP_string(), // offset
-			MTP_int(1)) // limit
-	).done([=](const MTPpayments_SavedStarGifts &result) {
-		const auto &data = result.data();
-		processUsers(data.vusers());
-		processChats(data.vchats());
-		const auto &list = data.vgifts().v;
-		if (list.empty()) {
-			finishWith(std::nullopt);
-		} else if (auto parsed = Api::FromTL(owner, list[0])) {
-			finishWith(std::move(*parsed));
-		} else {
-			finishWith(std::nullopt);
-		}
-	}).fail([=](const MTP::Error &error) {
-		finishWith(std::nullopt);
-	}).send();
 }
 
 void Session::registerHeavyViewPart(not_null<ViewElement*> view) {

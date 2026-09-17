@@ -785,13 +785,6 @@ bool UserData::hasCalls() const {
 		&& (callsStatus() != CallsStatus::Unknown);
 }
 
-void UserData::setDisallowedGiftTypes(Api::DisallowedGiftTypes types) {
-	if (_disallowedGiftTypes != types) {
-		_disallowedGiftTypes = types;
-		session().changes().peerUpdated(this, UpdateFlag::GiftSettings);
-	}
-}
-
 const TextWithEntities &UserData::note() const {
 	return _note;
 }
@@ -950,34 +943,6 @@ void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update) {
 			.value = ParseStarsRating(update.vstars_my_pending_rating()),
 			.date = update.vstars_my_pending_rating_date().value_or_empty(),
 		});
-	}
-
-	if (const auto gifts = update.vdisallowed_gifts()) {
-		const auto &data = gifts->data();
-		user->setDisallowedGiftTypes(Api::DisallowedGiftType()
-			| (data.is_disallow_unlimited_stargifts()
-				? Api::DisallowedGiftType::Unlimited
-				: Api::DisallowedGiftType())
-			| (data.is_disallow_limited_stargifts()
-				? Api::DisallowedGiftType::Limited
-				: Api::DisallowedGiftType())
-			| (data.is_disallow_unique_stargifts()
-				? Api::DisallowedGiftType::Unique
-				: Api::DisallowedGiftType())
-			| (data.is_disallow_premium_gifts()
-				? Api::DisallowedGiftType::Premium
-				: Api::DisallowedGiftType())
-			| (data.is_disallow_stargifts_from_channels()
-				? Api::DisallowedGiftType::FromChannels
-				: Api::DisallowedGiftType())
-			| (update.is_display_gifts_button()
-				? Api::DisallowedGiftType::SendHide
-				: Api::DisallowedGiftType()));
-	} else {
-		user->setDisallowedGiftTypes(Api::DisallowedGiftTypes()
-			| (update.is_display_gifts_button()
-				? Api::DisallowedGiftType::SendHide
-				: Api::DisallowedGiftType()));
 	}
 
 	user->owner().stories().apply(user, update.vstories());

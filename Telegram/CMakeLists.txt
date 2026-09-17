@@ -469,8 +469,6 @@ PRIVATE
     chat_helpers/stickers_dice_pack.h
     chat_helpers/stickers_emoji_pack.cpp
     chat_helpers/stickers_emoji_pack.h
-    chat_helpers/stickers_gift_box_pack.cpp
-    chat_helpers/stickers_gift_box_pack.h
     chat_helpers/stickers_list_footer.cpp
     chat_helpers/stickers_list_footer.h
     chat_helpers/stickers_list_widget.cpp
@@ -722,8 +720,6 @@ PRIVATE
     data/data_shared_media.h
     data/data_sparse_ids.cpp
     data/data_sparse_ids.h
-    data/data_star_gift.cpp
-    data/data_star_gift.h
     data/data_statistics_lists.h
     data/data_stories.cpp
     data/data_stories.h

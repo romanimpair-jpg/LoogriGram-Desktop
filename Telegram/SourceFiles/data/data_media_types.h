@@ -39,7 +39,6 @@ namespace Data {
 class CloudImage;
 class WallPaper;
 class Session;
-struct UniqueGift;
 
 enum class CallState : char {
 	Missed,

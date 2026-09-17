@@ -11,7 +11,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/timer.h"
 #include "data/data_cloud_file.h"
 #include "data/data_groups.h"
-#include "data/data_star_gift.h"
 #include "dialogs/dialogs_main_list.h"
 #include "history/history_location_manager.h"
 #include "storage/storage_databases.h"
@@ -78,7 +77,6 @@ class BusinessInfo;
 struct ReactionId;
 struct UnavailableReason;
 struct StarsRatingPending;
-struct UniqueGift;
 
 struct RepliesReadTillUpdate {
 	FullMsgId id;
@@ -93,29 +91,6 @@ struct SublistReadTillUpdate {
 	bool out = false;
 };
 
-struct GiftUpdate {
-	enum class Action : uchar {
-		Save,
-		Unsave,
-		Convert,
-		Transfer,
-		Delete,
-		Pin,
-		Unpin,
-		ResaleChange,
-		Upgraded,
-	};
-
-	Data::SavedStarGiftId id;
-	QString slug;
-	Action action = {};
-};
-struct GiftsUpdate {
-	not_null<PeerData*> peer;
-	int collectionId = 0;
-	std::vector<Data::SavedStarGiftId> added;
-	std::vector<Data::SavedStarGiftId> removed;
-};
 struct SentToScheduled {
 	not_null<History*> history;
 	MsgId scheduledId = 0;
@@ -379,10 +354,6 @@ public:
 	[[nodiscard]] rpl::producer<not_null<const ViewElement*>> viewLayoutChanged() const;
 	void notifyNewItemAdded(not_null<HistoryItem*> item);
 	[[nodiscard]] rpl::producer<not_null<HistoryItem*>> newItemAdded() const;
-	void notifyGiftUpdate(GiftUpdate &&update);
-	[[nodiscard]] rpl::producer<GiftUpdate> giftUpdates() const;
-	void notifyGiftsUpdate(GiftsUpdate &&update);
-	[[nodiscard]] rpl::producer<GiftsUpdate> giftsUpdates() const;
 	void requestItemRepaint(not_null<const HistoryItem*> item, QRect r = QRect());
 	[[nodiscard]] rpl::producer<not_null<const HistoryItem*>> itemRepaintRequest() const;
 	void requestDrawToReply(DrawToReplyRequest request);
@@ -441,11 +412,6 @@ public:
 
 	void notifyPinnedDialogsOrderUpdated();
 	[[nodiscard]] rpl::producer<> pinnedDialogsOrderUpdated() const;
-
-	void nextForUpgradeGiftInvalidate(not_null<PeerData*> owner);
-	void nextForUpgradeGiftRequest(
-		not_null<PeerData*> owner,
-		Fn<void(std::optional<Data::SavedStarGift>)> done);
 
 
 	void registerRestricted(
@@ -998,13 +964,6 @@ public:
 private:
 	using Messages = std::unordered_map<MsgId, not_null<HistoryItem*>>;
 
-	struct NextToUpgradeGift {
-		std::optional<Data::SavedStarGift> gift;
-		Fn<void(std::optional<Data::SavedStarGift>)> done;
-		crl::time received = 0;
-		mtpRequestId requestId = 0;
-	};
-
 	void suggestStartExport();
 
 	void setupMigrationViewer();
@@ -1183,8 +1142,6 @@ private:
 	rpl::event_stream<not_null<const HistoryItem*>> _itemLayoutChanges;
 	rpl::event_stream<not_null<const ViewElement*>> _viewLayoutChanges;
 	rpl::event_stream<not_null<HistoryItem*>> _newItemAdded;
-	rpl::event_stream<GiftUpdate> _giftUpdates;
-	rpl::event_stream<GiftsUpdate> _giftsUpdates;
 	rpl::event_stream<not_null<const HistoryItem*>> _itemRepaintRequest;
 	rpl::event_stream<RequestViewRepaint> _viewRepaintRequest;
 	rpl::event_stream<not_null<const HistoryItem*>> _itemResizeRequest;
@@ -1401,10 +1358,6 @@ private:
 	MsgId _nonHistoryEntryId = WelcomeMaxMsgId;
 
 	std::unique_ptr<StarsRatingPending> _pendingStarsRating;
-
-	base::flat_map<
-		not_null<PeerData*>,
-		NextToUpgradeGift> _nextForUpgradeGifts;
 
 	rpl::event_stream<RecentJoinChat> _recentJoinChat;
 

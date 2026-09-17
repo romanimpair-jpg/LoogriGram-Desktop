@@ -70,7 +70,6 @@ public:
 	}
 
 	[[nodiscard]] int quoteLengthMax() const;
-	[[nodiscard]] int stargiftConvertPeriodMax() const;
 	[[nodiscard]] int noForwardsRequestExpirePeriod() const;
 
 
@@ -80,20 +79,10 @@ public:
 	[[nodiscard]] float64 starsSellRate() const;
 	[[nodiscard]] float64 currencySellRate() const;
 	[[nodiscard]] bool starsSpendTopupInvoiceDisabled() const;
-	[[nodiscard]] int pinnedGiftsLimit() const;
-	[[nodiscard]] int giftCollectionsLimit() const;
-	[[nodiscard]] int giftCollectionGiftsLimit() const;
 
 	[[nodiscard]] bool callsDisabledForSession() const;
 	[[nodiscard]] int confcallSizeLimit() const;
 	[[nodiscard]] bool confcallPrioritizeVP8() const;
-
-	[[nodiscard]] int giftResaleStarsMin() const;
-	[[nodiscard]] int giftResaleStarsMax() const;
-	[[nodiscard]] int giftResaleStarsThousandths() const;
-	[[nodiscard]] int64 giftResaleNanoTonMin() const;
-	[[nodiscard]] int64 giftResaleNanoTonMax() const;
-	[[nodiscard]] int giftResaleNanoTonThousandths() const;
 
 	[[nodiscard]] int pollOptionsLimit() const;
 	[[nodiscard]] int pollAnswerDeletePeriod() const;
@@ -130,8 +119,6 @@ public:
 
 	using StarsColoring = Calls::Group::Ui::StarsColoring;
 	[[nodiscard]] std::vector<StarsColoring> groupCallColorings() const;
-
-	[[nodiscard]] std::vector<std::vector<int>> craftAttributePermilles() const;
 
 	void refresh(bool force = false);
 

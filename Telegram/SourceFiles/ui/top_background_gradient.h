@@ -7,11 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
-namespace Data {
-struct UniqueGift;
-struct UniqueGiftBackdrop;
-} // namespace Data
-
 namespace Ui::Text {
 class CustomEmoji;
 } // namespace Ui::Text
@@ -28,14 +23,6 @@ struct PatternPoint {
 
 [[nodiscard]] QImage CreateTopBgGradient(
 	QSize size,
-	const Data::UniqueGift &gift);
-
-[[nodiscard]] QImage CreateTopBgGradient(
-	QSize size,
-	const Data::UniqueGiftBackdrop &backdrop);
-
-[[nodiscard]] QImage CreateTopBgGradient(
-	QSize size,
 	QColor centerColor,
 	QColor edgeColor,
 	bool rounded = true,
@@ -48,24 +35,6 @@ struct PatternPoint {
 
 [[nodiscard]] const std::vector<PatternPoint> &PatternBgPoints();
 [[nodiscard]] const std::vector<PatternPoint> &PatternBgPointsSmall();
-
-void PaintBgPoints(
-	QPainter &p,
-	const std::vector<PatternPoint> &points,
-	base::flat_map<float64, QImage> &cache,
-	not_null<Ui::Text::CustomEmoji*> emoji,
-	const Data::UniqueGift &gift,
-	const QRect &rect,
-	float64 shown = 1.);
-
-void PaintBgPoints(
-	QPainter &p,
-	const std::vector<PatternPoint> &points,
-	base::flat_map<float64, QImage> &cache,
-	not_null<Ui::Text::CustomEmoji*> emoji,
-	const Data::UniqueGiftBackdrop &backdrop,
-	const QRect &rect,
-	float64 shown = 1.);
 
 void PaintBgPoints(
 	QPainter &p,

@@ -11,7 +11,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_peer_colors.h"
 #include "data/data_emoji_statuses.h"
 #include "data/data_peer.h"
-#include "data/data_star_gift.h"
 #include "data/stickers/data_custom_emoji.h"
 #include "main/main_session.h"
 #include "ui/image/image_prepare.h"
@@ -88,19 +87,6 @@ QImage CreateTopBgGradient(
 		return Images::Round(std::move(result), mask, RectPart::FullTop);
 	}
 	return result;
-}
-
-QImage CreateTopBgGradient(QSize size, const Data::UniqueGift &gift) {
-	return CreateTopBgGradient(size, gift.backdrop);
-}
-
-QImage CreateTopBgGradient(
-		QSize size,
-		const Data::UniqueGiftBackdrop &backdrop) {
-	return CreateTopBgGradient(
-		size,
-		backdrop.centerColor,
-		backdrop.edgeColor);
 }
 
 QImage CreateTopBgGradient(
@@ -198,42 +184,6 @@ const std::vector<PatternPoint> &PatternBgPointsSmall() {
 		{ { 0.856, 0.936 }, kSmall, kFaded },
 	};
 	return result;
-}
-
-void PaintBgPoints(
-		QPainter &p,
-		const std::vector<PatternPoint> &points,
-		base::flat_map<float64, QImage> &cache,
-		not_null<Ui::Text::CustomEmoji*> emoji,
-		const Data::UniqueGift &gift,
-		const QRect &rect,
-		float64 shown) {
-	PaintBgPoints(
-		p,
-		points,
-		cache,
-		emoji,
-		gift.backdrop,
-		rect,
-		shown);
-}
-
-void PaintBgPoints(
-		QPainter &p,
-		const std::vector<PatternPoint> &points,
-		base::flat_map<float64, QImage> &cache,
-		not_null<Ui::Text::CustomEmoji*> emoji,
-		const Data::UniqueGiftBackdrop &backdrop,
-		const QRect &rect,
-		float64 shown) {
-	PaintBgPoints(
-		p,
-		points,
-		cache,
-		emoji,
-		backdrop.patternColor,
-		rect,
-		shown);
 }
 
 void PaintBgPoints(

@@ -88,8 +88,7 @@ void GlobalPrivacy::updateHideReadTime(bool hide) {
 		archiveAndMuteCurrent(),
 		unarchiveOnNewMessageCurrent(),
 		hide,
-		newRequirePremiumCurrent(),
-		disallowedGiftTypesCurrent());
+		newRequirePremiumCurrent());
 }
 
 bool GlobalPrivacy::hideReadTimeCurrent() const {
@@ -113,26 +112,7 @@ void GlobalPrivacy::updateMessagesPrivacy(bool requirePremium) {
 		archiveAndMuteCurrent(),
 		unarchiveOnNewMessageCurrent(),
 		hideReadTimeCurrent(),
-		requirePremium,
-		disallowedGiftTypesCurrent());
-}
-
-DisallowedGiftTypes GlobalPrivacy::disallowedGiftTypesCurrent() const {
-	return _disallowedGiftTypes.current();
-}
-
-auto GlobalPrivacy::disallowedGiftTypes() const
-		-> rpl::producer<DisallowedGiftTypes> {
-	return _disallowedGiftTypes.value();
-}
-
-void GlobalPrivacy::updateDisallowedGiftTypes(DisallowedGiftTypes types) {
-	update(
-		archiveAndMuteCurrent(),
-		unarchiveOnNewMessageCurrent(),
-		hideReadTimeCurrent(),
-		newRequirePremiumCurrent(),
-		types);
+		requirePremium);
 }
 
 // LoogriGram: a paid reaction could be shown as coming from you, from one of
@@ -144,8 +124,7 @@ void GlobalPrivacy::updateArchiveAndMute(bool value) {
 		value,
 		unarchiveOnNewMessageCurrent(),
 		hideReadTimeCurrent(),
-		newRequirePremiumCurrent(),
-		disallowedGiftTypesCurrent());
+		newRequirePremiumCurrent());
 }
 
 void GlobalPrivacy::updateUnarchiveOnNewMessage(
@@ -154,24 +133,22 @@ void GlobalPrivacy::updateUnarchiveOnNewMessage(
 		archiveAndMuteCurrent(),
 		value,
 		hideReadTimeCurrent(),
-		newRequirePremiumCurrent(),
-		disallowedGiftTypesCurrent());
+		newRequirePremiumCurrent());
 }
 
 void GlobalPrivacy::update(
 		bool archiveAndMute,
 		UnarchiveOnNewMessage unarchiveOnNewMessage,
 		bool hideReadTime,
-		bool newRequirePremium,
-		DisallowedGiftTypes disallowedGiftTypes) {
+		bool newRequirePremium) {
 	using Flag = MTPDglobalPrivacySettings::Flag;
-	using DisallowedFlag = MTPDdisallowedGiftsSettings::Flag;
 
 	_api.request(_requestId).cancel();
 	const auto newRequirePremiumAllowed
 		= _session->appConfig().newRequirePremiumFree();
-	const auto showGiftIcon
-		= (disallowedGiftTypes & DisallowedGiftType::SendHide);
+	// LoogriGram: which gifts others may send, and whether a gift button
+	// shows in their message field, are premium-only settings; without a
+	// subscription upstream always sends them empty, and so does this.
 	const auto flags = Flag()
 		| (archiveAndMute
 			? Flag::f_archive_and_mute_new_noncontact_peers
@@ -186,37 +163,15 @@ void GlobalPrivacy::update(
 		| ((newRequirePremium && newRequirePremiumAllowed)
 			? Flag::f_new_noncontact_peers_require_premium
 			: Flag())
-		| (showGiftIcon ? Flag::f_display_gifts_button : Flag())
 		| Flag::f_disallowed_gifts;
-	const auto disallowedFlags = DisallowedFlag()
-		| ((disallowedGiftTypes & DisallowedGiftType::Premium)
-			? DisallowedFlag::f_disallow_premium_gifts
-			: DisallowedFlag())
-		| ((disallowedGiftTypes & DisallowedGiftType::Unlimited)
-			? DisallowedFlag::f_disallow_unlimited_stargifts
-			: DisallowedFlag())
-		| ((disallowedGiftTypes & DisallowedGiftType::Limited)
-			? DisallowedFlag::f_disallow_limited_stargifts
-			: DisallowedFlag())
-		| ((disallowedGiftTypes & DisallowedGiftType::Unique)
-			? DisallowedFlag::f_disallow_unique_stargifts
-			: DisallowedFlag())
-		| ((disallowedGiftTypes & DisallowedGiftType::FromChannels)
-			? DisallowedFlag::f_disallow_stargifts_from_channels
-			: DisallowedFlag());
-	const auto typesWas = _disallowedGiftTypes.current();
-	const auto typesChanged = (typesWas != disallowedGiftTypes);
 	_requestId = _api.request(MTPaccount_SetGlobalPrivacySettings(
 		MTP_globalPrivacySettings(
 			MTP_flags(flags),
 			MTP_long(0),
-			MTP_disallowedGiftsSettings(MTP_flags(disallowedFlags)))
+			MTP_disallowedGiftsSettings(MTP_flags(0)))
 	)).done([=](const MTPGlobalPrivacySettings &result) {
 		_requestId = 0;
 		apply(result);
-		if (typesChanged) {
-			_session->user()->updateFullForced();
-		}
 	}).fail([=](const MTP::Error &error) {
 		_requestId = 0;
 		if (error.type() == u"PREMIUM_ACCOUNT_REQUIRED"_q) {
@@ -224,15 +179,13 @@ void GlobalPrivacy::update(
 				archiveAndMute,
 				unarchiveOnNewMessage,
 				hideReadTime,
-				false,
-				DisallowedGiftTypes());
+				false);
 		}
 	}).send();
 	_archiveAndMute = archiveAndMute;
 	_unarchiveOnNewMessage = unarchiveOnNewMessage;
 	_hideReadTime = hideReadTime;
 	_newRequirePremium = newRequirePremium;
-	_disallowedGiftTypes = disallowedGiftTypes;
 }
 
 void GlobalPrivacy::apply(const MTPGlobalPrivacySettings &settings) {
@@ -245,32 +198,6 @@ void GlobalPrivacy::apply(const MTPGlobalPrivacySettings &settings) {
 		: UnarchiveOnNewMessage::AnyUnmuted;
 	_hideReadTime = data.is_hide_read_marks();
 	_newRequirePremium = data.is_new_noncontact_peers_require_premium();
-	if (const auto gifts = data.vdisallowed_gifts()) {
-		const auto &disallow = gifts->data();
-		_disallowedGiftTypes = DisallowedGiftType()
-			| (disallow.is_disallow_unlimited_stargifts()
-				? DisallowedGiftType::Unlimited
-				: DisallowedGiftType())
-			| (disallow.is_disallow_limited_stargifts()
-				? DisallowedGiftType::Limited
-				: DisallowedGiftType())
-			| (disallow.is_disallow_unique_stargifts()
-				? DisallowedGiftType::Unique
-				: DisallowedGiftType())
-			| (disallow.is_disallow_premium_gifts()
-				? DisallowedGiftType::Premium
-				: DisallowedGiftType())
-			| (disallow.is_disallow_stargifts_from_channels()
-				? DisallowedGiftType::FromChannels
-				: DisallowedGiftType())
-			| (data.is_display_gifts_button()
-				? DisallowedGiftType::SendHide
-				: DisallowedGiftType());
-	} else {
-		_disallowedGiftTypes = data.is_display_gifts_button()
-			? DisallowedGiftType::SendHide
-			: DisallowedGiftType();
-	}
 }
 
 } // namespace Api

@@ -708,20 +708,6 @@ bool PeerData::canDeleteStories() const {
 	return isSelf();
 }
 
-bool PeerData::canManageGifts() const {
-	if (const auto channel = asChannel()) {
-		return channel->canPostMessages();
-	}
-	return isSelf();
-}
-
-bool PeerData::canTransferGifts() const {
-	if (const auto channel = asChannel()) {
-		return channel->amCreator();
-	}
-	return isSelf();
-}
-
 bool PeerData::canEditMessagesIndefinitely() const {
 	if (const auto user = asUser()) {
 		return user->isSelf();
@@ -2111,7 +2097,8 @@ ProfileTab ParseProfileTab(const MTPProfileTab *tab) {
 	return tab->match([](const MTPDprofileTabPosts &) {
 		return ProfileTab::Posts;
 	}, [](const MTPDprofileTabGifts &) {
-		return ProfileTab::Gifts;
+		// LoogriGram: a profile opening on its gifts tab; that tab is gone.
+		return ProfileTab::None;
 	}, [](const MTPDprofileTabMedia &) {
 		return ProfileTab::Media;
 	}, [](const MTPDprofileTabFiles &) {
@@ -2130,7 +2117,6 @@ ProfileTab ParseProfileTab(const MTPProfileTab *tab) {
 MTPProfileTab ProfileTabToMTP(ProfileTab tab) {
 	switch (tab) {
 	case ProfileTab::Posts: return MTP_profileTabPosts();
-	case ProfileTab::Gifts: return MTP_profileTabGifts();
 	case ProfileTab::Media: return MTP_profileTabMedia();
 	case ProfileTab::Files: return MTP_profileTabFiles();
 	case ProfileTab::Music: return MTP_profileTabMusic();

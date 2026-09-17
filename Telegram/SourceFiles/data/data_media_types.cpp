@@ -50,7 +50,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/storage_shared_media.h"
 #include "storage/localstorage.h"
 #include "chat_helpers/stickers_dice_pack.h" // Stickers::DicePacks::IsSlot.
-#include "chat_helpers/stickers_gift_box_pack.h"
 #include "data/data_session.h"
 #include "data/data_auto_download.h"
 #include "data/data_photo.h"

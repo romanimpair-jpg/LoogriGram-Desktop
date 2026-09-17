@@ -123,7 +123,6 @@ enum class AllowedReactionsType : uchar {
 enum class ProfileTab : uchar {
 	None,
 	Posts,
-	Gifts,
 	Media,
 	Files,
 	Music,
@@ -460,8 +459,6 @@ public:
 	[[nodiscard]] bool canPostStories() const;
 	[[nodiscard]] bool canEditStories() const;
 	[[nodiscard]] bool canDeleteStories() const;
-	[[nodiscard]] bool canManageGifts() const;
-	[[nodiscard]] bool canTransferGifts() const;
 	[[nodiscard]] bool canExportChatHistory() const;
 	[[nodiscard]] bool autoTranslation() const;
 

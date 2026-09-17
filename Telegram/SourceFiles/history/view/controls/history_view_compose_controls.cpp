@@ -5154,7 +5154,6 @@ void ComposeControls::initWebpageProcess() {
 		| Data::PeerUpdate::Flag::Notifications
 		| Data::PeerUpdate::Flag::MessagesTTL
 		| Data::PeerUpdate::Flag::FullInfo
-		| Data::PeerUpdate::Flag::GiftSettings
 	) | rpl::filter([peer = _history->peer](const Data::PeerUpdate &update) {
 		return (update.peer.get() == peer);
 	}) | rpl::map([](const Data::PeerUpdate &update) {
@@ -5174,10 +5173,6 @@ void ComposeControls::initWebpageProcess() {
 		if (flags & Data::PeerUpdate::Flag::Rights) {
 			updateAttachBotsMenu();
 		}
-		if (flags & (Data::PeerUpdate::Flag::Rights
-			| Data::PeerUpdate::Flag::FullInfo
-			| Data::PeerUpdate::Flag::GiftSettings)) {
-				}
 		if (flags & Data::PeerUpdate::Flag::FullInfo) {
 			updateSendButtonType();
 			const auto commandShown = updateBotCommandShown();
@@ -5200,12 +5195,6 @@ void ComposeControls::initWebpageProcess() {
 			updateControlsGeometry(_wrap->size());
 		}
 	}, _historyLifetime);
-
-	session().changes().peerUpdates(
-		session().user(),
-		Data::PeerUpdate::Flag::GiftSettings
-	) | rpl::on_next([=] {
-		}, _historyLifetime);
 
 	if (const auto user = _history->peer->asUser()) {
 		Info::Profile::BirthdayValue(

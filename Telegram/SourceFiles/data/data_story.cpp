@@ -158,10 +158,8 @@ using UpdateFlag = StoryUpdate::Flag;
 		});
 	}, [&](const MTPDmediaAreaWeather &data) {
 	}, [&](const MTPDmediaAreaStarGift &data) {
-		result.emplace(UrlArea{
-			.area = ParseArea(data.vcoordinates()),
-			.url = u"tg://nft?slug="_q + qs(data.vslug()),
-		});
+		// LoogriGram: a collectible gift placed on a story was a link into
+		// that gift's page, which offers it for sale. It is not a link now.
 	}, [&](const MTPDinputMediaAreaChannelPost &data) {
 		LOG(("API Error: Unexpected inputMediaAreaChannelPost from API."));
 	}, [&](const MTPDinputMediaAreaVenue &data) {

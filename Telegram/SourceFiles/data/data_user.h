@@ -22,11 +22,6 @@ struct BotCommand;
 struct BusinessDetails;
 } // namespace Data
 
-namespace Api {
-enum class DisallowedGiftType : uchar;
-using DisallowedGiftTypes = base::flags<DisallowedGiftType>;
-} // namespace Api
-
 // LoogriGram: StarRefProgram stood here - a bot's affiliate commission,
 // paid in stars. The module that showed it is deleted, so the field, its
 // setter, its parser and its change flag went with it.
@@ -303,11 +298,6 @@ public:
 
 	std::unique_ptr<BotInfo> botInfo;
 
-	[[nodiscard]] Api::DisallowedGiftTypes disallowedGiftTypes() const {
-		return _disallowedGiftTypes;
-	}
-	void setDisallowedGiftTypes(Api::DisallowedGiftTypes types);
-
 	[[nodiscard]] const TextWithEntities &note() const;
 	void setNote(const TextWithEntities &note);
 
@@ -343,7 +333,6 @@ private:
 	static constexpr auto kInaccessibleAccessHashOld
 		= 0xFFFFFFFFFFFFFFFFULL;
 
-	Api::DisallowedGiftTypes _disallowedGiftTypes;
 	TextWithEntities _note;
 
 };
