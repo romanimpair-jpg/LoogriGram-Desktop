@@ -207,16 +207,6 @@ public:
 	};
 	Ui::SettingsButton *addSectionButton(SectionArgs &&args);
 
-	struct PremiumButtonArgs {
-		QString id;
-		rpl::producer<QString> title;
-		rpl::producer<QString> label;
-		bool credits = false;
-		Fn<void()> onClick;
-		QStringList keywords;
-	};
-	Ui::SettingsButton *addPremiumButton(PremiumButtonArgs &&args);
-
 	struct PrivacyButtonArgs {
 		QString id;
 		rpl::producer<QString> title;

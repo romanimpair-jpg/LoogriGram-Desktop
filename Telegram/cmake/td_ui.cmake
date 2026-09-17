@@ -509,14 +509,10 @@ PRIVATE
     ui/effects/premium_stars.h
     ui/effects/premium_stars_colored.cpp
     ui/effects/premium_stars_colored.h
-    ui/effects/premium_top_bar.cpp
-    ui/effects/premium_top_bar.h
     ui/effects/round_checkbox.cpp
     ui/effects/round_checkbox.h
     ui/effects/scroll_content_shadow.cpp
     ui/effects/scroll_content_shadow.h
-    ui/effects/skeleton_animation.cpp
-    ui/effects/skeleton_animation.h
     ui/effects/shake_animation.cpp
     ui/effects/shake_animation.h
     ui/effects/snowflakes.cpp

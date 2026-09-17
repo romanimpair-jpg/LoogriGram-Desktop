@@ -195,7 +195,6 @@ void Search::setupContent() {
 
 	_list = content->add(object_ptr<Ui::VerticalLayout>(content));
 
-	setupCustomizations();
 	buildIndex();
 	rebuildResults(QString());
 
@@ -219,28 +218,6 @@ void Search::setupContent() {
 	}, lifetime());
 
 	Ui::ResizeFitChild(this, content);
-}
-
-void Search::setupCustomizations() {
-	const auto isPaused = Window::PausedIn(
-		controller(),
-		Window::GifPauseReason::Layer);
-	const auto add = [&](const QString &id, ResultCustomization value) {
-		_customizations[id] = std::move(value);
-	};
-
-	add(u"main/credits"_q, {
-		.hook = [=](not_null<Ui::SettingsButton*> b) {
-			AddPremiumStar(b, true, isPaused);
-		},
-		.st = &st::settingsSearchResult,
-	});
-	add(u"main/premium"_q, {
-		.hook = [=](not_null<Ui::SettingsButton*> b) {
-			AddPremiumStar(b, false, isPaused);
-		},
-		.st = &st::settingsSearchResult,
-	});
 }
 
 void Search::buildIndex() {
@@ -378,14 +355,10 @@ not_null<Ui::SettingsButton*> Search::createEntryButton(
 	const auto hasCheckIcon = !hasIcon
 		&& (entry.checkIcon != Builder::SearchEntryCheckIcon::None);
 
-	const auto it = _customizations.find(entry.id);
-	const auto custom = (it != _customizations.end())
-		? &it->second
-		: nullptr;
-
-	const auto &st = custom && custom->st
-		? *custom->st
-		: (hasIcon || hasCheckIcon)
+	// LoogriGram: results could be customised per entry id, and the only
+	// two customisations drew the animated star on the Premium and Stars
+	// rows, both deleted.
+	const auto &st = (hasIcon || hasCheckIcon)
 		? st::settingsSearchResult
 		: st::settingsSearchResultNoIcon;
 
@@ -398,10 +371,6 @@ not_null<Ui::SettingsButton*> Search::createEntryButton(
 		(hasCheckIcon
 			? entry.checkIcon
 			: Builder::SearchEntryCheckIcon::None));
-
-	if (custom && custom->hook) {
-		custom->hook(button);
-	}
 
 	const auto controlId = entry.id;
 	const auto targetSection = entry.section;

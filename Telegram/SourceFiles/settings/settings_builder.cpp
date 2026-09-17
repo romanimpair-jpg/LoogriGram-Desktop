@@ -327,23 +327,6 @@ void SectionBuilder::addDividerText(rpl::producer<QString> text) {
 	});
 }
 
-Ui::SettingsButton *SectionBuilder::addPremiumButton(PremiumButtonArgs &&args) {
-	const auto result = addButton({
-		.id = std::move(args.id),
-		.title = std::move(args.title),
-		.label = std::move(args.label),
-		.onClick = std::move(args.onClick),
-		.keywords = std::move(args.keywords),
-	});
-	if (result) {
-		AddPremiumStar(
-			result,
-			args.credits,
-			v::get<WidgetContext>(_context).isPaused);
-	}
-	return result;
-}
-
 Ui::SettingsButton *SectionBuilder::addPrivacyButton(PrivacyButtonArgs &&args) {
 	const auto controller = this->controller();
 	const auto session = this->session();

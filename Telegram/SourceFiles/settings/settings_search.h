@@ -52,13 +52,7 @@ private:
 		QString faqSection;
 	};
 
-	struct ResultCustomization {
-		Fn<void(not_null<Ui::SettingsButton*>)> hook;
-		const style::SettingsButton *st = nullptr;
-	};
-
 	void setupContent();
-	void setupCustomizations();
 	void buildIndex();
 	void rebuildResults(const QString &query);
 	void rebuildRecentResults();
@@ -76,7 +70,6 @@ private:
 	std::unique_ptr<Ui::SearchFieldController> _searchController;
 	Ui::InputField *_searchField = nullptr;
 	Ui::VerticalLayout *_list = nullptr;
-	base::flat_map<QString, ResultCustomization> _customizations;
 	base::flat_map<QString, int> _entryIdToIndex;
 	QString _pendingQuery;
 	std::vector<IndexedEntry> _entries;

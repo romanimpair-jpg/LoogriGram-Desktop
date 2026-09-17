@@ -332,11 +332,6 @@ void AddLottieIconWithCircle(
 	QMargins iconPadding,
 	QSize circleSize);
 
-void AddPremiumStar(
-	not_null<Button*> button,
-	bool credits,
-	Fn<bool()> isPaused);
-
 struct SectionSearchRow {
 	std::unique_ptr<Ui::SearchFieldController> controller;
 	not_null<Ui::RpWidget*> row;
