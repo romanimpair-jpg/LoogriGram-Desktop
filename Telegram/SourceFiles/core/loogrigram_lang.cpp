@@ -32,6 +32,10 @@ constexpr auto kDownloadingUpdatePercent = Entry{
 	.en = "Downloading Update %1%",
 };
 constexpr auto kRestartToUpdate = Entry{ .en = "Restart to Update" };
+constexpr auto kTranscribeTrialsOver = Entry{
+	.en = "You have used all your free transcriptions this week. "
+		"Wait until %1 to use it again.",
+};
 
 [[nodiscard]] QString Pick(const Entry &entry, const QString &languageId) {
 	// Nothing is translated yet, so the id is unused. When a locale is added,
@@ -83,6 +87,18 @@ rpl::producer<QString> DownloadingUpdate(rpl::producer<int> percent) {
 			int percent) {
 		return (percent < 0) ? plain : counted.arg(percent);
 	});
+}
+
+TextWithEntities TranscribeTrialsOver(TextWithEntities date) {
+	const auto text = Pick(
+		kTranscribeTrialsOver,
+		::Lang::GetInstance().id());
+	const auto position = text.indexOf(u"%1"_q);
+	Assert(position >= 0);
+
+	return TextWithEntities{ text.mid(0, position) }.append(
+		std::move(date)
+	).append(text.mid(position + 2));
 }
 
 bool KeepCompiledString(const QByteArray &key) {

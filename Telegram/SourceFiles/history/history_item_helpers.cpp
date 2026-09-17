@@ -41,6 +41,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "core/application.h"
 #include "core/click_handler_types.h" // ClickHandlerContext.
+#include "core/loogrigram_lang.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/text/format_values.h"
 #include "ui/text/text_utilities.h"
@@ -1070,7 +1071,8 @@ void ShowTrialTranscribesToast(int left, TimeId until) {
 	// LoogriGram: how many free transcriptions are left, and when they come
 	// back, is worth knowing and stays. Tapping it opened the voice-to-text
 	// pitch and raised the main window to do it; that is gone, so the toast
-	// needs no click filter.
+	// needs no click filter. When none are left, Telegram's text ended by
+	// suggesting a subscription, so ours stops before that.
 	const auto date = langDateTime(base::unixtime::parse(until));
 	constexpr auto kToastDuration = crl::time(4000);
 	const auto text = left
@@ -1081,13 +1083,7 @@ void ShowTrialTranscribesToast(int left, TimeId until) {
 			lt_date,
 			{ date },
 			tr::marked)
-		: tr::lng_audio_transcribe_trials_over(
-			tr::now,
-			lt_date,
-			tr::bold(date),
-			lt_link,
-			tr::link(tr::lng_settings_privacy_premium_link(tr::now)),
-			tr::marked);
+		: LoogriGram::Lang::TranscribeTrialsOver(tr::bold(date));
 	window->uiShow()->showToast(Ui::Toast::Config{
 		.text = text,
 		.duration = kToastDuration,

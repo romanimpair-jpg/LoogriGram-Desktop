@@ -42,6 +42,12 @@ namespace LoogriGram::Lang {
 [[nodiscard]] rpl::producer<QString> DownloadingUpdate(
 	rpl::producer<int> percent);
 
+// The toast after this week's free voice transcriptions are used up.
+// Telegram's text for it ends by suggesting a subscription; this is the same
+// sentence without that ending. The date is passed already formatted, so the
+// caller decides how it is emphasised.
+[[nodiscard]] TextWithEntities TranscribeTrialsOver(TextWithEntities date);
+
 // Keys whose compiled text must survive the cloud language pack.
 //
 // Editing lang.strings changes only the compiled default. On startup the
