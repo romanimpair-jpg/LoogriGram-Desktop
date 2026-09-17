@@ -27,10 +27,6 @@ namespace Ui {
 
 struct PreparedList;
 
-// Whether the field holds enough non-blank text, over enough lines, to be
-// worth offering the expand button.
-[[nodiscard]] bool HasEnoughLinesForExpand(not_null<Ui::InputField*> field);
-
 [[nodiscard]] PreparedList PrepareTextAsFile(const QString &text);
 
 struct LargeTextPasteResult {

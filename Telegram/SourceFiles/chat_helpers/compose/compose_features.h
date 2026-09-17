@@ -29,7 +29,6 @@ struct ComposeFeatures {
 	bool recordMediaMessage : 1 = true;
 	bool emojiOnlyPanel : 1 = false;
 	bool videoStream : 1 = false;
-	bool richEditor : 1 = true;
 };
 
 } // namespace ChatHelpers

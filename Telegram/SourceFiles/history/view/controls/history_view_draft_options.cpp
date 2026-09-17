@@ -978,34 +978,14 @@ void DraftOptionsBox(
 			items);
 		const auto canDropNames = canHideAuthor
 			&& HasDropForwardedInfoSetting(items);
-		const auto premiumRequiredHide = HideForwardAuthorPremiumRequired(
-			&show->session(),
-			items);
 		const auto dropCaptions = (now == Options::NoNamesAndCaptions);
 
 		AddFilledSkip(bottom);
 
-		if (premiumRequiredHide) {
-			Settings::AddButtonWithIcon(
-				bottom,
-				(sendersCount == 1
-					? tr::lng_forward_action_hide_sender
-					: tr::lng_forward_action_hide_senders)(),
-				st::settingsButtonDisabledWithIcon,
-				{ &st::menuIconUserHideDisabled }
-			)->setClickedCallback([=] {
-				show->showToast({
-					.text = tr::lng_article_premium_required(
-						tr::now,
-						lt_link,
-						tr::bold(tr::lng_article_premium_required_link(
-							tr::now)),
-						tr::marked),
-					.adaptive = true,
-					.duration = Ui::Toast::kDefaultDuration * 2,
-				});
-			});
-		} else if (canDropNames) {
+		// LoogriGram: hiding the sender when forwarding an article is a
+		// premium-only action, so the row that said so - disabled, with a
+		// toast selling the subscription - is not drawn at all.
+		if (canDropNames) {
 			Settings::AddButtonWithIcon(
 				bottom,
 				(dropNames

@@ -14,12 +14,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/text/text.h"
 #include "ui/widgets/fields/input_field.h"
 
-// LoogriGram: style::InputField is only forward declared by input_field.h,
-// and HasEnoughLinesForExpand reads field->st().style. The file this code
-// came from got the definition by accident, through style_chat_helpers.h;
-// this is the header that actually declares it.
-#include "styles/style_widgets.h"
-
 namespace Ui {
 namespace {
 
@@ -31,27 +25,6 @@ constexpr auto kSendAsFilePasteMultiplier = 8;
 }
 
 } // namespace
-
-bool HasEnoughLinesForExpand(not_null<Ui::InputField*> field) {
-	const auto &style = field->st().style;
-	const auto lineHeight = style.lineHeight
-		? style.lineHeight
-		: style.font->height;
-	const auto margins = field->fullTextMargins();
-	const auto contentHeight = field->height()
-		- margins.top()
-		- margins.bottom();
-	if (contentHeight < (3 * lineHeight)) {
-		return false;
-	}
-	const auto &text = field->getLastText();
-	for (const auto &ch : text) {
-		if (!Text::IsTrimmed(ch) && !Text::IsReplacedBySpace(ch)) {
-			return true;
-		}
-	}
-	return false;
-}
 
 PreparedList PrepareTextAsFile(const QString &text) {
 	auto content = text.toUtf8();

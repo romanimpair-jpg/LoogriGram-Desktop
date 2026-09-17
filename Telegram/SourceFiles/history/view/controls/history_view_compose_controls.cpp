@@ -23,7 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/compose/compose_show.h"
 #include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/message_field.h"
-#include "chat_helpers/rich_paste_toast.h"
 #include "chat_helpers/tabbed_panel.h"
 #include "chat_helpers/tabbed_section.h"
 #include "chat_helpers/tabbed_selector.h"
@@ -76,7 +75,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/controls/history_view_compose_media_edit_manager.h"
 #include "history/view/controls/history_view_compose_tooltip.h"
 #include "history/view/controls/history_view_forward_panel.h"
-#include "history/view/controls/history_view_rich_draft_preview.h"
 #include "history/view/controls/history_view_draft_options.h"
 #include "history/view/controls/history_view_ttl_button.h"
 #include "history/view/controls/history_view_voice_record_bar.h"
@@ -1096,12 +1094,6 @@ ComposeControls::ComposeControls(
 		_wrap.get(),
 		st::historySendAsFileButton)
 	: nullptr)
-, _expand(Ui::CreateChild<Ui::IconButton>(
-	_wrap.get(),
-	st::historyExpandComposeButton))
-, _discardRichDraft(Ui::CreateChild<Ui::IconButton>(
-	_wrap.get(),
-	st::historyDiscardRichDraftButton))
 , _like(_features.likes
 	? Ui::CreateChild<Ui::IconButton>(_wrap.get(), _st.like)
 	: nullptr)
@@ -1118,22 +1110,6 @@ ComposeControls::ComposeControls(
 		_st.field,
 		Ui::InputField::Mode::MultiLine,
 		tr::lng_message_ph()))
-, _richDraftPreview(std::make_unique<Controls::RichDraftPreview>(
-	_wrap.get(),
-	_session,
-	[=] { return _show->paused(Window::GifPauseReason::Any); },
-	[=] {
-		if (_regularWindow && _history && _sendActionFactory) {
-			Iv::Editor::ShowComposeBox(
-				_regularWindow,
-				_history->peer,
-				_sendActionFactory(),
-				sendMenuDetails());
-		}
-	},
-	[=] {
-		updateControlsGeometry(_wrap->size());
-	}))
 , _botCommandStart(_features.botCommandSend
 	? Ui::CreateChild<Ui::IconButton>(
 		_wrap.get(),
@@ -1301,7 +1277,6 @@ void ComposeControls::updateShortcutId(BusinessShortcutId shortcutId) {
 	unregisterDraftSources();
 	_shortcutId = shortcutId;
 	registerDraftSource();
-	updateExpandButtonVisibility();
 }
 
 void ComposeControls::setHistory(SetHistoryArgs &&args) {
@@ -1439,14 +1414,6 @@ void ComposeControls::updateFeatures(ChatHelpers::ComposeFeatures features) {
 	}
 	if (was.emojiOnlyPanel != features.emojiOnlyPanel) {
 		initFieldAutocomplete();
-	}
-	if (was.richEditor != features.richEditor) {
-		untrackThreadFieldVisibility();
-		unregisterDraftSources();
-		trackThreadFieldVisibility();
-		registerDraftSource();
-		updateExpandButtonVisibility();
-		changed = true;
 	}
 	if (changed) {
 		updateControlsGeometry(_wrap->size());
@@ -1760,8 +1727,6 @@ void ComposeControls::setMimeDataHook(MimeDataHook hook) {
 					return true;
 				} else if (originalHook && originalHook(data, action)) {
 					return true;
-				} else if (action == Ui::InputField::MimeAction::Insert) {
-					offerRichPaste(data);
 				}
 				return false;
 			}, _field));
@@ -1769,75 +1734,6 @@ void ComposeControls::setMimeDataHook(MimeDataHook hook) {
 
 void ComposeControls::setPasteToastParent(not_null<QWidget*> parent) {
 	_pasteToastParent = parent.get();
-}
-
-void ComposeControls::offerRichPaste(not_null<const QMimeData*> data) {
-	const auto session = &_show->session();
-	if (!_history
-		|| !_pasteToastParent
-		|| !canShowRichEditor()
-		|| isEditingMessage()) {
-		return;
-	}
-	const auto decision = ChatHelpers::MimeDataRichPasteOffer(
-		session,
-		data);
-	if (!decision) {
-		return;
-	}
-	const auto copy = ChatHelpers::CloneMimeData(data);
-	const auto was = _field->getTextWithTags();
-	const auto cursor = _field->textCursor();
-	const auto position = cursor.position();
-	const auto anchor = cursor.anchor();
-	crl::on_main(_wrap.get(), [=] {
-		const auto now = _field->getTextWithTags();
-		const auto parent = _pasteToastParent.data();
-		if ((now == was) || !parent) {
-			return;
-		}
-		ChatHelpers::ShowRichPasteToast({
-			.session = session,
-			.parent = parent,
-			.cancel = _field->changes(),
-			.offer = decision->offer,
-			.action = crl::guard(_wrap.get(), [=] {
-				const auto unchanged = (_field->getTextWithTags() == now);
-				if (decision->offer == ChatHelpers::RichPasteOffer::Field) {
-					if (!unchanged) {
-						return;
-					}
-					const auto &markdown = decision->markdown;
-					const auto from = std::min(position, anchor);
-					_field->setTextWithTags(ChatHelpers::TextWithTagsReplaced(
-						was,
-						from,
-						std::max(position, anchor),
-						markdown));
-					_field->setCursorPosition(
-						from + int(markdown.text.size()));
-					return;
-				}
-				if (unchanged) {
-					_field->setTextWithTags(was);
-					auto cursor = _field->textCursor();
-					cursor.setPosition(anchor);
-					if (position != anchor) {
-						cursor.setPosition(position, QTextCursor::KeepAnchor);
-					}
-					_field->setTextCursor(cursor);
-				}
-				showRichEditorWithPaste(copy);
-			}),
-		});
-	});
-}
-
-void ComposeControls::showRichEditorWithPaste(
-		std::shared_ptr<QMimeData> data) {
-	_pendingRichPaste = std::move(data);
-	showRichEditor();
-	_pendingRichPaste = nullptr;
 }
 
 bool ComposeControls::confirmMediaEdit(Ui::PreparedList &list) {
@@ -1921,8 +1817,6 @@ void ComposeControls::showFinished() {
 	if (_sendAsFile) {
 		_sendAsFile->raise();
 	}
-	_expand->raise();
-	_discardRichDraft->raise();
 	if (_sendAsFileTooltipManager) {
 		_sendAsFileTooltipManager->raise();
 	}
@@ -1993,17 +1887,12 @@ void ComposeControls::setFieldText(
 }
 
 void ComposeControls::saveFieldToHistoryLocalDraft(bool save) {
-	if (bypassNormalDraftHandling()) {
-		return;
-	}
 	const auto key = draftKeyCurrent();
 	if (!_history || !key) {
 		return;
 	}
 	const auto id = _header->getDraftReply();
-	if (shouldShowRichDraftPreview()) {
-		_history->clearDraft(key);
-	} else if (_preview && (id || !_field->empty())) {
+	if (_preview && (id || !_field->empty())) {
 		_history->setDraft(
 			key,
 			std::make_unique<Data::Draft>(
@@ -2024,148 +1913,9 @@ Data::Draft *ComposeControls::cloudDraft() const {
 		: nullptr;
 }
 
-std::shared_ptr<const Iv::RichPage> ComposeControls::shownRichMessage() const {
-	if (const auto draft = shouldShowRichDraftPreview() ? cloudDraft() : nullptr) {
-		return draft->richMessage;
-	}
-	return nullptr;
-}
-
-bool ComposeControls::isComposeBoxOpen() const {
-	return _history
-		&& hasRichDraftThreadScope()
-		&& Iv::Editor::IsComposeBoxOpen(
-			_session,
-			_history->peer->id,
-			_topicRootId,
-			_monoforumPeerId);
-}
-
-bool ComposeControls::hasRichDraftThreadScope() const {
-	return _features.richEditor
-		&& draftKey(DraftType::Normal).isLocal();
-}
-
-bool ComposeControls::isShortcutComposeEligible() const {
-	return _features.richEditor
-		&& _history
-		&& !isEditingMessage()
-		&& (_mode == Mode::Normal)
-		&& (_currentDialogsEntryState.section
-			== Dialogs::EntryState::Section::ShortcutMessages)
-		&& (_shortcutId > 0);
-}
-
-bool ComposeControls::isWelcomeComposeEligible() const {
-	return _features.richEditor
-		&& _history
-		&& !isEditingMessage()
-		&& (_mode == Mode::Normal)
-		&& (_currentDialogsEntryState.section
-			== Dialogs::EntryState::Section::WelcomeMessages);
-}
-
 bool ComposeControls::hasEditDraft() const {
 	return _history
 		&& (_history->draft(draftKey(DraftType::Edit)) != nullptr);
-}
-
-bool ComposeControls::bypassNormalDraftHandling() const {
-	return !isEditingMessage()
-		&& !hasEditDraft()
-		&& isComposeBoxOpen();
-}
-
-bool ComposeControls::shouldShowRichDraftPreview() const {
-	const auto draft = cloudDraft();
-	return !_threadFieldVisible
-		&& !isEditingMessage()
-		&& hasRichDraftThreadScope()
-		&& draft
-		&& draft->hasRichMessage();
-}
-
-void ComposeControls::clearRichDraft() {
-	if (!_history) {
-		return;
-	}
-	const auto reply = replyingToMessage();
-	clearFieldText();
-	if (const auto key = draftKey(DraftType::Normal)) {
-		if (reply.messageId) {
-			_history->setDraft(
-				key,
-				std::make_unique<Data::Draft>(
-					TextWithTags(),
-					reply,
-					MessageCursor(),
-					Data::WebPageDraft()));
-		} else {
-			_history->clearDraft(key);
-		}
-	}
-	_history->clearCloudDraft(_topicRootId, _monoforumPeerId);
-	applyDraft(Ui::InputField::HistoryAction::NewEntry);
-	if (const auto thread = _history->threadFor(
-			_topicRootId,
-			_monoforumPeerId)) {
-		auto draft = Data::Draft(
-			TextWithTags(),
-			reply,
-			MessageCursor(),
-			Data::WebPageDraft());
-		if (const auto cloudDraft = _history->createCloudDraft(
-				_topicRootId,
-				_monoforumPeerId,
-				&draft)) {
-			session().api().saveDraftToCloud(
-				not_null{ thread },
-				*cloudDraft);
-		}
-	}
-}
-
-void ComposeControls::migrateFieldToRichEditor() {
-	if (!_history) {
-		return;
-	}
-	if (isEditingMessage()) {
-		cancelEditMessage();
-	} else {
-		clearRichDraft();
-	}
-}
-
-void ComposeControls::migrateScheduledFieldToRichEditor() {
-	Expects(_history != nullptr);
-	Expects(!isEditingMessage());
-	Expects(_mode == Mode::Scheduled);
-
-	cancelPendingDraftSaves();
-	clearFieldText();
-	_history->clearDraft(draftKey(DraftType::Normal));
-}
-
-void ComposeControls::migrateShortcutFieldToRichEditor(
-		BusinessShortcutId expectedShortcutId) {
-	if (!isShortcutComposeEligible()
-		|| _shortcutId != expectedShortcutId) {
-		return;
-	}
-
-	cancelPendingDraftSaves();
-	clearFieldText();
-	_history->clearDraft(Data::DraftKey::Shortcut(expectedShortcutId));
-}
-
-void ComposeControls::migrateWelcomeFieldToRichEditor() {
-	if (!isWelcomeComposeEligible()) {
-		return;
-	}
-
-	cancelPendingDraftSaves();
-	clearFieldText();
-	_history->clearDraft(Data::DraftKey::WelcomeMessages());
 }
 
 void ComposeControls::clearFieldText(
@@ -2214,8 +1964,6 @@ void ComposeControls::init() {
 	initTabbedSelector();
 	initSendButton();
 	initSendAsFileButton();
-	initExpandButton();
-	initDiscardRichDraftButton();
 	initWriteRestriction();
 	initVoiceRecordBar();
 	initKeyHandler();
@@ -2562,13 +2310,11 @@ void ComposeControls::initField() {
 	) | rpl::on_next([=] {
 		updateHeight();
 		updateSendAsFileVisibility();
-		updateExpandButtonVisibility();
 	}, _field->lifetime());
 	_field->changes(
 	) | rpl::on_next([=] {
 		fieldChanged();
 		updateSendAsFileVisibility();
-		updateExpandButtonVisibility();
 	}, _field->lifetime());
 	_chatStyle = InitMessageField(_show, _field, [=](not_null<DocumentData*> emoji) {
 		return _history
@@ -2792,9 +2538,6 @@ void ComposeControls::fieldChanged() {
 	checkCharsLimitation();
 
 	_saveCloudDraftTimer.cancel();
-	if (bypassNormalDraftHandling()) {
-		return;
-	}
 	if (!(_textUpdateEvents & TextUpdateEvent::SaveDraft)) {
 		return;
 	}
@@ -2803,10 +2546,6 @@ void ComposeControls::fieldChanged() {
 }
 
 void ComposeControls::saveDraftDelayed() {
-	if (bypassNormalDraftHandling()) {
-		cancelPendingDraftSaves();
-		return;
-	}
 	if (!_history || !(_textUpdateEvents & TextUpdateEvent::SaveDraft)) {
 		return;
 	}
@@ -2851,10 +2590,6 @@ Data::DraftKey ComposeControls::draftKeyCurrent() const {
 }
 
 void ComposeControls::saveDraftWithTextNow() {
-	if (bypassNormalDraftHandling()) {
-		cancelPendingDraftSaves();
-		return;
-	}
 	_saveDraftText = true;
 	_saveDraftStart = crl::now();
 	saveDraft();
@@ -2874,10 +2609,6 @@ void ComposeControls::saveDraft(bool delayed) {
 }
 
 void ComposeControls::saveCloudDraft() {
-	if (bypassNormalDraftHandling()) {
-		_saveCloudDraftTimer.cancel();
-		return;
-	}
 	session().api().saveCurrentDraftToCloud();
 }
 
@@ -2928,10 +2659,6 @@ void ComposeControls::registerDraftSource() {
 	}
 	const auto key = draftKeyCurrent();
 	if (key != Data::DraftKey::None()) {
-		const auto normal = draftKey(DraftType::Normal);
-		if ((key == normal) && isComposeBoxOpen()) {
-			return;
-		}
 		const auto draft = [=] {
 			return Storage::MessageDraft{
 				_header->getDraftReply(),
@@ -2948,41 +2675,6 @@ void ComposeControls::registerDraftSource() {
 			key,
 			std::move(draftSource));
 	}
-}
-
-void ComposeControls::untrackThreadFieldVisibility() {
-	_threadFieldVisibleLifetime.destroy();
-	_threadFieldVisible = false;
-}
-
-void ComposeControls::trackThreadFieldVisibility() {
-	if (!_history || !hasRichDraftThreadScope()) {
-		_threadFieldVisible = false;
-		updateFieldVisibility();
-		return;
-	}
-	const auto peerId = _history->peer->id;
-	const auto topicRootId = _topicRootId;
-	const auto monoforumPeerId = _monoforumPeerId;
-	Iv::Editor::FieldVisibleValue(
-		_session,
-		peerId,
-		topicRootId,
-		monoforumPeerId
-	) | rpl::distinct_until_changed(
-	) | rpl::on_next([=](bool visible) {
-		_threadFieldVisible = visible;
-		if (visible && !isEditingMessage()) {
-			cancelPendingDraftSaves();
-		}
-		unregisterDraftSources();
-		registerDraftSource();
-		updateFieldVisibility();
-		updateSendButtonType();
-		updateControlsVisibility();
-		updateHeight();
-		updateControlsGeometry(_wrap->size());
-	}, _threadFieldVisibleLifetime);
 }
 
 bool ComposeControls::fieldDisabledShown() const {
@@ -3014,37 +2706,13 @@ void ComposeControls::updateFieldDisabled() {
 void ComposeControls::updateFieldVisibility() {
 	updateFieldDisabled();
 	const auto disabled = (_fieldDisabled != nullptr);
-	const auto showPreview = shouldShowRichDraftPreview() && !disabled;
-	const auto showField = !disabled
-		&& !_recording.current()
-		&& !showPreview;
-	_field->setVisible(showField);
+	_field->setVisible(!disabled && !_recording.current());
 	_hasSendText = hasVisibleSendText();
-	if (_richDraftPreview) {
-		if (showPreview && !_recording.current()) {
-			if (const auto draft = cloudDraft()) {
-				_richDraftPreview->setDraft(*draft, Data::FileOriginCloudDraft{
-					.peerId = _history->peer->id,
-					.topicRootId = _topicRootId,
-					.monoforumPeerId = _monoforumPeerId,
-				});
-			}
-			_richDraftPreview->show();
-		} else {
-			_richDraftPreview->hide();
-		}
-	}
 	updateBotCommandShown();
 	updateLikeShown();
-	updateSendLockBadge();
-	updateDiscardRichDraftVisibility();
 }
 
 void ComposeControls::writeDrafts() {
-	if (bypassNormalDraftHandling()) {
-		cancelPendingDraftSaves();
-		return;
-	}
 	const auto save = (_history != nullptr)
 		&& (_saveDraftStart > 0)
 		&& (draftKeyCurrent() != Data::DraftKey::None());
@@ -3064,9 +2732,7 @@ void ComposeControls::writeDrafts() {
 }
 
 void ComposeControls::applyCloudDraft() {
-	if (session().supportMode()
-		|| isEditingMessage()
-		|| bypassNormalDraftHandling()) {
+	if (session().supportMode() || isEditingMessage()) {
 		return;
 	}
 	applyDraft(Ui::InputField::HistoryAction::NewEntry);
@@ -3074,22 +2740,11 @@ void ComposeControls::applyCloudDraft() {
 
 void ComposeControls::applyDraft(FieldHistoryAction fieldHistoryAction) {
 	Expects(_history != nullptr);
-	if (bypassNormalDraftHandling()) {
-		clearFieldText(0, fieldHistoryAction);
-		if (_preview) {
-			_preview->apply({ .removed = true });
-		}
-		updateFieldVisibility();
-		return;
-	}
 	if (_voiceRecordBar->isActive()) {
 		return;
 	}
 
 	const auto editDraft = _history->draft(draftKey(DraftType::Edit));
-	const auto richDraft = (!editDraft && shouldShowRichDraftPreview())
-		? cloudDraft()
-		: nullptr;
 	const auto draft = editDraft
 		? editDraft
 		: _history->draft(draftKey(DraftType::Normal));
@@ -3111,24 +2766,8 @@ void ComposeControls::applyDraft(FieldHistoryAction fieldHistoryAction) {
 	});
 
 	const auto hadFocus = Ui::InFocusChain(_field);
-	if (!_canSendTexts.current() && !editDraft && !richDraft) {
+	if (!_canSendTexts.current() && !editDraft) {
 		clearFieldText(0, fieldHistoryAction);
-		_header->editMessage({}, {});
-		if (_preview) {
-			_preview->apply({ .removed = true });
-			_preview->setDisabled(false);
-		}
-		_canReplaceMedia = _canAddMedia = false;
-		_photoEditMedia = nullptr;
-		updateFieldVisibility();
-		return;
-	}
-	if (richDraft) {
-		_textUpdateEvents = 0;
-		clearFieldText(0, fieldHistoryAction);
-		_textUpdateEvents = TextUpdateEvent::SaveDraft
-			| TextUpdateEvent::SendTyping;
-		_header->replyToMessage(richDraft->reply);
 		_header->editMessage({}, {});
 		if (_preview) {
 			_preview->apply({ .removed = true });
@@ -3348,11 +2987,6 @@ void ComposeControls::initTabbedSelector() {
 }
 
 void ComposeControls::initSendButton() {
-	Iv::Editor::SetupSendLockBadge(
-		_send.get(),
-		st::ivComposeSendLockBadgePosition,
-		_sendLockBadge.events());
-
 	rpl::combine(
 		_slowmodeSecondsLeft.value(),
 		_sendDisabledBySlowmode.value()
@@ -3710,7 +3344,6 @@ void ComposeControls::initVoiceRecordBar() {
 			updateFieldVisibility();
 		}
 		updateSendAsFileVisibility();
-		updateExpandButtonVisibility();
 	}, _wrap->lifetime());
 
 	_voiceRecordBar->setStartRecordingFilter([=] {
@@ -3810,12 +3443,6 @@ void ComposeControls::initVoiceRecordBar() {
 				return false;
 			});
 		}
-		canShowRichEditor()
-			&& request->check(Command::ShowRichEditor, 1)
-			&& request->handle([=] {
-				showRichEditor();
-				return true;
-			});
 		_preview
 			&& (_previewShown || _preview->draft().removed)
 			&& request->check(Command::ToggleWebPagePreview, 1)
@@ -3851,165 +3478,6 @@ void ComposeControls::initSendAsFileButton() {
 		tr::lng_send_as_file_tooltip(tr::rich),
 		"send_as_file_tooltip_hidden"_cs,
 		[=] { return _wrap->width(); });
-}
-
-void ComposeControls::initDiscardRichDraftButton() {
-	_discardRichDraft->hide();
-	_richDraftPreview->shownValue(
-	) | rpl::on_next([=] {
-		updateDiscardRichDraftVisibility();
-	}, _wrap->lifetime());
-	_discardRichDraft->setAccessibleName(
-		tr::lng_record_lock_discard(tr::now));
-	_discardRichDraft->setClickedCallback([=] {
-		if (!shouldShowRichDraftPreview()) {
-			return;
-		} else if (base::IsCtrlPressed()) {
-			clearRichDraft();
-			return;
-		}
-		_show->show(Ui::MakeConfirmBox({
-			.text = tr::lng_iv_editor_discard_draft_sure(tr::now),
-			.confirmed = crl::guard(_wrap.get(), [=](Fn<void()> close) {
-				clearRichDraft();
-				close();
-			}),
-			.confirmText = tr::lng_record_lock_discard(),
-			.confirmStyle = &st::attentionBoxButton,
-		}));
-	});
-}
-
-void ComposeControls::initExpandButton() {
-	_expand->hide();
-	_expand->setAccessibleName(tr::lng_article_menu_item(tr::now));
-	_expand->setClickedCallback([=] {
-		showRichEditor();
-	});
-}
-
-void ComposeControls::showRichEditor() {
-	if (!_regularWindow || !_history || !_sendActionFactory) {
-		return;
-	}
-	if (isEditingMessage()) {
-		const auto item = _history->owner().message(_header->editMsgId());
-		if (item) {
-			Iv::Editor::ShowEditFromFieldBox(
-				_regularWindow,
-				item,
-				_sendActionFactory(),
-				getTextWithAppliedMarkdown(),
-				crl::guard(_wrap.get(), [=] {
-					cancelEditMessage();
-				}));
-		}
-		return;
-	}
-	if (_mode == Mode::Scheduled) {
-		using Options = Iv::Editor::ComposeBoxOptions;
-		Iv::Editor::ShowComposeBox(
-			_regularWindow,
-			_history->peer,
-			_sendActionFactory(),
-			sendMenuDetails(),
-			getTextWithAppliedMarkdown(),
-			crl::guard(_wrap.get(), [=] {
-				migrateScheduledFieldToRichEditor();
-			}),
-			Options{
-				.scope = Options::Scope::Detached,
-				.initialPaste = _pendingRichPaste,
-				.submitPolicy = Options::SubmitPolicy::Schedule,
-				.returnText = crl::guard(
-					_wrap.get(),
-					[=](TextWithTags text) {
-						setText(text);
-					}),
-			});
-		return;
-	}
-	if (_currentDialogsEntryState.section
-			== Dialogs::EntryState::Section::ShortcutMessages) {
-		if (!isShortcutComposeEligible()) {
-			return;
-		}
-		const auto expectedShortcutId = _shortcutId;
-		auto action = _sendActionFactory();
-		if (!isShortcutComposeEligible()
-			|| _shortcutId != expectedShortcutId
-			|| action.options.shortcutId != expectedShortcutId) {
-			return;
-		}
-		auto fieldText = getTextWithAppliedMarkdown();
-		using Options = Iv::Editor::ComposeBoxOptions;
-		Iv::Editor::ShowComposeBox(
-			_regularWindow,
-			_history->peer,
-			std::move(action),
-			sendMenuDetails(),
-			std::move(fieldText),
-			crl::guard(_wrap.get(), [=] {
-				migrateShortcutFieldToRichEditor(expectedShortcutId);
-			}),
-			Options{
-				.scope = Options::Scope::Detached,
-				.initialPaste = _pendingRichPaste,
-				.returnText = crl::guard(
-					_wrap.get(),
-					[=](TextWithTags text) {
-						if (isShortcutComposeEligible()
-							&& _shortcutId == expectedShortcutId) {
-							setText(text);
-						}
-					}),
-			});
-		return;
-	}
-	if (_currentDialogsEntryState.section
-			== Dialogs::EntryState::Section::WelcomeMessages) {
-		if (!isWelcomeComposeEligible()) {
-			return;
-		}
-		using Options = Iv::Editor::ComposeBoxOptions;
-		Iv::Editor::ShowComposeBox(
-			_regularWindow,
-			_history->peer,
-			_sendActionFactory(),
-			sendMenuDetails(),
-			getTextWithAppliedMarkdown(),
-			crl::guard(_wrap.get(), [=] {
-				migrateWelcomeFieldToRichEditor();
-			}),
-			Options{
-				.scope = Options::Scope::Detached,
-				.initialPaste = _pendingRichPaste,
-				.returnText = crl::guard(
-					_wrap.get(),
-					[=](TextWithTags text) {
-						if (isWelcomeComposeEligible()) {
-							setText(text);
-						}
-					}),
-				.welcomeTemplates = true,
-			});
-		return;
-	}
-	if (_mode != Mode::Normal || !hasRichDraftThreadScope()) {
-		return;
-	}
-	Iv::Editor::ShowComposeBox(
-		_regularWindow,
-		_history->peer,
-		_sendActionFactory(),
-		sendMenuDetails(),
-		getTextWithAppliedMarkdown(),
-		crl::guard(_wrap.get(), [=] {
-			migrateFieldToRichEditor();
-		}),
-		Iv::Editor::ComposeBoxOptions{
-			.initialPaste = _pendingRichPaste,
-		});
 }
 
 void ComposeControls::setSendAsFileConfirmed(
@@ -4082,8 +3550,6 @@ void ComposeControls::updateWrappingVisibility() {
 	_wrap->setVisible(!hidden && !restricted);
 	updateControlsParents();
 	updateSendAsFileVisibility();
-	updateExpandButtonVisibility();
-	updateDiscardRichDraftVisibility();
 	if (!hidden && !restricted) {
 		updateControlsGeometry(_wrap->size());
 		_wrap->raise();
@@ -4195,13 +3661,6 @@ void ComposeControls::updateSendButtonType() {
 		&& (type == Type::Send
 			|| type == Type::Record
 			|| type == Type::Round));
-	updateSendLockBadge();
-}
-
-void ComposeControls::updateSendLockBadge() {
-	const auto page = shownRichMessage();
-	_sendLockBadge.fire(page
-		&& Iv::RichPageUsesPremiumFormatting(*page));
 }
 
 void ComposeControls::finishAnimating() {
@@ -4242,13 +3701,6 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		- ((_ttlInfo && _ttlInfo->isVisible()) ? _ttlInfo->width() : 0);
 	{
 		_field->resizeToWidth(fieldWidth);
-		if (_richDraftPreview) {
-			[[maybe_unused]] const auto previewHeight
-				= _richDraftPreview->resizeGetHeight(
-				fieldWidth,
-				_st.field.heightMin,
-				st::historyComposeFieldMaxHeight);
-		}
 		const auto newComposeHeight = composeFieldHeight();
 		if (oldComposeHeight != newComposeHeight) {
 			updateHeight();
@@ -4283,9 +3735,6 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 	const auto fieldHeight = composeFieldHeight();
 	const auto fieldTop = size.height() - _st.padding.bottom() - fieldHeight;
 	_field->moveToLeft(left, fieldTop);
-	if (_richDraftPreview) {
-		_richDraftPreview->moveToLeft(left, fieldTop);
-	}
 	if (_fieldDisabled) {
 		_fieldDisabled->resize(size.width(), st::historySendSize.height());
 		_fieldDisabled->moveToLeft(left, fieldTop);
@@ -4344,8 +3793,6 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		_ttlInfo->move(size.width() - right - _ttlInfo->width(), buttonsTop);
 	}
 	updateSendAsFileGeometry();
-	updateExpandButtonGeometry();
-	updateDiscardRichDraftGeometry();
 
 	_voiceRecordBar->resizeToWidth(size.width());
 	_voiceRecordBar->moveToLeft(
@@ -4388,76 +3835,6 @@ void ComposeControls::updateControlsVisibility() {
 		_commentsShown->setVisible(!_commentsShownHidden.current());
 	}
 	updateSendAsFileVisibility();
-	updateExpandButtonVisibility();
-	updateDiscardRichDraftVisibility();
-}
-
-bool ComposeControls::canShowRichEditor() const {
-	const auto item = (_history && isEditingMessage())
-		? _history->owner().message(_header->editMsgId())
-		: nullptr;
-	const auto media = item ? item->media() : nullptr;
-	const auto composeEligible = (_mode == Mode::Scheduled)
-		|| ((_mode == Mode::Normal) && hasRichDraftThreadScope())
-		|| isShortcutComposeEligible()
-		|| isWelcomeComposeEligible();
-	return _history
-		&& _regularWindow
-		&& _sendActionFactory
-		&& _wrap->isVisible()
-		&& !_recording.current()
-		&& _field->isVisible()
-		&& (isEditingMessage()
-			|| Data::CanSendTexts(_history->peer, !_topicRootId))
-		&& (composeEligible || isEditingMessage())
-		&& !textExceedsMaxSize()
-		&& !(media && !media->webpage())
-		&& Iv::Editor::CanAuthorRichMessages(&_show->session());
-}
-
-void ComposeControls::updateExpandButtonVisibility() {
-	const auto hidden = !canShowRichEditor() || !hasEnoughLinesForExpand();
-	if (_expand->isHidden() != hidden) {
-		_expand->setVisible(!hidden);
-	}
-	updateExpandButtonGeometry();
-}
-
-void ComposeControls::updateExpandButtonGeometry() {
-	if (_expand->isHidden()) {
-		return;
-	}
-	const auto x = _send->x() + _send->width() - _expand->width();
-	_expand->move(QPoint(x, _field->y()) + st::historyComposeInnerButtonPosition);
-}
-
-void ComposeControls::updateDiscardRichDraftVisibility() {
-	const auto top = _richDraftPreview->y()
-		+ st::historyComposeInnerButtonPosition.y();
-	const auto hidden = !_wrap->isVisible()
-		|| _recording.current()
-		|| !shouldShowRichDraftPreview()
-		|| (top + _discardRichDraft->height() > _send->y());
-	if (_discardRichDraft->isHidden() != hidden) {
-		_discardRichDraft->setVisible(!hidden);
-	}
-	updateDiscardRichDraftGeometry();
-}
-
-void ComposeControls::updateDiscardRichDraftGeometry() {
-	if (_discardRichDraft->isHidden()) {
-		return;
-	}
-	const auto width = _attachToggle
-		? _attachToggle->width()
-		: _discardRichDraft->width();
-	const auto left = _attachToggle
-		? _attachToggle->x()
-		: _richDraftPreview->x();
-	const auto x = left + (width - _discardRichDraft->width()) / 2;
-	const auto y = _richDraftPreview->y()
-		+ st::historyComposeInnerButtonPosition.y();
-	_discardRichDraft->move(x, y);
 }
 
 void ComposeControls::updateSendAsFileVisibility() {
@@ -4503,12 +3880,6 @@ bool ComposeControls::updateLikeShown() {
 	return false;
 }
 
-bool ComposeControls::hasEnoughLinesForExpand() const {
-	return _history
-		&& !_recording.current()
-		&& Ui::HasEnoughLinesForExpand(_field);
-}
-
 bool ComposeControls::textExceedsMaxSize() const {
 	return _history
 		&& !_recording.current()
@@ -4549,12 +3920,11 @@ bool ComposeControls::hasVisibleSendText() const {
 }
 
 bool ComposeControls::hasSendableContent() const {
-	return hasVisibleSendText() || shouldShowRichDraftPreview();
+	return hasVisibleSendText();
 }
 
 bool ComposeControls::hideExtraButtons() const {
-	return _fieldCharsCountManager.isLimitExceeded()
-		|| shouldShowRichDraftPreview();
+	return _fieldCharsCountManager.isLimitExceeded();
 }
 
 bool ComposeControls::refreshBotMenuButton() {
@@ -4723,9 +4093,6 @@ void ComposeControls::updateAttachBotsMenu() {
 		[=](bool compress) { _attachRequests.fire_copy(compress); },
 		crl::guard(_wrap.get(), [=] {
 			return getTextWithAppliedMarkdown();
-		}),
-		crl::guard(_wrap.get(), [=] {
-			migrateFieldToRichEditor();
 		}));
 	if (!_attachBotsMenu) {
 		return;
@@ -4855,8 +4222,6 @@ void ComposeControls::toggleTabbedSelectorMode() {
 int ComposeControls::composeFieldHeight() const {
 	return fieldDisabledShown()
 		? (st::historySendSize.height() - 2 * st::historySendPadding)
-		: shouldShowRichDraftPreview()
-		? _richDraftPreview->height()
 		: _field->height();
 }
 
@@ -4876,16 +4241,12 @@ void ComposeControls::editMessage(
 	const auto item = session().data().message(id);
 	if (!item) {
 		return;
-	} else if (Iv::Editor::ActivateEditWindowFor(_session, id)) {
-		return;
 	}
 	editMessage(item);
 	if (_header->editMsgId() != id) {
 		return;
 	}
-	if (!item->richPage()) {
-		SelectTextInFieldWithMargins(_field, selection);
-	}
+	SelectTextInFieldWithMargins(_field, selection);
 	saveDraftWithTextNow();
 	focus();
 }
@@ -4896,14 +4257,9 @@ void ComposeControls::editMessage(not_null<HistoryItem*> item) {
 	if (draftKey(DraftType::Edit) == Data::DraftKey::None()) {
 		return;
 	}
-	if (item->richPage()) {
-		if (!_regularWindow) {
-			_show->showToast(tr::lng_edit_error(tr::now));
-			return;
-		}
-		Iv::Editor::ShowEditBox(_regularWindow, item);
-		return;
-	} else if (_voiceRecordBar->isActive()) {
+	// LoogriGram: an article opened in the rich editor for editing, which
+	// is deleted; an article is not editable here any more.
+	if (_voiceRecordBar->isActive()) {
 		_show->showToast(tr::lng_edit_caption_voice(tr::now));
 		return;
 	}

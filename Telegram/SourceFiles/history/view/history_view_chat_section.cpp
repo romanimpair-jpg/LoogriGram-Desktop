@@ -34,7 +34,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_view_pull_to_next_channel.h"
 #include "history/history_item_reply_markup.h"
 #include "history/history_view_pull_to_next_channel.h"
-#include "iv/iv_rich_message_serializer.h"
 #include "iv/iv_rich_page.h"
 #include "ui/chat/choose_theme_controller.h"
 #include "ui/chat/pinned_bar.h"
@@ -114,7 +113,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "support/support_preload.h"
 #include "inline_bots/inline_bot_result.h"
 #include "info/profile/info_profile_values.h"
-#include "iv/editor/iv_editor_session.h"
 #include "lang/lang_instance.h"
 #include "lang/lang_keys.h"
 #include "styles/style_chat.h"
@@ -604,13 +602,11 @@ ChatWidget::ChatWidget(
 		if (const auto item = session().data().message(fullId)) {
 			const auto media = item->media();
 			if (!media || media->webpage() || media->allowsEditCaption()) {
-				if (!item->richPage()) {
-					if (isChoosingTheme()) {
-						toggleChooseChatTheme(_peer, false);
-					}
-					if (_composeSearch) {
-						_composeSearch->hideAnimated();
-					}
+				if (isChoosingTheme()) {
+					toggleChooseChatTheme(_peer, false);
+				}
+				if (_composeSearch) {
+					_composeSearch->hideAnimated();
 				}
 				_composeControls->editMessage(
 					fullId,
@@ -2085,15 +2081,12 @@ bool ChatWidget::showScheduleSendError() {
 	if (!_canSendMessages) {
 		return false;
 	}
-	const auto richPage = _composeControls->shownRichMessage();
-	const auto richMessage = (richPage != nullptr);
 	const auto text = _composeControls->getTextWithAppliedMarkdown();
 	auto request = SendingErrorRequest{
 		.topicRootId = resolvedTopicRootId(),
 		.forward = &_composeControls->forwardItems(),
-		.text = richMessage ? nullptr : &text,
+		.text = &text,
 		.ignoreSlowmodeCountdown = true,
-		.richMessage = richMessage,
 	};
 	request.messagesCount = ComputeSendingMessagesCount(_history, request);
 	const auto error = GetErrorForSending(_peer, request);
@@ -2199,19 +2192,12 @@ Api::SendAction ChatWidget::prepareSendAction(
 	}
 
 	result.options.sendAs = _composeControls->sendAsPeer();
-	result.clearDraft = !Iv::Editor::IsComposeBoxOpen(
-		&session(),
-		_peer->id,
-		_repliesRootId,
-		_monoforumPeerId);
+	result.clearDraft = true;
 	return result;
 }
 
 void ChatWidget::send() {
 	if (_composeControls->getTextWithAppliedMarkdown().text.isEmpty()) {
-		if (const auto page = _composeControls->shownRichMessage()) {
-			sendRichDraft(page, {});
-		}
 		return;
 	}
 	send({});
@@ -2233,10 +2219,6 @@ void ChatWidget::sendVoice(const ComposeControls::VoiceToSend &data) {
 }
 
 void ChatWidget::send(Api::SendOptions options) {
-	if (const auto page = _composeControls->shownRichMessage()) {
-		sendRichDraft(page, options);
-		return;
-	}
 	if (!options.scheduled) {
 		auto message = Api::MessageToSend(prepareSendAction(options));
 		message.textWithTags = _composeControls->getTextWithAppliedMarkdown();
@@ -2298,107 +2280,6 @@ void ChatWidget::supportShareContact(Support::Contact contact) {
 	) | rpl::on_next([=] {
 		_composeControls->undoFieldChange();
 	}, lifetime());
-}
-
-void ChatWidget::sendRichDraft(
-		std::shared_ptr<const Iv::RichPage> page,
-		Api::SendOptions options) {
-	if (!page) {
-		return;
-	}
-	const auto ephemeral = session().ephemeralMessages()
-		.isEphemeralBotReply(replyTo().messageId);
-	if (ephemeral && options.scheduled) {
-		controller()->showToast(tr::lng_ephemeral_cant_schedule(tr::now));
-		return;
-	}
-	if (!options.scheduled) {
-		_cornerButtons.clearReplyReturns();
-		if (!ephemeral && showSlowmodeError()) {
-			return;
-		}
-	}
-
-	auto request = SendingErrorRequest{
-		.topicRootId = resolvedTopicRootId(),
-		.forward = &_composeControls->forwardItems(),
-		.messagesCount = 1,
-		.ignoreSlowmodeCountdown = (options.scheduled != 0),
-		.richMessage = true,
-		.ignoreRestrictions = ephemeral,
-	};
-	request.messagesCount = ComputeSendingMessagesCount(_history, request);
-	const auto error = GetErrorForSending(_peer, request);
-	if (error) {
-		Data::ShowSendErrorToast(controller(), _peer, error);
-		return;
-	}
-
-	const auto serialized = Iv::SerializeInputRichMessage(
-		&session(),
-		*page,
-		Iv::SerializeInputRichMessageMode::FinalSubmit);
-	if (serialized.status == Iv::SerializeInputRichMessageStatus::EmptyContent) {
-		controller()->showToast(tr::lng_article_submit_empty(tr::now));
-		return;
-	} else if (serialized.status != Iv::SerializeInputRichMessageStatus::Success
-		|| !serialized.value) {
-		controller()->showToast(tr::lng_attach_failed(tr::now));
-		return;
-	}
-	if (Iv::RichPageUsesPremiumFormatting(*page)) {
-		if (Iv::RichPageIsFlattenSafe(*page)) {
-			const auto weak = base::make_weak(this);
-			Iv::Editor::OfferRichMessagePremiumChoice(
-				controller()->uiShow(),
-				&session(),
-				*page,
-				[=] {
-					if (const auto strong = weak.get()) {
-						strong->sendRichDraftWithoutFormatting(
-							page,
-							options);
-					}
-				});
-		} else {
-			Iv::Editor::ShowRichMessagesUnavailableToast(
-				controller()->uiShow());
-		}
-		return;
-	}
-	auto action = prepareSendAction(options);
-
-	session().api().sendRichMessage(
-		page,
-		*serialized.value,
-		action);
-
-	_composeControls->clear();
-	_composeControls->applyCloudDraft();
-	session().sendProgressManager().update(
-		_history,
-		_repliesRootId,
-		Api::SendProgressType::Typing,
-		-1);
-	finishSending();
-}
-
-void ChatWidget::sendRichDraftWithoutFormatting(
-		std::shared_ptr<const Iv::RichPage> page,
-		Api::SendOptions options) {
-	if (!page) {
-		return;
-	}
-	const auto flattened = Iv::FlattenRichPageToSimpleText(*page);
-	sendTextWithTags(
-		{
-			flattened.text,
-			TextUtilities::ConvertEntitiesToTextTags(flattened.entities),
-		},
-		false,
-		options,
-		nullptr);
-	_composeControls->applyCloudDraft();
 }
 
 void ChatWidget::sendTextWithTags(

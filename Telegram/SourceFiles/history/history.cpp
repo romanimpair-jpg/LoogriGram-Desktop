@@ -19,7 +19,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_streamed_drafts.h"
 #include "history/history_translation.h"
 #include "history/history_unread_things.h"
-#include "iv/editor/iv_editor_session.h"
 #include "core/ui_integration.h"
 #include "dialogs/ui/dialogs_layout.h"
 #include "data/business/data_shortcut_messages.h"
@@ -425,13 +424,6 @@ bool History::skipCloudDraftUpdate(
 		MsgId topicRootId,
 		PeerId monoforumPeerId,
 		TimeId date) const {
-	if (Iv::Editor::IsComposeBoxOpen(
-			&session(),
-			peer->id,
-			topicRootId,
-			monoforumPeerId)) {
-		return true;
-	}
 	const auto key = Data::DraftKey::Local(topicRootId, monoforumPeerId);
 	const auto i = _acceptCloudDraftsAfter.find(key);
 	return _savingCloudDraftRequests.contains(key)

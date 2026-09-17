@@ -86,10 +86,6 @@ class Session;
 struct SendAsKey;
 } // namespace Main
 
-namespace Iv {
-struct RichPage;
-} // namespace Iv
-
 namespace Webrtc {
 enum class RecordAvailability : uchar;
 } // namespace Webrtc
@@ -104,7 +100,6 @@ enum class SendProgressType;
 } // namespace Api
 
 namespace HistoryView::Controls {
-class RichDraftPreview;
 class VoiceRecordBar;
 class TTLButton;
 class WebpageProcessor;
@@ -271,7 +266,6 @@ public:
 
 	[[nodiscard]] TextWithTags getTextWithAppliedMarkdown() const;
 	[[nodiscard]] Data::WebPageDraft webPageDraft() const;
-	[[nodiscard]] std::shared_ptr<const Iv::RichPage> shownRichMessage() const;
 	void setText(const TextWithTags &text);
 	void selectAllFieldText();
 	void clear(bool keepReply = false);
@@ -342,7 +336,6 @@ private:
 	void updateControlsParents();
 	void updateSubmitSettings();
 	void updateSendButtonType();
-	void updateSendLockBadge();
 	void updateMessagesTTLShown();
 	bool updateSendAsButton(std::shared_ptr<Data::GroupCall> videoStream);
 	void updateAttachBotsMenu();
@@ -359,16 +352,6 @@ private:
 		Ui::InputField::MimeAction action);
 	void updateSendAsFileVisibility();
 	void updateSendAsFileGeometry();
-	void initExpandButton();
-	void updateExpandButtonVisibility();
-	void updateExpandButtonGeometry();
-	[[nodiscard]] bool canShowRichEditor() const;
-	void showRichEditor();
-	void showRichEditorWithPaste(std::shared_ptr<QMimeData> data);
-	void offerRichPaste(not_null<const QMimeData*> data);
-	void initDiscardRichDraftButton();
-	void updateDiscardRichDraftVisibility();
-	void updateDiscardRichDraftGeometry();
 	void setupSendMenu(
 		not_null<Ui::RpWidget*> button,
 		Fn<void(Api::SendOptions)> send);
@@ -409,7 +392,6 @@ private:
 	[[nodiscard]] bool hasVisibleSendText() const;
 	[[nodiscard]] bool hasSendableContent() const;
 	[[nodiscard]] bool hideExtraButtons() const;
-	[[nodiscard]] bool hasEnoughLinesForExpand() const;
 	[[nodiscard]] bool textExceedsMaxSize() const;
 
 	void cancelInlineBot();
@@ -456,22 +438,9 @@ private:
 
 	void checkCharsLimitation();
 	[[nodiscard]] Data::Draft *cloudDraft() const;
-	[[nodiscard]] bool isComposeBoxOpen() const;
-	[[nodiscard]] bool hasRichDraftThreadScope() const;
-	[[nodiscard]] bool isShortcutComposeEligible() const;
-	[[nodiscard]] bool isWelcomeComposeEligible() const;
-	[[nodiscard]] bool bypassNormalDraftHandling() const;
 	[[nodiscard]] bool hasEditDraft() const;
-	[[nodiscard]] bool shouldShowRichDraftPreview() const;
-	void clearRichDraft();
 	[[nodiscard]] bool fieldDisabledShown() const;
 	[[nodiscard]] int composeFieldHeight() const;
-	void migrateFieldToRichEditor();
-	void migrateScheduledFieldToRichEditor();
-	void migrateShortcutFieldToRichEditor(
-		BusinessShortcutId expectedShortcutId);
-	void migrateWelcomeFieldToRichEditor();
-
 	const style::ComposeControls &_st;
 	ChatHelpers::ComposeFeatures _features;
 	const not_null<Ui::RpWidget*> _parent;
@@ -506,10 +475,7 @@ private:
 	std::optional<Ui::RoundRect> _backgroundRect;
 
 	const std::shared_ptr<Ui::SendButton> _send;
-	rpl::event_stream<bool> _sendLockBadge;
 	Ui::IconButton * const _sendAsFile = nullptr;
-	Ui::IconButton * const _expand = nullptr;
-	Ui::IconButton * const _discardRichDraft = nullptr;
 	Ui::IconButton *_like = nullptr;
 	Ui::IconButton *_commentsShown = nullptr;
 	rpl::variable<bool> _commentsShownHidden;
@@ -519,9 +485,7 @@ private:
 	const not_null<Ui::EmojiButton*> _tabbedSelectorToggle;
 	rpl::variable<QString> _fieldCustomPlaceholder;
 	QPointer<QWidget> _pasteToastParent;
-	std::shared_ptr<QMimeData> _pendingRichPaste;
 	const not_null<Ui::InputField*> _field;
-	std::unique_ptr<Controls::RichDraftPreview> _richDraftPreview;
 	base::unique_qptr<Ui::RpWidget> _fieldDisabled;
 	Ui::IconButton * const _botCommandStart = nullptr;
 	struct {
@@ -605,10 +569,8 @@ private:
 
 	std::unique_ptr<Controls::WebpageProcessor> _preview;
 	bool _previewShown = false;
-	bool _threadFieldVisible = false;
 
 	rpl::lifetime _historyLifetime;
-	rpl::lifetime _threadFieldVisibleLifetime;
 	rpl::lifetime _uploaderSubscriptions;
 
 };

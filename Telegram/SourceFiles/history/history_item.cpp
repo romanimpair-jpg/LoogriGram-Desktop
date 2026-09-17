@@ -22,7 +22,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_unread_things.h"
 #include "history/history.h"
 #include "iv/iv_data.h"
-#include "iv/editor/iv_editor_session.h"
 #include "iv/editor/iv_editor_page_blocks.h"
 #include "iv/iv_rich_page.h"
 #include "mtproto/mtproto_config.h"
@@ -2996,7 +2995,7 @@ bool HistoryItem::allowsEdit(TimeId now) const {
 	return !isService()
 		&& canBeEdited()
 		&& !isTooOldForEdit(now)
-		&& (!richPage || richPageSource->canEdit)
+		&& !richPage
 		&& (!_media || _media->allowsEdit())
 		&& !isLegacyMessage()
 		&& !isEditingMedia()
@@ -4183,8 +4182,6 @@ void HistoryItem::setRichPage(std::shared_ptr<const Iv::RichPage> page) {
 			++source->fullPageVersion;
 		}
 		source->fullPage = nullptr;
-		source->canEdit = Iv::Editor::CanAuthorRichMessages(&history()->session())
-			&& Iv::Editor::CanEditRichPage(source->page);
 		media->url = QString();
 		media->documents.clear();
 		media->photos.clear();
@@ -4206,8 +4203,6 @@ void HistoryItem::setFullRichPage(std::shared_ptr<const Iv::RichPage> page) {
 		AddComponents(HistoryMessageRichPageSource::Bit());
 		const auto source = Get<HistoryMessageRichPageSource>();
 		source->fullPage = std::move(page);
-		source->canEdit = Iv::Editor::CanAuthorRichMessages(&history()->session())
-			&& Iv::Editor::CanEditRichPage(BestRichPage(source));
 	} else {
 		clearFullRichPage();
 	}
@@ -4220,10 +4215,7 @@ void HistoryItem::clearFullRichPage() {
 	}
 	++source->fullPageVersion;
 	source->fullPage = nullptr;
-	if (source->page) {
-		source->canEdit = Iv::Editor::CanAuthorRichMessages(&history()->session())
-			&& Iv::Editor::CanEditRichPage(source->page);
-	} else {
+	if (!source->page) {
 		RemoveComponents(HistoryMessageRichPageSource::Bit());
 	}
 }

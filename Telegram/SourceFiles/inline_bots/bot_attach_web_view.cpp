@@ -53,7 +53,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "inline_bots/inline_bot_confirm_prepared.h"
 #include "inline_bots/inline_bot_downloads.h"
 #include "inline_bots/inline_bot_storage.h"
-#include "iv/editor/iv_editor_session.h"
 #include "iv/iv_instance.h"
 #include "lang/lang_keys.h"
 #include "main/main_app_config.h"
@@ -2753,20 +2752,7 @@ std::unique_ptr<Ui::DropdownMenu> MakeAttachBotsMenu(
 				sendMenuDetails());
 		}, &st::menuIconCreatePoll);
 	}
-	if (Iv::Editor::CanAuthorRichMessages(&controller->session())
-		&& Data::CanSendAnyOf(peer, ChatRestriction::SendOther, false)) {
-		raw->addAction(tr::lng_article_menu_item(tr::now), [=] {
-			const auto action = actionFactory();
-			const auto details = sendMenuDetails();
-			Iv::Editor::ShowComposeBox(
-				controller,
-				peer,
-				action,
-				details,
-				composeFieldText ? composeFieldText() : TextWithTags(),
-				composeFieldMigrated);
-		}, &st::menuIconArticle);
-	}
+	// LoogriGram: an "Article" item opened the rich message editor.
 	const auto session = &controller->session();
 	const auto locationType = ChatRestriction::SendOther;
 	const auto config = ResolveMapsConfig(session);

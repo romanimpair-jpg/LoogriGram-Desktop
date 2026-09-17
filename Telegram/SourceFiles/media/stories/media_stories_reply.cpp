@@ -95,7 +95,6 @@ namespace {
 		.autocompleteCommands = false,
 		.recordMediaMessage = !videoStream,
 		.emojiOnlyPanel = videoStream,
-		.richEditor = false,
 	};
 }
 

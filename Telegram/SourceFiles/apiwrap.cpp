@@ -77,7 +77,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_components.h"
 #include "history/history_item_helpers.h"
 #include "history/view/controls/history_view_forward_panel.h"
-#include "iv/editor/iv_editor_session.h"
 #include "iv/iv_rich_message_serializer.h"
 #include "main/main_session.h"
 #include "main/main_session_settings.h"
@@ -119,21 +118,6 @@ constexpr auto kStatsSessionKillTimeout = 10 * crl::time(1000);
 using PhotoFileLocationId = Data::PhotoFileLocationId;
 using DocumentFileLocationId = Data::DocumentFileLocationId;
 using UpdatedFileReferences = Data::UpdatedFileReferences;
-
-[[nodiscard]] bool ShouldSkipPlainDraftCloudSave(
-		not_null<Main::Session*> session,
-		not_null<Data::Thread*> thread) {
-	const auto history = thread->owningHistory();
-	const auto topicRootId = thread->topicRootId();
-	const auto monoforumPeerId = thread->monoforumPeerId();
-	const auto cloudDraft = history->cloudDraft(topicRootId, monoforumPeerId);
-	return (Iv::Editor::IsComposeBoxOpen(
-			session,
-			history->peer->id,
-			topicRootId,
-			monoforumPeerId)
-		|| (cloudDraft && cloudDraft->hasRichMessage()));
-}
 
 [[nodiscard]] std::shared_ptr<ChatHelpers::Show> ShowForPeer(
 		not_null<PeerData*> peer) {
@@ -2074,9 +2058,6 @@ void ApiWrap::sendNotifySettingsUpdates() {
 }
 
 void ApiWrap::saveDraftToCloudDelayed(not_null<Data::Thread*> thread) {
-	if (ShouldSkipPlainDraftCloudSave(_session, thread)) {
-		return;
-	}
 	_draftsSaveRequestIds.emplace(base::make_weak(thread), 0);
 	if (!_draftsSaveTimer.isActive()) {
 		_draftsSaveTimer.callOnce(kSaveCloudDraftTimeout);
@@ -2283,9 +2264,6 @@ void ApiWrap::saveCurrentDraftToCloud() {
 			const auto cloudDraft = history->cloudDraft(
 				topicRootId,
 				monoforumPeerId);
-			if (ShouldSkipPlainDraftCloudSave(_session, thread)) {
-				continue;
-			}
 			if (!Data::DraftsAreEqual(localDraft, cloudDraft)
 				&& !_session->supportMode()) {
 				saveDraftToCloudDelayed(thread);
@@ -2529,9 +2507,6 @@ void ApiWrap::saveDraftsToCloud() {
 			++i;
 			continue; // sent already - keep in-flight saves tracked so
 			          // quit prevention waits for their done/fail handler.
-		} else if (ShouldSkipPlainDraftCloudSave(_session, thread)) {
-			i = _draftsSaveRequestIds.erase(i);
-			continue;
 		}
 
 		const auto history = thread->owningHistory();

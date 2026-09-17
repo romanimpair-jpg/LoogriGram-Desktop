@@ -79,7 +79,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/controls/history_view_forward_panel.h"
 #include "history/view/history_view_context_menu.h"
 #include "history/view/history_view_schedule_box.h"
-#include "iv/editor/iv_editor_session.h"
 #include "window/window_separate_id.h"
 #include "window/window_session_controller.h"
 #include "window/window_controller.h"
@@ -2231,17 +2230,7 @@ void PeerMenuCreatePoll(
 		const auto local = action.history->localDraft(
 			replyTo.topicRootId,
 			replyTo.monoforumPeerId);
-		if (Iv::Editor::IsComposeBoxOpen(
-				&peer->session(),
-				peer->id,
-				replyTo.topicRootId,
-				replyTo.monoforumPeerId)) {
-			action.clearDraft = false;
-		} else if (local) {
-			action.clearDraft = local->textWithTags.text.isEmpty();
-		} else {
-			action.clearDraft = false;
-		}
+		action.clearDraft = local && local->textWithTags.text.isEmpty();
 		const auto api = &peer->session().api();
 		api->polls().create(
 			result.poll,
