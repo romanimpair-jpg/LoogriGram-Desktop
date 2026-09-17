@@ -132,7 +132,6 @@ enum class EmojiPacksSource {
 	Message,
 	Reaction,
 	Reactions,
-	Tag,
 	PollOption,
 };
 [[nodiscard]] std::vector<StickerSetIdentifier> CollectEmojiPacks(

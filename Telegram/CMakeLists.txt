@@ -791,8 +791,6 @@ PRIVATE
     dialogs/dialogs_row.h
     dialogs/dialogs_search_from_controllers.cpp
     dialogs/dialogs_search_from_controllers.h
-    dialogs/dialogs_search_tags.cpp
-    dialogs/dialogs_search_tags.h
     dialogs/dialogs_search_posts.cpp
     dialogs/dialogs_search_posts.h
     dialogs/dialogs_top_bar_suggestion.cpp

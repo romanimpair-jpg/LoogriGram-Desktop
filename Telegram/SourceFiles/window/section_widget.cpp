@@ -560,17 +560,14 @@ bool ShowReactPremiumError(
 		not_null<SessionController*> controller,
 		not_null<HistoryItem*> item,
 		const Data::ReactionId &id) {
-	// LoogriGram: both premium branches of this function answered with the
-	// subscription pitch for the feature in question - tags for Saved
-	// Messages, and custom-emoji reactions. They still refuse the reaction,
-	// which is right because the server would, but they refuse it quietly.
-	// Neither is normally reachable: PossibleItemReactions filters custom
-	// emoji out of every picker for a non-subscriber and sets customAllowed
-	// from the same predicate, so these are the fallback for a favourite
-	// reaction left over from a subscription that has since lapsed.
-	if (item->reactionsAreTags()) {
-		return true;
-	} else if (!item->canReact()) {
+	// LoogriGram: the custom-emoji branch answered with the subscription
+	// pitch. It still refuses the reaction, which is right because the
+	// server would, but it refuses it quietly. It is not normally reachable:
+	// PossibleItemReactions filters custom emoji out of every picker and
+	// sets customAllowed from the same predicate, so this is the fallback
+	// for a favourite reaction left over from a lapsed subscription. Saved
+	// Messages tags had a branch here too; canReact() now refuses those.
+	if (!item->canReact()) {
 		ShowReactRestrictionToast(controller);
 		return true;
 	} else if (ranges::contains(

@@ -2778,10 +2778,6 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 		session().data().reactions().refreshRecentDelayed();
 	} break;
 
-	case mtpc_updateSavedReactionTags: {
-		session().data().reactions().refreshMyTagsDelayed();
-	} break;
-
 	////// Cloud saved GIFs
 	case mtpc_updateSavedGifs: {
 		session().data().stickers().setLastSavedGifsUpdate(0);

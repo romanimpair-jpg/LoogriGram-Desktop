@@ -232,7 +232,6 @@ private:
 
 	rpl::variable<int> _uniqueLimit = 0;
 	bool _showingAll = false;
-	bool _tagsStrip = false;
 
 	std::optional<ButtonParameters> _scheduledParameters;
 	base::Timer _buttonShowTimer;

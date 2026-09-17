@@ -3352,7 +3352,13 @@ bool HistoryItem::canReact() const {
 			return (_flags & MessageFlag::ReactionsAllowed);
 		}
 	}
+	// LoogriGram: a reaction in Saved Messages is a tag, and tags need a
+	// subscription - the server refuses them. So Saved Messages takes no
+	// reactions at all, and the tag feature built on them is deleted.
 	const auto peer = history()->peer;
+	if (peer->isSelf()) {
+		return false;
+	}
 	return (peer->isChat() || peer->isMegagroup())
 		? !peer->amRestricted(ChatRestriction::SendReactions)
 		: true;
@@ -3373,7 +3379,7 @@ void HistoryItem::toggleReaction(
 			_reactions = nullptr;
 			_flags &= ~MessageFlag::CanViewReactions;
 		}
-	} else if (!reactionsAreTags() && !canReact()) {
+	} else if (!canReact()) {
 		return;
 	} else if (!_reactions) {
 		_reactions = std::make_unique<Data::MessageReactions>(this);
@@ -3421,10 +3427,6 @@ const std::vector<Data::MessageReaction> &HistoryItem::reactions() const {
 
 // LoogriGram: the paid reaction was merged into the list from local state
 // so it could be shown before the server confirmed it. Nothing local now.
-
-bool HistoryItem::reactionsAreTags() const {
-	return _flags & MessageFlag::ReactionsAreTags;
-}
 
 auto HistoryItem::recentReactions() const
 -> const base::flat_map<
@@ -4907,21 +4909,14 @@ bool HistoryItem::changeReactions(const MTPMessageReactions *reactions) {
 		_reactions = nullptr;
 		return true;
 	};
-	if (!reactions) {
+	// LoogriGram: tags are the only reactions Saved Messages carries, and
+	// nothing here shows or edits tags, so a list of them is not kept.
+	if (!reactions || reactions->data().is_reactions_as_tags()) {
 		_flags &= ~MessageFlag::CanViewReactions;
-		if (_history->peer->isSelf()) {
-			_flags |= MessageFlag::ReactionsAreTags;
-		}
 		return changeToEmpty();
 	}
 	const auto &data = reactions->data();
 	const auto empty = data.vresults().v.isEmpty();
-	if (data.is_reactions_as_tags()
-		|| (empty && _history->peer->isSelf())) {
-		_flags |= MessageFlag::ReactionsAreTags;
-	} else {
-		_flags &= ~MessageFlag::ReactionsAreTags;
-	}
 	if (data.is_can_see_list()) {
 		_flags |= MessageFlag::CanViewReactions;
 	} else {

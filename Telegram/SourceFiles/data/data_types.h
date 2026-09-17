@@ -337,8 +337,6 @@ enum class MessageFlag : uint64 {
 
 	ShowSimilarChannels   = (1ULL << 42),
 
-	ReactionsAreTags      = (1ULL << 44),
-
 	ShortcutMessage       = (1ULL << 45),
 
 	EffectWatched         = (1ULL << 46),

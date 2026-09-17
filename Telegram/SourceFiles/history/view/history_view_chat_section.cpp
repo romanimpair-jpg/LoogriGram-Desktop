@@ -5237,8 +5237,6 @@ void ChatWidget::listSearch(
 		const FullMsgId &context) {
 	const auto inChat = !_sublist
 		? Dialogs::Key(_history)
-		: Data::SearchTagFromQuery(query)
-		? Dialogs::Key(_sublist)
 		: Dialogs::Key();
 	controller()->searchMessages(query, inChat);
 }

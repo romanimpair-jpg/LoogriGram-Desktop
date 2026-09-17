@@ -973,11 +973,6 @@ public:
 	void applyStatsDcId(not_null<PeerData*>, MTP::DcId);
 	[[nodiscard]] MTP::DcId statsDcId(not_null<PeerData*>);
 
-	void viewTagsChanged(
-		not_null<ViewElement*> view,
-		std::vector<ReactionId> &&was,
-		std::vector<ReactionId> &&now);
-
 	void sentToScheduled(SentToScheduled value);
 	[[nodiscard]] rpl::producer<SentToScheduled> sentToScheduled() const;
 	void sentFromScheduled(SentFromScheduled value);
@@ -1345,9 +1340,6 @@ private:
 		base::flat_map<not_null<UserData*>, bool>> _invitedToCallUsers;
 
 	base::flat_set<not_null<ViewElement*>> _shownSpoilers;
-	base::flat_map<
-		ReactionId,
-		base::flat_set<not_null<ViewElement*>>> _viewsByTag;
 
 	std::unordered_map<PeerId, std::unique_ptr<PeerData>> _peers;
 

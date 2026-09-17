@@ -813,18 +813,6 @@ searchedBarLink: LinkButton(defaultLinkButton) {
 	padding: margins(14px, 5px, 14px, 5px);
 }
 
-dialogsSearchTagSkip: point(8px, 4px);
-dialogsSearchTagBottom: 10px;
-dialogsSearchTagLocked: icon{{ "dialogs/mini_tag_lock", lightButtonFgOver }};
-dialogsSearchTagPromo: defaultTextStyle;
-dialogsSearchTagArrow: IconEmoji {
-	icon: icon{{ "dialogs/mini_arrow", windowSubTextFg }};
-	padding: margins(-6px, 3px, 0px, 0px);
-}
-dialogsSearchTagPromoLeft: 6px;
-dialogsSearchTagPromoRight: 1px;
-dialogsSearchTagPromoSkip: 6px;
-
 dialogsPopularAppsPadding: margins(10px, 8px, 10px, 12px);
 dialogsPopularAppsAbout: FlatLabel(boxDividerLabel) {
 	minWidth: 128px;

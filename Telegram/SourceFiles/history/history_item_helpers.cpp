@@ -886,9 +886,6 @@ std::optional<bool> PeerHasThisCall(
 		&& !(flags & MessageFlag::ShortcutMessage)
 		&& !(flags & MessageFlag::AdminLogEntry)) {
 		flags |= MessageFlag::HistoryEntry;
-		if (history->peer->isSelf()) {
-			flags |= MessageFlag::ReactionsAreTags;
-		}
 	}
 	return flags;
 }

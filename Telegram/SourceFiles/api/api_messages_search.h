@@ -36,7 +36,6 @@ public:
 	struct Request {
 		QString query;
 		PeerData *from = nullptr;
-		std::vector<Data::ReactionId> tags;
 		MsgId topMsgId;
 		SearchFilter filter = SearchFilter::NoFilter;
 

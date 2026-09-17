@@ -2804,13 +2804,6 @@ void Element::refreshReactions() {
 				const auto wasChosen = ranges::contains(
 					item->chosenReactions(),
 					id);
-				// LoogriGram: clicking a tag searches for it, and used to
-				// answer a non-subscriber with the tags pitch instead.
-				// Searching by tag is subscriber-only, so the click simply
-				// does nothing for everyone else.
-				if (item->reactionsAreTags()) {
-					return;
-				}
 				if (!wasChosen
 					&& controller
 					&& Window::ShowReactPremiumError(controller, item, id)) {
@@ -2835,28 +2828,12 @@ void Element::refreshReactions() {
 			[=] { customEmojiRepaint(); },
 			std::move(reactionsData)));
 	} else {
-		auto was = _reactions->computeTagsList();
 		_reactions->update(std::move(reactionsData), width());
-		auto now = _reactions->computeTagsList();
-		if (!was.empty() || !now.empty()) {
-			auto &owner = history()->owner();
-			owner.viewTagsChanged(this, std::move(was), std::move(now));
-		}
 	}
 }
 
 void Element::setReactions(std::unique_ptr<Reactions::InlineList> list) {
-	auto was = _reactions
-		? _reactions->computeTagsList()
-		: std::vector<Data::ReactionId>();
 	_reactions = std::move(list);
-	auto now = _reactions
-		? _reactions->computeTagsList()
-		: std::vector<Data::ReactionId>();
-	if (!was.empty() || !now.empty()) {
-		auto &owner = history()->owner();
-		owner.viewTagsChanged(this, std::move(was), std::move(now));
-	}
 }
 
 bool Element::updateReactions() {

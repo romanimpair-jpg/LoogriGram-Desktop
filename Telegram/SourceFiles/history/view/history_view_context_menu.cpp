@@ -119,7 +119,6 @@ namespace HistoryView {
 namespace {
 
 constexpr auto kRescheduleLimit = 20;
-constexpr auto kTagNameLimit = 12;
 constexpr auto kPublicPostLinkToastDuration = 4 * crl::time(1000);
 
 class RevertAction final : public Ui::Menu::ItemBase {
@@ -1394,90 +1393,6 @@ void AddCopyLinkAction(
 		&st::menuIconCopy);
 }
 
-void EditTagBox(
-		not_null<Ui::GenericBox*> box,
-		not_null<Window::SessionController*> controller,
-		const Data::ReactionId &id) {
-	const auto owner = &controller->session().data();
-	const auto title = owner->reactions().myTagTitle(id);
-	box->setTitle(title.isEmpty()
-		? tr::lng_context_tag_add_name()
-		: tr::lng_context_tag_edit_name());
-	box->addRow(object_ptr<Ui::FlatLabel>(
-		box,
-		tr::lng_edit_tag_about(),
-		st::editTagAbout));
-	const auto field = box->addRow(object_ptr<Ui::InputField>(
-		box,
-		st::editTagField,
-		tr::lng_edit_tag_name(),
-		title));
-	field->setMaxLength(kTagNameLimit * 2);
-	box->setFocusCallback([=] {
-		field->setFocusFast();
-	});
-
-	struct State {
-		std::unique_ptr<Ui::Text::CustomEmoji> custom;
-		QImage image;
-	};
-	const auto state = field->lifetime().make_state<State>();
-
-	if (const auto customId = id.custom()) {
-		state->custom = owner->customEmojiManager().create(
-			customId,
-			[=] { field->update(); });
-	} else {
-		owner->reactions().preloadReactionImageFor(id);
-	}
-	field->paintRequest() | rpl::on_next([=](QRect clip) {
-		auto p = QPainter(field);
-		const auto top = st::editTagField.textMargins.top();
-		if (const auto custom = state->custom.get()) {
-			const auto inactive = !field->window()->isActiveWindow();
-			custom->paint(p, {
-				.textColor = st::windowFg->c,
-				.now = crl::now(),
-				.position = QPoint(0, top),
-				.paused = inactive || On(PowerSaving::kEmojiChat),
-			});
-		} else {
-			if (state->image.isNull()) {
-				state->image = owner->reactions().resolveReactionImageFor(
-					id);
-			}
-			if (!state->image.isNull()) {
-				const auto size = st::reactionInlineSize;
-				const auto skip = (size - st::reactionInlineImage) / 2;
-				p.drawImage(skip, top + skip, state->image);
-			}
-		}
-	}, field->lifetime());
-
-	Ui::AddLengthLimitLabel(field, kTagNameLimit);
-
-	const auto save = [=] {
-		const auto text = field->getLastText();
-		if (text.size() > kTagNameLimit) {
-			field->showError();
-			return;
-		}
-		const auto weak = base::make_weak(box);
-		controller->session().data().reactions().renameTag(id, text);
-		if (const auto strong = weak.get()) {
-			strong->closeBox();
-		}
-	};
-
-	field->submits(
-	) | rpl::on_next(save, field->lifetime());
-
-	box->addButton(tr::lng_settings_save(), save);
-	box->addButton(tr::lng_cancel(), [=] {
-		box->closeBox();
-	});
-}
-
 [[nodiscard]] Fn<void(Ui::WhoReadParticipant)> MakeModerateReactionChosen(
 		not_null<Window::SessionController*> controller,
 		FullMsgId itemId,
@@ -2497,84 +2412,6 @@ void MaybeAddWhenEditedForwardedAction(
 	AddWhenEditedForwardedAuthorActionHelper(menu, item, controller, true);
 }
 
-void AddEditTagAction(
-		not_null<Ui::PopupMenu*> menu,
-		const Data::ReactionId &id,
-		not_null<Window::SessionController*> controller) {
-	const auto owner = &controller->session().data();
-	const auto editLabel = owner->reactions().myTagTitle(id).isEmpty()
-		? tr::lng_context_tag_add_name(tr::now)
-		: tr::lng_context_tag_edit_name(tr::now);
-	menu->addAction(editLabel, [=] {
-		controller->show(Box(EditTagBox, controller, id));
-	}, &st::menuIconTagRename);
-}
-
-void AddTagPackAction(
-		not_null<Ui::PopupMenu*> menu,
-		const Data::ReactionId &id,
-		not_null<Window::SessionController*> controller) {
-	if (const auto custom = id.custom()) {
-		const auto owner = &controller->session().data();
-		if (const auto set = owner->document(custom)->sticker()) {
-			if (set->set.id) {
-				AddEmojiPacksAction(
-					menu,
-					{ set->set },
-					EmojiPacksSource::Tag,
-					controller);
-			}
-		}
-	}
-}
-
-void ShowTagMenu(
-		not_null<base::unique_qptr<Ui::PopupMenu>*> menu,
-		QPoint position,
-		not_null<QWidget*> context,
-		not_null<HistoryItem*> item,
-		const Data::ReactionId &id,
-		not_null<Window::SessionController*> controller) {
-	using namespace Data;
-	const auto itemId = item->fullId();
-	const auto owner = &controller->session().data();
-	*menu = base::make_unique_q<Ui::PopupMenu>(
-		context,
-		st::popupMenuExpandedSeparator);
-	(*menu)->addAction(tr::lng_context_filter_by_tag(tr::now), [=] {
-		HashtagClickHandler(SearchTagToQuery(id)).onClick({
-			.button = Qt::LeftButton,
-			.other = QVariant::fromValue(ClickHandlerContext{
-				.sessionWindow = controller,
-			}),
-		});
-	}, &st::menuIconTagFilter);
-
-	AddEditTagAction(menu->get(), id, controller);
-
-	const auto removeTag = [=] {
-		if (const auto item = owner->message(itemId)) {
-			const auto &list = item->reactions();
-			if (ranges::contains(list, id, &MessageReaction::id)) {
-				item->toggleReaction(id, HistoryReactionSource::Quick);
-			}
-		}
-	};
-	(*menu)->addAction(base::make_unique_q<Ui::Menu::Action>(
-		(*menu)->menu(),
-		st::menuWithIconsAttention,
-		Ui::Menu::CreateAction(
-			(*menu)->menu(),
-			tr::lng_context_remove_tag(tr::now),
-			removeTag),
-		&st::menuIconTagRemoveAttention,
-		&st::menuIconTagRemoveAttention));
-
-	AddTagPackAction(menu->get(), id, controller);
-
-	(*menu)->popup(position);
-}
-
 void AddCopyFilename(
 		not_null<Ui::PopupMenu*> menu,
 		not_null<DocumentData*> document,
@@ -2610,11 +2447,6 @@ void ShowWhoReactedMenu(
 		const Data::ReactionId &id,
 		not_null<Window::SessionController*> controller,
 		rpl::lifetime &lifetime) {
-	if (item->reactionsAreTags()) {
-		ShowTagMenu(menu, position, context, item, id, controller);
-		return;
-	}
-
 	struct State {
 		int addedToBottom = 0;
 	};
@@ -2772,12 +2604,6 @@ void AddEmojiPacksAction(
 					lt_name,
 					TextWithEntities{ name },
 					tr::rich);
-		case EmojiPacksSource::Tag:
-			return tr::lng_context_animated_tag(
-				tr::now,
-				lt_name,
-				TextWithEntities{ name },
-				tr::rich);
 		case EmojiPacksSource::Reaction:
 			if (!name.text.isEmpty()) {
 				return tr::lng_context_animated_reaction(

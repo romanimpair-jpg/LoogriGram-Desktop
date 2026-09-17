@@ -380,16 +380,6 @@ Session::Session(not_null<Main::Session*> session)
 		}
 	}, _lifetime);
 
-	_reactions->myTagRenamed(
-	) | rpl::on_next([=](const ReactionId &id) {
-		const auto i = _viewsByTag.find(id);
-		if (i != end(_viewsByTag)) {
-			for (const auto &view : i->second) {
-				notifyItemDataChange(view->data());
-			}
-		}
-	}, _lifetime);
-
 	Spellchecker::HighlightReady(
 	) | rpl::on_next([=](uint64 processId) {
 		highlightProcessDone(processId);
@@ -5884,28 +5874,6 @@ auto Session::joinChatWebViewDecision() const
 
 rpl::producer<not_null<PeerData*>> Session::peerDecorationsUpdated() const {
 	return _peerDecorationsUpdated.events();
-}
-
-void Session::viewTagsChanged(
-		not_null<ViewElement*> view,
-		std::vector<Data::ReactionId> &&was,
-		std::vector<Data::ReactionId> &&now) {
-	for (const auto &id : now) {
-		const auto i = ranges::remove(was, id);
-		if (i != end(was)) {
-			was.erase(i, end(was));
-		} else {
-			_viewsByTag[id].emplace(view);
-		}
-	}
-	for (const auto &id : was) {
-		const auto i = _viewsByTag.find(id);
-		if (i != end(_viewsByTag)
-			&& i->second.remove(view)
-			&& i->second.empty()) {
-			_viewsByTag.erase(i);
-		}
-	}
 }
 
 void Session::sentToScheduled(SentToScheduled value) {

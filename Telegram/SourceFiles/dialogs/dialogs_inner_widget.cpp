@@ -18,7 +18,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "dialogs/dialogs_community_requestable_list.h"
 #include "dialogs/dialogs_widget.h"
 #include "dialogs/dialogs_search_from_controllers.h"
-#include "dialogs/dialogs_search_tags.h"
 #include "dialogs/dialogs_quick_action.h"
 #include "history/view/history_view_context_menu.h"
 #include "history/view/history_view_subsection_tabs.h"
@@ -181,9 +180,7 @@ constexpr auto kPreviewPostsLimit = 3;
 			|| state.inChat.peer()->isMegagroup()))
 		? nullptr
 		: state.fromPeer;
-	const auto waiting = trimmed.isEmpty()
-		&& state.tags.empty()
-		&& !fromPeer;
+	const auto waiting = trimmed.isEmpty() && !fromPeer;
 	const auto suggestAllChats = !waiting
 		&& state.tab == ChatSearchTab::MyMessages
 		&& (state.filter != ChatTypeFilter::All || !state.fromArchive);
@@ -727,7 +724,7 @@ int InnerWidget::pinnedOffset() const {
 }
 
 int InnerWidget::hashtagsOffset() const {
-	return searchInChatOffset() + searchInChatSkip();
+	return searchInChatSkip();
 }
 
 int InnerWidget::filteredOffset() const {
@@ -755,10 +752,6 @@ int InnerWidget::peerSearchOffset() const {
 	return filteredOffset()
 		+ filteredHeight()
 		+ st::searchedBarHeight;
-}
-
-int InnerWidget::searchInChatOffset() const {
-	return (_searchTags ? _searchTags->height() : 0);
 }
 
 int InnerWidget::searchInChatSkip() const {
@@ -1366,16 +1359,6 @@ void InnerWidget::paintEvent(QPaintEvent *e) {
 			p.translate(0, communitySectionsBottom());
 		}
 	} else if (_state == WidgetState::Filtered) {
-		if (_searchTags) {
-			paintSearchTags(p, {
-				.st = &st::forumTopicRow,
-				.currentBg = currentBg(),
-				.now = ms,
-				.width = fullWidth,
-				.paused = videoPaused,
-			});
-			p.translate(0, _searchTags->height());
-		}
 		if (_searchIn) {
 			p.translate(0, searchInChatSkip());
 			if (_previewResults.empty() && _searchResults.empty()) {
@@ -1912,18 +1895,6 @@ QBrush InnerWidget::currentBg() const {
 		_childListShown.current().shown);
 }
 
-void InnerWidget::paintSearchTags(
-		Painter &p,
-		const Ui::PaintContext &context) const {
-	Expects(_searchTags != nullptr);
-
-	const auto height = _searchTags->height();
-	p.fillRect(0, 0, width(), height, currentBg());
-	const auto top = st::dialogsSearchTagBottom / 2;
-	const auto position = QPoint(_searchTagsLeft, top);
-	_searchTags->paint(p, position, context.now, context.paused);
-}
-
 void InnerWidget::showPeerMenu() {
 	if (!_selected) {
 		return;
@@ -2135,18 +2106,6 @@ void InnerWidget::selectByMouse(QPoint globalPosition) {
 	_lastMousePosition = globalPosition;
 	_lastRowLocalMouseX = local.x();
 
-	const auto tagBase = QPoint(
-		_searchTagsLeft,
-		st::dialogsSearchTagBottom / 2);
-	const auto inTags = _searchTags
-		&& QRect(
-			tagBase,
-			QSize(width() - 2 * _searchTagsLeft, _searchTags->height())
-		).contains(local);
-	if (inTags) {
-		setCursor(style::cur_default);
-	}
-
 	const auto w = width();
 	const auto mouseY = local.y();
 	clearIrrelevantState();
@@ -2325,7 +2284,7 @@ void InnerWidget::selectByMouse(QPoint globalPosition) {
 				_selectedChatTypeFilter = selectedChatTypeFilter;
 			}
 		}
-		if (!inTags && wasSelected != isSelected()) {
+		if (wasSelected != isSelected()) {
 			setCursor(wasSelected ? style::cur_default : style::cur_pointer);
 		}
 	}
@@ -3146,9 +3105,6 @@ void InnerWidget::setCommunityPressed(int pressed) {
 }
 
 void InnerWidget::resizeEvent(QResizeEvent *e) {
-	if (_searchTags) {
-		_searchTags->resizeToWidth(width() - 2 * _searchTagsLeft);
-	}
 	resizeEmpty();
 	moveSearchIn();
 	updateCommunityRequestableGeometry();
@@ -3162,7 +3118,7 @@ void InnerWidget::moveSearchIn() {
 		width(),
 		st::columnMinimalWidthLeft - _narrowWidth);
 	_searchIn->resizeToWidth(searchInWidth);
-	_searchIn->moveToLeft(0, searchInChatOffset());
+	_searchIn->moveToLeft(0, 0);
 }
 
 void InnerWidget::dialogRowReplaced(
@@ -4025,31 +3981,6 @@ void InnerWidget::applySearchState(SearchState state) {
 	} else {
 		_searchInMigrated = nullptr;
 	}
-	if (peer && peer->isSelf()) {
-		const auto reactions = &peer->owner().reactions();
-		_searchTags = std::make_unique<SearchTags>(
-			&peer->owner(),
-			reactions->myTagsValue(sublist),
-			state.tags);
-
-		_searchTags->repaintRequests() | rpl::on_next([=] {
-			const auto height = _searchTags->height();
-			update(0, 0, width(), height);
-		}, _searchTags->lifetime());
-
-		_searchTags->heightValue() | rpl::skip(
-			1
-		) | rpl::on_next([=] {
-			refresh();
-			moveSearchIn();
-			if (_loadingAnimation) {
-				_loadingAnimation->move(0, searchedOffset());
-			}
-		}, _searchTags->lifetime());
-	} else {
-		_searchTags = nullptr;
-		state.tags.clear();
-	}
 	_searchFromShown = ignoreInChat
 		? nullptr
 		: sublist
@@ -4080,7 +4011,6 @@ void InnerWidget::applySearchState(SearchState state) {
 		_filter = newFilter;
 		if (_filter.isEmpty()
 			&& !_searchState.fromPeer
-			&& _searchState.tags.empty()
 			&& _searchState.tab != ChatSearchTab::PublicPosts) {
 			clearFilter();
 		} else {
@@ -4627,11 +4557,6 @@ void InnerWidget::refresh(bool toTop) {
 		return refreshWithCollapsedRows(toTop);
 	}
 	refreshEmpty();
-	if (_searchTags) {
-		_searchTagsLeft = st::dialogsFilterSkip
-			+ st::dialogsFilterPadding.x();
-		_searchTags->resizeToWidth(width() - 2 * _searchTagsLeft);
-	}
 	auto h = 0;
 	if (_state == WidgetState::Default) {
 		if (communityModeShown()) {

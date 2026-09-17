@@ -17,7 +17,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_user.h"
 #include "dialogs/dialogs_key.h"
 #include "dialogs/dialogs_search_from_controllers.h" // SearchFromBox
-#include "dialogs/dialogs_search_tags.h"
 #include "dialogs/ui/dialogs_layout.h"
 #include "history/view/history_view_context_menu.h"
 #include "history/history.h"
@@ -330,15 +329,12 @@ protected:
 
 private:
 	void clearItems();
-	void refreshTags();
 	void updateSize();
 	void requestSearch(bool cache = true);
 	void requestSearchDelayed();
 
 	base::unique_qptr<Ui::IconButton> _cancel;
-	std::vector<Data::ReactionId> _searchTagsSelected;
 	base::unique_qptr<Ui::MultiSelect> _select;
-	std::unique_ptr<Dialogs::SearchTags> _searchTags;
 
 	const not_null<Window::SessionController*> _window;
 	const not_null<History*> _history;
@@ -362,19 +358,17 @@ TopBar::TopBar(
 	const QString &query)
 : Ui::RpWidget(parent)
 , _cancel(base::make_unique_q<Ui::IconButton>(this, st::historyTopBarBack))
-, _searchTagsSelected(Data::SearchTagsFromQuery(query))
 , _select(base::make_unique_q<Ui::MultiSelect>(
 	this,
 	st::searchInChatMultiSelect,
 	tr::lng_dlg_filter(),
-	_searchTagsSelected.empty() ? query : QString()))
+	query))
 , _window(window)
 , _history(history)
 , _searchTimer([=] { requestSearch(); }) {
 	if (from) {
 		setFrom(from);
 	}
-	refreshTags();
 
 	moveToLeft(0, 0);
 
@@ -433,21 +427,11 @@ void TopBar::setInnerFocus() {
 }
 
 void TopBar::updateSize() {
-	const auto height = st::topBarHeight
-		+ (_searchTags ? _searchTags->height() : 0);
-	resize(parentWidget()->width(), height);
+	resize(parentWidget()->width(), st::topBarHeight);
 }
 
 void TopBar::setQuery(const QString &query) {
-	if (auto tags = Data::SearchTagsFromQuery(query); !tags.empty()) {
-		if (_searchTagsSelected != tags) {
-			_searchTagsSelected = std::move(tags);
-			refreshTags();
-		}
-		_select->setQuery(QString());
-	} else {
-		_select->setQuery(query);
-	}
+	_select->setQuery(query);
 }
 
 void TopBar::clearItems() {
@@ -463,80 +447,10 @@ void TopBar::clearItems() {
 	});
 }
 
-void TopBar::refreshTags() {
-	if (!_history->peer->isSelf()) {
-		_searchTags = nullptr;
-		return;
-	}
-	auto fullTagsList = _from.value() | rpl::map([=](PeerData *from) {
-		const auto sublist = from
-			? _history->owner().savedMessages().sublist(from).get()
-			: nullptr;
-		return _history->owner().reactions().myTagsValue(sublist);
-	}) | rpl::flatten_latest();
-	_searchTags = std::make_unique<Dialogs::SearchTags>(
-		&_history->owner(),
-		std::move(fullTagsList),
-		_searchTagsSelected);
-
-	const auto parent = _searchTags->lifetime().make_state<Ui::RpWidget>(
-		this);
-	const auto shadow = _searchTags->lifetime().make_state<Ui::PlainShadow>(
-		parentWidget());
-	parent->show();
-
-	_searchTags->heightValue(
-	) | rpl::on_next([=](int height) {
-		updateSize();
-		shadow->setVisible(height > 0);
-	}, _searchTags->lifetime());
-
-	geometryValue() | rpl::on_next([=](QRect geometry) {
-		shadow->setGeometry(
-			geometry.x(),
-			geometry.y() + geometry.height(),
-			geometry.width(),
-			st::lineWidth);
-	}, shadow->lifetime());
-
-	if (!_searchTagsSelected.empty()) {
-		crl::on_main(this, [=] {
-			requestSearch(false);
-		});
-	}
-
-	const auto padding = st::searchInChatTagsPadding;
-	const auto position = QPoint(padding.left(), padding.top());
-
-	_searchTags->repaintRequests() | rpl::on_next([=] {
-		parent->update();
-	}, _searchTags->lifetime());
-
-	widthValue() | rpl::on_next([=](int width) {
-		width -= padding.left() + padding.right();
-		_searchTags->resizeToWidth(width);
-	}, _searchTags->lifetime());
-
-	rpl::combine(
-		widthValue(),
-		_searchTags->heightValue()
-	) | rpl::on_next([=](int width, int height) {
-		height += padding.top() + padding.bottom();
-		parent->setGeometry(0, st::topBarHeight, width, height);
-	}, _searchTags->lifetime());
-
-	parent->paintRequest() | rpl::on_next([=](const QRect &r) {
-		auto p = Painter(parent);
-		p.fillRect(r, st::dialogsBg);
-		_searchTags->paint(p, position, crl::now(), false);
-	}, parent->lifetime());
-}
-
 void TopBar::requestSearch(bool cache) {
 	const auto search = SearchRequest{
 		_select->getQuery(),
-		_from.current(),
-		_searchTagsSelected
+		_from.current()
 	};
 	if (cache) {
 		_typedRequests.insert(search);
@@ -548,8 +462,7 @@ void TopBar::requestSearchDelayed() {
 	// Check cached queries.
 	const auto search = SearchRequest{
 		_select->getQuery(),
-		_from.current(),
-		_searchTagsSelected
+		_from.current()
 	};
 	if (_typedRequests.contains(search)) {
 		requestSearch(false);
@@ -895,7 +808,7 @@ ComposeSearch::Inner::Inner(
 
 	_topBar->searchRequests(
 	) | rpl::on_next([=](SearchRequest search) {
-		if (search.query.isEmpty() && search.tags.empty()) {
+		if (search.query.isEmpty()) {
 			if (!search.from || _history->peer->isSelf()) {
 				return;
 			}

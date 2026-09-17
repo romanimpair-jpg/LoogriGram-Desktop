@@ -511,7 +511,6 @@ public:
 		not_null<PeerData*> from) const;
 	[[nodiscard]] crl::time lastReactionsRefreshTime() const;
 
-	[[nodiscard]] bool reactionsAreTags() const;
 	[[nodiscard]] bool hasDirectLink() const;
 	[[nodiscard]] bool changesWallPaper() const;
 

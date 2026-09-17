@@ -204,7 +204,6 @@ private:
 	[[nodiscard]] PeerData *searchInPeer() const;
 	[[nodiscard]] Data::ForumTopic *searchInTopic() const;
 	[[nodiscard]] PeerData *searchFromPeer() const;
-	[[nodiscard]] const std::vector<Data::ReactionId> &searchInTags() const;
 
 	void setupSupportMode();
 	void setupTouchChatPreview();
@@ -420,7 +419,6 @@ private:
 
 	QString _searchQuery;
 	PeerData *_searchQueryFrom = nullptr;
-	std::vector<Data::ReactionId> _searchQueryTags;
 	ChatSearchTab _searchQueryTab = {};
 	ChannelData *_searchQueryCommunity = nullptr;
 	ChatTypeFilter _searchQueryFilter = {};

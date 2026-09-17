@@ -457,7 +457,6 @@ void Manager::applyList(const Data::PossibleItemReactionsRef &reactions) {
 		(/*reactions.customAllowed
 			? Button::Expand
 			: */Button::None));
-	_tagsStrip = reactions.tags;
 }
 
 QMargins Manager::innerMargins() const {
@@ -818,7 +817,7 @@ bool Manager::showContextMenu(
 		const ReactionId &favorite) {
 	const auto selected = _strip.selected();
 	const auto id = std::get_if<ReactionId>(&selected);
-	if (!id || id->empty() || _tagsStrip) {
+	if (!id || id->empty()) {
 		return false;
 	} else if (*id == favorite) {
 		return true;
@@ -893,9 +892,7 @@ void SetupManagerList(
 				reactions.topUpdates(),
 				reactions.recentUpdates(),
 				reactions.defaultUpdates(),
-				reactions.favoriteUpdates(),
-				reactions.myTagsUpdates(),
-				reactions.tagsUpdates()
+				reactions.favoriteUpdates()
 			) | rpl::on_next([=] {
 				if (!state->timer.isActive()) {
 					state->timer.callOnce(kRefreshListDelay);

@@ -60,11 +60,6 @@ struct MessageReaction {
 	bool my = false;
 };
 
-[[nodiscard]] QString SearchTagToQuery(const ReactionId &tagId);
-[[nodiscard]] ReactionId SearchTagFromQuery(const QString &query);
-[[nodiscard]] std::vector<ReactionId> SearchTagsFromQuery(
-	const QString &query);
-
 struct HashtagWithUsername {
 	QString hashtag;
 	QString username;

@@ -3032,7 +3032,6 @@ bool Widget::search(bool inCache, SearchRequestDelay delay) {
 		: query.mid(1).trimmed();
 	const auto inPeer = searchInPeer();
 	const auto fromPeer = searchFromPeer();
-	const auto &inTags = searchInTags();
 	const auto tab = _searchState.tab;
 	const auto community = _searchState.community
 		? _searchState.community
@@ -3045,7 +3044,7 @@ bool Widget::search(bool inCache, SearchRequestDelay delay) {
 		.start = true,
 		.peer = (inPeer != nullptr),
 	};
-	if (trimmed.isEmpty() && !fromPeer && inTags.empty()) {
+	if (trimmed.isEmpty() && !fromPeer) {
 		cancelSearchRequest();
 
 		// Otherwise inside first searchApplyEmpty we call searchMode(),
@@ -3081,7 +3080,6 @@ bool Widget::search(bool inCache, SearchRequestDelay delay) {
 		if (i != process->cache.end()) {
 			_searchQuery = query;
 			_searchQueryFrom = fromPeer;
-			_searchQueryTags = inTags;
 			_searchQueryTab = tab;
 			_searchQueryCommunity = community;
 			_searchQueryFilter = filter;
@@ -3095,7 +3093,6 @@ bool Widget::search(bool inCache, SearchRequestDelay delay) {
 		}
 	} else if (_searchQuery != query
 		|| _searchQueryFrom != fromPeer
-		|| _searchQueryTags != inTags
 		|| _searchQueryTab != tab
 		|| _searchQueryCommunity != community
 		|| _searchQueryFilter != filter
@@ -3103,7 +3100,6 @@ bool Widget::search(bool inCache, SearchRequestDelay delay) {
 		const auto process = currentSearchProcess();
 		_searchQuery = query;
 		_searchQueryFrom = fromPeer;
-		_searchQueryTags = inTags;
 		_searchQueryTab = tab;
 		_searchQueryCommunity = community;
 		_searchQueryFilter = filter;
@@ -3135,18 +3131,12 @@ bool Widget::search(bool inCache, SearchRequestDelay delay) {
 					MTPmessages_Search(
 						MTP_flags((topic ? Flag::f_top_msg_id : Flag())
 							| (fromPeer ? Flag::f_from_id : Flag())
-							| (savedPeer ? Flag::f_saved_peer_id : Flag())
-							| (_searchQueryTags.empty()
-								? Flag()
-								: Flag::f_saved_reaction)),
+							| (savedPeer ? Flag::f_saved_peer_id : Flag())),
 						inPeer->input(),
 						MTP_string(_searchQuery),
 						(fromPeer ? fromPeer->input() : MTP_inputPeerEmpty()),
 						(savedPeer ? savedPeer->input() : MTP_inputPeerEmpty()),
-						MTP_vector_from_range(
-							_searchQueryTags | ranges::views::transform(
-								Data::ReactionToMTP
-							)),
+						MTPVector<MTPReaction>(), // saved_reaction
 						MTP_int(topic ? topic->rootId() : 0),
 						MTP_inputMessagesFilterEmpty(),
 						MTP_int(0), // min_date
@@ -3347,20 +3337,14 @@ void Widget::searchMore() {
 					MTPmessages_Search(
 						MTP_flags((topic ? Flag::f_top_msg_id : Flag())
 							| (fromPeer ? Flag::f_from_id : Flag())
-							| (savedPeer ? Flag::f_saved_peer_id : Flag())
-							| (_searchQueryTags.empty()
-								? Flag()
-								: Flag::f_saved_reaction)),
+							| (savedPeer ? Flag::f_saved_peer_id : Flag())),
 						peer->input(),
 						MTP_string(_searchQuery),
 						(fromPeer ? fromPeer->input() : MTP_inputPeerEmpty()),
 						(savedPeer
 							? savedPeer->input()
 							: MTP_inputPeerEmpty()),
-						MTP_vector_from_range(
-							_searchQueryTags | ranges::views::transform(
-								Data::ReactionToMTP
-							)),
+						MTPVector<MTPReaction>(), // saved_reaction
 						MTP_int(topic ? topic->rootId() : 0),
 						MTP_inputMessagesFilterEmpty(),
 						MTP_int(0), // min_date
@@ -3841,8 +3825,7 @@ void Widget::applySearchUpdate() {
 	applySearchState(std::move(copy));
 
 	if (_chooseFromUser->toggled()
-		|| _searchState.fromPeer
-		|| !_searchState.tags.empty()) {
+		|| _searchState.fromPeer) {
 		auto switchToChooseFrom = HistoryView::SwitchToChooseFromQuery();
 		if (_lastSearchText != switchToChooseFrom
 			&& switchToChooseFrom.startsWith(_lastSearchText)
@@ -4068,10 +4051,6 @@ bool Widget::applySearchState(SearchState state) {
 			? ChatSearchTab::ThisCommunity
 			: ChatSearchTab::MyMessages;
 	}
-	if (!state.tags.empty()) {
-		state.inChat = session().data().history(session().user());
-	}
-
 	const auto clearQuery = state.fromPeer
 		&& (_lastSearchText == HistoryView::SwitchToChooseFromQuery());
 	if (clearQuery) {
@@ -4081,7 +4060,6 @@ bool Widget::applySearchState(SearchState state) {
 	const auto inChatChanged = (_searchState.inChat != state.inChat);
 	const auto communityChanged = (_searchState.community != state.community);
 	const auto fromPeerChanged = (_searchState.fromPeer != state.fromPeer);
-	const auto tagsChanged = (_searchState.tags != state.tags);
 	const auto queryChanged = (_searchState.query != state.query);
 	const auto tabChanged = (_searchState.tab != state.tab);
 	const auto queryEmptyChanged = queryChanged
@@ -4176,15 +4154,13 @@ bool Widget::applySearchState(SearchState state) {
 	updateLockUnlockPosition();
 
 	const auto searchCleared = state.query.isEmpty()
-		&& !state.fromPeer
-		&& state.tags.empty();
+		&& !state.fromPeer;
 	if (searchCleared
 		|| inChatChanged
 		|| communityChanged
 		|| fromPeerChanged
 		|| filterChanged
 		|| fromArchiveChanged
-		|| tagsChanged
 		|| tabChanged) {
 		clearSearchCache(searchCleared);
 	}
@@ -4231,7 +4207,6 @@ void Widget::clearSearchCache(bool clearPosts) {
 	}
 	_searchQuery = QString();
 	_searchQueryFrom = nullptr;
-	_searchQueryTags.clear();
 	if (clearPosts) {
 		_postsProcess.cache.clear();
 		const auto queries = base::take(_postsProcess.queries);
@@ -4851,16 +4826,6 @@ PeerData *Widget::searchFromPeer() const {
 	return nullptr;
 }
 
-const std::vector<Data::ReactionId> &Widget::searchInTags() const {
-	if (const auto peer = searchInPeer()) {
-		if (peer->isSelf() && _searchState.tab == ChatSearchTab::ThisPeer) {
-			return _searchState.tags;
-		}
-	}
-	static const auto kEmpty = std::vector<Data::ReactionId>();
-	return kEmpty;
-}
-
 QString Widget::currentSearchQuery() const {
 	return _subsectionTopBar
 		? _subsectionTopBar->searchQueryCurrent()
@@ -4914,8 +4879,7 @@ bool Widget::cancelSearch(CancelSearchOptions options) {
 	const auto forceFullCancel = options.forceFullCancel;
 	auto clearingInChat = (forceFullCancel || !clearingQuery)
 		&& (updatedState.inChat
-			|| updatedState.fromPeer
-			|| !updatedState.tags.empty());
+			|| updatedState.fromPeer);
 	if (clearingQuery) {
 		updatedState.query = QString();
 	}
@@ -4931,7 +4895,6 @@ bool Widget::cancelSearch(CancelSearchOptions options) {
 		}
 		updatedState.inChat = {};
 		updatedState.fromPeer = nullptr;
-		updatedState.tags = {};
 	}
 	if (!clearingQuery
 		&& _subsectionTopBar

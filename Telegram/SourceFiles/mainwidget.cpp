@@ -835,7 +835,6 @@ void MainWidget::searchMessages(
 		});
 		return;
 	}
-	auto tags = Data::SearchTagsFromQuery(query);
 	const auto archiveWindow = (_controller->windowId().type
 		== Window::SeparateType::Archive);
 	if (_dialogs
@@ -846,12 +845,9 @@ void MainWidget::searchMessages(
 				&& inChat.peer()->isChannel()
 				&& inChat.peer()->asChannel()->isCommunity()))) {
 		auto state = Dialogs::SearchState{
-			.inChat = ((tags.empty() || inChat.sublist())
-				? inChat
-				: session().data().history(session().user())),
+			.inChat = inChat,
 			.fromPeer = inChat ? searchFrom : nullptr,
-			.tags = tags,
-			.query = tags.empty() ? query : QString(),
+			.query = query,
 		};
 		state.tab = state.defaultTabForMe();
 		_dialogs->searchMessages(std::move(state));
@@ -868,9 +864,6 @@ void MainWidget::searchMessages(
 					.history = sublist->owningHistory(),
 					.sublist = sublist,
 				}));
-		} else if (!tags.empty()) {
-			inChat = controller()->session().data().history(
-				controller()->session().user());
 		}
 		if ((!_mainSection
 			|| !_mainSection->searchInChatEmbedded(query, inChat, searchFrom))

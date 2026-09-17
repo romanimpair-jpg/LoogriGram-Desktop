@@ -50,14 +50,6 @@ constexpr auto kSearchPerPage = 50;
 	if (request.from) {
 		result += '\n' + QString::number(request.from->id.value);
 	}
-	for (const auto &tag : request.tags) {
-		result += '\n';
-		if (const auto customId = tag.custom()) {
-			result += u"custom"_q + QString::number(customId);
-		} else {
-			result += u"emoji"_q + tag.emoji();
-		}
-	}
 	switch (request.filter) {
 	case SearchFilter::NoFilter: break;
 	case SearchFilter::Pinned: result += u"\npinned"_q; break;
@@ -117,15 +109,12 @@ void MessagesSearch::searchRequest() {
 		_requestId = _history->session().api().request(MTPmessages_Search(
 			MTP_flags((fromPeer ? Flag::f_from_id : Flag())
 				| (savedPeer ? Flag::f_saved_peer_id : Flag())
-				| (_request.topMsgId ? Flag::f_top_msg_id : Flag())
-				| (_request.tags.empty() ? Flag() : Flag::f_saved_reaction)),
+				| (_request.topMsgId ? Flag::f_top_msg_id : Flag())),
 			_history->peer->input(),
 			MTP_string(_request.query),
 			(fromPeer ? fromPeer->input() : MTP_inputPeerEmpty()),
 			(savedPeer ? savedPeer->input() : MTP_inputPeerEmpty()),
-			MTP_vector_from_range(_request.tags | ranges::views::transform(
-				Data::ReactionToMTP
-			)),
+			MTPVector<MTPReaction>(), // saved_reaction
 			MTP_int(_request.topMsgId), // top_msg_id
 			PrepareFilter(_request.filter),
 			MTP_int(0), // min_date

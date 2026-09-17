@@ -82,7 +82,6 @@ namespace Dialogs {
 class Row;
 class FakeRow;
 class IndexedList;
-class SearchTags;
 class SearchEmpty;
 class ChatSearchIn;
 class CommunityRequestableList;
@@ -473,7 +472,6 @@ private:
 	[[nodiscard]] int filteredIndex(int y) const;
 	[[nodiscard]] int filteredHeight(int till = -1) const;
 	[[nodiscard]] int peerSearchOffset() const;
-	[[nodiscard]] int searchInChatOffset() const;
 	[[nodiscard]] int previewOffset() const;
 	[[nodiscard]] int searchedOffset() const;
 	[[nodiscard]] int searchInChatSkip() const;
@@ -497,9 +495,6 @@ private:
 		Painter &p,
 		not_null<const PeerSearchResult*> result,
 		const Ui::PaintContext &context);
-	void paintSearchTags(
-		Painter &p,
-		const Ui::PaintContext &context) const;
 	//void paintSearchInChat(
 	//	Painter &p,
 	//	const Ui::PaintContext &context) const;
@@ -758,8 +753,6 @@ private:
 	History *_searchInMigrated = nullptr;
 	PeerData *_searchFromShown = nullptr;
 	Ui::Text::String _searchFromUserText;
-	std::unique_ptr<SearchTags> _searchTags;
-	int _searchTagsLeft = 0;
 	RowDescriptor _menuRow;
 
 	base::flat_map<
