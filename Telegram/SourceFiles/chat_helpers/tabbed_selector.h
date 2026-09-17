@@ -85,7 +85,6 @@ enum class TabbedSelectorMode {
 	CustomEmojiOnly,
 	StickersOnly,
 	MediaEditor,
-	EmojiStatus,
 	ChannelStatus,
 	BackgroundEmoji,
 	FullReactions,
@@ -107,7 +106,6 @@ struct TabbedSelectorDescriptor {
 
 enum class TabbedSearchType {
 	Emoji,
-	Status,
 	ProfilePhoto,
 	Stickers,
 	Greeting,
@@ -319,7 +317,6 @@ private:
 
 	object_ptr<Ui::SettingsSlider> _tabsSlider = { nullptr };
 	object_ptr<Ui::PlainShadow> _topShadow;
-	object_ptr<Ui::PlainShadow> _bottomShadow;
 	object_ptr<Ui::ScrollArea> _scroll;
 	object_ptr<Ui::FlatLabel> _restrictedLabel = { nullptr };
 	QString _restrictedLabelKey;

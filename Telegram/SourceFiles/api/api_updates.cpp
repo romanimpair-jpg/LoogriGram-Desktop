@@ -2770,9 +2770,9 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 		}
 	} break;
 
-	case mtpc_updateRecentEmojiStatuses: {
-		session().data().emojiStatuses().refreshRecentDelayed();
-	} break;
+	// LoogriGram: our recently used emoji statuses changed. We cannot set
+	// one, so there is no recent list to refresh.
+	case mtpc_updateRecentEmojiStatuses: break;
 
 	case mtpc_updateRecentReactions: {
 		session().data().reactions().refreshRecentDelayed();

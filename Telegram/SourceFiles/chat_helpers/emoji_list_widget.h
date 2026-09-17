@@ -71,13 +71,11 @@ inline constexpr auto kEmojiSectionCount = 8;
 struct StickerIcon;
 class EmojiColorPicker;
 class StickersListFooter;
-class GradientPremiumStar;
 class LocalStickersManager;
 
 enum class EmojiListMode {
 	Full,
 	TopicIcon,
-	EmojiStatus,
 	ChannelStatus,
 	FullReactions,
 	RecentReactions,
@@ -435,7 +433,6 @@ private:
 	[[nodiscard]] QRect buttonRect(
 		const SectionInfo &info,
 		const RightButton &button) const;
-	[[nodiscard]] const RightButton &rightButton(int index) const;
 	[[nodiscard]] QRect emojiRect(int section, int index) const;
 	[[nodiscard]] int emojiRight() const;
 	[[nodiscard]] int emojiLeft() const;
@@ -453,7 +450,7 @@ private:
 	void removeSet(uint64 setId);
 	void removeMegagroupSet(bool locally);
 
-	void initButton(RightButton &button, const QString &text, bool gradient);
+	void initButton(RightButton &button, const QString &text);
 	[[nodiscard]] std::unique_ptr<Ui::RippleAnimation> createButtonRipple(
 		int section);
 	[[nodiscard]] QPoint buttonRippleTopLeft(int section) const;
@@ -498,7 +495,6 @@ private:
 	MTP::Sender _api;
 	const int _staticCount = 0;
 	StickersListFooter *_footer = nullptr;
-	std::unique_ptr<GradientPremiumStar> _premiumIcon;
 	std::unique_ptr<LocalStickersManager> _localSetsManager;
 	ChannelData *_megagroupSet = nullptr;
 	uint64 _megagroupSetIdRequested = 0;
@@ -578,7 +574,6 @@ private:
 	QPoint _customPosition;
 
 	RightButton _add;
-	RightButton _restore;
 	Ui::RoundRect _collapsedBg;
 
 	OverState _selected;

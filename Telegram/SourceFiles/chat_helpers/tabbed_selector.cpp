@@ -330,8 +330,6 @@ std::unique_ptr<Ui::TabbedSearch> MakeSearch(
 		.st = st.search,
 		.groups = ((type == TabbedSearchType::ProfilePhoto)
 			? owner->emojiStatuses().profilePhotoGroupsValue()
-			: (type == TabbedSearchType::Status)
-			? owner->emojiStatuses().statusGroupsValue()
 			: (type == TabbedSearchType::Stickers)
 			? owner->emojiStatuses().stickerGroupsValue()
 			: (type == TabbedSearchType::Greeting)
@@ -357,8 +355,7 @@ TabbedSelector::TabbedSelector(
 	Mode mode)
 : TabbedSelector(parent, {
 	.show = std::move(show),
-	.st = ((mode == Mode::EmojiStatus
-		|| mode == Mode::ChannelStatus
+	.st = ((mode == Mode::ChannelStatus
 		|| mode == Mode::BackgroundEmoji
 		|| mode == Mode::FullReactions)
 		? st::statusEmojiPan
@@ -385,7 +382,6 @@ TabbedSelector::TabbedSelector(
 , _categoriesRounding(
 	Ui::PrepareCornerPixmaps(st::emojiPanRadius, _st.categoriesBg))
 , _topShadow(full() ? object_ptr<Ui::PlainShadow>(this) : nullptr)
-, _bottomShadow(this)
 , _scroll(this, st::emojiScroll)
 , _tabs([&] {
 	std::vector<Tab> tabs;
@@ -466,7 +462,6 @@ TabbedSelector::TabbedSelector(
 	if (_topShadow) {
 		_topShadow->raise();
 	}
-	_bottomShadow->raise();
 	if (_tabsSlider) {
 		_tabsSlider->raise();
 	}
@@ -630,9 +625,7 @@ TabbedSelector::Tab TabbedSelector::createTab(SelectorTab type, int index) {
 			using Descriptor = EmojiListDescriptor;
 			return object_ptr<EmojiListWidget>(this, Descriptor{
 				.show = _show,
-				.mode = (_mode == Mode::EmojiStatus
-					? EmojiMode::EmojiStatus
-					: _mode == Mode::ChannelStatus
+				.mode = (_mode == Mode::ChannelStatus
 					? EmojiMode::ChannelStatus
 					: _mode == Mode::BackgroundEmoji
 					? EmojiMode::BackgroundEmoji
@@ -822,11 +815,6 @@ void TabbedSelector::updateScrollGeometry(QSize oldSize) {
 		setInnerGeometry();
 		setScrollGeometry();
 	}
-	_bottomShadow->setGeometry(
-		0,
-		_scroll->y() + (_dropDown ? 0 : (_scroll->height() - st::lineWidth)),
-		width(),
-		st::lineWidth);
 }
 
 void TabbedSelector::updateFooterGeometry() {
@@ -1160,7 +1148,6 @@ void TabbedSelector::checkRestrictedPeer() {
 			updateRestrictedLabelGeometry();
 			currentTab()->footer()->hide();
 			_scroll->hide();
-			_bottomShadow->hide();
 			update();
 			return;
 		}
@@ -1172,7 +1159,6 @@ void TabbedSelector::checkRestrictedPeer() {
 		if (!_a_slide.animating()) {
 			currentTab()->footer()->show();
 			_scroll->show();
-			_bottomShadow->setVisible(_mode == Mode::EmojiStatus);
 			update();
 		}
 	}
@@ -1191,7 +1177,6 @@ void TabbedSelector::showAll() {
 			currentTab()->footer()->show();
 		}
 		_scroll->show();
-		_bottomShadow->setVisible(_mode == Mode::EmojiStatus);
 	}
 	if (_topShadow) {
 		_topShadow->show();

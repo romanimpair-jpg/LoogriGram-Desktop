@@ -102,20 +102,6 @@ struct StickerIcon {
 	mutable rpl::lifetime lifetime;
 };
 
-class GradientPremiumStar {
-public:
-	GradientPremiumStar();
-
-	[[nodiscard]] QImage image() const;
-
-private:
-	void renderOnDemand() const;
-
-	mutable QImage _image;
-	rpl::lifetime _lifetime;
-
-};
-
 [[nodiscard]] bool MatchAllPreparedSearchWords(
 	const QStringList &titleWords,
 	const QStringList &searchWords);

@@ -37,17 +37,10 @@ public:
 	}
 	[[nodiscard]] Main::Session &session() const;
 
-	void refreshRecent();
-	void refreshRecentDelayed();
-	void refreshDefault();
-	void refreshColored();
 	void refreshChannelDefault();
 	void refreshChannelColored();
 
 	enum class Type {
-		Recent,
-		Default,
-		Colored,
 		ChannelDefault,
 		ChannelColored,
 	};
@@ -55,23 +48,19 @@ public:
 
 	[[nodiscard]] EmojiStatusData parse(const MTPEmojiStatus &status);
 
-	[[nodiscard]] rpl::producer<> recentUpdates() const;
-	[[nodiscard]] rpl::producer<> defaultUpdates() const;
-	[[nodiscard]] rpl::producer<> channelDefaultUpdates() const;
-
-	void set(EmojiStatusId id, TimeId until = 0);
-	void set(not_null<PeerData*> peer, EmojiStatusId id, TimeId until = 0);
+	void set(
+		not_null<ChannelData*> channel,
+		EmojiStatusId id,
+		TimeId until = 0);
 
 	void registerAutomaticClear(not_null<PeerData*> peer, TimeId until);
 	[[nodiscard]] TimeId automaticClearAt(not_null<PeerData*> peer) const;
 
 	using Groups = std::vector<Ui::EmojiGroup>;
 	[[nodiscard]] rpl::producer<Groups> emojiGroupsValue() const;
-	[[nodiscard]] rpl::producer<Groups> statusGroupsValue() const;
 	[[nodiscard]] rpl::producer<Groups> stickerGroupsValue() const;
 	[[nodiscard]] rpl::producer<Groups> profilePhotoGroupsValue() const;
 	void requestEmojiGroups();
-	void requestStatusGroups();
 	void requestStickerGroups();
 	void requestProfilePhotoGroups();
 
@@ -82,15 +71,9 @@ private:
 		int32 hash = 0;
 	};
 
-	void requestRecent();
-	void requestDefault();
-	void requestColored();
 	void requestChannelDefault();
 	void requestChannelColored();
 
-	void updateRecent(const MTPDaccount_emojiStatuses &data);
-	void updateDefault(const MTPDaccount_emojiStatuses &data);
-	void updateColored(const MTPDmessages_stickerSet &data);
 	void updateChannelDefault(const MTPDaccount_emojiStatuses &data);
 	void updateChannelColored(const MTPDmessages_stickerSet &data);
 
@@ -105,42 +88,22 @@ private:
 
 	const not_null<Session*> _owner;
 
-	std::vector<EmojiStatusId> _recent;
-	std::vector<EmojiStatusId> _default;
-	std::vector<EmojiStatusId> _colored;
 	std::vector<EmojiStatusId> _channelDefault;
 	std::vector<EmojiStatusId> _channelColored;
-	rpl::event_stream<> _recentUpdated;
-	rpl::event_stream<> _defaultUpdated;
-	rpl::event_stream<> _coloredUpdated;
-	rpl::event_stream<> _channelDefaultUpdated;
-	rpl::event_stream<> _channelColoredUpdated;
-
-	mtpRequestId _recentRequestId = 0;
-	bool _recentRequestScheduled = false;
-	uint64 _recentHash = 0;
-
-	mtpRequestId _defaultRequestId = 0;
-	uint64 _defaultHash = 0;
-
-	mtpRequestId _coloredRequestId = 0;
 
 	mtpRequestId _channelDefaultRequestId = 0;
 	uint64 _channelDefaultHash = 0;
 
 	mtpRequestId _channelColoredRequestId = 0;
 
-	base::flat_map<not_null<PeerData*>, mtpRequestId> _sentRequests;
+	base::flat_map<not_null<ChannelData*>, mtpRequestId> _sentRequests;
 
 	base::flat_map<not_null<PeerData*>, TimeId> _clearing;
 	base::Timer _clearingTimer;
 
 	GroupsType _emojiGroups;
-	GroupsType _statusGroups;
 	GroupsType _stickerGroups;
 	GroupsType _profilePhotoGroups;
-
-	rpl::lifetime _lifetime;
 
 };
 

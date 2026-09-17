@@ -25,7 +25,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/widgets/shadow.h"
 #include "ui/text/custom_emoji_instance.h"
 #include "ui/effects/ripple_animation.h"
-#include "ui/effects/premium_graphics.h"
 #include "ui/emoji_config.h"
 #include "ui/painter.h"
 #include "ui/power_saving.h"
@@ -496,9 +495,6 @@ EmojiListWidget::EmojiListWidget(
 , _mediaPreviewPanelStyle(descriptor.mediaPreviewPanelStyle)
 , _api(&session().mtp())
 , _staticCount(_mode == Mode::Full ? kEmojiSectionCount : 1)
-, _premiumIcon(_mode == Mode::EmojiStatus
-	? std::make_unique<GradientPremiumStar>()
-	: nullptr)
 , _localSetsManager(
 	std::make_unique<LocalStickersManager>(&session()))
 , _customRecentFactory(std::move(descriptor.customRecentFactory))
@@ -603,8 +599,7 @@ EmojiListWidget::EmojiListWidget(
 	) | rpl::then(
 		style::PaletteChanged()
 	) | rpl::on_next([=] {
-		initButton(_add, tr::lng_stickers_featured_add(tr::now), false);
-		initButton(_restore, tr::lng_emoji_premium_restore(tr::now), true);
+		initButton(_add, tr::lng_stickers_featured_add(tr::now));
 	}, lifetime());
 
 	if (!descriptor.customRecentList.empty()) {
@@ -618,9 +613,7 @@ EmojiListWidget::~EmojiListWidget() {
 
 void EmojiListWidget::setupSearch() {
 	const auto session = &_show->session();
-	const auto type = (_mode == Mode::EmojiStatus)
-		? TabbedSearchType::Status
-		: (_mode == Mode::UserpicBuilder)
+	const auto type = (_mode == Mode::UserpicBuilder)
 		? TabbedSearchType::ProfilePhoto
 		: TabbedSearchType::Emoji;
 	_search = MakeSearch(this, st(), [=](std::vector<QString> &&query) {
@@ -1669,8 +1662,7 @@ object_ptr<TabbedSelector::InnerFooter> EmojiListWidget::createFooter() {
 }
 
 void EmojiListWidget::afterShown() {
-	const auto steal = (_mode == Mode::EmojiStatus)
-		|| (_mode == Mode::FullReactions)
+	const auto steal = (_mode == Mode::FullReactions)
 		|| (_mode == Mode::UserpicBuilder);
 	if (_search && steal) {
 		_search->stealFocus();
@@ -1911,10 +1903,7 @@ void EmojiListWidget::fillRecentFrom(
 	_recent.clear();
 	_recent.reserve(list.size());
 	for (const auto &id : list) {
-		if (!id && _mode == Mode::EmojiStatus) {
-			const auto star = QString::fromUtf8("\xe2\xad\x90\xef\xb8\x8f");
-			_recent.push_back({ .id = { Ui::Emoji::Find(star) } });
-		} else if (!id
+		if (!id
 			&& (_mode == Mode::BackgroundEmoji
 				|| _mode == Mode::ChannelStatus)) {
 			const auto fakeId = DocumentId(5246772116543512028ULL);
@@ -1974,7 +1963,7 @@ base::unique_qptr<Ui::PopupMenu> EmojiListWidget::fillContextMenu(
 			: st::defaultPopupMenu));
 	if (_mode == Mode::Full) {
 		fillRecentMenu(menu, section, index);
-	} else if (_mode == Mode::EmojiStatus || _mode == Mode::ChannelStatus) {
+	} else if (_mode == Mode::ChannelStatus) {
 		fillEmojiStatusMenu(menu, section, index);
 	}
 	if (menu->empty()) {
@@ -2151,7 +2140,7 @@ void EmojiListWidget::validateEmojiPaintContext(
 	auto value = Ui::Text::CustomEmojiPaintContext{
 		.textColor = (_customTextColor
 			? _customTextColor()
-			: (_mode == Mode::EmojiStatus || _mode == Mode::ChannelStatus)
+			: (_mode == Mode::ChannelStatus)
 			? anim::color(
 				st::stickerPanPremium1,
 				st::stickerPanPremium2,
@@ -2615,15 +2604,7 @@ void EmojiListWidget::drawRecent(
 			custom->paint(p, *_emojiPaintContext);
 		}
 	} else if (const auto emoji = std::get_if<EmojiPtr>(&recent.id.data)) {
-		if (_mode == Mode::EmojiStatus) {
-			position += QPoint(
-				(_singleSize.width() - st::emojiStatusDefault.width()) / 2,
-				(_singleSize.height() - st::emojiStatusDefault.height()) / 2
-			) - _areaPosition;
-			p.drawImage(position, _premiumIcon->image());
-		} else {
-			drawEmoji(p, context, position, *emoji);
-		}
+		drawEmoji(p, context, position, *emoji);
 	} else {
 		Unexpected("Empty custom emoji in EmojiListWidget::drawRecent.");
 	}
@@ -3149,9 +3130,13 @@ bool EmojiListWidget::hasButton(int index) const {
 		return true;
 	} else if (index >= _staticCount
 		&& index < _staticCount + _custom.size()) {
+		// LoogriGram: an installed group set the viewer cannot edit, as the
+		// last section, has no remove button either. Upstream fell through
+		// to a gradient "Restore" button for it, which sold a subscription;
+		// that button is deleted, so it has none.
 		const auto &custom = _custom[index - _staticCount];
 		return (custom.id != Data::Stickers::MegagroupSetId)
-			|| custom.canRemove;
+			|| (custom.canRemove && hasRemoveButton(index));
 	}
 	return false;
 }
@@ -3161,9 +3146,7 @@ QRect EmojiListWidget::buttonRect(int index) const {
 		? colorButtonRect(index)
 		: hasRemoveButton(index)
 		? removeButtonRect(index)
-		: hasAddButton(index)
-		? addButtonRect(index)
-		: buttonRect(sectionInfo(index), rightButton(index));
+		: addButtonRect(index);
 }
 
 QRect EmojiListWidget::buttonRect(
@@ -3174,18 +3157,6 @@ QRect EmojiListWidget::buttonRect(
 	const auto buttonx = emojiRight() - buttonw - st::emojiPanButtonRight;
 	const auto buttony = info.top + st::emojiPanButtonTop;
 	return QRect(buttonx, buttony, buttonw, buttonh);
-}
-
-auto EmojiListWidget::rightButton(int index) const -> const RightButton & {
-	if (_searchMode) {
-		Expects(index > 0 && index <= int(_searchSets.size()));
-
-		return hasAddButton(index) ? _add : _restore;
-	}
-	Expects(index >= _staticCount
-		&& index < _staticCount + _custom.size());
-
-	return hasAddButton(index) ? _add : _restore;
 }
 
 int EmojiListWidget::emojiRight() const {
@@ -3770,8 +3741,7 @@ int EmojiListWidget::paintButtonGetWidth(
 		}
 		return emojiRight() - rect.x();
 	}
-	const auto canAdd = hasAddButton(info.section);
-	const auto &button = rightButton(info.section);
+	const auto &button = _add;
 	const auto rect = buttonRect(info, button);
 	p.drawImage(rect.topLeft(), selected ? button.backOver : button.back);
 	if (ripple) {
@@ -3781,9 +3751,7 @@ int EmojiListWidget::paintButtonGetWidth(
 			ripple.reset();
 		}
 	}
-	p.setPen(!canAdd
-		? st::premiumButtonFg
-		: selected
+	p.setPen(selected
 		? st::emojiPanButton.textFgOver
 		: st::emojiPanButton.textFg);
 	p.setFont(st::emojiPanButton.style.font);
@@ -3968,8 +3936,7 @@ void EmojiListWidget::setPressed(OverState newPressed) {
 
 void EmojiListWidget::initButton(
 		RightButton &button,
-		const QString &text,
-		bool gradient) {
+		const QString &text) {
 	button.text = text;
 	button.textWidth = st::emojiPanButton.style.font->width(text);
 	const auto width = button.textWidth - st::emojiPanButton.width;
@@ -3990,17 +3957,10 @@ void EmojiListWidget::initButton(
 		p.end();
 		return image;
 	};
-	button.back = prepare(Qt::transparent, [&]() -> QBrush {
-		if (gradient) {
-			auto result = QLinearGradient(QPointF(0, 0), QPointF(width, 0));
-			result.setStops(Ui::Premium::GiftGradientStops());
-			return result;
-		}
-		return st::emojiPanButton.textBg;
-	}());
-	button.backOver = gradient
-		? button.back
-		: prepare(Qt::transparent, st::emojiPanButton.textBgOver);
+	button.back = prepare(Qt::transparent, st::emojiPanButton.textBg);
+	button.backOver = prepare(
+		Qt::transparent,
+		st::emojiPanButton.textBgOver);
 	button.rippleMask = prepare(Qt::black, Qt::white);
 }
 
@@ -4018,7 +3978,7 @@ std::unique_ptr<Ui::RippleAnimation> EmojiListWidget::createButtonRipple(
 		? Ui::RippleAnimation::EllipseMask(QSize(
 			staticSt.rippleAreaSize,
 			staticSt.rippleAreaSize))
-		: rightButton(section).rippleMask;
+		: _add.rippleMask;
 	return std::make_unique<Ui::RippleAnimation>(
 		st,
 		std::move(mask),

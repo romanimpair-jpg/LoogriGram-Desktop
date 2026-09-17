@@ -9,18 +9,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "api/api_peer_photo.h"
 #include "apiwrap.h"
-#include "data/data_user.h"
 #include "data/data_session.h"
 #include "data/data_document.h"
 #include "data/data_emoji_statuses.h"
 #include "lang/lang_keys.h"
 #include "menu/menu_send.h" // SendMenu::Type.
-#include "ui/boxes/confirm_box.h"
-#include "ui/boxes/time_picker_box.h"
 #include "ui/effects/emoji_fly_animation.h"
-#include "ui/text/format_values.h"
 #include "ui/ui_utility.h"
-#include "base/unixtime.h"
 #include "window/window_session_controller.h"
 #include "window/window_controller.h"
 #include "main/main_session.h"
@@ -33,26 +28,6 @@ namespace Info::Profile {
 namespace {
 
 constexpr auto kLimitFirstRow = 8;
-
-void PickUntilBox(not_null<Ui::GenericBox*> box, Fn<void(TimeId)> callback) {
-	box->setTitle(tr::lng_emoji_status_for_title());
-
-	const auto seconds = Ui::DefaultTimePickerValues();
-	const auto phrases = ranges::views::all(
-		seconds
-	) | ranges::views::transform(Ui::FormatMuteFor) | ranges::to_vector;
-
-	const auto pickerCallback = Ui::TimePickerBox(box, seconds, phrases, 0);
-
-	Ui::ConfirmBox(box, {
-		.confirmed = [=] {
-			callback(pickerCallback());
-			box->closeBox();
-		},
-		.confirmText = tr::lng_emoji_status_for_submit(),
-		.cancelText = tr::lng_cancel(),
-	});
-}
 
 } // namespace
 
@@ -69,21 +44,10 @@ EmojiStatusPanel::~EmojiStatusPanel() {
 	}
 }
 
-void EmojiStatusPanel::setChooseFilter(Fn<bool(EmojiStatusId)> filter) {
-	_chooseFilter = std::move(filter);
-}
-
-void EmojiStatusPanel::show(
-		not_null<Window::SessionController*> controller,
-		not_null<QWidget*> button,
-		Data::CustomEmojiSizeTag animationSizeTag) {
-	show({
-		.controller = controller,
-		.button = button,
-		.animationSizeTag = animationSizeTag,
-		.ensureAddedEmojiId = controller->session().user()->emojiStatusId(),
-	});
-}
+// LoogriGram: this panel also set our own emoji status, from recent,
+// default and coloured status lists with a duration picker. A status is
+// only accepted from a subscriber, so that half is deleted; what is left
+// picks a profile background emoji or a channel's status.
 
 void EmojiStatusPanel::show(Descriptor &&descriptor) {
 	const auto controller = descriptor.controller;
@@ -127,7 +91,7 @@ void EmojiStatusPanel::show(Descriptor &&descriptor) {
 			}
 			feed(std::move(tmp));
 		}, _panel->lifetime());
-	} else if (descriptor.channelStatusMode) {
+	} else {
 		const auto &statuses = controller->session().data().emojiStatuses();
 		const auto &other = statuses.list(Data::EmojiStatuses::Type::ChannelDefault);
 		auto list = statuses.list(Data::EmojiStatuses::Type::ChannelColored);
@@ -141,34 +105,13 @@ void EmojiStatusPanel::show(Descriptor &&descriptor) {
 			}
 		}
 		feed(std::move(list));
-	} else {
-		const auto &statuses = controller->session().data().emojiStatuses();
-		const auto &recent = statuses.list(Data::EmojiStatuses::Type::Recent);
-		const auto &other = statuses.list(Data::EmojiStatuses::Type::Default);
-		auto list = statuses.list(Data::EmojiStatuses::Type::Colored);
-		if (list.size() > kLimitFirstRow - 1) {
-			list.erase(begin(list) + kLimitFirstRow - 1, end(list));
-		}
-		list.reserve(list.size() + recent.size() + other.size() + 1);
-		for (const auto &id : ranges::views::concat(recent, other)) {
-			if (!ranges::contains(list, id)) {
-				list.push_back(id);
-			}
-		}
-		feed(std::move(list));
 	}
 	const auto parent = _panel->parentWidget();
 	const auto global = button->mapToGlobal(QPoint());
 	const auto local = parent->mapFromGlobal(global);
-	if (descriptor.backgroundEmojiMode || descriptor.channelStatusMode) {
-		_panel->moveBottomRight(
-			local.y() + (st::normalFont->height / 2),
-			local.x() + button->width() * 3);
-	} else {
-		_panel->moveTopRight(
-			local.y() + button->height() - (st::normalFont->height / 2),
-			local.x() + button->width() * 3);
-	}
+	_panel->moveBottomRight(
+		local.y() + (st::normalFont->height / 2),
+		local.x() + button->width() * 3);
 	_panel->toggleAnimated();
 }
 
@@ -220,23 +163,16 @@ void EmojiStatusPanel::create(const Descriptor &descriptor) {
 			nullptr,
 			Descriptor{
 				.show = controller->uiShow(),
-				.st = ((descriptor.backgroundEmojiMode
-					|| descriptor.channelStatusMode)
-					? st::backgroundEmojiPan
-					: st::statusEmojiPan),
+				.st = st::backgroundEmojiPan,
 				.level = Window::GifPauseReason::Layer,
 				.mode = (descriptor.backgroundEmojiMode
 					? Mode::BackgroundEmoji
-					: descriptor.channelStatusMode
-					? Mode::ChannelStatus
-					: Mode::EmojiStatus),
+					: Mode::ChannelStatus),
 				.customTextColor = descriptor.customTextColor,
 				.features = features,
 			}));
 	_customTextColor = descriptor.customTextColor;
 	_backgroundEmojiMode = descriptor.backgroundEmojiMode;
-	_channelStatusMode = descriptor.channelStatusMode;
-	_panel->setDropDown(!_backgroundEmojiMode && !_channelStatusMode);
 	_panel->setDesiredHeightValues(
 		1.,
 		st::emojiPanMinHeight / 2,
@@ -268,59 +204,15 @@ void EmojiStatusPanel::create(const Descriptor &descriptor) {
 		return Chosen{ .animation = data.messageSendingFrom };
 	});
 
-	if (descriptor.backgroundEmojiMode || descriptor.channelStatusMode) {
-		rpl::merge(
-			std::move(statusChosen),
-			std::move(emojiChosen)
-		) | rpl::on_next([=](const Chosen &chosen) {
-			const auto owner = &controller->session().data();
-			startAnimation(owner, body, chosen.id, chosen.animation);
-			_someCustomChosen.fire({ chosen.id, chosen.until });
-			_panel->hideAnimated();
-		}, _panel->lifetime());
-	} else {
-		const auto weak = base::make_weak(_panel.get());
-		const auto accept = [=](Chosen chosen) {
-			Expects(chosen.until != Selector::kPickCustomTimeId);
-
-			// PickUntilBox calls this after EmojiStatusPanel is destroyed!
-			const auto owner = &controller->session().data();
-			if (weak) {
-				startAnimation(owner, body, chosen.id, chosen.animation);
-			}
-			owner->emojiStatuses().set(chosen.id, chosen.until);
-		};
-
-		rpl::merge(
-			std::move(statusChosen),
-			std::move(emojiChosen)
-		) | rpl::filter([=](const Chosen &chosen) {
-			return filter(controller, chosen.id);
-		}) | rpl::on_next([=](const Chosen &chosen) {
-			if (chosen.until == Selector::kPickCustomTimeId) {
-				_panel->hideAnimated();
-				controller->show(Box(PickUntilBox, [=](TimeId seconds) {
-					accept({ chosen.id, base::unixtime::now() + seconds });
-				}));
-			} else {
-				accept(chosen);
-				_panel->hideAnimated();
-			}
-		}, _panel->lifetime());
-	}
-}
-
-bool EmojiStatusPanel::filter(
-		not_null<Window::SessionController*> controller,
-		EmojiStatusId chosenId) const {
-	if (_chooseFilter) {
-		return _chooseFilter(chosenId);
-	} else if (chosenId) {
-		// LoogriGram: the status is still refused - the server only accepts
-		// one from a subscriber - without the pitch that used to follow.
-		return false;
-	}
-	return true;
+	rpl::merge(
+		std::move(statusChosen),
+		std::move(emojiChosen)
+	) | rpl::on_next([=](const Chosen &chosen) {
+		const auto owner = &controller->session().data();
+		startAnimation(owner, body, chosen.id, chosen.animation);
+		_someCustomChosen.fire({ chosen.id, chosen.until });
+		_panel->hideAnimated();
+	}, _panel->lifetime());
 }
 
 void EmojiStatusPanel::startAnimation(

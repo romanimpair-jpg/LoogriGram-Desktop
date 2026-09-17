@@ -265,42 +265,6 @@ bool StickersListFooter::ScrollState::animationCallback(crl::time now) {
 	return true;
 }
 
-GradientPremiumStar::GradientPremiumStar() {
-	style::PaletteChanged(
-	) | rpl::on_next([=] {
-		_image = QImage();
-	}, _lifetime);
-}
-
-QImage GradientPremiumStar::image() const {
-	if (_image.isNull()) {
-		renderOnDemand();
-	}
-	return _image;
-}
-
-void GradientPremiumStar::renderOnDemand() const {
-	const auto size = st::emojiStatusDefault.size();
-	const auto mask = st::emojiStatusDefault.instance(Qt::white);
-	const auto factor = style::DevicePixelRatio();
-	_image = QImage(
-		size * factor,
-		QImage::Format_ARGB32_Premultiplied);
-	_image.setDevicePixelRatio(factor);
-
-	QPainter p(&_image);
-	auto gradient = QLinearGradient(
-		QPoint(0, size.height()),
-		QPoint(size.width(), 0));
-	gradient.setStops({
-		{ 0., st::stickerPanPremium1->c },
-		{ 1., st::stickerPanPremium2->c },
-	});
-	p.fillRect(QRect(QPoint(), size), gradient);
-	p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-	p.drawImage(QRect(QPoint(), size), mask);
-}
-
 StickersListFooter::StickersListFooter(Descriptor &&descriptor)
 : InnerFooter(
 	descriptor.parent,
