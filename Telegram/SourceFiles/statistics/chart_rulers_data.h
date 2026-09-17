@@ -17,9 +17,7 @@ public:
 		ChartValue newMaxHeight,
 		ChartValue newMinHeight,
 		bool useMinHeight,
-		float64 rightRatio,
-		Fn<QString(float64)> leftCustomCaption = nullptr,
-		Fn<QString(float64)> rightCustomCaption = nullptr);
+		float64 rightRatio);
 
 	void computeRelative(
 		ChartValue newMaxHeight,

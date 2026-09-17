@@ -10,7 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/weak_ptr.h"
 #include "base/platform/base_platform_info.h"
 #include "core/click_handler_types.h"
-#include "core/credits_amount.h"
 #include "core/file_utilities.h"
 #include "iv/markdown/iv_markdown_article_text.h"
 #include "iv/markdown/iv_markdown_embed_overlay.h"

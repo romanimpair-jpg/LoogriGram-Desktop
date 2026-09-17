@@ -10,8 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_statistics.h"
 #include "boxes/peer_list_controllers.h"
 #include "boxes/peer_list_widgets.h"
-#include "info/channel_statistics/earn/earn_icons.h"
-#include "info/channel_statistics/earn/earn_format.h"
 #include "core/ui_integration.h" // TextContext
 #include "data/data_channel.h"
 #include "data/data_session.h"
@@ -38,7 +36,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/wrap/vertical_layout.h"
 #include "styles/style_boxes.h"
 #include "styles/style_color_indices.h"
-#include "styles/style_channel_earn.h"
 #include "styles/style_credits.h"
 #include "styles/style_dialogs.h" // dialogsStoriesFull.
 #include "styles/style_layers.h" // boxRowPadding.

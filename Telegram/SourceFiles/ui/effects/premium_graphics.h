@@ -43,7 +43,6 @@ namespace Premium {
 
 [[nodiscard]] QGradientStops ButtonGradientStops();
 [[nodiscard]] QGradientStops GiftGradientStops();
-[[nodiscard]] QGradientStops CreditsIconGradientStops();
 
 [[nodiscard]] QLinearGradient ComputeGradient(
 	not_null<QWidget*> content,

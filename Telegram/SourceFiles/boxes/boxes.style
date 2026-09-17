@@ -630,3 +630,30 @@ translateBoxCopy: IconButton {
 	rippleAreaSize: 32px;
 	ripple: defaultRippleAnimationBgOver;
 }
+
+// LoogriGram: these five lived in channel_earn.style, the channel revenue
+// page's styles, which is deleted. They were only ever generic labels, and
+// what still uses them is the archive hint, passkeys, the report box and the
+// peer bubble.
+boxSemiboldLabel: FlatLabel(defaultFlatLabel) {
+	maxHeight: 30px;
+	style: semiboldTextStyle;
+}
+boxSubLabel: FlatLabel(defaultFlatLabel) {
+	textFg: windowSubTextFg;
+	maxHeight: 0px;
+	minWidth: 100px;
+	style: TextStyle(defaultTextStyle) {
+		font: font(12px);
+	}
+}
+boxSubLabelSkip: 3px;
+boxCenteredDescription: FlatLabel(defaultFlatLabel) {
+	maxHeight: 0px;
+	minWidth: 264px;
+	align: align(top);
+}
+reportBoxItemLabel: FlatLabel(defaultFlatLabel) {
+	style: boxTextStyle;
+	minWidth: 150px;
+}

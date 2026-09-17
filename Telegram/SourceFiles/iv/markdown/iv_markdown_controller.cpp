@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "iv/markdown/iv_markdown_controller.h"
 #include "base/event_filter.h"
 #include "core/click_handler_types.h"
-#include "core/credits_amount.h"
 #include "core/file_utilities.h"
 #include "iv/markdown/iv_markdown_article.h"
 #include "iv/markdown/iv_markdown_parse.h"

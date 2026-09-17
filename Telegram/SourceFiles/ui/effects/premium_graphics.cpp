@@ -10,7 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "ui/abstract_button.h"
 #include "ui/effects/animations.h"
-#include "info/channel_statistics/earn/earn_icons.h"
 #include "ui/effects/gradient.h"
 #include "ui/effects/numbers_animation.h"
 #include "ui/effects/premium_bubble.h"
@@ -79,13 +78,6 @@ QGradientStops GiftGradientStops() {
 	return {
 		{ 0., st::premiumButtonBg1->c },
 		{ 1., st::premiumButtonBg2->c },
-	};
-}
-
-QGradientStops CreditsIconGradientStops() {
-	return {
-		{ 0., st::creditsBg1->c },
-		{ 1., st::creditsBg2->c },
 	};
 }
 

@@ -58,7 +58,6 @@ set(style_files
     info/profile/info_profile_actions.style
     info/profile/info_profile_top_bar.style
     info/channel_statistics/boosts/giveaway/giveaway.style
-    info/channel_statistics/earn/channel_earn.style
     info/profile/info_levels.style
     info/userpic/info_userpic_builder.style
     intro/intro.style
@@ -223,11 +222,6 @@ PRIVATE
     info/channel_statistics/boosts/giveaway/select_countries_box.cpp
     info/channel_statistics/boosts/giveaway/select_countries_box.h
 
-    info/channel_statistics/earn/earn_format.cpp
-    info/channel_statistics/earn/earn_format.h
-    info/channel_statistics/earn/earn_icons.cpp
-    info/channel_statistics/earn/earn_icons.h
-
     intro/intro_code_input.cpp
     intro/intro_code_input.h
 
@@ -306,8 +300,6 @@ PRIVATE
     statistics/statistics_data_deserialize.h
     statistics/statistics_format_values.cpp
     statistics/statistics_format_values.h
-    statistics/statistics_graphics.cpp
-    statistics/statistics_graphics.h
     statistics/statistics_sheets.cpp
     statistics/statistics_sheets.h
     statistics/statistics_types.h
@@ -478,8 +470,6 @@ PRIVATE
     ui/controls/tabbed_search.h
     ui/controls/title_sub_widget.cpp
     ui/controls/title_sub_widget.h
-    ui/controls/ton_common.cpp
-    ui/controls/ton_common.h
     ui/controls/ttl_media.cpp
     ui/controls/ttl_media.h
     ui/controls/who_reacted_context_action.cpp

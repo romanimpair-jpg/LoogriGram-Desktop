@@ -11,12 +11,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace Data {
 
-enum class StatisticalCurrency {
-	None,
-	Ton,
-	Credits,
-};
-
 struct StatisticalChart {
 	StatisticalChart() = default;
 
@@ -73,9 +67,6 @@ struct StatisticalChart {
 	bool isFooterHidden = false;
 	bool hasPercentages = false;
 	bool weekFormat = false;
-
-	StatisticalCurrency currency = StatisticalCurrency::None;
-	float64 currencyRate = 0.;
 
 	// View data.
 	int dayStringMaxWidth = 0;

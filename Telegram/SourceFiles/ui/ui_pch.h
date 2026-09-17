@@ -35,8 +35,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/flat_set.h"
 #include "base/weak_qptr.h"
 
-#include "core/credits_amount.h"
-
 #include "ui/arc_angles.h"
 #include "ui/color_int_conversion.h"
 #include "ui/text/text.h"

@@ -10,7 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "scheme.h"
 #include "base/optional.h"
 #include "base/variant.h"
-#include "core/credits_amount.h"
 #include "data/data_birthday.h"
 #include "data/data_peer_id.h"
 

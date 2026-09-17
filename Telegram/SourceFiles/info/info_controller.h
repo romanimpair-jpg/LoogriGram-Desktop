@@ -151,8 +151,6 @@ public:
 		SavedMusic,
 		PollResults,
 		Statistics,
-		ChannelEarn,
-		BotEarn,
 	};
 	using SettingsType = ::Settings::Type;
 	using MediaType = Storage::SharedMediaType;

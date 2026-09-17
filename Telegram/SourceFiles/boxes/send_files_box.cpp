@@ -36,7 +36,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/call_delayed.h"
 #include "boxes/premium_limits_box.h"
 #include "boxes/send_gif_with_caption_box.h"
-#include "info/channel_statistics/earn/earn_icons.h"
 #include "boxes/send_files_box_reply_header.h"
 #include "ui/boxes/time_picker_box.h"
 #include "ui/effects/scroll_content_shadow.h"

@@ -25,17 +25,6 @@ namespace Info::Statistics {
 class Memento;
 class MessagePreview;
 
-enum class LoadingType {
-	Statistic,
-	Earn,
-};
-
-void FillLoading(
-	not_null<Ui::VerticalLayout*> container,
-	LoadingType type,
-	rpl::producer<bool> toggleOn,
-	rpl::producer<> showFinished);
-
 class InnerWidget final : public Ui::VerticalLayout {
 public:
 	struct ShowRequest final {

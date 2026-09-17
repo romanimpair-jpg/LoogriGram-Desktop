@@ -23,7 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat_helpers.h"
 #include "styles/style_layers.h"
 #include "styles/style_info.h"
-#include "styles/style_channel_earn.h"
 #include "styles/style_settings.h"
 
 namespace Ui {
@@ -176,11 +175,11 @@ not_null<Ui::AbstractButton*> AddReportOptionButton(
 			(stOverride ? stOverride : &st::defaultReportBox)->noIconButton));
 	const auto textFg = (stOverride
 		? stOverride->label
-		: st::sponsoredReportLabel).textFg->c;
+		: st::reportBoxItemLabel).textFg->c;
 	const auto label = Ui::CreateChild<Ui::FlatLabel>(
 		button,
 		rpl::single(text),
-		st::sponsoredReportLabel);
+		st::reportBoxItemLabel);
 	label->setTextColorOverride(textFg);
 	const auto icon = Ui::CreateChild<Ui::RpWidget>(button);
 	icon->resize(st::settingsPremiumArrow.size());

@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "base/weak_ptr.h"
 #include "core/click_handler_types.h"
-#include "core/credits_amount.h"
 #include "core/file_utilities.h"
 #include "iv/iv_rich_message_html_export.h"
 #include "iv/markdown/iv_markdown_article_selection.h"

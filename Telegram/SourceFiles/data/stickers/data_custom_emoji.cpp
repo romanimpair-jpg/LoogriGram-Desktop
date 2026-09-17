@@ -27,7 +27,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lottie/lottie_frame_generator.h"
 #include "ffmpeg/ffmpeg_frame_generator.h"
 #include "chat_helpers/stickers_lottie.h"
-#include "info/channel_statistics/earn/earn_icons.h"
 #include "storage/file_download.h" // kMaxFileInMemory
 #include "ui/chat/chats_filter_tag.h"
 #include "ui/effects/premium_stars_colored.h"

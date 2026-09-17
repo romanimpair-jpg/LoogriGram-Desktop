@@ -23,7 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/wrap/vertical_layout.h"
 #include "styles/style_layers.h"
 #include "styles/style_boxes.h"
-#include "styles/style_channel_earn.h"
 #include "styles/style_chat.h"
 #include "styles/style_dialogs.h"
 #include "styles/style_menu_icons.h"
@@ -242,7 +241,7 @@ void ArchiveHintBox(
 						return tr::link(std::move(text), 1);
 					}),
 					tr::rich),
-				st::channelEarnHistoryRecipientLabel));
+				st::boxSubLabel));
 		label->resizeToWidth(box->width()
 			- rect::m::sum::h(st::boxRowPadding));
 		label->setLink(
@@ -271,14 +270,14 @@ void ArchiveHintBox(
 				object_ptr<Ui::FlatLabel>(
 					content,
 					std::move(title),
-					st::channelEarnSemiboldLabel),
+					st::boxSemiboldLabel),
 				padding);
-			Ui::AddSkip(content, st::channelEarnHistoryThreeSkip);
+			Ui::AddSkip(content, st::boxSubLabelSkip);
 			content->add(
 				object_ptr<Ui::FlatLabel>(
 					content,
 					std::move(about),
-					st::channelEarnHistoryRecipientLabel),
+					st::boxSubLabel),
 				padding);
 			const auto left = Ui::CreateChild<Ui::RpWidget>(
 				box->verticalLayout().get());
@@ -292,7 +291,7 @@ void ArchiveHintBox(
 			) | rpl::on_next([=](const QRect &g) {
 				left->moveToLeft(
 					(g.left() - left->width()) / 2,
-					g.top() + st::channelEarnHistoryThreeSkip);
+					g.top() + st::boxSubLabelSkip);
 			}, left->lifetime());
 		};
 		addEntry(

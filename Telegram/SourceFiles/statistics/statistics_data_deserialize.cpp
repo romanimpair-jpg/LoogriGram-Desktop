@@ -10,7 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/debug_log.h"
 #include "data/data_statistics_chart.h"
 #include "statistics/statistics_types.h"
-#include "ui/text/format_values.h" // kCreditsCurrency.
 
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
@@ -42,17 +41,6 @@ Data::StatisticalChart StatisticalChartFromJSON(const QByteArray &json) {
 
 	auto result = Data::StatisticalChart();
 
-	{
-		const auto tickFormatIt = root.constFind(u"yTickFormatter"_q);
-		if (tickFormatIt != root.constEnd()) {
-			const auto tickFormat = tickFormatIt->toString();
-			if (tickFormat.contains(u"TON"_q)) {
-				result.currency = Data::StatisticalCurrency::Ton;
-			} else if (tickFormat.contains(Ui::kCreditsCurrency)) {
-				result.currency = Data::StatisticalCurrency::Credits;
-			}
-		}
-	}
 	auto columnIdCount = 0;
 	for (const auto &column : columns) {
 		const auto array = column.toArray();

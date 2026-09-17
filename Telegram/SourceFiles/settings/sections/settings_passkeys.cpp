@@ -39,7 +39,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_controller.h"
 #include "window/window_session_controller.h"
 #include "styles/style_boxes.h"
-#include "styles/style_channel_earn.h"
 #include "styles/style_chat.h"
 #include "styles/style_layers.h"
 #include "styles/style_menu_icons.h"
@@ -401,7 +400,7 @@ void PasskeysNoneBox(
 		object_ptr<Ui::FlatLabel>(
 			content,
 			tr::lng_settings_passkeys_none_about(),
-			st::channelEarnLearnDescription),
+			st::boxCenteredDescription),
 		style::al_top);
 	Ui::AddSkip(content);
 	Ui::AddSkip(content);
@@ -421,14 +420,14 @@ void PasskeysNoneBox(
 				object_ptr<Ui::FlatLabel>(
 					content,
 					std::move(title),
-					st::channelEarnSemiboldLabel),
+					st::boxSemiboldLabel),
 				padding);
-			Ui::AddSkip(content, st::channelEarnHistoryThreeSkip);
+			Ui::AddSkip(content, st::boxSubLabelSkip);
 			content->add(
 				object_ptr<Ui::FlatLabel>(
 					content,
 					std::move(about),
-					st::channelEarnHistoryRecipientLabel),
+					st::boxSubLabel),
 				padding);
 			const auto left = Ui::CreateChild<Ui::RpWidget>(
 				box->verticalLayout().get());
@@ -442,7 +441,7 @@ void PasskeysNoneBox(
 			) | rpl::on_next([=](const QRect &g) {
 				left->moveToLeft(
 					iconLeft,
-					g.top() + st::channelEarnHistoryThreeSkip);
+					g.top() + st::boxSubLabelSkip);
 			}, left->lifetime());
 		};
 		addEntry(

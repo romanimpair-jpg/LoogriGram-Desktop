@@ -13,7 +13,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/painter.h"
 #include "ui/rect.h"
 #include "ui/widgets/labels.h"
-#include "styles/style_channel_earn.h"
+#include "styles/style_boxes.h"
 #include "styles/style_chat.h"
 #include "styles/style_layers.h"
 #include "styles/style_userpic_button.h"
@@ -33,7 +33,7 @@ object_ptr<Ui::RpWidget> CreatePeerBubble(
 	const auto right = Ui::CreateChild<Ui::FlatLabel>(
 		peerBubble,
 		Info::Profile::NameValue(peer),
-		st::channelEarnSemiboldLabel);
+		st::boxSemiboldLabel);
 	const auto padding = st::chatGiveawayPeerPadding
 		+ QMargins(st::chatGiveawayPeerPadding.left(), 0, 0, 0);
 	rpl::combine(

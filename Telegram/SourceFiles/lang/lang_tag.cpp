@@ -7,7 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "lang/lang_tag.h"
 
-#include "core/credits_amount.h"
 #include "lang/lang_keys.h"
 #include "ui/text/text.h"
 #include "base/qt/qt_common_adapters.h"
@@ -948,39 +947,6 @@ ShortenedCount FormatCountToShort(int64 number, bool onlyK) {
 
 QString FormatCountDecimal(int64 number) {
 	return QLocale().toString(number);
-}
-
-QString FormatExactCountDecimal(float64 number) {
-	const auto locale = QLocale();
-	if (qFuzzyCompare(number, base::SafeRound(number))) {
-		return locale.toString(int64(base::SafeRound(number)));
-	}
-
-	// Somehow using QLocale::FloatingPointShortest sometimes produces
-	// "0.8500000000000001" on some systems / locales,
-	// so I want to stick to 6 digits max (default third argument value).
-	auto result = locale.toString(number, 'f');
-	const auto zero = locale.zeroDigit();
-	while (result.endsWith(zero)) {
-		result.chop(1);
-	}
-	return result;
-}
-
-ShortenedCount FormatCreditsAmountToShort(CreditsAmount amount) {
-	const auto attempt = FormatCountToShort(amount.whole());
-	return attempt.shortened ? attempt : ShortenedCount{
-		.string = FormatCreditsAmountDecimal(amount),
-	};
-}
-
-QString FormatCreditsAmountDecimal(CreditsAmount amount) {
-	return FormatExactCountDecimal(amount.value());
-}
-
-QString FormatCreditsAmountRounded(CreditsAmount amount) {
-	const auto value = amount.value();
-	return FormatExactCountDecimal(base::SafeRound(value * 100.) / 100.);
 }
 
 PluralResult Plural(

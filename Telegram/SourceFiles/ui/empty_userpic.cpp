@@ -7,7 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/empty_userpic.h"
 
-#include "info/channel_statistics/earn/earn_icons.h"
 #include "ui/chat/chat_style.h"
 #include "ui/effects/animation_value.h"
 #include "ui/emoji_config.h"
@@ -19,7 +18,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_info.h" // st::topBarCall
 
 #include <QtCore/QMutex>
-#include <QtSvg/QSvgRenderer>
 
 namespace Ui {
 namespace {
@@ -185,18 +183,6 @@ void PaintMyNotesInner(
 		st::defaultDialogRow.photoSize,
 		st::dialogsMyNotesUserpic,
 		fg);
-}
-
-void PaintCurrencyInner(
-		QPainter &p,
-		int x,
-		int y,
-		int size,
-		const style::color &fg) {
-	auto svg = QSvgRenderer(Ui::Earn::CurrencySvgColored(fg->c));
-	const auto skip = size / 5;
-	svg.render(&p, QRect(x, y, size, size).marginsRemoved(
-		{ skip, skip, skip, skip }));
 }
 
 void PaintExternalMessagesInner(
@@ -531,45 +517,6 @@ void EmptyUserpic::PaintMyNotes(
 QImage EmptyUserpic::GenerateMyNotes(int size) {
 	return Generate(size, [&](QPainter &p) {
 		PaintMyNotes(p, 0, 0, size, size);
-	});
-}
-
-void EmptyUserpic::PaintCurrency(
-		QPainter &p,
-		int x,
-		int y,
-		int outerWidth,
-		int size) {
-	auto bg = QLinearGradient(x, y, x, y + size);
-	bg.setStops({
-		{ 0., st::historyPeerSavedMessagesBg->c },
-		{ 1., st::historyPeerSavedMessagesBg2->c }
-	});
-	const auto &fg = st::historyPeerUserpicFg;
-	PaintCurrency(p, x, y, outerWidth, size, QBrush(bg), fg);
-}
-
-void EmptyUserpic::PaintCurrency(
-		QPainter &p,
-		int x,
-		int y,
-		int outerWidth,
-		int size,
-		QBrush bg,
-		const style::color &fg) {
-	x = style::RightToLeft() ? (outerWidth - x - size) : x;
-
-	PainterHighQualityEnabler hq(p);
-	p.setBrush(bg);
-	p.setPen(Qt::NoPen);
-	p.drawEllipse(x, y, size, size);
-
-	PaintCurrencyInner(p, x, y, size, fg);
-}
-
-QImage EmptyUserpic::GenerateCurrency(int size) {
-	return Generate(size, [&](QPainter &p) {
-		PaintCurrency(p, 0, 0, size, size);
 	});
 }
 
