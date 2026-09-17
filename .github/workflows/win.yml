@@ -489,11 +489,28 @@ jobs:
           # diffed against the last good one rather than against itself.
           # Without a marker every file is dated now and the build is full,
           # which is the right answer for a tree we know nothing about.
+          #
+          # A failed build is not wasted, though. Against the base alone, every
+          # file changed since the last success is dated now again, so the
+          # failed run's objects all look stale and get recompiled - a
+          # one-error failure used to cost the next run a full rebuild of
+          # everything it had already done. So a failed run also leaves
+          # .loogrigram-build-attempt: its commit and the exact date it gave
+          # each file, written only after "Clean up after a failed build"
+          # has deleted every output ninja still considered out of date. A
+          # file whose content is the same as in that attempt gets the same
+          # date back; the objects the attempt did compile are newer than it
+          # and are reused, and the ones it did not are gone and rebuild.
+          # Anything changed since the attempt is dated now as before.
+          #
+          # The attempt marker is consumed here, before anything is compiled.
+          # A run that is then cancelled - its tree possibly saved, some
+          # objects rebuilt from different content - must not hand it on.
           python - "$CHECKOUT_ROOT/$REPO_NAME" <<'PY'
-          import os, subprocess, sys, time
+          import json, os, subprocess, sys, time
           root = sys.argv[1].replace('\\', '/')
           fixed = 946684800  # 2000-01-01
-          now = time.time()
+          now = int(time.time())
 
           def git(*args):
               return subprocess.run(
@@ -536,27 +553,78 @@ jobs:
               if len(line.strip().split()) >= 2
           ]
 
+          # Read and remove the failed attempt's record, see above. It only
+          # applies on top of the base it was made against.
+          attempt_path = os.path.join(root, 'out', '.loogrigram-build-attempt')
+          attempt = None
+          if os.path.isfile(attempt_path):
+              try:
+                  candidate = json.load(open(attempt_path))
+                  if (base
+                          and candidate.get('base') == base
+                          and git('cat-file', '-e',
+                              candidate['commit'] + '^{commit}').returncode == 0):
+                      attempt = candidate
+                  else:
+                      print('failed attempt record does not match, ignored')
+              except Exception as e:
+                  print(f'failed attempt record unreadable: {e}')
+              os.remove(attempt_path)
+
+          # This run's own dates, for "Clean up after a failed build" to
+          # record if the compile fails. Written even without a base.
+          dates = {}
+          def save_dates():
+              head = git('rev-parse', 'HEAD').stdout.strip()
+              with open(os.path.join(os.environ['GITHUB_WORKSPACE'],
+                      'loogrigram-source-dates.json'), 'w') as f:
+                  json.dump({ 'base': base, 'commit': head, 'dates': dates }, f)
+
           if not base:
               print('no usable build base, dating everything now')
               # A fresh checkout is already stamped now; the submodules are
               # too, and here that is what we want rather than the pin below.
+              # Nothing is recorded: without a base no attempt can apply.
               raise SystemExit(0)
 
-          changed = set(
-              git('diff', '--name-only', '--no-renames', base, 'HEAD'
+          def diff(frm):
+              return set(git('diff', '--name-only', '--no-renames', frm, 'HEAD'
                   ).stdout.split())
-          tracked = git('ls-files').stdout.split()
-          print(f'build base {base}, {len(changed)} paths differ')
 
-          fresh = old = 0
+          changed = diff(base)
+          print(f'build base {base}, {len(changed)} paths differ')
+          since_attempt = None
+          if attempt:
+              since_attempt = diff(attempt['commit'])
+              print(f'failed attempt {attempt["commit"]}, '
+                  f'{len(since_attempt)} paths differ since')
+
+          def date_for(rel):
+              if since_attempt is not None:
+                  if rel in since_attempt:
+                      return now
+                  # Same content as the attempt: the date the attempt gave it,
+                  # which its surviving objects are newer than.
+                  if rel in attempt['dates']:
+                      return attempt['dates'][rel]
+              return now if rel in changed else fixed
+
+          tracked = git('ls-files').stdout.split()
+          fresh = reused = old = 0
           for rel in tracked:
               path = os.path.join(root, rel)
               if not os.path.isfile(path):
                   continue
-              if rel in changed:
-                  fresh += stamp(path, now)
+              when = date_for(rel)
+              stamped = stamp(path, when)
+              if when == fixed:
+                  old += stamped
               else:
-                  old += stamp(path, fixed)
+                  dates[rel] = when
+                  if when == now:
+                      fresh += stamped
+                  else:
+                      reused += stamped
 
           # Submodule working trees are not in ls-files - only their gitlink
           # is - so they are walked separately. A bumped pointer shows up as
@@ -564,15 +632,21 @@ jobs:
           # visible to ninja; without this it would not be, and that used to
           # be a footgun OUT_CACHE_SALT had to be raised by hand to avoid.
           for rel in submodules:
-              when = now if rel in changed else fixed
+              when = date_for(rel)
               stamped = stamp_tree(rel, when)
-              if rel in changed:
-                  fresh += stamped
-                  print(f'submodule {rel} moved, dated now')
-              else:
+              if when == fixed:
                   old += stamped
+              else:
+                  dates[rel] = when
+                  if when == now:
+                      fresh += stamped
+                      print(f'submodule {rel} moved, dated now')
+                  else:
+                      reused += stamped
 
-          print(f'{fresh} files dated now, {old} pinned old')
+          save_dates()
+          print(f'{fresh} files dated now, {reused} kept from the failed '
+              f'attempt, {old} pinned old')
           PY
 
       # The updater compares the tag baked in here against the newest release
@@ -648,6 +722,98 @@ jobs:
         run: |
           echo "$GITHUB_SHA" > "$TBUILD/$REPO_NAME/out/.loogrigram-build-base"
           echo "build base recorded: $GITHUB_SHA"
+
+      # After a failed compile, keep what it did compile - see "Age sources
+      # against the cached build tree". The danger is an object the run should
+      # have rebuilt but did not: its compile failed, or ninja never reached
+      # it. That object is still the one from an older build, and once the
+      # next run dates its sources back to this run's dates it would look up
+      # to date. So ask ninja, with this run's dates still in place, which
+      # outputs are out of date (-n builds nothing, -d explain names each
+      # one) and delete them. Only then is the attempt recorded.
+      #
+      # Outputs downstream of a failure (the link, say) are not named - ninja
+      # only reports their input "is dirty". They need no deleting: that input
+      # is deleted, rebuilds, and is then newer than them. Checked against
+      # ninja 1.13 with a header dependency, a failed compile and a link.
+      #
+      # Anything unexpected - no build.ninja, an explain run that fails -
+      # leaves no record, and the next run falls back to the last good base.
+      - name: Clean up after a failed build.
+        if: always() && inputs.mode == 'build' && steps.telegram.outcome == 'failure'
+        shell: bash
+        run: |
+          OUT="$TBUILD/$REPO_NAME/out"
+          cd "$OUT"
+          if ! cmake --build . --config ${{ inputs.config }} -- -n -d explain \
+              > "$GITHUB_WORKSPACE/ninja-explain.txt" 2>&1; then
+            echo "dry run failed, no attempt recorded:"
+            tail -20 "$GITHUB_WORKSPACE/ninja-explain.txt"
+            exit 0
+          fi
+          python - "$OUT" "$GITHUB_WORKSPACE" "${{ inputs.config }}" <<'PY'
+          import json, os, re, subprocess, sys
+          out, workspace = (a.replace('\\', '/') for a in sys.argv[1:3])
+          text = open(os.path.join(workspace, 'ninja-explain.txt'),
+              encoding='utf-8', errors='replace').read()
+          patterns = [
+              r"ninja explain: output (.+?) older than most recent input",
+              r"ninja explain: recorded mtime of (.+?) older than most recent input",
+              r"ninja explain: command line changed for (.+)$",
+              r"ninja explain: deps for '(.+?)' are missing",
+              r"ninja explain: stored deps info out of date for '(.+?)'",
+          ]
+          stale = set()
+          for line in text.splitlines():
+              for pattern in patterns:
+                  m = re.search(pattern, line.rstrip())
+                  if m:
+                      stale.add(m.group(1))
+          removed = 0
+          for rel in sorted(stale):
+              path = rel if os.path.isabs(rel) else os.path.join(out, rel)
+              if os.path.isfile(path):
+                  os.remove(path)
+                  removed += 1
+          print(f'{len(stale)} outputs out of date, {removed} removed')
+
+          # The patterns above are ninja's wording, and a stale output that
+          # ninja explains some other way would survive and be reused next
+          # time. So check: with those removed, every remaining reason to
+          # build must be a missing output or something dirty upstream of
+          # one. Anything else and no attempt is recorded.
+          again = subprocess.run(
+              ['cmake', '--build', '.', '--config', sys.argv[3], '--',
+                  '-n', '-d', 'explain'],
+              cwd=out, capture_output=True, text=True, errors='replace')
+          if again.returncode != 0:
+              print('second dry run failed, no attempt recorded')
+              raise SystemExit(0)
+          allowed = re.compile(
+              r"doesn't exist|is dirty$|has no in-edge and is missing")
+          unexplained = [
+              line for line in (again.stdout + again.stderr).splitlines()
+              if line.startswith('ninja explain:') and not allowed.search(line)
+          ]
+          if unexplained:
+              print('outputs still stale in a way not handled, '
+                  'no attempt recorded:')
+              print('\n'.join(unexplained[:20]))
+              raise SystemExit(0)
+
+          source = os.path.join(workspace, 'loogrigram-source-dates.json')
+          if not os.path.isfile(source):
+              print('no source dates from this run, no attempt recorded')
+              raise SystemExit(0)
+          record = json.load(open(source))
+          if not record.get('base'):
+              print('no build base, no attempt recorded')
+              raise SystemExit(0)
+          with open(os.path.join(out, '.loogrigram-build-attempt'), 'w') as f:
+              json.dump(record, f)
+          print(f'attempt recorded: {record["commit"]}, '
+              f'{len(record["dates"])} dated files')
+          PY
 
       # Prices the question "would splitting Qt out and shipping only our own
       # code be worth it" before anyone attempts it.

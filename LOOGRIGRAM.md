@@ -82,7 +82,17 @@ changed files are dated now, everything else 2000-01-01. A failed run still
 caches its half-rebuilt tree but keeps the older marker, so the next run is
 compared against a commit the tree was wholly consistent with. No marker means
 dating everything now, which is the right answer for a tree we know nothing
-about. A submodule bump no longer needs a manual salt bump either - it shows
+about.
+
+That alone threw a failed build's work away: every file changed since the
+last success was dated now again, so everything the failed run compiled
+recompiled. So a failed run also asks ninja (`-n -d explain`) which outputs
+are still out of date, deletes exactly those, and records
+`out/.loogrigram-build-attempt` - its commit and the date it gave each file.
+The next run gives a file whose content is unchanged since that attempt the
+same date back: objects the attempt compiled are newer and are reused, the
+ones it failed or never reached are gone and rebuild. The record is consumed
+before compiling, so a cancelled run can never pass a stale one on. A submodule bump no longer needs a manual salt bump either - it shows
 up as that path in the diff.
 
 **If a binary ever disagrees with the source again, suspect this before the
