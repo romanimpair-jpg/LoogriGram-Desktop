@@ -1182,10 +1182,6 @@ void ChannelData::updateLevelHint(int levelHint) {
 	_levelHint = levelHint;
 }
 
-TimeId ChannelData::subscriptionUntilDate() const {
-	return _subscriptionUntilDate;
-}
-
 UserData *ChannelData::guardBot() const {
 	return _guardBotId
 		? owner().userLoaded(_guardBotId)
@@ -1194,10 +1190,6 @@ UserData *ChannelData::guardBot() const {
 
 void ChannelData::setGuardBotId(UserId userId) {
 	_guardBotId = userId;
-}
-
-void ChannelData::updateSubscriptionUntilDate(TimeId subscriptionUntilDate) {
-	_subscriptionUntilDate = subscriptionUntilDate;
 }
 
 MTPInputChannel ChannelData::inputChannel() const {

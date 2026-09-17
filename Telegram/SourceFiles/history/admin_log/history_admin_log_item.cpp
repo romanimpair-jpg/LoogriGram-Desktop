@@ -2180,29 +2180,9 @@ void GenerateItems(
 		addSimpleServiceMessage(text);
 	};
 
-	const auto createParticipantSubExtend = [&](const LogParticipantSubExtend &action) {
-		const auto participant = Api::ChatParticipant(
-			action.vnew_participant(),
-			channel);
-		if (!participant.subscriptionDate()) {
-			return;
-		}
-		const auto participantPeer = channel->owner().peer(participant.id());
-		const auto participantPeerLink = participantPeer->createOpenLink();
-		const auto participantPeerLinkText = tr::link(
-			participantPeer->name(),
-			QString());
-		const auto parsed = base::unixtime::parse(
-			participant.subscriptionDate());
-		addServiceMessageWithLink(
-			tr::lng_admin_log_subscription_extend(
-				tr::now,
-				lt_name,
-				participantPeerLinkText,
-				lt_date,
-				{ langDateTimeFull(parsed) },
-				tr::marked),
-			participantPeerLink);
+	const auto createParticipantSubExtend = [&](const LogParticipantSubExtend &) {
+		// LoogriGram: "X extended their subscription until <date>" - a
+		// member paying Stars to stay in the channel. Not shown.
 	};
 
 	const auto createToggleAutotranslation = [&](const LogToggleAutotranslation &action) {

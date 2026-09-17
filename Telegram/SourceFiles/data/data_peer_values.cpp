@@ -535,10 +535,6 @@ bool ChannelHasActiveCall(not_null<ChannelData*> channel) {
 	return (channel->flags() & ChannelDataFlag::CallNotEmpty);
 }
 
-bool ChannelHasSubscriptionUntilDate(ChannelData *channel) {
-	return channel && channel->subscriptionUntilDate() > 0;
-}
-
 rpl::producer<Data::StarsRating> StarsRatingValue(
 		not_null<PeerData*> peer) {
 	if (const auto user = peer->asUser()) {

@@ -279,7 +279,6 @@ QString SubItemLabel(SubItem item) {
 	case SubItem::Sponsored: return tr::lng_sr_chat_column_sponsored(tr::now);
 	case SubItem::Stories: return tr::lng_sr_chat_column_stories(tr::now);
 	case SubItem::Autodelete: return tr::lng_sr_chat_column_autodelete(tr::now);
-	case SubItem::Subscription: return tr::lng_sr_chat_column_subscription(tr::now);
 	case SubItem::Closed: return tr::lng_sr_chat_column_closed(tr::now);
 	case SubItem::Forward: return tr::lng_sr_chat_column_forward(tr::now);
 	case SubItem::Folders: return tr::lng_sr_chat_column_folders(tr::now);
@@ -534,11 +533,6 @@ QString SubItemValue(
 	case SubItem::Autodelete:
 		if (peer->messagesTTL()) {
 			return tr::lng_sr_chat_autodelete(tr::now);
-		}
-		return {};
-	case SubItem::Subscription:
-		if (Data::ChannelHasSubscriptionUntilDate(peer->asChannel())) {
-			return tr::lng_sr_chat_subscribed(tr::now);
 		}
 		return {};
 	case SubItem::Closed:

@@ -9,14 +9,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 class ApiWrap;
 
-#include "data/data_subscriptions.h"
-
 namespace Api {
 
 struct InviteLink {
 	QString link;
 	QString label;
-	Data::PeerSubscription subscription;
+	// LoogriGram: a link that charged Stars per period to stay in the
+	// channel carried its price here, and was drawn with its own icon.
 	not_null<UserData*> admin;
 	TimeId date = 0;
 	TimeId startDate = 0;
@@ -63,7 +62,6 @@ struct CreateInviteLinkArgs {
 	TimeId expireDate = 0;
 	int usageLimit = 0;
 	bool requestApproval = false;
-	Data::PeerSubscription subscription;
 };
 
 class InviteLinks final {

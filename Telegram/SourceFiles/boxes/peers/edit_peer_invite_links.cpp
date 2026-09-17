@@ -32,8 +32,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_layers.h" // st::boxDividerLabel
 #include "styles/style_menu_icons.h"
 
-#include <QtSvg/QSvgRenderer>
-
 namespace {
 
 enum class Color {
@@ -42,7 +40,6 @@ enum class Color {
 	ExpireSoon,
 	Expired,
 	Revoked,
-	Subscription,
 
 	Count,
 };
@@ -145,9 +142,7 @@ private:
 [[nodiscard]] Color ComputeColor(
 		const InviteLinkData &link,
 		float64 progress) {
-	return link.subscription
-		? Color::Subscription
-		: link.revoked
+	return link.revoked
 		? Color::Revoked
 		: (progress >= 1.)
 		? Color::Expired
@@ -677,7 +672,6 @@ void LinksController::rowPaintIcon(
 		case Color::ExpireSoon: return &st::msgFile4Bg;
 		case Color::Expired: return &st::msgFile3Bg;
 		case Color::Revoked: return &st::windowSubTextFg;
-		case Color::Subscription: return &st::msgFile2Bg;
 		}
 		Unexpected("Color in LinksController::rowPaintIcon.");
 	}();
@@ -701,19 +695,9 @@ void LinksController::rowPaintIcon(
 					: Margins(0));
 			p.drawEllipse(rect);
 		}
-		if (color == Color::Subscription) {
-			auto svg = QSvgRenderer(u":/gui/links_subscription.svg"_q);
-			const auto r = QRect(
-				(inner - st::inviteLinkSubscriptionSize) / 2,
-				(inner - st::inviteLinkSubscriptionSize) / 2,
-				st::inviteLinkSubscriptionSize,
-				st::inviteLinkSubscriptionSize);
-			svg.render(&p, r);
-		} else {
-			(color == Color::Revoked
-				? st::inviteLinkRevokedIcon
-				: st::inviteLinkIcon).paintInCenter(p, Rect(Size(inner)));
-		}
+		(color == Color::Revoked
+			? st::inviteLinkRevokedIcon
+			: st::inviteLinkIcon).paintInCenter(p, Rect(Size(inner)));
 	}
 	p.drawImage(x + skip, y + skip, icon);
 	if (progress >= 0. && progress < 1.) {

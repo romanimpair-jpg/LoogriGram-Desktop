@@ -88,7 +88,7 @@ void InviteLinks::performCreate(
 		callbacks.push_back(std::move(args.done));
 	}
 
-	const auto requestApproval = !args.subscription && args.requestApproval;
+	const auto requestApproval = args.requestApproval;
 	using Flag = MTPmessages_ExportChatInvite::Flag;
 	_api->request(MTPmessages_ExportChatInvite(
 		MTP_flags((revokeLegacyPermanent
@@ -99,15 +99,12 @@ void InviteLinks::performCreate(
 			| ((!requestApproval && args.usageLimit)
 				? Flag::f_usage_limit
 				: Flag(0))
-			| (requestApproval ? Flag::f_request_needed : Flag(0))
-			| (args.subscription ? Flag::f_subscription_pricing : Flag(0))),
+			| (requestApproval ? Flag::f_request_needed : Flag(0))),
 		args.peer->input(),
 		MTP_int(args.expireDate),
 		MTP_int(args.usageLimit),
 		MTP_string(args.label),
-		MTP_starsSubscriptionPricing(
-			MTP_int(args.subscription.period),
-			MTP_long(args.subscription.credits))
+		MTPStarsSubscriptionPricing() // subscription_pricing
 	)).done([=, peer = args.peer](const MTPExportedChatInvite &result) {
 		const auto callbacks = _createCallbacks.take(peer);
 		const auto link = prepend(peer, peer->session().user(), result);
@@ -747,12 +744,6 @@ auto InviteLinks::parse(
 		return std::optional<Link>(Link{
 			.link = qs(data.vlink()),
 			.label = qs(data.vtitle().value_or_empty()),
-			.subscription = data.vsubscription_pricing()
-				? Data::PeerSubscription{
-					data.vsubscription_pricing()->data().vamount().v,
-					data.vsubscription_pricing()->data().vperiod().v,
-				}
-				: Data::PeerSubscription(),
 			.admin = peer->session().data().user(data.vadmin_id()),
 			.date = data.vdate().v,
 			.startDate = data.vstart_date().value_or_empty(),

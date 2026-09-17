@@ -288,16 +288,10 @@ ChatParticipant::ChatParticipant(
 		_date = data.vdate().v;
 		_by = peerToUser(peerFromUser(data.vinviter_id()));
 		_rank = qs(data.vrank().value_or_empty());
-		if (data.vsubscription_until_date()) {
-			_subscriptionDate = data.vsubscription_until_date()->v;
-		}
 	}, [&](const MTPDchannelParticipant &data) {
 		_type = Type::Member;
 		_date = data.vdate().v;
 		_rank = qs(data.vrank().value_or_empty());
-		if (data.vsubscription_until_date()) {
-			_subscriptionDate = data.vsubscription_until_date()->v;
-		}
 	}, [&](const MTPDchannelParticipantBanned &data) {
 		_restrictions = ChatRestrictionsInfo(data.vbanned_rights());
 		_by = peerToUser(peerFromUser(data.vkicked_by()));
@@ -381,10 +375,6 @@ ChatRestrictionsInfo ChatParticipant::restrictions() const {
 
 ChatAdminRightsInfo ChatParticipant::rights() const {
 	return _rights;
-}
-
-TimeId ChatParticipant::subscriptionDate() const {
-	return _subscriptionDate;
 }
 
 TimeId ChatParticipant::promotedSince() const {

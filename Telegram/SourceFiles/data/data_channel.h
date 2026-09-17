@@ -555,9 +555,6 @@ public:
 	[[nodiscard]] int levelHint() const;
 	void updateLevelHint(int levelHint);
 
-	[[nodiscard]] TimeId subscriptionUntilDate() const;
-	void updateSubscriptionUntilDate(TimeId subscriptionUntilDate);
-
 	[[nodiscard]] MTPInputChannel inputChannel() const;
 
 	// Still public data members.
@@ -597,7 +594,6 @@ private:
 	AdminRightFlags _adminRights;
 	RestrictionFlags _restrictions;
 	TimeId _restrictedUntil = 0;
-	TimeId _subscriptionUntilDate = 0;
 
 	std::vector<Data::UnavailableReason> _unavailableReasons;
 	std::unique_ptr<InvitePeek> _invitePeek;

@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "ui/chat/chat_theme.h" // CountAverageColor.
 #include "ui/color_contrast.h"
-#include "info/channel_statistics/earn/earn_icons.h"
 #include "ui/effects/outline_segments.h"
 #include "ui/effects/ripple_animation.h"
 #include "ui/effects/ttl_icon.h"
@@ -45,133 +44,6 @@ constexpr auto kHiddenLayer = 2;
 constexpr auto kBottomLayer = 1;
 constexpr auto kNoneLayer = 0;
 constexpr auto kBlurRadius = 24;
-
-[[nodiscard]] int SubscriptionCutSkip() {
-	const auto width = st::dialogsSubscriptionBadgeOutlineTwice / 2.;
-	return int(std::ceil(width)) + 1;
-}
-
-// Exact squared euclidean distance transform, two separable passes.
-[[nodiscard]] std::vector<float64> SquaredDistances(
-		std::vector<float64> grid,
-		int side) {
-	constexpr auto kFar = 1e12;
-	auto values = std::vector<float64>(side);
-	auto hulls = std::vector<int>(side);
-	auto breaks = std::vector<float64>(side + 1);
-	const auto pass = [&](auto read, auto write) {
-		for (auto i = 0; i != side; ++i) {
-			values[i] = read(i);
-		}
-		auto last = 0;
-		hulls[0] = 0;
-		breaks[0] = -kFar;
-		breaks[1] = kFar;
-		for (auto i = 1; i != side; ++i) {
-			auto cross = 0.;
-			while (true) {
-				const auto hull = hulls[last];
-				cross = ((values[i] + float64(i) * i)
-					- (values[hull] + float64(hull) * hull))
-					/ (2. * i - 2. * hull);
-				if (last > 0 && cross <= breaks[last]) {
-					--last;
-					continue;
-				}
-				break;
-			}
-			++last;
-			hulls[last] = i;
-			breaks[last] = cross;
-			breaks[last + 1] = kFar;
-		}
-		last = 0;
-		for (auto i = 0; i != side; ++i) {
-			while (breaks[last + 1] < i) {
-				++last;
-			}
-			const auto hull = hulls[last];
-			write(i, float64(i - hull) * (i - hull) + values[hull]);
-		}
-	};
-	for (auto x = 0; x != side; ++x) {
-		pass(
-			[&](int y) { return grid[y * side + x]; },
-			[&](int y, float64 value) { grid[y * side + x] = value; });
-	}
-	for (auto y = 0; y != side; ++y) {
-		pass(
-			[&](int x) { return grid[y * side + x]; },
-			[&](int x, float64 value) { grid[y * side + x] = value; });
-	}
-	return grid;
-}
-
-// Star silhouette grown by outline width in every direction.
-[[nodiscard]] const QImage &SubscriptionCutMask() {
-	constexpr auto kSupersample = 4;
-
-	static auto mask = QImage();
-	if (!mask.isNull()) {
-		return mask;
-	}
-	const auto ratio = style::DevicePixelRatio();
-	const auto skip = SubscriptionCutSkip();
-	const auto size = st::dialogsSubscriptionBadgeSize + 2 * skip;
-	const auto star = Ui::Earn::GenerateStars(
-		st::dialogsSubscriptionBadgeSize,
-		1,
-		ratio * kSupersample);
-	const auto side = size * ratio * kSupersample;
-	const auto offset = skip * ratio * kSupersample;
-	constexpr auto kFar = 1e12;
-	auto grid = std::vector<float64>(side * side, kFar);
-	for (auto y = 0; y != star.height(); ++y) {
-		const auto line = reinterpret_cast<const QRgb*>(
-			star.constScanLine(y));
-		for (auto x = 0; x != star.width(); ++x) {
-			if (qAlpha(line[x]) > 127) {
-				grid[(y + offset) * side + (x + offset)] = 0.;
-			}
-		}
-	}
-	const auto squared = SquaredDistances(std::move(grid), side);
-	const auto radius = (st::dialogsSubscriptionBadgeOutlineTwice / 2.)
-		* ratio
-		* kSupersample;
-	const auto result = size * ratio;
-	mask = QImage(result, result, QImage::Format_ARGB32_Premultiplied);
-	mask.setDevicePixelRatio(ratio);
-	for (auto y = 0; y != result; ++y) {
-		const auto line = reinterpret_cast<QRgb*>(mask.scanLine(y));
-		for (auto x = 0; x != result; ++x) {
-			auto covered = 0.;
-			for (auto inner = 0; inner != kSupersample; ++inner) {
-				const auto row = (y * kSupersample + inner) * side
-					+ x * kSupersample;
-				for (auto i = 0; i != kSupersample; ++i) {
-					covered += std::clamp(
-						radius + 0.5 - std::sqrt(squared[row + i]),
-						0.,
-						1.);
-				}
-			}
-			const auto alpha = base::SafeRound(
-				255. * covered / (kSupersample * kSupersample));
-			line[x] = qRgba(0, 0, 0, int(alpha));
-		}
-	}
-	return mask;
-}
-
-[[nodiscard]] const QImage &SubscriptionIcon() {
-	static auto starImage = QImage();
-	if (!starImage.isNull()) {
-		return starImage;
-	}
-	starImage = Ui::Earn::GenerateStars(st::dialogsSubscriptionBadgeSize, 1);
-	return starImage;
-}
 
 [[nodiscard]] QImage CornerBadgeTTL(
 		not_null<PeerData*> peer,
@@ -477,7 +349,6 @@ void Row::updateCornerBadgeShown(
 			return kTopLayer;
 		} else if (channel
 			&& (Data::ChannelHasActiveCall(channel)
-				|| Data::ChannelHasSubscriptionUntilDate(channel)
 				|| (!insideCommunity && channel->linkedCommunityId()))) {
 			return kTopLayer;
 		} else if (hidden) {
@@ -582,18 +453,7 @@ void Row::PaintCornerBadgeFrame(
 		}
 	}
 
-	if (subscribed) {
-		const auto &s = st::dialogsSubscriptionBadgeSkip;
-		const auto x = photoSize - s.x() - st::dialogsSubscriptionBadgeSize;
-		const auto y = photoSize - s.y() - st::dialogsSubscriptionBadgeSize;
-		const auto skip = SubscriptionCutSkip();
-		q.resetTransform();
-		q.setCompositionMode(QPainter::CompositionMode_DestinationOut);
-		q.drawImage(x - skip, y - skip, SubscriptionCutMask());
-		q.setCompositionMode(QPainter::CompositionMode_SourceOver);
-		q.drawImage(x, y, SubscriptionIcon());
-		return;
-	}
+	// LoogriGram: a channel we paid Stars to stay in wore a star here.
 
 	if (communityMember) {
 		if (!hq) {
@@ -779,17 +639,13 @@ void Row::paintUserpic(
 	}
 	const auto badgeChannel = peer ? peer->asChannel() : nullptr;
 	const auto badgeUser = peer ? peer->asUser() : nullptr;
-	const auto subscribed = Data::ChannelHasSubscriptionUntilDate(
-		badgeChannel);
 	const auto communityMember = peer
 		&& Data::PeerLinkedCommunityId(peer)
 		&& !(badgeChannel && Data::ChannelHasActiveCall(badgeChannel))
 		&& !(badgeUser && Data::IsUserOnline(badgeUser))
-		&& !subscribed
 		&& !insideCommunity;
 	// Only stories outline and online badge differ for active row.
-	const auto activeMatters = storiesCount
-		|| !(subscribed || communityMember);
+	const auto activeMatters = storiesCount || !communityMember;
 	if (keyChanged
 		|| !_cornerBadgeUserpic->layersManager.isFinished()
 		|| (activeMatters && _cornerBadgeUserpic->active != active)

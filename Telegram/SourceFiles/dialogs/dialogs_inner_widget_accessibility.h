@@ -38,7 +38,6 @@ enum class SubItem : int {
 	Sponsored,
 	Stories,
 	Autodelete,
-	Subscription,
 	Closed,
 	Forward,
 	Folders,
