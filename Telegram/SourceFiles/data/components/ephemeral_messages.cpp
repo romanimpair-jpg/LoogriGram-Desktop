@@ -24,7 +24,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "history/history_item.h"
 #include "history/history_item_edition.h"
-#include "iv/iv_rich_message_serializer.h"
 #include "iv/iv_rich_page.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
@@ -829,106 +828,6 @@ bool EphemeralMessages::sendMedia(
 				origin,
 				rebuildMedia,
 				item->invertMedia());
-			return true;
-		}
-		reportDroppedReply();
-	}
-	_session->data().destroyMessageWithCacheCleanup(item);
-	return true;
-}
-
-bool EphemeralMessages::sendRich(
-		not_null<HistoryItem*> item,
-		const MTPInputRichMessage &richMessage,
-		const Api::SendAction &action) {
-	const auto history = item->history();
-	const auto replyTo = item->replyTo();
-	const auto target = _session->data().message(replyTo.messageId);
-	const auto targetEphemeral = target && target->isEphemeral();
-	const auto commandBot = targetEphemeral
-		? nullptr
-		: findCommandBot(
-			history->peer,
-			item->originalText().text.trimmed());
-	if (!targetEphemeral && !commandBot) {
-		return false;
-	} else if (action.options.scheduled || action.options.shortcutId) {
-		LOG(("API Error: "
-			"Dropping a scheduled ephemeral rich message send."));
-		_session->data().destroyMessageWithCacheCleanup(item);
-		return true;
-	}
-	const auto session = _session;
-	const auto itemId = item->fullId();
-	const auto rebuildRich = [=]() -> std::optional<MTPInputRichMessage> {
-		const auto local = session->data().message(itemId);
-		if (!local) {
-			return std::nullopt;
-		}
-		const auto fullPage = local->fullRichPage();
-		const auto page = fullPage ? fullPage : local->richPage();
-		if (!page) {
-			return std::nullopt;
-		}
-		auto serialized = Iv::SerializeInputRichMessage(
-			session,
-			*page,
-			Iv::SerializeInputRichMessageMode::FinalSubmit);
-		const auto success = (serialized.status
-			== Iv::SerializeInputRichMessageStatus::Success);
-		return (success && serialized.value)
-			? std::move(serialized.value)
-			: std::nullopt;
-	};
-	const auto origin = action.clearDraft
-		? Data::FileOrigin(Data::FileOriginCloudDraft{
-			.peerId = history->peer->id,
-			.topicRootId = action.replyTo.topicRootId,
-			.monoforumPeerId = action.replyTo.monoforumPeerId,
-		})
-		: Data::FileOrigin();
-	if (commandBot) {
-		const auto realReply = (replyTo.messageId
-			&& !(replyTo.topicRootId
-				&& replyTo.messageId.msg == replyTo.topicRootId))
-			? replyTo
-			: FullReplyTo();
-		request(
-			history,
-			commandBot,
-			TextWithEntities(),
-			MTPInputMedia(),
-			false,
-			0,
-			item->topicRootId(),
-			realReply,
-			item->fullId(),
-			origin,
-			nullptr,
-			false,
-			richMessage,
-			rebuildRich);
-		return true;
-	}
-	if (!target->out()) {
-		const auto entry = findByItem(target);
-		const auto bot = entry ? botForSending(*entry) : nullptr;
-		if (bot) {
-			request(
-				history,
-				bot,
-				TextWithEntities(),
-				MTPInputMedia(),
-				false,
-				entry->ephemeralId,
-				MsgId(0),
-				FullReplyTo(),
-				item->fullId(),
-				origin,
-				nullptr,
-				false,
-				richMessage,
-				rebuildRich);
 			return true;
 		}
 		reportDroppedReply();

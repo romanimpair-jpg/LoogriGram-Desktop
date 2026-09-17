@@ -22,7 +22,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_unread_things.h"
 #include "history/history.h"
 #include "iv/iv_data.h"
-#include "iv/editor/iv_editor_page_blocks.h"
 #include "iv/iv_rich_page.h"
 #include "mtproto/mtproto_config.h"
 #include "ui/text/format_values.h"
@@ -2971,7 +2970,11 @@ bool HistoryItem::allowsSendNow() const {
 }
 
 bool HistoryItem::allowsReschedule() const {
-	return allowsSendNow() && !awaitingVideoProcessing();
+	// LoogriGram: rescheduling an article re-submits the whole article,
+	// which only a subscriber may do, so it is not offered for one.
+	return allowsSendNow()
+		&& !awaitingVideoProcessing()
+		&& !richPage();
 }
 
 bool HistoryItem::allowsForward() const {

@@ -55,19 +55,10 @@ public:
 		const MTPInputMedia &media,
 		Data::FileOrigin origin = {},
 		Fn<MTPInputMedia()> rebuildMedia = nullptr);
-	void sendRich(
-		not_null<History*> history,
-		Fn<std::optional<MTPInputRichMessage>()> richMessage);
 	void edit(
 		not_null<History*> history,
 		int32 ephemeralId,
 		TextWithEntities text,
-		Fn<void()> done,
-		Fn<void(const QString &)> fail);
-	void editRich(
-		not_null<History*> history,
-		int32 ephemeralId,
-		Fn<std::optional<MTPInputRichMessage>()> richMessage,
 		Fn<void()> done,
 		Fn<void(const QString &)> fail);
 	void deleteTemplate(not_null<HistoryItem*> item);

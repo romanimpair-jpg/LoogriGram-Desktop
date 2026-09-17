@@ -317,9 +317,6 @@ inline constexpr auto kTextDiffDeletedColorIndex = 11;
 	not_null<Main::Session*> session);
 [[nodiscard]] std::vector<RichPage::Block> SplitGroupedMediaBlock(
 	RichPage::Block block);
-[[nodiscard]] bool RichPagesEqual(
-	const RichPage &a,
-	const RichPage &b);
 [[nodiscard]] std::optional<RichMessageLimitError> ValidateRichMessage(
 	const RichPage &page,
 	const RichMessageLimits &limits);
@@ -339,14 +336,6 @@ inline constexpr auto kTextDiffDeletedColorIndex = 11;
 [[nodiscard]] std::shared_ptr<const RichPage> ParseRichPage(
 	not_null<Main::Session*> session,
 	const MTPDwebPage &webpage);
-[[nodiscard]] std::optional<TextWithEntities> SerializeAsSimple(
-	const RichPage &page,
-	not_null<Main::Session*> session);
-[[nodiscard]] bool CanSerializeAsSimple(
-	const RichPage &page,
-	not_null<Main::Session*> session);
-[[nodiscard]] bool RichPageUsesPremiumFormatting(const RichPage &page);
-[[nodiscard]] bool RichPageIsFlattenSafe(const RichPage &page);
 [[nodiscard]] RichPage SplitTextIntoRichPage(TextWithEntities text);
 [[nodiscard]] RichPage SplitTextIntoRichPage(const TextWithTags &text);
 [[nodiscard]] TextWithEntities FlattenRichPageSummary(

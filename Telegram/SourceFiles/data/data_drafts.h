@@ -72,13 +72,8 @@ struct Draft {
 	FullReplyTo reply; // reply.messageId.msg is editMsgId for edit draft.
 	MessageCursor cursor;
 	WebPageDraft webpage;
-	std::shared_ptr<const Iv::RichPage> richMessage;
-	TextWithEntities richMessageSummary;
 	mtpRequestId saveRequestId = 0;
 
-	[[nodiscard]] bool hasRichMessage() const {
-		return (richMessage != nullptr);
-	}
 };
 
 class DraftKey {

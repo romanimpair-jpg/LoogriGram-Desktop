@@ -26,7 +26,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "history/history_item_components.h"
 #include "iv/iv_instance.h"
-#include "iv/iv_rich_message_serializer.h"
 #include "iv/iv_rich_page.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
@@ -60,8 +59,7 @@ constexpr auto ErrorWithoutId
 		Data::WebPageDraft webpage,
 		SendOptions options,
 		bool withMessage,
-		bool withMedia,
-		bool withRichMessage)
+		bool withMedia)
 -> MTPmessages_EditMessage::Flags {
 	const auto emptyFlag = MTPmessages_EditMessage::Flag(0);
 	return emptyFlag
@@ -89,9 +87,6 @@ constexpr auto ErrorWithoutId
 			: emptyFlag)
 		| (item->isBusinessShortcut()
 			? MTPmessages_EditMessage::Flag::f_quick_reply_shortcut_id
-			: emptyFlag)
-		| (withRichMessage
-			? MTPmessages_EditMessage::Flag::f_rich_message
 			: emptyFlag);
 }
 
@@ -133,8 +128,7 @@ mtpRequestId EditMessage(
 		options,
 		(!text.isEmpty() || media),
 		((media && inputMedia.has_value())
-			|| (!webpage.removed && !webpage.url.isEmpty())),
-		false);
+			|| (!webpage.removed && !webpage.url.isEmpty())));
 
 	const auto id = EditMessageRequestId(item);
 	return api->request(MTPmessages_EditMessage(
@@ -240,45 +234,8 @@ void EditMessageWithUploadedMedia(
 void RescheduleMessage(
 		not_null<HistoryItem*> item,
 		SendOptions options) {
-	if (item->richPage()) {
-		const auto session = &item->history()->session();
-		const auto itemId = item->fullId();
-		const auto edit = [=] {
-			const auto item = session->data().message(itemId);
-			if (!item || !item->isScheduled() || !item->richPage()) {
-				return;
-			}
-			const auto serialize = [=]()
-			-> std::optional<MTPInputRichMessage> {
-				const auto fullPage = item->fullRichPage();
-				const auto page = fullPage ? fullPage : item->richPage();
-				if (!page) {
-					return std::nullopt;
-				}
-				auto serialized = Iv::SerializeInputRichMessage(
-					session,
-					*page,
-					Iv::SerializeInputRichMessageMode::FinalSubmit);
-				using Status = Iv::SerializeInputRichMessageStatus;
-				return (serialized.status == Status::Success)
-					&& serialized.value
-					? std::make_optional(std::move(*serialized.value))
-					: std::nullopt;
-			};
-			EditRichMessage(item, serialize, options, nullptr, nullptr);
-		};
-		if (item->fullRichPage() || !item->richPage()->part) {
-			edit();
-		} else {
-			Core::App().iv().resolveRichMessage(session, item, [=](
-					std::shared_ptr<const Iv::RichPage> page) {
-				if (page) {
-					edit();
-				}
-			});
-		}
-		return;
-	}
+	// LoogriGram: an article was rescheduled by serializing and submitting
+	// it again. HistoryItem::allowsReschedule() refuses one now.
 	const auto empty = [] {};
 	options.invertCaption = item->invertMedia();
 	EditMessage(item, options, empty, empty);
@@ -497,89 +454,6 @@ mtpRequestId EditTextMessage(
 		callback,
 		fail,
 		std::nullopt);
-}
-
-mtpRequestId EditRichMessage(
-		not_null<HistoryItem*> item,
-		Fn<std::optional<MTPInputRichMessage>()> richMessage,
-		SendOptions options,
-		Fn<void(mtpRequestId requestId)> done,
-		Fn<void(const QString &error, mtpRequestId requestId)> fail) {
-	if (item->isWelcomeTemplate()) {
-		const auto history = item->history();
-		auto &welcome = history->session().welcomeMessages();
-		welcome.editRich(
-			history,
-			welcome.lookupId(item),
-			std::move(richMessage),
-			[=] {
-				if (done) {
-					done(0);
-				}
-			},
-			[=](const QString &error) {
-				if (fail) {
-					fail(error, 0);
-				}
-			});
-		return 0;
-	}
-	const auto session = &item->history()->session();
-	const auto api = &session->api();
-	const auto sentEntities = MTPVector<MTPMessageEntity>();
-	const auto flags = ComputeEditMessageFlags(
-		item,
-		sentEntities,
-		Data::WebPageDraft(),
-		options,
-		false,
-		false,
-		true);
-	const auto id = EditMessageRequestId(item);
-	const auto origin = item->fullId();
-	const auto performRequest = [=](
-			const auto &repeatRequest,
-			mtpRequestId originalRequestId,
-			bool refreshed) -> mtpRequestId {
-		const auto current = richMessage ? richMessage() : std::nullopt;
-		const auto requestId = originalRequestId ? originalRequestId : 0;
-		if (!current) {
-			if (fail) {
-				fail(QString(), requestId);
-			}
-			return requestId;
-		}
-		return api->request(MTPmessages_EditMessage(
-			MTP_flags(flags),
-			item->history()->peer->input(),
-			MTP_int(id),
-			MTPstring(),
-			MTPInputMedia(),
-			MTPReplyMarkup(),
-			sentEntities,
-			MTP_int(options.scheduled),
-			MTP_int(options.scheduleRepeatPeriod),
-			MTP_int(item->shortcutId()),
-			*current
-		)).done([=](const MTPUpdates &result, mtpRequestId requestId) {
-			api->applyUpdates(result);
-			if (done) {
-				done(originalRequestId ? originalRequestId : requestId);
-			}
-		}).fail([=](const MTP::Error &error, mtpRequestId requestId) {
-			if (!refreshed && error.type().startsWith(u"FILE_REFERENCE_"_q)) {
-				api->refreshFileReference(origin, [=](const auto &) {
-					repeatRequest(
-						repeatRequest,
-						originalRequestId ? originalRequestId : requestId,
-						true);
-				});
-			} else if (fail) {
-				fail(error.type(), originalRequestId ? originalRequestId : requestId);
-			}
-		}).send();
-	};
-	return performRequest(performRequest, 0, false);
 }
 
 void EditTodoList(

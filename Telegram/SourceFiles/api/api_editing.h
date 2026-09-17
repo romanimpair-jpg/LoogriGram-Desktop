@@ -59,13 +59,6 @@ mtpRequestId EditTextMessage(
 	Fn<void(const QString &error, mtpRequestId requestId)> fail,
 	bool spoilered,
 	VideoCoverEdit videoCover = {});
-mtpRequestId EditRichMessage(
-	not_null<HistoryItem*> item,
-	Fn<std::optional<MTPInputRichMessage>()> richMessage,
-	SendOptions options,
-	Fn<void(mtpRequestId requestId)> done,
-	Fn<void(const QString &error, mtpRequestId requestId)> fail);
-
 void EditTodoList(
 	not_null<HistoryItem*> item,
 	const TodoListData &data,

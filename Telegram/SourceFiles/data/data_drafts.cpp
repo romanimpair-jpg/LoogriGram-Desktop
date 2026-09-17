@@ -69,8 +69,7 @@ Draft::Draft(
 
 bool DraftIsNull(const Draft *draft) {
 	return !draft
-		|| (!draft->hasRichMessage()
-			&& !draft->reply.messageId
+		|| (!draft->reply.messageId
 			&& DraftStringIsEmpty(draft->textWithTags.text));
 }
 
@@ -80,11 +79,6 @@ bool DraftsAreEqual(const Draft *a, const Draft *b) {
 	if (aIsNull) {
 		return bIsNull;
 	} else if (bIsNull) {
-		return false;
-	} else if (a->hasRichMessage() != b->hasRichMessage()) {
-		return false;
-	} else if (a->hasRichMessage()
-		&& !Iv::RichPagesEqual(*a->richMessage, *b->richMessage)) {
 		return false;
 	}
 	return (a->textWithTags == b->textWithTags)
@@ -103,11 +97,18 @@ void ApplyPeerCloudDraft(
 	if (history->skipCloudDraftUpdate(topicRootId, monoforumPeerId, date)) {
 		return;
 	}
+	// LoogriGram: a draft holding an article, written on a device that can
+	// send one, is read as that article's text. Nothing here opens or sends
+	// an article, and saving this draft back writes the text alone.
 	const auto richMessage = draft.vrich_message()
 		? Iv::ParseRichPage(session, *draft.vrich_message())
 		: std::shared_ptr<const Iv::RichPage>();
+	const auto summary = Iv::FlattenRichPageSummary(richMessage);
 	const auto textWithTags = richMessage
-		? TextWithTags()
+		? TextWithTags{
+			summary.text,
+			TextUtilities::ConvertEntitiesToTextTags(summary.entities),
+		}
 		: TextWithTags{
 			qs(draft.vmessage()),
 			TextUtilities::ConvertEntitiesToTextTags(
@@ -144,8 +145,6 @@ void ApplyPeerCloudDraft(
 		MessageCursor(Ui::kQFixedMax, Ui::kQFixedMax, Ui::kQFixedMax),
 		std::move(webpage));
 	cloudDraft->date = date;
-	cloudDraft->richMessage = richMessage;
-	cloudDraft->richMessageSummary = Iv::FlattenRichPageSummary(richMessage);
 
 	history->setCloudDraft(std::move(cloudDraft));
 	history->applyCloudDraft(topicRootId, monoforumPeerId);

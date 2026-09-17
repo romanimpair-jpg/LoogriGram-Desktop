@@ -132,8 +132,6 @@ using UpdateFlag = Data::HistoryUpdate::Flag;
 		reply,
 		from.cursor,
 		from.webpage);
-	result->richMessage = from.richMessage;
-	result->richMessageSummary = from.richMessageSummary;
 	return result;
 }
 
@@ -148,8 +146,6 @@ void CopyDraftForThread(
 	to->reply.monoforumPeerId = monoforumPeerId;
 	to->cursor = from.cursor;
 	to->webpage = from.webpage;
-	to->richMessage = from.richMessage;
-	to->richMessageSummary = from.richMessageSummary;
 }
 
 } // namespace
@@ -298,8 +294,6 @@ void History::createLocalDraftFromCloud(
 		clearLocalDraft(topicRootId, monoforumPeerId);
 		return;
 	} else if (Data::DraftIsNull(draft) || !draft->date) {
-		return;
-	} else if (draft->hasRichMessage()) {
 		return;
 	}
 

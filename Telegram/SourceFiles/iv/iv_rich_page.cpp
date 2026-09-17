@@ -1834,24 +1834,6 @@ void AppendSummaryBlocks(
 	return result;
 }
 
-[[nodiscard]] bool SimpleTextEntitiesAllowed(const TextWithEntities &text) {
-	for (const auto &entity : text.entities) {
-		const auto type = entity.type();
-		if (type == EntityType::Subscript
-			|| type == EntityType::Superscript
-			|| type == EntityType::Marked) {
-			return false;
-		} else if (type == EntityType::CustomEmoji
-			&& Markdown::ParseInlineTextObjectEntity(entity.data())) {
-			// Math formulas and inline images are stored as CustomEmoji
-			// entities over an object replacement character; a normal
-			// message can't carry them, only real custom emoji entities.
-			return false;
-		}
-	}
-	return true;
-}
-
 // Drops the inline entities that a normal (non-premium) message can't carry.
 // Math formulas are expanded to plain text by ExpandInlineTextObjects (in
 // AppendSummaryLine, which always runs without icons on the simple-text
@@ -1914,148 +1896,13 @@ void AppendSimpleBlock(
 	return int(end - start);
 }
 
-// Sinks for SerializeAsSimpleTo(): SimpleTextBuilder builds the actual
-// serialized text, SimpleTextCounter only computes the length that text
-// would have, skipping the string building entirely, so that the check
-// is cheap enough to run on every content change.
-struct SimpleTextBuilder {
-	TextWithEntities result;
-
-	void append(
-			const TextWithEntities &text,
-			EntityType wrap = EntityType::Invalid,
-			const QString &wrapData = QString()) {
-		AppendSimpleBlock(&result, TextWithEntities(text), wrap, wrapData);
-	}
-	void appendQuote(SimpleTextBuilder &&body, bool collapsed) {
-		AppendSimpleBlock(
-			&result,
-			std::move(body.result),
-			EntityType::Blockquote,
-			collapsed ? u"1"_q : QString());
-	}
-	[[nodiscard]] int length() const {
-		return int(result.text.size());
-	}
-};
-
-struct SimpleTextCounter {
-	int result = 0;
-
-	void append(
-			const TextWithEntities &text,
-			EntityType = EntityType::Invalid,
-			const QString & = QString()) {
-		appendLength(TrimmedLength(text));
-	}
-	void appendQuote(SimpleTextCounter &&body, bool) {
-		appendLength(body.result);
-	}
-	void appendLength(int length) {
-		if (length > 0) {
-			// The 1 is for the '\n' AppendSimpleBlock() would insert.
-			result += (result > 0 ? 1 : 0) + length;
-		}
-	}
-	[[nodiscard]] int length() const {
-		return result;
-	}
-};
-
+// LoogriGram: here stood everything that asked whether a page could be
+// sent as a plain message, and what a page was worth comparing for: the two
+// serialization sinks, the single source of truth they shared, the
+// premium-formatting and flatten-safety checks and page equality. All of
+// them served composing, sending or drafting an article, which is deleted.
 template <typename Accumulator>
-[[nodiscard]] bool CollectSimpleQuote(
-		const Block &quote,
-		Accumulator &body) {
-	if (quote.pullquote
-		|| !quote.author.trimmed().isEmpty()
-		|| !quote.caption.text.text.trimmed().isEmpty()) {
-		return false;
-	}
-	if (!quote.text.text.empty()) {
-		if (!SimpleTextEntitiesAllowed(quote.text.text)) {
-			return false;
-		}
-		body.append(quote.text.text);
-	}
-	for (const auto &child : quote.blocks) {
-		if (child.kind != BlockKind::Paragraph
-			|| !SimpleTextEntitiesAllowed(child.text.text)) {
-			return false;
-		}
-		body.append(child.text.text);
-	}
-	return true;
-}
-
-// Single source of truth for what can be sent as a simple message, shared
-// by SerializeAsSimple() and CanSerializeAsSimple(), so that the two can't
-// drift apart: returns false when the page can't be sent as one (blocks or
-// entities a normal message can't carry, empty or over-limit text).
 template <typename Accumulator>
-[[nodiscard]] bool SerializeAsSimpleTo(
-		const RichPage &page,
-		not_null<Main::Session*> session,
-		Accumulator &to) {
-	for (const auto &block : page.blocks) {
-		switch (block.kind) {
-		case BlockKind::Paragraph:
-			if (!SimpleTextEntitiesAllowed(block.text.text)) {
-				return false;
-			}
-			to.append(block.text.text);
-			break;
-		case BlockKind::Code:
-			if (!block.text.text.entities.isEmpty()) {
-				return false;
-			}
-			to.append(block.text.text, EntityType::Pre, block.language);
-			break;
-		case BlockKind::Quote: {
-			auto body = Accumulator();
-			if (!CollectSimpleQuote(block, body)) {
-				return false;
-			}
-			to.appendQuote(
-				std::move(body),
-				block.collapsed && RichBlockquoteIsCollapsible(block));
-			break;
-		}
-		default:
-			return false;
-		}
-	}
-	if (!to.length()) {
-		return false;
-	}
-	const auto lengthLimit = ::Data::PremiumLimits(session)
-		.messageLengthCurrent();
-	return to.length() <= lengthLimit;
-}
-
-[[nodiscard]] bool RichBlockIsPlain(const Block &block) {
-	const auto hasEntities = [](const TextWithEntities &text) {
-		return !text.entities.isEmpty();
-	};
-	if (block.kind == BlockKind::Paragraph) {
-		return !hasEntities(block.text.text);
-	} else if (block.kind == BlockKind::Quote) {
-		if (block.pullquote
-			|| !block.author.trimmed().isEmpty()
-			|| !block.caption.text.text.trimmed().isEmpty()
-			|| hasEntities(block.text.text)) {
-			return false;
-		}
-		for (const auto &child : block.blocks) {
-			if (child.kind != BlockKind::Paragraph
-				|| hasEntities(child.text.text)) {
-				return false;
-			}
-		}
-		return true;
-	}
-	return false;
-}
-
 void AppendSummaryBlock(
 		TextWithEntities *result,
 		const Block &block,
@@ -2312,46 +2159,6 @@ std::shared_ptr<const RichPage> ParsePage(
 	});
 }
 
-[[nodiscard]] bool RichBlockIsFlattenSafe(const RichPage::Block &block) {
-	switch (block.kind) {
-	case BlockKind::Table:
-	case BlockKind::Math:
-	case BlockKind::Photo:
-	case BlockKind::Video:
-	case BlockKind::Audio:
-	case BlockKind::File:
-	case BlockKind::GroupedMedia:
-	case BlockKind::Map:
-	case BlockKind::ButtonRow:
-		return false;
-	default:
-		break;
-	}
-	for (const auto &item : block.mediaItems) {
-		switch (item.kind) {
-		case BlockKind::Photo:
-		case BlockKind::Video:
-		case BlockKind::Audio:
-			return false;
-		default:
-			break;
-		}
-	}
-	for (const auto &child : block.blocks) {
-		if (!RichBlockIsFlattenSafe(child)) {
-			return false;
-		}
-	}
-	for (const auto &listItem : block.listItems) {
-		for (const auto &child : listItem.blocks) {
-			if (!RichBlockIsFlattenSafe(child)) {
-				return false;
-			}
-		}
-	}
-	return true;
-}
-
 [[nodiscard]] std::optional<bool> RichTextRtl(const RichText &text) {
 	const auto &plain = text.text.text;
 	if (plain.trimmed().isEmpty()) {
@@ -2414,12 +2221,6 @@ std::vector<RichPage::Block> SplitGroupedMediaBlock(RichPage::Block block) {
 	result.back().caption = std::move(caption);
 	result.back().anchorId = std::move(anchorId);
 	return result;
-}
-
-bool RichPagesEqual(
-		const RichPage &a,
-		const RichPage &b) {
-	return (a == b);
 }
 
 RichMessageLimits ResolveRichMessageLimits(not_null<Main::Session*> session) {
@@ -2654,42 +2455,6 @@ bool RichBlockquoteIsCollapsible(const RichPage::Block &block) {
 	return (block.kind == BlockKind::Quote)
 		&& !block.pullquote
 		&& block.blocks.empty();
-}
-
-std::optional<TextWithEntities> SerializeAsSimple(
-		const RichPage &page,
-		not_null<Main::Session*> session) {
-	auto to = SimpleTextBuilder();
-	if (!SerializeAsSimpleTo(page, session, to)) {
-		return std::nullopt;
-	}
-	TextUtilities::Trim(to.result);
-	return std::move(to.result);
-}
-
-bool CanSerializeAsSimple(
-		const RichPage &page,
-		not_null<Main::Session*> session) {
-	auto to = SimpleTextCounter();
-	return SerializeAsSimpleTo(page, session, to);
-}
-
-bool RichPageUsesPremiumFormatting(const RichPage &page) {
-	for (const auto &block : page.blocks) {
-		if (!RichBlockIsPlain(block)) {
-			return true;
-		}
-	}
-	return false;
-}
-
-bool RichPageIsFlattenSafe(const RichPage &page) {
-	for (const auto &block : page.blocks) {
-		if (!RichBlockIsFlattenSafe(block)) {
-			return false;
-		}
-	}
-	return true;
 }
 
 RichPage SplitTextIntoRichPage(TextWithEntities text) {

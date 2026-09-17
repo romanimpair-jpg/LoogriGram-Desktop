@@ -185,8 +185,6 @@ PRIVATE
     api/api_no_forwards_request.h
     api/api_text_entities.cpp
     api/api_text_entities.h
-    api/api_rich_tasks.cpp
-    api/api_rich_tasks.h
     api/api_toggling_media.cpp
     api/api_toggling_media.h
     api/api_transcribes.cpp
@@ -459,8 +457,6 @@ PRIVATE
     chat_helpers/gifs_list_widget.h
     chat_helpers/message_field.cpp
     chat_helpers/message_field.h
-    chat_helpers/rich_paste_toast.cpp
-    chat_helpers/rich_paste_toast.h
     chat_helpers/share_message_phrase_factory.cpp
     chat_helpers/share_message_phrase_factory.h
     chat_helpers/spellchecker_common.cpp
@@ -863,8 +859,6 @@ PRIVATE
     history/view/controls/history_view_draft_options.h
     history/view/controls/history_view_forward_panel.cpp
     history/view/controls/history_view_forward_panel.h
-    history/view/controls/history_view_rich_draft_preview.cpp
-    history/view/controls/history_view_rich_draft_preview.h
     history/view/controls/history_view_ttl_button.cpp
     history/view/controls/history_view_ttl_button.h
     history/view/controls/history_view_video_cover_uploader.cpp
@@ -1291,18 +1285,12 @@ PRIVATE
     intro/intro_widget.h
     iv/iv_cached_media.cpp
     iv/iv_cached_media.h
-    iv/editor/iv_editor_button_box.cpp
-    iv/editor/iv_editor_button_box.h
-    iv/editor/iv_editor_session.cpp
-    iv/editor/iv_editor_session.h
     iv/iv_delegate_impl.cpp
     iv/iv_delegate_impl.h
     iv/iv_instance.cpp
     iv/iv_instance.h
     iv/iv_rich_message_html_export.cpp
     iv/iv_rich_message_html_export.h
-    iv/iv_rich_message_serializer.cpp
-    iv/iv_rich_message_serializer.h
     iv/iv_rich_page.cpp
     iv/iv_rich_page.h
     lang/lang_cloud_manager.cpp

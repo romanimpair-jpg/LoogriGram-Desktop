@@ -322,7 +322,6 @@ whenReadStyle: TextStyle(defaultTextStyle) {
 }
 whenReadPadding: margins(34px, 3px, 17px, 4px);
 whenReadIconPosition: point(8px, 0px);
-whenReadSkip: 3px;
 whenReadShowPadding: margins(6px, 0px, 6px, 2px);
 whoSentItem: Menu(defaultMenu) {
 	itemPadding: margins(17px, 3px, 17px, 4px);
@@ -945,8 +944,6 @@ reactPanelScrollRounded: ScrollArea(emojiScroll) {
 	deltat: 14px;
 	deltab: 14px;
 }
-selfForwardsTaggerStripSkip: 11px;
-
 toastLottieIconSize: size(20px, 20px);
 selfForwardsTaggerIconPadding: margins(14px, 2px, 8px, 2px);
 selfForwardsTaggerToast: Toast(defaultToast) {
@@ -1057,10 +1054,6 @@ historyContactStatusBlock: FlatButton(historyContactStatusButton) {
 historyContactStatusLabel: FlatLabel(defaultFlatLabel) {
 	minWidth: 240px;
 }
-historyEmojiStatusInfoLabel: FlatLabel(historyContactStatusLabel) {
-	align: align(top);
-	textFg: windowSubTextFg;
-}
 historyContactStatusMinSkip: 16px;
 
 historySetBotPhotoIcon: icon {{ "menu/photo_set", windowActiveTextFg }};
@@ -1096,11 +1089,6 @@ historyBusinessBotSettings: IconButton(defaultIconButton) {
 	height: 58px;
 	width: 48px;
 }
-paysStatusLabel: FlatLabel(historyBusinessBotStatus) {
-	align: align(top);
-	minWidth: 240px;
-}
-
 historyReplyCancelIcon: icon {{ "box_button_close", historyReplyCancelFg }};
 historyReplyCancelIconOver: icon {{ "box_button_close", historyReplyCancelFgOver }};
 
@@ -1348,13 +1336,6 @@ historyScheduledToggle: IconButton(historyAttach) {
 		{ "chat/input_scheduled_dot", attentionButtonFg }
 	};
 }
-historySuggestPostToggle: IconButton(historyAttach) {
-	icon: icon{{ "chat/input_paid", historyComposeIconFg }};
-	iconOver: icon{{ "chat/input_paid", historyComposeIconFgOver }};
-}
-historySuggestIconPosition: point(4px, 4px);
-historySuggestIconActive: icon{{ "chat/input_paid", windowActiveTextFg }};
-
 historyAttachEmojiInner: IconButton(historyAttach) {
 	icon: icon {{ "chat/input_smile_face", historyComposeIconFg }};
 	iconOver: icon {{ "chat/input_smile_face", historyComposeIconFgOver }};
@@ -1497,20 +1478,6 @@ historySendAsFileButton: IconButton(historyComposeInnerButton) {
 	icon: icon {{ "chat/text_to_file-18x18", historyComposeIconFg }};
 	iconOver: icon {{ "chat/text_to_file-18x18", historyComposeIconFgOver }};
 }
-historyExpandComposeButton: IconButton(historyComposeInnerButton) {
-	icon: icon {{ "menu/rich/expand-20x20", historyComposeIconFg }};
-	iconOver: icon {{ "menu/rich/expand-20x20", historyComposeIconFgOver }};
-}
-historyDiscardRichDraftButton: IconButton(historyComposeInnerButton) {
-	width: 34px;
-	height: 34px;
-	rippleAreaSize: 34px;
-	icon: icon {{ "chat/input_discard-26x26", historyComposeIconFg }};
-	iconOver: icon {{ "chat/input_discard-26x26", historyComposeIconFgOver }};
-}
-// LoogriGram: was historyAiComposeTooltipSkip. The tooltip manager it spaces
-// is generic - the send-as-file tooltip uses it too - so it outlives the AI
-// button that happened to be its first caller.
 historyComposeTooltipSkip: 8px;
 importantTooltipHide: IconButton(defaultIconButton) {
 	width: 34px;
@@ -1520,8 +1487,6 @@ importantTooltipHide: IconButton(defaultIconButton) {
 	iconOver: icon {{ "calls/video_tooltip", importantTooltipFg }};
 	ripple: emptyRippleAnimation;
 }
-boxAiComposeButtonPosition: point(0px, -4px);
-
 defaultComposeFilesMenu: IconButton(defaultIconButton) {
 	width: 48px;
 	height: 54px;
@@ -1684,19 +1649,6 @@ ttlMediaButton: RoundButton(defaultActiveButton) {
 }
 ttlMediaButtonBottomSkip: 14px;
 
-editTagField: InputField(defaultInputField) {
-	textBg: transparent;
-	textMargins: margins(24px, 10px, 32px, 2px);
-
-	placeholderFg: placeholderFg;
-	placeholderFgActive: placeholderFgActive;
-	placeholderFgError: placeholderFgActive;
-	placeholderMargins: margins(2px, 0px, 2px, 0px);
-	placeholderScale: 0.;
-
-	heightMin: 36px;
-}
-
 editStickerSetNameField: InputField(defaultInputField) {
 	textMargins: margins(0px, 8px, 26px, 4px);
 	heightMin: 36px;
@@ -1713,19 +1665,6 @@ editStickerSetNameLoading: InfiniteRadialAnimation(defaultInfiniteRadialAnimatio
 	thickness: 2px;
 }
 
-paidStarIcon: icon {{ "settings/premium/star", creditsBg1 }};
-paidStarIconTop: 7px;
-paidAmountAbout: FlatLabel(defaultFlatLabel) {
-	minWidth: 256px;
-	textFg: windowSubTextFg;
-}
-paidTagLabel: FlatLabel(defaultFlatLabel) {
-	textFg: radialFg;
-	palette: TextPalette(defaultTextPalette) {
-		linkFg: creditsBg1;
-	}
-	style: semiboldTextStyle;
-}
 paidTagPadding: margins(16px, 6px, 16px, 6px);
 
 pickLocationRowHeight: 52px;
@@ -1808,40 +1747,3 @@ topPeersSelectorImportantTooltipLabel: FlatLabel(defaultImportantTooltipLabel) {
 	}
 }
 
-aiComposeSendButton: SendButton(historySend) {
-	sendIconPosition: point(9px, 9px);
-	sendIconFillPadding: 5px;
-	inner: IconButton(historyAttach) {
-		width: 42px;
-		height: 42px;
-		icon: icon {{ "chat/input_send_round", windowFgActive }};
-		iconOver: icon {{ "chat/input_send_round", windowFgActive }};
-		rippleAreaSize: 40px;
-		rippleAreaPosition: point(1px, 1px);
-	}
-	sendIconFg: windowFgActive;
-}
-
-aiComposeBodyLabel: FlatLabel(defaultFlatLabel) {
-	minWidth: 300px;
-	align: align(topleft);
-	style: TextStyle(defaultTextStyle) {
-		lineHeight: 22px;
-		blockquote: QuoteStyle(historyQuoteStyle) {
-			padding: margins(10px, 2px, 20px, 2px);
-			icon: icon{{ "chat/mini_quote", windowFg }};
-			iconPosition: point(4px, 4px);
-			expand: icon{{ "intro_country_dropdown", windowFg }};
-			expandPosition: point(6px, 4px);
-			collapse: icon{{ "intro_country_dropdown-flip_vertical", windowFg }};
-			collapsePosition: point(6px, 4px);
-		}
-		pre: QuoteStyle(historyQuoteStyle) {
-			header: 20px;
-			headerPosition: point(10px, 2px);
-			scrollable: true;
-			icon: icon{{ "chat/mini_copy", windowFg }};
-			iconPosition: point(4px, 2px);
-		}
-	}
-}

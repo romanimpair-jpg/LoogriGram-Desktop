@@ -342,56 +342,6 @@ void WelcomeMessages::sendMedia(
 	send(send, media, 0);
 }
 
-void WelcomeMessages::sendRich(
-		not_null<History*> history,
-		Fn<std::optional<MTPInputRichMessage>()> richMessage) {
-	auto first = richMessage
-		? richMessage()
-		: std::optional<MTPInputRichMessage>();
-	if (!first) {
-		LOG(("API Error: no rich welcome template to send."));
-		return;
-	}
-	using Flag = MTPephemeral_SendMessage::Flag;
-	const auto flags = Flag::f_welcome
-		| Flag::f_peer
-		| Flag::f_rich_message;
-	const auto randomId = base::RandomValue<uint64>();
-	const auto send = [=](
-			const auto &send,
-			const MTPInputRichMessage &rich,
-			int attempt) -> void {
-		_session->api().request(MTPephemeral_SendMessage(
-			MTP_flags(flags),
-			history->peer->input(),
-			MTP_inputUserEmpty(),
-			MTPlong(), // query_id
-			MTP_string(),
-			MTPVector<MTPMessageEntity>(),
-			MTPInputMedia(),
-			MTPReplyMarkup(),
-			rich,
-			MTP_long(randomId),
-			MTPInputReplyTo()
-		)).done([=](const MTPUpdates &result) {
-			_session->api().applyUpdates(result);
-		}).fail([=](const MTP::Error &error) {
-			const auto type = error.type();
-			if (!attempt
-				&& (error.code() == 400)
-				&& type.startsWith(u"FILE_REFERENCE_"_q)) {
-				if (auto rebuilt = richMessage()) {
-					send(send, *rebuilt, 1);
-					return;
-				}
-			}
-			LOG(("API Error: send rich welcome template - %1"
-				).arg(type));
-		}).send();
-	};
-	send(send, *first, 0);
-}
-
 void WelcomeMessages::edit(
 		not_null<History*> history,
 		int32 ephemeralId,
@@ -427,62 +377,6 @@ void WelcomeMessages::edit(
 			fail(error.type());
 		}
 	}).send();
-}
-
-void WelcomeMessages::editRich(
-		not_null<History*> history,
-		int32 ephemeralId,
-		Fn<std::optional<MTPInputRichMessage>()> richMessage,
-		Fn<void()> done,
-		Fn<void(const QString &)> fail) {
-	auto first = richMessage
-		? richMessage()
-		: std::optional<MTPInputRichMessage>();
-	if (!first) {
-		if (fail) {
-			fail(QString());
-		}
-		return;
-	}
-	using Flag = MTPephemeral_EditMessage::Flag;
-	const auto flags = Flag::f_welcome
-		| Flag::f_peer
-		| Flag::f_rich_message;
-	const auto send = [=](
-			const auto &send,
-			const MTPInputRichMessage &rich,
-			int attempt) -> void {
-		_session->api().request(MTPephemeral_EditMessage(
-			MTP_flags(flags),
-			history->peer->input(),
-			MTP_inputUserEmpty(),
-			MTP_int(ephemeralId),
-			MTPstring(),
-			MTPInputMedia(),
-			MTPVector<MTPMessageEntity>(),
-			MTPReplyMarkup(),
-			rich
-		)).done([=](const MTPUpdates &result) {
-			_session->api().applyUpdates(result);
-			if (done) {
-				done();
-			}
-		}).fail([=](const MTP::Error &error) {
-			const auto type = error.type();
-			if (!attempt
-				&& (error.code() == 400)
-				&& type.startsWith(u"FILE_REFERENCE_"_q)) {
-				if (auto rebuilt = richMessage()) {
-					send(send, *rebuilt, 1);
-					return;
-				}
-			}
-			if (fail) {
-				fail(type);
-			}
-		}).send();
-	};
-	send(send, *first, 0);
 }
 
 void WelcomeMessages::deleteTemplate(not_null<HistoryItem*> item) {

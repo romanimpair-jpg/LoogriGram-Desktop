@@ -112,7 +112,6 @@ struct Labeled {
 		{ C::SendSilentMessage, tr::lng_shortcuts_silent_send() },
 		{ C::ScheduleMessage, tr::lng_shortcuts_schedule() },
 		separator,
-		{ C::ShowRichEditor, tr::lng_shortcuts_rich_editor() },
 		{ C::ToggleWebPagePreview, tr::lng_shortcuts_toggle_link_preview() },
 		separator,
 		{ C::RecordVoice, tr::lng_shortcuts_record_voice_message() },

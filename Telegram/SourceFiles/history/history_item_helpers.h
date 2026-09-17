@@ -169,7 +169,6 @@ struct SendingErrorRequest {
 	const TextWithTags *text = nullptr;
 	int messagesCount = 0;
 	bool ignoreSlowmodeCountdown = false;
-	bool richMessage = false;
 	bool ignoreRestrictions = false;
 };
 [[nodiscard]] int ComputeSendingMessagesCount(

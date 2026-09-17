@@ -77,10 +77,6 @@ public:
 		const MTPInputMedia &media,
 		Data::FileOrigin origin = {},
 		Fn<MTPInputMedia()> rebuildMedia = nullptr);
-	[[nodiscard]] bool sendRich(
-		not_null<HistoryItem*> item,
-		const MTPInputRichMessage &richMessage,
-		const Api::SendAction &action);
 	[[nodiscard]] bool sendSimpleMedia(
 		not_null<History*> history,
 		FullReplyTo replyTo,

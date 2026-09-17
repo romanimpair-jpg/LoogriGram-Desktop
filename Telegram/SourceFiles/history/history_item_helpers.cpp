@@ -70,9 +70,7 @@ int ComputeSendingMessagesCount(
 		not_null<History*> history,
 		const SendingErrorRequest &request) {
 	auto result = 0;
-	if (request.richMessage) {
-		++result;
-	} else if (request.text && !request.text->empty()) {
+	if (request.text && !request.text->empty()) {
 		auto sending = TextWithEntities();
 		auto left = TextWithEntities{
 			request.text->text,
@@ -123,8 +121,7 @@ Data::SendError GetErrorForSending(
 			}
 		}
 	}
-	const auto hasText = request.richMessage
-		|| (request.text && !request.text->empty());
+	const auto hasText = (request.text && !request.text->empty());
 	if (hasText && !request.ignoreRestrictions) {
 		const auto error = Data::RestrictionError(
 			peer,

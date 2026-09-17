@@ -27,7 +27,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "history/history_inner_widget.h"
 #include "history/history_item.h"
-#include "iv/editor/iv_editor_clipboard.h"
 #include "iv/markdown/iv_markdown_prepare_links.h"
 #include "iv/markdown/iv_markdown_prepare_serialize.h"
 #include "iv/iv_instance.h"
@@ -1574,15 +1573,14 @@ void SetRichBlocksClipboard(
 		TextUtilities::SetClipboardText(text);
 		return;
 	}
+	// LoogriGram: the copied blocks also went on the clipboard in the rich
+	// editor's own format, so they could be pasted back into it as blocks.
+	// The editor is deleted; text and html are what any other program can
+	// read anyway.
 	const auto html = RichBlocksClipboardHtml(slice, session);
-	auto data = Editor::ClipboardBlockData();
-	data.blocks = std::move(slice.blocks);
-	auto mimeData = Editor::MimeDataFromClipboardData(
-		Editor::ClipboardData(std::move(data)));
-	if (const auto textMimeData = TextUtilities::MimeDataFromText(text)) {
-		for (const auto &format : textMimeData->formats()) {
-			mimeData->setData(format, textMimeData->data(format));
-		}
+	auto mimeData = TextUtilities::MimeDataFromText(text);
+	if (!mimeData) {
+		mimeData = std::make_unique<QMimeData>();
 	}
 	if (!html.isEmpty()) {
 		mimeData->setHtml(QString::fromUtf8(html));

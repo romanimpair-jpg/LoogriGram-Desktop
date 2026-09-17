@@ -84,7 +84,6 @@ class ConfirmPhone;
 class PeerPhoto;
 class PeerColors;
 class Polls;
-class RichTasks;
 class ChatParticipants;
 class Communities;
 class UnreadThings;
@@ -388,14 +387,6 @@ public:
 
 	void cancelLocalItem(not_null<HistoryItem*> item);
 
-	void sendRichMessage(
-		not_null<HistoryItem*> item,
-		const MTPInputRichMessage &richMessage,
-		SendAction action);
-	void sendRichMessage(
-		std::shared_ptr<const Iv::RichPage> page,
-		const MTPInputRichMessage &richMessage,
-		SendAction action);
 	void sendMessage(
 		MessageToSend &&message,
 		std::optional<MsgId> localMessageId = std::nullopt);
@@ -451,7 +442,6 @@ public:
 	[[nodiscard]] Api::ConfirmPhone &confirmPhone();
 	[[nodiscard]] Api::PeerPhoto &peerPhoto();
 	[[nodiscard]] Api::Polls &polls();
-	[[nodiscard]] Api::RichTasks &richTasks();
 	[[nodiscard]] Api::ChatParticipants &chatParticipants();
 	[[nodiscard]] Api::Communities &communities();
 	[[nodiscard]] Api::UnreadThings &unreadThings();
@@ -817,7 +807,6 @@ private:
 	const std::unique_ptr<Api::ConfirmPhone> _confirmPhone;
 	const std::unique_ptr<Api::PeerPhoto> _peerPhoto;
 	const std::unique_ptr<Api::Polls> _polls;
-	const std::unique_ptr<Api::RichTasks> _richTasks;
 	const std::unique_ptr<Api::ChatParticipants> _chatParticipants;
 	const std::unique_ptr<Api::Communities> _communities;
 	const std::unique_ptr<Api::UnreadThings> _unreadThings;
