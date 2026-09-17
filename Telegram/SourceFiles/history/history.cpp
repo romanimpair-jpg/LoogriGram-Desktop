@@ -3072,7 +3072,11 @@ auto History::computeChatListMessageFromLast() const
 	//
 	// Falling back to std::nullopt asks the server for a chat list message,
 	// which is upstream's own answer to "we cannot see far enough back".
-	if (LoogriGram::HiddenContent(*_lastMessage)) {
+	//
+	// A known-empty history holds nullptr here, not std::nullopt, so the
+	// pointer is checked before it is asked about.
+	if (const auto known = *_lastMessage
+		; known && LoogriGram::HiddenContent(known)) {
 		if (!loadedAtBottom()) {
 			return std::nullopt;
 		}
