@@ -10,15 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mtproto/sender.h"
 #include "base/algorithm.h"
 
-namespace Ui {
-struct ColorIndicesCompressed;
-} // namespace Ui
-
-namespace Calls::Group::Ui {
-using namespace ::Ui;
-struct StarsColoring;
-} // namespace Calls::Group::Ui
-
 namespace Main {
 
 class Account;
@@ -32,12 +23,8 @@ public:
 
 	template <typename Type>
 	[[nodiscard]] Type get(const QString &key, Type fallback) const {
-		if constexpr (std::is_same_v<Type, double>) {
-			return getDouble(key, fallback);
-		} else if constexpr (std::is_same_v<Type, int>) {
+		if constexpr (std::is_same_v<Type, int>) {
 			return int(base::SafeRound(getDouble(key, double(fallback))));
-		} else if constexpr (std::is_same_v<Type, int64>) {
-			return int64(base::SafeRound(getDouble(key, double(fallback))));
 		} else if constexpr (std::is_same_v<Type, QString>) {
 			return getString(key, fallback);
 		} else if constexpr (std::is_same_v<Type, std::vector<QString>>) {
@@ -45,12 +32,6 @@ public:
 		} else if constexpr (
 				std::is_same_v<Type, base::flat_map<QString, QString>>) {
 			return getStringMap(key, std::move(fallback));
-		} else if constexpr (std::is_same_v<Type, std::vector<int>>) {
-			return getIntArray(key, std::move(fallback));
-		} else if constexpr (std::is_same_v<Type, std::vector<std::vector<int>>>) {
-			return getIntIntArray(key, std::move(fallback));
-		} else if constexpr (std::is_same_v<Type, std::vector<int64>>) {
-			return getInt64Array(key, std::move(fallback));
 		} else if constexpr (std::is_same_v<Type, bool>) {
 			return getBool(key, fallback);
 		}
@@ -72,14 +53,6 @@ public:
 	[[nodiscard]] int quoteLengthMax() const;
 	[[nodiscard]] int noForwardsRequestExpirePeriod() const;
 
-
-	[[nodiscard]] int starsWithdrawMax() const;
-	[[nodiscard]] float64 starsWithdrawRate() const;
-	[[nodiscard]] float64 currencyWithdrawRate() const;
-	[[nodiscard]] float64 starsSellRate() const;
-	[[nodiscard]] float64 currencySellRate() const;
-	[[nodiscard]] bool starsSpendTopupInvoiceDisabled() const;
-
 	[[nodiscard]] bool callsDisabledForSession() const;
 	[[nodiscard]] int confcallSizeLimit() const;
 	[[nodiscard]] bool confcallPrioritizeVP8() const;
@@ -89,22 +62,11 @@ public:
 	[[nodiscard]] int pollCountriesMax() const;
 	[[nodiscard]] QString phoneCountryIso2() const;
 
-	[[nodiscard]] int suggestedPostCommissionStars() const;
-	[[nodiscard]] int suggestedPostCommissionTon() const;
-	[[nodiscard]] int suggestedPostStarsMin() const;
-	[[nodiscard]] int suggestedPostStarsMax() const;
-	[[nodiscard]] int64 suggestedPostNanoTonMin() const;
-	[[nodiscard]] int64 suggestedPostNanoTonMax() const;
-	[[nodiscard]] int suggestedPostDelayMin() const;
-	[[nodiscard]] int suggestedPostDelayMax() const;
-	[[nodiscard]] TimeId suggestedPostAgeMin() const;
-
 	[[nodiscard]] bool ageVerifyNeeded() const;
 	[[nodiscard]] QString ageVerifyCountry() const;
 	[[nodiscard]] int ageVerifyMinAge() const;
 	[[nodiscard]] QString ageVerifyBotUsername() const;
 
-	[[nodiscard]] int storiesAlbumsLimit() const;
 	[[nodiscard]] int storiesAlbumLimit() const;
 
 	[[nodiscard]] int groupCallMessageLengthLimit() const;
@@ -112,13 +74,6 @@ public:
 
 	[[nodiscard]] int passkeysAccountPasskeysMax() const;
 	[[nodiscard]] bool settingsDisplayPasskeys() const;
-
-	[[nodiscard]] int64 stakeDiceNanoTonMin() const;
-	[[nodiscard]] int64 stakeDiceNanoTonMax() const;
-	[[nodiscard]] std::vector<int64> stakeDiceNanoTonSuggested() const;
-
-	using StarsColoring = Calls::Group::Ui::StarsColoring;
-	[[nodiscard]] std::vector<StarsColoring> groupCallColorings() const;
 
 	void refresh(bool force = false);
 
@@ -145,15 +100,6 @@ private:
 	[[nodiscard]] base::flat_map<QString, QString> getStringMap(
 		const QString &key,
 		base::flat_map<QString, QString> &&fallback) const;
-	[[nodiscard]] std::vector<int> getIntArray(
-		const QString &key,
-		std::vector<int> &&fallback) const;
-	[[nodiscard]] std::vector<std::vector<int>> getIntIntArray(
-		const QString &key,
-		std::vector<std::vector<int>> &&fallback) const;
-	[[nodiscard]] std::vector<int64> getInt64Array(
-		const QString &key,
-		std::vector<int64> &&fallback) const;
 
 	void updateIgnoredRestrictionReasons(std::vector<QString> was);
 
@@ -167,9 +113,6 @@ private:
 
 	std::vector<QString> _ignoreRestrictionReasons;
 	rpl::event_stream<std::vector<QString>> _ignoreRestrictionChanges;
-
-
-	mutable std::vector<StarsColoring> _groupCallColorings;
 
 	crl::time _lastFrozenRefresh = 0;
 	rpl::lifetime _frozenTrackLifetime;

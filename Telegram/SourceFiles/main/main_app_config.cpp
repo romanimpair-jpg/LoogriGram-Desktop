@@ -10,11 +10,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_authorizations.h"
 #include "apiwrap.h"
 #include "base/call_delayed.h"
-#include "calls/group/ui/calls_group_stars_coloring.h"
 #include "data/data_session.h"
 #include "main/main_account.h"
 #include "main/main_session.h"
-#include "ui/chat/chat_style.h"
 
 namespace Main {
 namespace {
@@ -69,30 +67,6 @@ int AppConfig::noForwardsRequestExpirePeriod() const {
 // LoogriGram: four affiliate-program server limits were read here. The
 // module that asked for them is deleted.
 
-int AppConfig::starsWithdrawMax() const {
-	return get<int>(u"stars_revenue_withdrawal_max"_q, 100);
-}
-
-float64 AppConfig::starsWithdrawRate() const {
-	return get<float64>(u"stars_usd_withdraw_rate_x1000"_q, 1300) / 1000.;
-}
-
-float64 AppConfig::currencyWithdrawRate() const {
-	return get<float64>(u"ton_usd_rate"_q, 1);
-}
-
-float64 AppConfig::starsSellRate() const {
-	return get<float64>(u"stars_usd_sell_rate_x1000"_q, 1410) / 1000.;
-}
-
-float64 AppConfig::currencySellRate() const {
-	return get<float64>(u"ton_usd_rate"_q, 1);
-}
-
-bool AppConfig::starsSpendTopupInvoiceDisabled() const {
-	return get<bool>(u"stars_spend_topup_invoice_disabled"_q, false);
-}
-
 bool AppConfig::callsDisabledForSession() const {
 	const auto authorizations = _account->sessionExists()
 		? &_account->session().api().authorizations()
@@ -128,44 +102,6 @@ QString AppConfig::phoneCountryIso2() const {
 	return get<QString>(u"phone_country_iso2"_q, QString());
 }
 
-int AppConfig::suggestedPostCommissionStars() const {
-	return get<int>(u"stars_suggested_post_commission_permille"_q, 850);
-}
-
-int AppConfig::suggestedPostCommissionTon() const {
-	return get<int>(u"ton_suggested_post_commission_permille"_q, 850);
-}
-
-int AppConfig::suggestedPostStarsMin() const {
-	return get<int>(u"stars_suggested_post_amount_min"_q, 5);
-}
-
-int AppConfig::suggestedPostStarsMax() const {
-	return get<int>(u"stars_suggested_post_amount_max"_q, 100'000);
-}
-
-int64 AppConfig::suggestedPostNanoTonMin() const {
-	return get<int64>(u"ton_suggested_post_amount_min"_q, 10'000'000LL);
-}
-
-int64 AppConfig::suggestedPostNanoTonMax() const {
-	return get<int64>(
-		u"ton_suggested_post_amount_max"_q,
-		10'000'000'000'000LL);
-}
-
-int AppConfig::suggestedPostDelayMin() const {
-	return get<int>(u"stars_suggested_post_future_min"_q, 300);
-}
-
-int AppConfig::suggestedPostDelayMax() const {
-	return get<int>(u"appConfig.stars_suggested_post_future_max"_q, 2678400);
-}
-
-TimeId AppConfig::suggestedPostAgeMin() const {
-	return get<int>(u"stars_suggested_post_age_min"_q, 86400);
-}
-
 bool AppConfig::ageVerifyNeeded() const {
 	return get<bool>(u"need_age_video_verification"_q, false);
 }
@@ -180,10 +116,6 @@ int AppConfig::ageVerifyMinAge() const {
 
 QString AppConfig::ageVerifyBotUsername() const {
 	return get<QString>(u"verify_age_bot_username"_q, QString());
-}
-
-int AppConfig::storiesAlbumsLimit() const {
-	return get<int>(u"stories_albums_limit"_q, 100);
 }
 
 int AppConfig::storiesAlbumLimit() const {
@@ -204,27 +136,6 @@ int AppConfig::passkeysAccountPasskeysMax() const {
 
 bool AppConfig::settingsDisplayPasskeys() const {
 	return get<bool>(u"settings_display_passkeys"_q, false);
-}
-
-int64 AppConfig::stakeDiceNanoTonMin() const {
-	return get<int64>(u"ton_stakedice_stake_amount_min"_q, 100'000'000LL);
-}
-
-int64 AppConfig::stakeDiceNanoTonMax() const {
-	return get<int64>(u"ton_stakedice_stake_amount_max"_q, 50'000'000'000LL);
-}
-
-std::vector<int64> AppConfig::stakeDiceNanoTonSuggested() const {
-	return get<std::vector<int64>>(
-		u"ton_stakedice_stake_suggested_amounts"_q,
-		std::vector<int64>{
-			100'000'000LL,
-			1'000'000'000LL,
-			2'000'000'000LL,
-			5'000'000'000LL,
-			10'000'000'000LL,
-			20'000'000'000LL,
-		});
 }
 
 void AppConfig::refresh(bool force) {
@@ -256,8 +167,6 @@ void AppConfig::refresh(bool force) {
 				});
 			}
 			updateIgnoredRestrictionReasons(std::move(was));
-
-			_groupCallColorings = {};
 
 			DEBUG_LOG(("getAppConfig result handled."));
 			_refreshed.fire({});
@@ -390,195 +299,10 @@ base::flat_map<QString, QString> AppConfig::getStringMap(
 	});
 }
 
-std::vector<int> AppConfig::getIntArray(
-		const QString &key,
-		std::vector<int> &&fallback) const {
-	return getValue(key, [&](const MTPJSONValue &value) {
-		return value.match([&](const MTPDjsonArray &data) {
-			auto result = std::vector<int>();
-			result.reserve(data.vvalue().v.size());
-			for (const auto &entry : data.vvalue().v) {
-				if (entry.type() != mtpc_jsonNumber) {
-					return std::move(fallback);
-				}
-				result.push_back(
-					int(base::SafeRound(entry.c_jsonNumber().vvalue().v)));
-			}
-			return result;
-		}, [&](const auto &data) {
-			return std::move(fallback);
-		});
-	});
-}
-
-std::vector<std::vector<int>> AppConfig::getIntIntArray(
-		const QString &key,
-		std::vector<std::vector<int>> &&fallback) const {
-	return getValue(key, [&](const MTPJSONValue &value) {
-		return value.match([&](const MTPDjsonArray &data) {
-			auto result = std::vector<std::vector<int>>();
-			result.reserve(data.vvalue().v.size());
-			for (const auto &entry : data.vvalue().v) {
-				if (entry.type() != mtpc_jsonArray) {
-					return std::move(fallback);
-				}
-				const auto &list = entry.c_jsonArray().vvalue().v;
-				auto &last = result.emplace_back();
-				last.reserve(list.size());
-				for (const auto &inner : list) {
-					if (inner.type() != mtpc_jsonNumber) {
-						return std::move(fallback);
-					}
-					last.push_back(
-						int(base::SafeRound(inner.c_jsonNumber().vvalue().v)));
-				}
-			}
-			return result;
-		}, [&](const auto &data) {
-			return std::move(fallback);
-		});
-	});
-}
-
-std::vector<int64> AppConfig::getInt64Array(
-		const QString &key,
-		std::vector<int64> &&fallback) const {
-	return getValue(key, [&](const MTPJSONValue &value) {
-		return value.match([&](const MTPDjsonArray &data) {
-			auto result = std::vector<int64>();
-			result.reserve(data.vvalue().v.size());
-			for (const auto &entry : data.vvalue().v) {
-				if (entry.type() != mtpc_jsonNumber) {
-					return std::move(fallback);
-				}
-				result.push_back(
-					int64(base::SafeRound(entry.c_jsonNumber().vvalue().v)));
-			}
-			return result;
-		}, [&](const auto &data) {
-			return std::move(fallback);
-		});
-	});
-}
-
 bool AppConfig::newRequirePremiumFree() const {
 	return get<bool>(
 		u"new_noncontact_peers_require_premium_without_ownpremium"_q,
 		false);
-}
-
-auto AppConfig::groupCallColorings() const -> std::vector<StarsColoring> {
-	if (!_groupCallColorings.empty()) {
-		return _groupCallColorings;
-	}
-	const auto key = u"stars_groupcall_message_limits"_q;
-	getValue(key, [&](const MTPJSONValue &value) {
-		value.match([&](const MTPDjsonArray &data) {
-			const auto &list = data.vvalue().v;
-			_groupCallColorings.reserve(list.size());
-			for (const auto &entry : list) {
-				entry.match([&](const MTPDjsonObject &data) {
-					auto &entry = _groupCallColorings.emplace_back();
-					const auto &fields = data.vvalue().v;
-					for (const auto &field : fields) {
-						const auto &key = field.data().vkey().v;
-						const auto &value = field.data().vvalue();
-						const auto error = [&] {
-							LOG(("API Error: Incorrect value for %1."
-								).arg(qs(key)));
-							return std::nullopt;
-						};
-						const auto number = [&]() -> std::optional<int> {
-							if (value.type() != mtpc_jsonNumber) {
-								return error();
-							}
-							const auto &data = value.c_jsonNumber();
-							const auto v = base::SafeRound(data.vvalue().v);
-							if (v < 0) {
-								return error();
-							}
-							return int(v);
-						};
-						const auto color = [&]() -> std::optional<int> {
-							if (value.type() != mtpc_jsonString) {
-								return error();
-							}
-							const auto &data = value.c_jsonString();
-							const auto text = data.vvalue().v;
-							if (text.size() != 6) {
-								return error();
-							}
-							const auto digit = [&](int i) {
-								Expects(i >= 0 && i < 6);
-
-								const auto ch = text[i];
-								return (ch >= '0' && ch <= '9')
-									? int(ch - '0')
-									: (ch >= 'A' && ch <= 'F')
-									? (int(ch - 'A') + 10)
-									: (ch >= 'a' && ch <= 'f')
-									? (int(ch - 'a') + 10)
-									: std::optional<int>();
-							};
-							const auto component = [&](int i) {
-								const auto a = digit(i), b = digit(i + 1);
-								return (a && b)
-									? ((*a) * 16 + (*b))
-									: std::optional<int>();
-							};
-							const auto r = component(0);
-							const auto g = component(2);
-							const auto b = component(4);
-							if (!r || !g || !b) {
-								return error();
-							}
-							return ((*r) << 16) | ((*g) << 8) | (*b);
-						};
-						if (key == "stars"_q) {
-							if (const auto n = number()) {
-								entry.fromStars = *n;
-							} else {
-								return _groupCallColorings.pop_back();
-							}
-						} else if (key == "color1"_q) {
-							if (const auto c = color()) {
-								entry.bgLight = *c;
-							} else {
-								return _groupCallColorings.pop_back();
-							}
-						} else if (key == "color_bg"_q) {
-							if (const auto c = color()) {
-								entry.bgDark = *c;
-							} else {
-								return _groupCallColorings.pop_back();
-							}
-						}
-					}
-				}, [](const auto &) {});
-			}
-		}, [](const auto &) {});
-	});
-	if (_groupCallColorings.empty()) {
-		_groupCallColorings = std::vector<StarsColoring>{
-			{ .bgLight = 0x955CDB, .bgDark = 0x49079B, .fromStars = 0 },
-			{ .bgLight = 0x955CDB, .bgDark = 0x49079B, .fromStars = 10 },
-			{ .bgLight = 0x46A3EB, .bgDark = 0x00508E, .fromStars = 50 },
-			{ .bgLight = 0x40A920, .bgDark = 0x176200, .fromStars = 100 },
-			{ .bgLight = 0xE29A09, .bgDark = 0x9A3E00, .fromStars = 250 },
-			{ .bgLight = 0xED771E, .bgDark = 0x9B3100, .fromStars = 500 },
-			{ .bgLight = 0xE14542, .bgDark = 0x8B0503, .fromStars = 2'000 },
-			{ .bgLight = 0x596473, .bgDark = 0x252C36, .fromStars = 10'000 },
-		};
-	} else {
-		const auto proj = &StarsColoring::fromStars;
-		if (!ranges::contains(_groupCallColorings, 0, proj)) {
-			_groupCallColorings.insert(
-				begin(_groupCallColorings),
-				{ .bgLight = 0x955CDB, .bgDark = 0x49079B, .fromStars = 0 });
-		}
-		ranges::sort(_groupCallColorings, ranges::less(), proj);
-	}
-	return _groupCallColorings;
 }
 
 } // namespace Main
