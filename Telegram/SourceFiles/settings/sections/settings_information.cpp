@@ -37,7 +37,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/add_contact_box.h"
 #include "boxes/premium_limits_box.h"
 #include "boxes/username_box.h"
-#include "boxes/peers/edit_peer_color_box.h"
 #include "data/data_session.h"
 #include "data/data_user.h"
 #include "data/data_peer_values.h"
@@ -81,7 +80,6 @@ struct InformationHighlightTargets {
 	QPointer<Ui::RpWidget> photo;
 	QPointer<Ui::RpWidget> uploadPhoto;
 	QPointer<Ui::RpWidget> bio;
-	QPointer<Ui::RpWidget> colorButton;
 	QPointer<Ui::RpWidget> channelButton;
 	QPointer<Ui::RpWidget> addAccount;
 	QPointer<Ui::RpWidget> name;
@@ -473,15 +471,8 @@ void SetupPersonalChannel(
 		edit,
 		{ &st::menuIconChannel });
 
-
-	const auto colorButton = AddPeerColorButton(
-		container,
-		controller->uiShow(),
-		self,
-		st::settingsColorButton);
 	if (targets) {
 		targets->channelButton = channelButton;
-		targets->colorButton = colorButton;
 	}
 
 	Ui::AddSkip(container);
@@ -1120,13 +1111,6 @@ void BuildInformationSection(SectionBuilder &builder) {
 	});
 	builder.add(nullptr, [] {
 		return SearchEntry{
-			.id = u"edit/your-color"_q,
-			.title = tr::lng_settings_theme_name_color(tr::now),
-			.keywords = { u"color"_q, u"theme"_q, u"name"_q },
-		};
-	});
-	builder.add(nullptr, [] {
-		return SearchEntry{
 			.id = u"edit/channel"_q,
 			.title = tr::lng_settings_channel_label(tr::now),
 			.keywords = { u"channel"_q, u"personal"_q },
@@ -1163,7 +1147,6 @@ private:
 	QPointer<Ui::RpWidget> _photo;
 	QPointer<Ui::RpWidget> _uploadPhoto;
 	QPointer<Ui::RpWidget> _bio;
-	QPointer<Ui::RpWidget> _colorButton;
 	QPointer<Ui::RpWidget> _channelButton;
 	QPointer<Ui::RpWidget> _addAccount;
 	QPointer<Ui::RpWidget> _name;
@@ -1195,7 +1178,6 @@ void Information::setupContent() {
 		photo = &_photo,
 		uploadPhoto = &_uploadPhoto,
 		bio = &_bio,
-		colorButton = &_colorButton,
 		channelButton = &_channelButton,
 		addAccount = &_addAccount,
 		name = &_name,
@@ -1234,7 +1216,6 @@ void Information::setupContent() {
 		*photo = targets.photo;
 		*uploadPhoto = targets.uploadPhoto;
 		*bio = targets.bio;
-		*colorButton = targets.colorButton;
 		*channelButton = targets.channelButton;
 		*addAccount = targets.addAccount;
 		*name = targets.name;
@@ -1259,12 +1240,6 @@ void Information::setupContent() {
 				highlights->push_back({
 					u"edit/bio"_q,
 					{ bio->data(), { .margin = st::settingsBioHighlightMargin } },
-				});
-			}
-			if (*colorButton) {
-				highlights->push_back({
-					u"edit/your-color"_q,
-					{ colorButton->data(), { .rippleShape = true } },
 				});
 			}
 			if (*channelButton) {

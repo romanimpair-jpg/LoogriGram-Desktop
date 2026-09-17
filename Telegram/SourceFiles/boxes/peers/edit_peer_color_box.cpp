@@ -196,10 +196,7 @@ PreviewWrap::PreviewWrap(
 		| MessageFlag::Post),
 	.from = _fake->id,
 	.date = base::unixtime::now(),
-}, TextWithEntities{ _peer->isSelf()
-	? tr::lng_settings_color_reply(tr::now)
-	: tr::lng_settings_color_reply_channel(tr::now),
-}, MTP_messageMediaEmpty()))
+}, TextWithEntities{ tr::lng_settings_color_reply_channel(tr::now) }, MTP_messageMediaEmpty()))
 , _replyItem(_history->addNewLocalMessage({
 	.id = _history->nextNonHistoryEntryId(),
 	.flags = (MessageFlag::FakeHistoryItem
@@ -209,10 +206,7 @@ PreviewWrap::PreviewWrap(
 	.from = _fake->id,
 	.replyTo = FullReplyTo{.messageId = _replyToItem->fullId() },
 	.date = base::unixtime::now(),
-}, TextWithEntities{ _peer->isSelf()
-	? tr::lng_settings_color_text(tr::now)
-	: tr::lng_settings_color_text_channel(tr::now),
-}, MTP_messageMediaWebPage(
+}, TextWithEntities{ tr::lng_settings_color_text_channel(tr::now) }, MTP_messageMediaWebPage(
 	MTP_flags(0),
 	MTP_webPagePending(
 		MTP_flags(0),
@@ -433,13 +427,9 @@ void Set(
 
 	const auto done = [=] {
 		if (showToast) {
-			show->showToast(peer->isSelf()
-				? (values.forProfile
-					? tr::lng_settings_color_changed_profile(tr::now)
-					: tr::lng_settings_color_changed(tr::now))
-				: (values.forProfile
-					? tr::lng_settings_color_changed_profile_channel(tr::now)
-					: tr::lng_settings_color_changed_channel(tr::now)));
+			show->showToast(values.forProfile
+				? tr::lng_settings_color_changed_profile_channel(tr::now)
+				: tr::lng_settings_color_changed_channel(tr::now));
 		}
 	};
 	const auto fail = [=](const MTP::Error &error) {
@@ -454,30 +444,7 @@ void Set(
 			std::move(request)
 		).done(done).fail(fail).send();
 	};
-	if (peer->isSelf()) {
-		using Flag = MTPaccount_UpdateColor::Flag;
-		using ColorFlag = MTPDpeerColor::Flag;
-		send(MTPaccount_UpdateColor(
-			MTP_flags((values.forProfile ? Flag::f_for_profile : Flag(0))
-				| ((values.colorIndex != kUnsetColorIndex)
-					? Flag::f_color
-					: Flag(0))),
-			MTP_peerColor(
-				MTP_flags(ColorFlag()
-					| ColorFlag::f_color
-					| (values.backgroundEmojiId
-						? ColorFlag::f_background_emoji_id
-						: ColorFlag(0))),
-				MTP_int(values.colorIndex),
-				MTP_long(values.backgroundEmojiId))));
-		if (values.statusChanged
-			&& (values.statusId || peer->emojiStatusId())) {
-			peer->owner().emojiStatuses().set(
-				peer,
-				values.statusId,
-				values.statusUntil);
-		}
-	} else if (const auto channel = peer->asChannel()) {
+	if (const auto channel = peer->asChannel()) {
 		if (peer->isBroadcast()) {
 			using Flag = MTPchannels_UpdateColor::Flag;
 			send(MTPchannels_UpdateColor(
@@ -502,16 +469,6 @@ void Set(
 	}
 }
 
-// LoogriGram: this reported "the colour cannot be applied" by opening the
-// subscription pitch for name colours, and said so only if it could resolve
-// a window - so refusing depended on having somewhere to advertise. It
-// refuses on its own terms now, and quietly.
-bool ShowPremiumPreview(
-		std::shared_ptr<ChatHelpers::Show> show,
-		not_null<PeerData*> peer) {
-	return peer->isSelf();
-}
-
 void Apply(
 		std::shared_ptr<ChatHelpers::Show> show,
 		not_null<PeerData*> peer,
@@ -532,9 +489,6 @@ void Apply(
 	if (colorMatch
 		&& emojiMatch
 		&& !values.statusChanged) {
-		close();
-	} else if (peer->isSelf()) {
-		Set(show, peer, values, showToast);
 		close();
 	} else {
 		CheckBoostLevel(show, peer, [=](int level) {
@@ -973,45 +927,6 @@ void Apply(
 	return result;
 }
 
-Fn<void(int)> CreateTabsWidget(
-		not_null<Ui::VerticalLayout*> container,
-		const std::vector<QString> &labels,
-		const std::vector<Fn<void()>> &callbacks) {
-	const auto tabs = container->add(
-		object_ptr<Info::Profile::TabsStrip>(
-			container,
-			st::infoProfileTabsStrip),
-		st::boxRowPadding,
-		style::al_top);
-
-	auto list = std::vector<Info::Profile::StripTab>();
-	list.reserve(labels.size());
-	for (auto i = 0, count = int(labels.size()); i != count; ++i) {
-		list.push_back({
-			.id = QString::number(i),
-			.text = { labels[i] },
-		});
-	}
-	tabs->setTabs(std::move(list));
-	tabs->setActiveTab(u"0"_q);
-
-	const auto invoke = [=](int index) {
-		if (index >= 0 && index < int(callbacks.size()) && callbacks[index]) {
-			callbacks[index]();
-		}
-	};
-	tabs->activated(
-	) | rpl::on_next([=](const QString &id) {
-		tabs->setActiveTab(id);
-		invoke(id.toInt());
-	}, tabs->lifetime());
-
-	return [=](int index) {
-		tabs->setActiveTab(QString::number(index));
-		invoke(index);
-	};
-}
-
 not_null<Info::Profile::TopBar*> CreateProfilePreview(
 		not_null<Ui::GenericBox*> box,
 		not_null<Ui::VerticalLayout*> container,
@@ -1135,11 +1050,6 @@ void AddLevelBadge(
 	}, badge->lifetime());
 }
 
-struct ColorSectionHighlights {
-	QPointer<Ui::SettingsButton> emojiButton;
-	QPointer<Ui::SettingsButton> resetButton;
-};
-
 void EditPeerColorSection(
 		not_null<Ui::GenericBox*> box,
 		not_null<Ui::VerticalLayout*> container,
@@ -1147,8 +1057,7 @@ void EditPeerColorSection(
 		std::shared_ptr<ChatHelpers::Show> show,
 		not_null<PeerData*> peer,
 		std::shared_ptr<Ui::ChatStyle> style,
-		std::shared_ptr<Ui::ChatTheme> theme,
-		ColorSectionHighlights *highlights) {
+		std::shared_ptr<Ui::ChatTheme> theme) {
 	ProcessButton(button);
 	const auto group = peer->isMegagroup();
 
@@ -1323,9 +1232,7 @@ void EditPeerColorSection(
 
 		Ui::AddDividerText(
 			container,
-			(peer->isSelf()
-				? tr::lng_settings_color_about()
-				: tr::lng_settings_color_about_channel()),
+			tr::lng_settings_color_about_channel(),
 			st::peerAppearanceDividerTextMargin);
 
 		const auto iconWrap = container->add(
@@ -1344,16 +1251,11 @@ void EditPeerColorSection(
 			state->emojiId.value(),
 			[=](DocumentId id) { state->emojiId = id; },
 			false));
-		if (highlights) {
-			highlights->emojiButton = emojiButton;
-		}
 
 		Ui::AddSkip(iconInner, st::settingsColorSampleSkip);
 		Ui::AddDividerText(
 			iconInner,
-			(peer->isSelf()
-				? tr::lng_settings_color_emoji_about()
-				: tr::lng_settings_color_emoji_about_channel()),
+			tr::lng_settings_color_emoji_about_channel(),
 			st::peerAppearanceDividerTextMargin);
 
 	}
@@ -1433,8 +1335,6 @@ void EditPeerColorSection(
 	button->setClickedCallback([=] {
 		if (state->applying) {
 			return;
-		} else if (ShowPremiumPreview(show, peer)) {
-			return;
 		}
 		const auto values = SetValues{
 			state->index.current(),
@@ -1452,197 +1352,22 @@ void EditPeerColorSection(
 			.forProfile = true,
 		};
 		state->applying = true;
-		if (peer->isChannel()) {
-			// First request: regular color data (without toast)
-			Apply(show, peer, values, [=] {
-				// Second request: profile color data (with toast)
-				Apply(show, peer, profileValues, crl::guard(box, [=] {
-					box->closeBox();
-				}), crl::guard(box, [=] {
-					state->applying = false;
-				}), true);
-			}, crl::guard(box, [=] {
+		// First request: regular color data (without toast)
+		Apply(show, peer, values, [=] {
+			// Second request: profile color data (with toast)
+			Apply(show, peer, profileValues, crl::guard(box, [=] {
+				box->closeBox();
+			}), crl::guard(box, [=] {
 				state->applying = false;
-			}), false);
-			return;
-		}
-		Apply(show, peer, values, crl::guard(box, [=] {
-			box->closeBox();
-		}), crl::guard(box, [=] {
+			}), true);
+		}, crl::guard(box, [=] {
 			state->applying = false;
-		}));
+		}), false);
 	});
 	// LoogriGram: this button read "Buy for N stars" while a resale gift was
 	// selected. Nothing is selected that way any more, so it is the plain
 	// apply button.
-	button->setText(tr::lng_settings_color_apply(
-	) | rpl::map([=](const QString &text) {
-		auto result = TextWithEntities();
-		if (peer->isSelf()) {
-			result.append(Ui::Text::IconEmoji(&st::giftBoxLock));
-		}
-		result.append(text);
-		return result;
-	}));
-}
-
-void EditPeerProfileColorSection(
-		not_null<Ui::GenericBox*> box,
-		not_null<Ui::VerticalLayout*> container,
-		not_null<Ui::RoundButton*> button,
-		std::shared_ptr<ChatHelpers::Show> show,
-		not_null<PeerData*> peer,
-		std::shared_ptr<Ui::ChatStyle> style,
-		std::shared_ptr<Ui::ChatTheme> theme,
-		Fn<void()> aboutCallback,
-		ColorSectionHighlights *highlights) {
-	Expects(peer->isSelf());
-
-	ProcessButton(button);
-
-	const auto preview = CreateProfilePreview(box, container, show, peer);
-
-	const auto peerColors = &peer->session().api().peerColors();
-	const auto indices = peerColors->profileColorIndices();
-
-	struct State {
-		rpl::variable<uint8> index = kUnsetColorIndex;
-		rpl::variable<DocumentId> patternEmojiId;
-		Ui::ColorSelector *selector = nullptr;
-	};
-	const auto state = button->lifetime().make_state<State>();
-	state->patternEmojiId = peer->profileBackgroundEmojiId();
-
-	const auto setIndex = [=](uint8 index) {
-		state->index = index;
-		preview->setColorProfileIndex(index == kUnsetColorIndex
-			? std::nullopt
-			: std::make_optional(index));
-		preview->setPatternEmojiId(index == kUnsetColorIndex
-			? std::nullopt
-			: std::make_optional(state->patternEmojiId.current()));
-	};
-	setIndex(peer->colorProfileIndex().value_or(kUnsetColorIndex));
-
-	const auto margin = st::settingsColorRadioMargin;
-	const auto skip = st::settingsColorRadioSkip;
-	state->selector = container->add(
-		object_ptr<Ui::ColorSelector>(
-			box,
-			indices,
-			state->index.current(),
-			setIndex,
-			[=](uint8 index) {
-				return peerColors->colorProfileFor(index).value_or(
-					Data::ColorProfileSet{});
-			}),
-		{ margin, skip, margin, skip });
-
-	Ui::AddSkip(container, st::settingsColorSampleSkip);
-	const auto emojiButton = container->add(CreateEmojiIconButton(
-		container,
-		show,
-		style,
-		peer,
-		state->index.value(),
-		state->patternEmojiId.value(),
-		[=](DocumentId id) {
-			state->patternEmojiId = id;
-			preview->setPatternEmojiId(id);
-		},
-		true));
-	if (highlights) {
-		highlights->emojiButton = emojiButton;
-	}
-
-	const auto resetWrap = container->add(
-		object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-			container,
-			object_ptr<Ui::VerticalLayout>(container)));
-	const auto resetInner = resetWrap->entity();
-
-	Ui::AddSkip(resetInner, st::settingsColorSampleSkip);
-	const auto resetButton = resetInner->add(
-		object_ptr<Ui::SettingsButton>(
-			resetInner,
-			tr::lng_settings_color_reset(),
-			st::settingsButtonLightNoIcon));
-	if (highlights) {
-		highlights->resetButton = resetButton;
-	}
-	resetButton->setClickedCallback([=] {
-		state->index = kUnsetColorIndex;
-		state->patternEmojiId = 0;
-		preview->setColorProfileIndex(std::nullopt);
-		preview->setPatternEmojiId(0);
-		resetWrap->toggle(false, anim::type::normal);
-	});
-
-	resetWrap->toggleOn(state->index.value(
-	) | rpl::map([](uint8 index) { return index != kUnsetColorIndex; }));
-	resetWrap->finishAnimating();
-
-	Ui::AddSkip(container, st::settingsColorSampleSkip);
-	const auto about = Ui::AddDividerText(
-		container,
-		tr::lng_settings_color_profile_about(
-			lt_link,
-			tr::lng_settings_color_profile_about_link(
-				lt_emoji,
-				rpl::single(Ui::Text::IconEmoji(&st::textMoreIconEmoji)),
-				tr::rich
-			) | rpl::map([=](TextWithEntities t) {
-				return tr::link(std::move(t), u"internal:"_q);
-			}),
-			tr::rich));
-	Ui::AddSkip(container, st::settingsColorSampleSkip);
-	about->setClickHandlerFilter([=](auto...) {
-		aboutCallback();
-		return false;
-	});
-
-	state->index.value(
-	) | rpl::on_next([=](uint8 index) {
-		if (state->selector) {
-			state->selector->updateSelection(index);
-		}
-	}, button->lifetime());
-
-	// LoogriGram: the same collectible-gift picker as in the name-colour
-	// box stood here, for wearing a gift as a profile backdrop.
-
-	struct ProfileState {
-		bool applying = false;
-	};
-	const auto profileState = button->lifetime().make_state<ProfileState>();
-
-	button->setClickedCallback([=] {
-		if (profileState->applying) {
-			return;
-		} else if (ShowPremiumPreview(show, peer)) {
-			return;
-		}
-		const auto values = SetValues{
-			.colorIndex = state->index.current(),
-			.backgroundEmojiId = state->patternEmojiId.current(),
-			.forProfile = true,
-		};
-		profileState->applying = true;
-		Apply(show, peer, values, crl::guard(box, [=] {
-			box->closeBox();
-		}), crl::guard(box, [=] {
-			profileState->applying = false;
-		}));
-	});
-	button->setText(tr::lng_settings_color_apply(
-	) | rpl::map([=](const QString &text) {
-		auto result = TextWithEntities();
-		if (peer->isSelf()) {
-			result.append(Ui::Text::IconEmoji(&st::giftBoxLock));
-		}
-		result.append(text);
-		return result;
-	}));
+	button->setText(tr::lng_settings_color_apply());
 }
 
 void EditPeerColorBox(
@@ -1650,8 +1375,9 @@ void EditPeerColorBox(
 		not_null<Window::SessionController*> controller,
 		not_null<PeerData*> peer,
 		std::shared_ptr<Ui::ChatStyle> style,
-		std::shared_ptr<Ui::ChatTheme> theme,
-		PeerColorTab initialTab) {
+		std::shared_ptr<Ui::ChatTheme> theme) {
+	Expects(peer->isChannel());
+
 	const auto show = controller->uiShow();
 	if (!style) {
 		style = std::make_shared<Ui::ChatStyle>(
@@ -1662,129 +1388,26 @@ void EditPeerColorBox(
 			Window::Theme::DefaultChatThemeOn(box->lifetime()));
 		style->apply(theme.get());
 	}
-	box->setTitle(peer->isSelf()
-		? tr::lng_settings_color_title()
-		: tr::lng_edit_channel_color());
+	// LoogriGram: for our own account this box had Profile and Name tabs.
+	// Colouring our own name or profile is premium-only, so the colour was
+	// never applied; only the channel and group box remains.
+	box->setTitle(tr::lng_edit_channel_color());
 	box->setWidth(st::boxWideWidth);
 	box->setStyle(st::giftBox);
 	box->addTopButton(st::boxTitleClose, [=] {
 		box->closeBox();
 	});
-	if (peer->isChannel()) {
-		const auto button = box->addButton(
-			tr::lng_settings_color_apply(),
-			[] {});
-		EditPeerColorSection(box, box->verticalLayout(), button, show, peer, style, theme, nullptr);
-		return;
-	}
-	const auto buttonContainer = box->addButton(
-		rpl::single(QString()),
+	const auto button = box->addButton(
+		tr::lng_settings_color_apply(),
 		[] {});
-	const auto content = box->verticalLayout();
-
-	const auto profileButton = Ui::CreateChild<Ui::RoundButton>(
-		buttonContainer,
-		tr::lng_settings_color_apply(),
-		box->getDelegate()->style().button);
-	profileButton->setTextTransform(Ui::RoundButtonTextTransform::ToUpper);
-	const auto nameButton = Ui::CreateChild<Ui::RoundButton>(
-		buttonContainer,
-		tr::lng_settings_color_apply(),
-		box->getDelegate()->style().button);
-	nameButton->setTextTransform(Ui::RoundButtonTextTransform::ToUpper);
-	rpl::combine(
-		buttonContainer->widthValue(),
-		profileButton->sizeValue(),
-		nameButton->sizeValue()
-	) | rpl::on_next([=](int w, QSize, QSize) {
-		profileButton->resizeToWidth(w);
-		nameButton->resizeToWidth(w);
-	}, buttonContainer->lifetime());
-
-	auto nameOwned = object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-		content,
-		object_ptr<Ui::VerticalLayout>(content));
-	auto profileOwned = object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-		content,
-		object_ptr<Ui::VerticalLayout>(content));
-	const auto nameWrap = nameOwned.get();
-	const auto profileWrap = profileOwned.get();
-	const auto name = nameWrap->entity();
-	const auto profile = profileWrap->entity();
-
-	const auto showName = [=] {
-		nameWrap->toggle(true, anim::type::instant);
-		profileWrap->toggle(false, anim::type::instant);
-		profileButton->hide();
-		nameButton->show();
-	};
-
-	const auto switchTab = CreateTabsWidget(
-		content,
-		{
-			tr::lng_settings_color_tab_profile(tr::now),
-			tr::lng_settings_color_tab_name(tr::now),
-		},
-		{
-			[=] {
-				nameWrap->toggle(false, anim::type::instant);
-				profileWrap->toggle(true, anim::type::instant);
-				nameButton->hide();
-				profileButton->show();
-			},
-			showName,
-		});
-
-	Ui::AddSkip(content);
-	nameWrap->toggle(false, anim::type::instant);
-	profileWrap->toggle(true, anim::type::instant);
-	nameButton->hide();
-	content->add(std::move(profileOwned));
-	content->add(std::move(nameOwned));
-
-	struct HighlightState {
-		ColorSectionHighlights profile;
-		ColorSectionHighlights name;
-	};
-	const auto highlightState = box->lifetime().make_state<HighlightState>();
-
-	EditPeerProfileColorSection(
-		box,
-		profile,
-		profileButton,
-		show,
-		peer,
-		style,
-		theme,
-		[=] { switchTab(1); },
-		&highlightState->profile);
-
 	EditPeerColorSection(
 		box,
-		name,
-		nameButton,
+		box->verticalLayout(),
+		button,
 		show,
 		peer,
 		style,
-		theme,
-		&highlightState->name);
-
-	if (initialTab == PeerColorTab::Name) {
-		switchTab(1);
-	}
-
-	box->setShowFinishedCallback([=] {
-		const auto isProfileTab = (initialTab == PeerColorTab::Profile);
-		const auto &highlights = isProfileTab
-			? highlightState->profile
-			: highlightState->name;
-		controller->checkHighlightControl(
-			u"profile-color/add-icons"_q,
-			highlights.emojiButton.data());
-		controller->checkHighlightControl(
-			u"profile-color/reset"_q,
-			highlights.resetButton.data());
-	});
+		theme);
 }
 
 void SetupPeerColorSample(
@@ -1920,9 +1543,7 @@ not_null<Ui::SettingsButton*> AddPeerColorButton(
 		std::shared_ptr<ChatHelpers::Show> show,
 		not_null<PeerData*> peer,
 		const style::SettingsButton &st) {
-	auto label = peer->isSelf()
-		? tr::lng_settings_theme_name_color()
-		: tr::lng_edit_channel_color();
+	auto label = tr::lng_edit_channel_color();
 	const auto button = AddButtonWithIcon(
 		container,
 		rpl::duplicate(label),
@@ -1946,8 +1567,7 @@ not_null<Ui::SettingsButton*> AddPeerColorButton(
 				controller,
 				peer,
 				style,
-				theme,
-				PeerColorTab::Profile));
+				theme));
 		}
 	});
 	return button;

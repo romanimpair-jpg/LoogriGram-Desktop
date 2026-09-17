@@ -14,7 +14,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/stickers_box.h"
 #include "chat_helpers/emoji_sets_manager.h"
 #include "boxes/edit_privacy_box.h"
-#include "boxes/peers/edit_peer_color_box.h"
 #include "settings/settings_privacy_controllers.h"
 #include "ui/chat/chat_style.h"
 #include "ui/boxes/confirm_box.h"
@@ -125,26 +124,6 @@ void ShowQrBox(not_null<Window::SessionController*> controller) {
 		user.get(),
 		std::nullopt,
 		rpl::single(QString())));
-}
-
-Result ShowPeerColorBox(
-		const Context &ctx,
-		PeerColorTab tab,
-		const QString &highlightId = QString()) {
-	if (!ctx.controller) {
-		return Result::NeedsAuth;
-	}
-	if (!highlightId.isEmpty()) {
-		ctx.controller->setHighlightControlId(highlightId);
-	}
-	ctx.controller->show(Box(
-		EditPeerColorBox,
-		ctx.controller,
-		ctx.controller->session().user(),
-		std::shared_ptr<Ui::ChatStyle>(),
-		std::shared_ptr<Ui::ChatTheme>(),
-		tab));
-	return Result::Handled;
 }
 
 Result HandleQrCode(const Context &ctx, bool highlightCopy) {
@@ -420,53 +399,6 @@ void RegisterSettingsHandlers(Router &router) {
 	router.add(u"settings"_q, {
 		.path = u"emoji-status"_q,
 		.action = AliasTo{ u"chats"_q, u"emoji-status"_q },
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"profile-color"_q,
-		.action = AliasTo{ u"settings"_q, u"edit/your-color"_q },
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"profile-color/profile"_q,
-		.action = AliasTo{ u"settings"_q, u"edit/your-color"_q },
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"profile-color/profile/add-icons"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowPeerColorBox(
-				ctx,
-				PeerColorTab::Profile,
-				u"profile-color/add-icons"_q);
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"profile-color/profile/reset"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowPeerColorBox(
-				ctx,
-				PeerColorTab::Profile,
-				u"profile-color/reset"_q);
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"profile-color/name"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowPeerColorBox(ctx, PeerColorTab::Name);
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"profile-color/name/add-icons"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowPeerColorBox(
-				ctx,
-				PeerColorTab::Name,
-				u"profile-color/add-icons"_q);
-		}},
 	});
 
 	router.add(u"settings"_q, {
@@ -1583,12 +1515,6 @@ void RegisterSettingsHandlers(Router &router) {
 	router.add(u"settings"_q, {
 		.path = u"edit/username"_q,
 		.action = CodeBlock{ ShowEditUsername },
-	});
-	router.add(u"settings"_q, {
-		.path = u"edit/your-color"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowPeerColorBox(ctx, PeerColorTab::Profile);
-		}},
 	});
 	router.add(u"settings"_q, {
 		.path = u"edit/channel"_q,
