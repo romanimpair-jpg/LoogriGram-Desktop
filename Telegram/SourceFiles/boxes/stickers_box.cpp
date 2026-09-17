@@ -2596,15 +2596,12 @@ int StickersBox::Inner::fillSetCount(not_null<StickersSet*> set) const {
 		auto customIt = sets.find(Data::Stickers::CustomSetId);
 		if (customIt != sets.cend()) {
 			const auto &custom = customIt->second->stickers;
-			added = custom.size();
-			if (skipPremium) {
-				added -= ranges::count(
-					custom,
-					true,
-					&DocumentData::isPremiumSticker);
-			}
+			added = custom.size() - ranges::count(
+				custom,
+				true,
+				&DocumentData::isPremiumSticker);
 			for (const auto &sticker : recent) {
-				if (skipPremium && sticker.first->isPremiumSticker()) {
+				if (sticker.first->isPremiumSticker()) {
 					continue;
 				} else if (customIt->second->stickers.indexOf(sticker.first) < 0) {
 					++added;

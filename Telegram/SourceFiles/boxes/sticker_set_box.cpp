@@ -1122,7 +1122,7 @@ StickerSetBox::Inner::Inner(
 	st::windowBgRipple,
 	st::windowBgOver,
 	[=] { repaintItems(); }))
-, _premiumMark(_session, st::stickersPremiumLock)
+, _premiumMark(st::stickersPremiumLock)
 , _updateItemsTimer([=] { updateItems(); })
 , _input(set)
 , _padding((type == Data::StickersType::Emoji)

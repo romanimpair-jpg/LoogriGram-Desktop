@@ -1026,7 +1026,7 @@ FieldAutocomplete::Inner::Inner(
 	_st.pathBg,
 	_st.pathFg,
 	[=] { update(); }))
-, _premiumMark(_session, st::stickersPremiumLock)
+, _premiumMark(st::stickersPremiumLock)
 , _previewTimer([=] { showPreview(); }) {
 	_session->downloaderTaskFinished(
 	) | rpl::on_next([=] {

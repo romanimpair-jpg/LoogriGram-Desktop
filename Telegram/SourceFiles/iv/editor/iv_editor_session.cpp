@@ -2021,8 +2021,7 @@ private:
 					return true;
 				},
 				showError,
-				st::sendMediaPreviewSize,
-				true);
+				st::sendMediaPreviewSize);
 			if (!list) {
 				return;
 			}
@@ -2048,7 +2047,6 @@ private:
 			? Storage::PrepareMediaList(
 				result.paths,
 				st::sendMediaPreviewSize,
-				true,
 				[show, peer](const PreparedList &rejected) {
 					if (show && show->valid()) {
 						::Data::ShowSendError(
