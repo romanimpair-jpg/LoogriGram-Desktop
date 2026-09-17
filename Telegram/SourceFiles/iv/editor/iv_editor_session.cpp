@@ -1013,26 +1013,7 @@ private:
 		return true;
 	}
 
-	[[nodiscard]] bool submitWouldBeEphemeral(
-			const std::optional<TextWithEntities> &simple) const {
-		if (!_composeAction) {
-			return false;
-		} else if (!simple) {
-			return _session->ephemeralMessages().isEphemeralBotReply(
-				_composeAction->replyTo.messageId);
-		}
-		auto message = Api::MessageToSend(*_composeAction);
-		message.textWithTags = {
-			simple->text,
-			TextUtilities::ConvertEntitiesToTextTags(simple->entities),
-		};
-		return _session->ephemeralMessages().wouldSend(message);
-	}
-
 	[[nodiscard]] bool submitRequested() {
-		if (_submittedPage || _submitApiRequested) {
-			return false;
-		}
 		if (hasPendingPreparation()) {
 			// Media is still being prepared/uploaded and is not yet part of
 			// the rich page, so SerializeAsSimple() would wrongly treat the
@@ -1206,171 +1187,8 @@ private:
 		return options;
 	}
 
-	[[nodiscard]] HistoryItem *ensureComposeLocalItem() {
-		if (const auto item = currentSubmittedItem()) {
-			return item;
-		}
-		if (!_composeAction) {
-			return nullptr;
-		}
-		auto action = *_composeAction;
-		const auto history = action.history;
-		const auto peer = history->peer;
-		auto flags = NewMessageFlags(peer);
-		if (action.replyTo) {
-			flags |= MessageFlag::HasReplyInfo;
-		}
-		Api::FillMessagePostFlags(action, peer, flags);
-		if (action.options.scheduled) {
-			flags |= MessageFlag::IsOrWasScheduled;
-		}
-		if (action.options.shortcutId) {
-			flags |= MessageFlag::ShortcutMessage;
-		}
-		if (!action.options.scheduled
-			&& !action.options.shortcutId
-			&& submitWouldBeEphemeral(std::nullopt)) {
-			flags |= MessageFlag::Ephemeral;
-		}
-		return history->addNewLocalMessage({
-			.id = _articleId.msg,
-			.flags = flags,
-			.from = NewMessageFromId(action),
-			.replyTo = action.replyTo,
-			.date = NewMessageDate(action.options),
-			.scheduleRepeatPeriod = action.options.scheduleRepeatPeriod,
-			.shortcutId = action.options.shortcutId,
-			.postAuthor = NewMessagePostAuthor(action),
-			.effectId = action.options.effectId,
-		}, TextWithEntities(), MTP_messageMediaEmpty());
-	}
-
-	[[nodiscard]] bool keepsInlineRichPage() const {
-		return (_mode == Mode::Edit)
-			&& _edited
-			&& _edited->inlinePage
-			&& _edited->inlinePage->part;
-	}
-
-	[[nodiscard]] bool applySubmittedLocalState(
-			const std::shared_ptr<const RichPage> &page) {
-		if (welcomeTemplatesCompose()) {
-			return true;
-		}
-		const auto item = (_mode == Mode::Compose)
-			? ensureComposeLocalItem()
-			: currentSubmittedItem();
-		if (!item) {
-			return false;
-		}
-		if (keepsInlineRichPage()) {
-			item->setFullRichPage(page);
-			return true;
-		}
-		item->applyLocalRichPage(page);
-		return true;
-	}
-
-	void restoreEditedItem() {
-		if (!_edited) {
-			return;
-		}
-		if (const auto item = currentSubmittedItem()) {
-			if (keepsInlineRichPage()) {
-				if (_edited->fullPage) {
-					item->setFullRichPage(_edited->fullPage);
-				} else {
-					item->clearFullRichPage();
-				}
-				return;
-			}
-			item->applyLocalRichPage(_edited->inlinePage, _edited->summary);
-			if (_edited->fullPage) {
-				item->setFullRichPage(_edited->fullPage);
-			}
-		}
-	}
-
-	void finishSubmittedWork() {
-		_submitApiRequested = false;
-		_submittedPage = nullptr;
-		_backgroundHold = nullptr;
-	}
-
-	void failSubmittedWork(bool showToast) {
-		if (showToast) {
-			showAttachmentFailedToast();
-		}
-		if (_mode == Mode::Edit) {
-			restoreEditedItem();
-		} else if (const auto item = currentSubmittedItem()) {
-			item->sendFailed();
-		}
-		finishSubmittedWork();
-	}
-
-	void discardSubmittedLocalItem() {
-		if (_mode == Mode::Edit) {
-			restoreEditedItem();
-		} else if (const auto item = currentSubmittedItem()) {
-			item->destroy();
-		}
-	}
-
-	[[nodiscard]] SerializeInputRichMessageMode submittedSerializeMode() const {
-		switch (_submitType) {
-		case ShowWindowDescriptor::SubmitType::Send:
-		case ShowWindowDescriptor::SubmitType::Save:
-			return SerializeInputRichMessageMode::FinalSubmit;
-		}
-		return SerializeInputRichMessageMode::Draft;
-	}
-
 	void showEmptySubmittedPageToast() const {
 		showToast(tr::lng_article_submit_empty(tr::now));
-	}
-
-	[[nodiscard]] bool pageContainsAttachment(
-			const std::vector<RichPage::Block> &blocks,
-			const AttachmentRecord &attachment) const {
-		for (const auto &block : blocks) {
-			if (blockMatchesAttachment(block, attachment)
-				|| pageContainsAttachment(block.blocks, attachment)) {
-				return true;
-			}
-			for (const auto &item : block.listItems) {
-				if (pageContainsAttachment(item.blocks, attachment)) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	[[nodiscard]] bool submittedPageContainsAttachment(
-			const AttachmentRecord &attachment) const {
-		return _submittedPage
-			&& pageContainsAttachment(_submittedPage->blocks, attachment);
-	}
-
-	[[nodiscard]] bool hasFailedSubmittedAttachments() const {
-		for (const auto &attachment : _attachments) {
-			if (attachment.state == AttachmentState::Failed
-				&& submittedPageContainsAttachment(attachment)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	[[nodiscard]] bool submittedAttachmentsReady() const {
-		for (const auto &attachment : _attachments) {
-			if (submittedPageContainsAttachment(attachment)
-				&& attachment.state != AttachmentState::Ready) {
-				return false;
-			}
-		}
-		return true;
 	}
 
 	[[nodiscard]] bool patchReadyAttachmentBlock(
@@ -1445,151 +1263,6 @@ private:
 			return patchedAny && patchedAll;
 		}
 		return patchReadyAttachmentBlock(block, attachment);
-	}
-
-	[[nodiscard]] bool patchSubmittedBlocks(
-			std::vector<RichPage::Block> &blocks) const {
-		for (auto &block : blocks) {
-			for (const auto &attachment : _attachments) {
-				if (blockMatchesAttachment(block, attachment)
-					&& !patchReadyAttachmentInBlock(block, attachment)) {
-					return false;
-				}
-			}
-			if (!patchSubmittedBlocks(block.blocks)) {
-				return false;
-			}
-			for (auto &item : block.listItems) {
-				if (!patchSubmittedBlocks(item.blocks)) {
-					return false;
-				}
-			}
-		}
-		return true;
-	}
-
-	[[nodiscard]] SerializeInputRichMessageResult serializeSubmittedPage() {
-		if (!_submittedPage) {
-			return {};
-		}
-		for (auto &attachment : _attachments) {
-			if (attachment.origin) {
-				refreshAttachmentInput(attachment);
-			}
-		}
-		auto page = RichPage(*_submittedPage);
-		return patchSubmittedBlocks(page.blocks)
-			? SerializeInputRichMessage(
-				_session,
-				page,
-				submittedSerializeMode())
-			: SerializeInputRichMessageResult();
-	}
-
-	void maybeContinueSubmittedRequest() {
-		if (!_submittedPage || _submitApiRequested) {
-			return;
-		}
-		if (hasFailedSubmittedAttachments()) {
-			failSubmittedWork(false);
-			return;
-		}
-		if (!submittedAttachmentsReady()) {
-			return;
-		}
-		const auto richMessage = serializeSubmittedPage();
-		if (richMessage.status == SerializeInputRichMessageStatus::EmptyContent) {
-			showEmptySubmittedPageToast();
-			discardSubmittedLocalItem();
-			finishSubmittedWork();
-			restartRichDraftAutosave();
-			return;
-		} else if (richMessage.status != SerializeInputRichMessageStatus::Success
-			|| !richMessage.value) {
-			failSubmittedWork(true);
-			return;
-		}
-		if (welcomeTemplatesCompose()) {
-			if (!_composeAction->history->peer
-					->canManageWelcomeMessages()) {
-				finishSubmittedWork();
-				return;
-			} else if (welcomeTemplatesLimitReached()) {
-				showWelcomeTemplatesLimitToast();
-				finishSubmittedWork();
-				restartRichDraftAutosave();
-				return;
-			}
-			dropDetachedReturnText();
-			const auto session = _session;
-			_session->welcomeMessages().sendRich(
-				_composeAction->history,
-				[session, page = _submittedPage] {
-					auto serialized = SerializeInputRichMessage(
-						session,
-						*page,
-						SerializeInputRichMessageMode::FinalSubmit);
-					const auto success = (serialized.status
-						== SerializeInputRichMessageStatus::Success);
-					return (success && serialized.value)
-						? std::move(serialized.value)
-						: std::optional<MTPInputRichMessage>();
-				});
-			finishSubmittedWork();
-			return;
-		}
-		const auto item = currentSubmittedItem();
-		if (!item) {
-			finishSubmittedWork();
-			return;
-		}
-		_submitApiRequested = true;
-		if (_mode == Mode::Compose) {
-			auto action = *_composeAction;
-			action.options = _submitOptions;
-			action.clearDraft = !detachedCompose();
-			if (action.clearDraft) {
-				action.history->clearCloudDraft(
-					action.replyTo.topicRootId,
-					action.replyTo.monoforumPeerId);
-			}
-			dropDetachedReturnText();
-			_session->api().sendRichMessage(
-				item,
-				*richMessage.value,
-				std::move(action));
-			finishSubmittedWork();
-			return;
-		}
-		Api::EditRichMessage(
-			not_null{ item },
-			[weak = base::make_weak(this)] {
-				if (const auto session = weak.get()) {
-					auto richMessage = session->serializeSubmittedPage();
-					return (richMessage.status
-						== SerializeInputRichMessageStatus::Success)
-						? std::move(richMessage.value)
-						: std::optional<MTPInputRichMessage>();
-				}
-				return std::optional<MTPInputRichMessage>();
-			},
-			editMessageOptions(not_null{ item }),
-			[weak = base::make_weak(this)](mtpRequestId) {
-				if (const auto session = weak.get()) {
-					session->finishSubmittedWork();
-				}
-			},
-			[weak = base::make_weak(this)](const QString &error, mtpRequestId) {
-				if (const auto session = weak.get()) {
-					session->restoreEditedItem();
-					if (error != u"MESSAGE_NOT_MODIFIED"_q) {
-						session->showToast(error.isEmpty()
-							? tr::lng_edit_error(tr::now)
-							: error);
-					}
-					session->finishSubmittedWork();
-				}
-			});
 	}
 
 	void requestSubmit(Api::SendOptions options) {
@@ -1885,20 +1558,18 @@ private:
 		_editorShow = nullptr;
 		_pendingPhotoEditSources.clear();
 		_photoEditSourceLifetime.destroy();
-		if (!_submittedPage && !_submitApiRequested) {
-			_backgroundHold = nullptr;
-			// Sync the local draft and the chat input field with the
-			// cloud draft saved on close, like an incoming server draft
-			// update: simple-text drafts go back into the message field,
-			// rich drafts show the draft preview. Must happen after the
-			// compose entry is released above, otherwise the field code
-			// still bypasses normal draft handling and skips the update.
-			// Skipped when no cloud draft object exists at all: then this
-			// editor never wrote one (blank open, blank close), and syncing
-			// would wipe an unrelated local draft (e.g. reply-only) through
-			// the cloud-to-local clear branch.
-			syncFieldWithCloudDraftAfterClose();
-		}
+		_backgroundHold = nullptr;
+		// Sync the local draft and the chat input field with the
+		// cloud draft saved on close, like an incoming server draft
+		// update: simple-text drafts go back into the message field,
+		// rich drafts show the draft preview. Must happen after the
+		// compose entry is released above, otherwise the field code
+		// still bypasses normal draft handling and skips the update.
+		// Skipped when no cloud draft object exists at all: then this
+		// editor never wrote one (blank open, blank close), and syncing
+		// would wipe an unrelated local draft (e.g. reply-only) through
+		// the cloud-to-local clear branch.
+		syncFieldWithCloudDraftAfterClose();
 	}
 
 public:
@@ -1972,15 +1643,10 @@ private:
 		cancelRichDraftAutosave();
 		cancelCloseWithDraftSave(_closeDraftSaveGeneration);
 		if (detachedCompose()
-			&& _composeOptions.returnText
-			&& !_submittedPage
-			&& !_submitApiRequested) {
+			&& _composeOptions.returnText) {
 			deliverDetachedReturnText();
 		}
-		const auto sync = _composeAction
-			&& _composeThreadKey
-			&& !_submittedPage
-			&& !_submitApiRequested;
+		const auto sync = _composeAction && _composeThreadKey;
 		if (sync && !hasPendingPreparation()) {
 			if (const auto prepared = prepareRichDraftForAutosave()) {
 				_composeAction->history->createCloudDraft(
@@ -3118,7 +2784,6 @@ private:
 		_richDraftAutosaveTimer.cancel();
 		saveRichDraftNow();
 		retryRichDraftCloseSaveIfNeeded();
-		maybeContinueSubmittedRequest();
 	}
 
 	void applyUploadedDocumentResult(
@@ -3194,7 +2859,6 @@ private:
 		_richDraftAutosaveTimer.cancel();
 		saveRichDraftNow();
 		retryRichDraftCloseSaveIfNeeded();
-		maybeContinueSubmittedRequest();
 	}
 
 	void markAttachmentFailed(FullMsgId uploadId) {
@@ -3213,7 +2877,6 @@ private:
 		showAttachmentFailedToast();
 		requestEditorUpdate();
 		retryRichDraftCloseSaveIfNeeded();
-		maybeContinueSubmittedRequest();
 	}
 
 	void requestEditorUpdate() {
@@ -4193,7 +3856,6 @@ private:
 	QPointer<Widget> _editor;
 	std::unique_ptr<WindowHost> _windowHost;
 	std::shared_ptr<ArticleSession> _backgroundHold;
-	std::shared_ptr<const RichPage> _submittedPage;
 	std::vector<AttachmentRecord> _attachments;
 	base::flat_map<uint64, QImage> _originalMediaImages;
 	base::flat_map<uint64, PendingPhotoEditSource> _pendingPhotoEditSources;
@@ -4222,7 +3884,6 @@ private:
 	int _pendingAttachmentPrepareCount = 0;
 	bool _preparing = false;
 	bool _submitDeferred = false;
-	bool _submitApiRequested = false;
 	bool _closeDraftSaveActive = false;
 	bool _closeDraftSaveWaiting = false;
 	bool _richDraftAutosaveRetryPending = false;
@@ -4285,8 +3946,6 @@ void ArticleSession::handleRichDraftAutosave(Widget::AutosaveEvent event) {
 	if (!_composeAction
 		|| !_composeThreadKey
 		|| !_windowHost
-		|| _submittedPage
-		|| _submitApiRequested
 		|| _closeDraftSaveActive) {
 		return;
 	}
@@ -4356,8 +4015,6 @@ void ArticleSession::saveRichDraftNow() {
 	if (!_composeAction
 		|| !_composeThreadKey
 		|| !_windowHost
-		|| _submittedPage
-		|| _submitApiRequested
 		|| _closeDraftSaveActive) {
 		return;
 	}
@@ -4403,9 +4060,7 @@ void ArticleSession::saveRichDraftForClose(uint64 generation) {
 		|| generation != _closeDraftSaveGeneration
 		|| !_composeAction
 		|| !_composeThreadKey
-		|| !_windowHost
-		|| _submittedPage
-		|| _submitApiRequested) {
+		|| !_windowHost) {
 		return;
 	}
 	if (hasVisibleFailedAttachments()) {
