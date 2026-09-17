@@ -397,15 +397,6 @@ Stats AbstractWriter::produceTestExample(
 	}());
 	sliceChat2.list.push_back([&] {
 		auto message = serviceMessage();
-		auto action = Data::ActionPaymentSent();
-		action.amount = counter();
-		action.currency = "GBP";
-		message.replyToMsgId = sliceChat2.list.front().id;
-		message.action.content = action;
-		return message;
-	}());
-	sliceChat2.list.push_back([&] {
-		auto message = serviceMessage();
 		auto action = Data::ActionPhoneCall();
 		action.duration = counter();
 		action.state = Data::ActionPhoneCall::State::Busy;

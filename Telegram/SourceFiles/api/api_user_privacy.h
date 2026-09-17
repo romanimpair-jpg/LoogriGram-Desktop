@@ -31,7 +31,6 @@ public:
 		Voices,
 		About,
 		Birthday,
-		GiftsAutoSave,
 		SavedMusic,
 	};
 	enum class Option {

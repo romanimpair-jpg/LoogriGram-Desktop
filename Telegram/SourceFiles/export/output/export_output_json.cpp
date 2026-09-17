@@ -1729,16 +1729,6 @@ QByteArray SerializeMessage(
 		pushAction("score_in_game");
 		pushReplyToMsgId("game_message_id");
 		push("score", data.score);
-	}, [&](const ActionPaymentSent &data) {
-		pushAction("send_payment");
-		push("amount", data.amount);
-		push("currency", data.currency);
-		pushReplyToMsgId("invoice_message_id");
-		if (data.recurringUsed) {
-			push("recurring", "used");
-		} else if (data.recurringInit) {
-			push("recurring", "init");
-		}
 	}, [&](const ActionPhoneCall &data) {
 		pushActor();
 		pushAction(data.conferenceId ? "conference_call" : "phone_call");
@@ -1859,15 +1849,6 @@ QByteArray SerializeMessage(
 	}, [&](const ActionWebViewDataSent &data) {
 		pushAction("send_webview_data");
 		push("text", data.text);
-	}, [&](const ActionGiftPremium &data) {
-		pushActor();
-		pushAction("send_premium_gift");
-		if (!data.cost.isEmpty()) {
-			push("cost", data.cost);
-		}
-		if (data.days) {
-			push("days", data.days);
-		}
 	}, [&](const ActionTopicCreate &data) {
 		pushActor();
 		pushAction("topic_created");
@@ -1895,78 +1876,12 @@ QByteArray SerializeMessage(
 			values.push_back(Data::NumberToString(one.value));
 		}
 		push("peers", SerializeArray(context, values));
-	}, [&](const ActionGiftCode &data) {
-		pushAction("gift_code_prize");
-		push("gift_code", data.code);
-		if (data.boostPeerId) {
-			push("boost_peer_id", data.boostPeerId);
-		}
-		push("days", data.days);
-		push("unclaimed", data.unclaimed);
-		push("via_giveaway", data.viaGiveaway);
-	}, [&](const ActionGiveawayLaunch &data) {
-		pushAction("giveaway_launch");
-	}, [&](const ActionGiveawayResults &data) {
-		pushAction("giveaway_results");
-		push("winners", data.winners);
-		push("unclaimed", data.unclaimed);
-		push("stars", data.credits);
 	}, [&](const ActionSetChatWallPaper &data) {
 		pushActor();
 		pushAction(data.same
 			? "set_same_chat_wallpaper"
 			: "set_chat_wallpaper");
 		pushReplyToMsgId("message_id");
-	}, [&](const ActionBoostApply &data) {
-		pushActor();
-		pushAction("boost_apply");
-		push("boosts", data.boosts);
-	}, [&](const ActionPaymentRefunded &data) {
-		pushAction("refunded_payment");
-		push("amount", data.amount);
-		push("currency", data.currency);
-		pushBare("peer_name", wrapPeerName(data.peerId));
-		push("peer_id", data.peerId);
-		push("charge_id", data.transactionId);
-	}, [&](const ActionGiftCredits &data) {
-		pushActor();
-		pushAction(data.amount.ton()
-			? "send_ton_gift"
-			: "send_stars_gift");
-		if (!data.cost.isEmpty()) {
-			push("cost", data.cost);
-		}
-		if (data.amount) {
-			push("amount_whole", data.amount.whole());
-			push("amount_nano", data.amount.nano());
-		}
-	}, [&](const ActionPrizeStars &data) {
-		pushActor();
-		pushAction("stars_prize");
-		push("boost_peer_id", data.peerId);
-		pushBare("boost_peer_name", wrapPeerName(data.peerId));
-		push("stars", data.amount);
-		push("is_unclaimed", data.isUnclaimed);
-		push("giveaway_msg_id", data.giveawayMsgId);
-		push("transaction_id", data.transactionId);
-	}, [&](const ActionStarGift &data) {
-		pushActor();
-		pushAction("send_star_gift");
-		push("gift_id", data.giftId);
-		push("stars", data.stars);
-		push("is_limited", data.limited);
-		push("is_anonymous", data.anonymous);
-		pushBare("gift_text", SerializeText(context, data.text));
-	}, [&](const ActionPaidMessagesRefunded &data) {
-		pushActor();
-		pushAction("paid_messages_refund");
-		push("messages_count", data.messages);
-		push("stars_count", data.stars);
-	}, [&](const ActionPaidMessagesPrice &data) {
-		pushActor();
-		pushAction("paid_messages_price_change");
-		push("price_stars", data.stars);
-		push("is_broadcast_messages_allowed", data.broadcastAllowed);
 	}, [&](const ActionTodoCompletions &data) {
 		pushActor();
 		pushAction("todo_completions");
@@ -2003,30 +1918,6 @@ QByteArray SerializeMessage(
 		pushActor();
 		pushAction("poll_delete_answer");
 		push("option", data.option);
-	}, [&](const ActionSuggestedPostApproval &data) {
-		pushActor();
-		pushAction("process_suggested_post");
-		if (data.rejected) {
-			pushBare("rejected", "true");
-			if (!data.rejectComment.isEmpty()) {
-				push("comment", data.rejectComment);
-			}
-		} else {
-			push("price_amount_whole", NumberToString(data.price.whole()));
-			push("price_amount_nano", NumberToString(data.price.nano()));
-			push("price_currency", data.price.ton() ? "TON" : "Stars");
-			push("scheduled_date", data.scheduleDate);
-		}
-	}, [&](const ActionSuggestedPostSuccess &data) {
-		pushActor();
-		pushAction("suggested_post_success");
-		push("price_amount_whole", NumberToString(data.price.whole()));
-		push("price_amount_nano", NumberToString(data.price.nano()));
-		push("price_currency", data.price.ton() ? "TON" : "Stars");
-	}, [&](const ActionSuggestedPostRefund &data) {
-		pushActor();
-		pushAction("suggested_post_refund");
-		push("user_initiated", data.payerInitiated);
 	}, [&](const ActionSuggestBirthday &data) {
 		pushActor();
 		pushAction("suggest_birthday");

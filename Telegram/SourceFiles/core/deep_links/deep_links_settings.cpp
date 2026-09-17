@@ -778,38 +778,6 @@ void RegisterSettingsHandlers(Router &router) {
 	});
 
 	router.add(u"settings"_q, {
-		.path = u"privacy/gifts"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowPrivacyBox(
-				ctx,
-				PrivacyKey::GiftsAutoSave,
-				[=] { return std::make_unique<::Settings::GiftsAutoSavePrivacyController>(); });
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"privacy/gifts/never"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowPrivacyBox(
-				ctx,
-				PrivacyKey::GiftsAutoSave,
-				[=] { return std::make_unique<::Settings::GiftsAutoSavePrivacyController>(); },
-				u"privacy/never"_q);
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"privacy/gifts/always"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowPrivacyBox(
-				ctx,
-				PrivacyKey::GiftsAutoSave,
-				[=] { return std::make_unique<::Settings::GiftsAutoSavePrivacyController>(); },
-				u"privacy/always"_q);
-		}},
-	});
-
-	router.add(u"settings"_q, {
 		.path = u"privacy/birthday"_q,
 		.action = CodeBlock{ [](const Context &ctx) {
 			return ShowPrivacyBox(

@@ -1483,51 +1483,6 @@ object_ptr<Ui::RpWidget> BirthdayPrivacyController::setupAboveWidget(
 	return result;
 }
 
-UserPrivacy::Key GiftsAutoSavePrivacyController::key() const {
-	return Key::GiftsAutoSave;
-}
-
-rpl::producer<QString> GiftsAutoSavePrivacyController::title() const {
-	return tr::lng_edit_privacy_gifts_title();
-}
-
-auto GiftsAutoSavePrivacyController::optionsTitleKey() const
--> rpl::producer<QString> {
-	return tr::lng_edit_privacy_gifts_header();
-}
-
-auto GiftsAutoSavePrivacyController::exceptionButtonTextKey(
-	Exception exception) const
--> rpl::producer<QString> {
-	switch (exception) {
-	case Exception::Always:
-		return tr::lng_edit_privacy_gifts_always_empty();
-	case Exception::Never:
-		return tr::lng_edit_privacy_gifts_never_empty();
-	}
-	Unexpected("Invalid exception value.");
-}
-
-rpl::producer<QString> GiftsAutoSavePrivacyController::exceptionBoxTitle(
-		Exception exception) const {
-	switch (exception) {
-	case Exception::Always:
-		return tr::lng_edit_privacy_gifts_always_title();
-	case Exception::Never: return tr::lng_edit_privacy_gifts_never_title();
-	}
-	Unexpected("Invalid exception value.");
-}
-
-auto GiftsAutoSavePrivacyController::exceptionsDescription() const
--> rpl::producer<QString> {
-	return tr::lng_edit_privacy_lastseen_exceptions();
-}
-
-bool GiftsAutoSavePrivacyController::allowMiniAppsToggle(
-		Exception exception) const {
-	return true;
-}
-
 UserPrivacy::Key SavedMusicPrivacyController::key() const {
 	return Key::SavedMusic;
 }

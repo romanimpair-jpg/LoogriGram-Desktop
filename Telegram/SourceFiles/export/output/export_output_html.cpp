@@ -3994,19 +3994,6 @@ auto HtmlWriter::Wrap::pushMessage(
 			+ NumberToString(data.score)
 			+ " in "
 			+ wrapReplyToLink("this game");
-	}, [&](const ActionPaymentSent &data) {
-		const auto amount = FormatMoneyAmount(data.amount, data.currency);
-		if (data.recurringUsed) {
-			return "You were charged " + amount + " via recurring payment";
-		}
-		auto result = "You have successfully transferred "
-			+ amount
-			+ " for "
-			+ wrapReplyToLink("this invoice");
-		if (data.recurringInit) {
-			result += " and allowed future recurring payments";
-		}
-		return result;
 	}, [&](const ActionPhoneCall &data) {
 		return QByteArray();
 	}, [&](const ActionScreenshotTaken &data) {
@@ -4130,16 +4117,6 @@ auto HtmlWriter::Wrap::pushMessage(
 		return "You have just successfully transferred data from the &laquo;"
 			+ SerializeString(data.text)
 			+ "&raquo; button to the bot";
-	}, [&](const ActionGiftPremium &data) {
-		if (!data.days || data.cost.isEmpty()) {
-			return serviceFrom + " sent you a gift.";
-		}
-		return serviceFrom
-			+ " sent you a gift for "
-			+ data.cost
-			+ ": Telegram Premium for "
-			+ QString::number(data.days).toUtf8()
-			+ " days.";
 	}, [&](const ActionTopicCreate &data) {
 		return serviceFrom
 			+ " created topic &laquo;"
@@ -4169,99 +4146,6 @@ auto HtmlWriter::Wrap::pushMessage(
 					+ wrapReplyToLink("the same background")
 					+ " for this chat")
 				: " set a new background for this chat");
-	}, [&](const ActionGiftCode &data) {
-		return data.unclaimed
-			? ("This is an unclaimed Telegram Premium for "
-				+ NumberToString(data.days)
-				+ (data.days > 1 ? " days" : " day")
-				+ " prize in a giveaway organized by a channel.")
-			: data.viaGiveaway
-			? ("You won a Telegram Premium for "
-				+ NumberToString(data.days)
-				+ (data.days > 1 ? " days" : " day")
-				+ " prize in a giveaway organized by a channel.")
-			: ("You've received a Telegram Premium for "
-				+ NumberToString(data.days)
-				+ (data.days > 1 ? " days" : " day")
-				+ " gift from a channel.");
-	}, [&](const ActionGiveawayLaunch &data) {
-		return serviceFrom + " just started a giveaway "
-			"of Telegram Premium subscriptions to its followers.";
-	}, [&](const ActionGiveawayResults &data) {
-		return !data.winners
-			? "No winners of the giveaway could be selected."
-			: (data.credits && data.unclaimed)
-			? "Some winners of the giveaway were randomly selected by "
-				"Telegram and received their prize."
-			: (!data.credits && data.unclaimed)
-			? "Some winners of the giveaway were randomly selected by "
-				"Telegram and received private messages with giftcodes."
-			: (data.credits && !data.unclaimed)
-			? NumberToString(data.winners) + " of the giveaway was randomly "
-				"selected by Telegram and received their prize."
-			: NumberToString(data.winners) + " of the giveaway was randomly "
-				"selected by Telegram and received private messages with "
-				"giftcodes.";
-	}, [&](const ActionBoostApply &data) {
-		return serviceFrom
-			+ " boosted the group "
-			+ QByteArray::number(data.boosts)
-			+ (data.boosts > 1 ? " times" : " time");
-	}, [&](const ActionPaymentRefunded &data) {
-		const auto amount = FormatMoneyAmount(data.amount, data.currency);
-		auto result = peers.wrapPeerName(data.peerId)
-			+ " refunded back "
-			+ amount;
-		return result;
-	}, [&](const ActionGiftCredits &data) {
-		if (!data.amount || data.cost.isEmpty()) {
-			return serviceFrom + " sent you a gift.";
-		}
-		return serviceFrom
-			+ " sent you a gift for "
-			+ data.cost
-			+ ": "
-			+ QString::number(data.amount.value()).toUtf8()
-			+ (data.amount.ton() ? " TON." : " Telegram Stars.");
-	}, [&](const ActionPrizeStars &data) {
-		return "You won a prize in a giveaway organized by "
-			+ peers.wrapPeerName(data.peerId)
-			+ ".\n Your prize is "
-			+ QString::number(data.amount).toUtf8()
-			+ " Telegram Stars.";
-	}, [&](const ActionStarGift &data) {
-		return serviceFrom
-			+ " sent you a gift of "
-			+ QByteArray::number(data.stars)
-			+ " Telegram Stars.";
-	}, [&](const ActionPaidMessagesRefunded &data) {
-		auto result = message.out
-			? ("You refunded "
-				+ QString::number(data.stars).toUtf8()
-				+ " Stars for "
-				+ QString::number(data.messages).toUtf8()
-				+ " messages to "
-				+ peers.wrapPeerName(dialog.peerId))
-			: (peers.wrapPeerName(dialog.peerId)
-				+ " refunded "
-				+ QString::number(data.stars).toUtf8()
-				+ " Stars for "
-				+ QString::number(data.messages).toUtf8()
-				+ " messages to you");
-		return result;
-	}, [&](const ActionPaidMessagesPrice &data) {
-		if (isChannel) {
-			auto result = !data.broadcastAllowed
-				? "Direct messages were disabled."
-				: ("Price per direct message changed to "
-					+ QString::number(data.stars).toUtf8()
-					+ " Telegram Stars.");
-			return result;
-		}
-		auto result = "Price per message changed to "
-			+ QString::number(data.stars).toUtf8()
-			+ " Telegram Stars.";
-		return result;
 	}, [&](const ActionTodoCompletions &data) {
 		auto completed = QByteArrayList();
 		for (const auto index : data.completed) {
@@ -4314,35 +4198,6 @@ auto HtmlWriter::Wrap::pushMessage(
 		return serviceFrom + " removed &quot;"
 			+ data.option
 			+ "&quot; from the poll.";
-	}, [&](const ActionSuggestedPostApproval &data) {
-		return serviceFrom
-			+ (data.rejected ? " rejected " : " approved ")
-			+ "your suggested post"
-			+ (data.price
-				? (", for "
-					+ QString::number(data.price.value()).toUtf8()
-					+ (data.price.ton() ? " TON" : " stars"))
-				: "")
-			+ (data.scheduleDate
-				? (", "
-					+ FormatDateText(data.scheduleDate)
-					+ " at "
-					+ FormatTimeText(data.scheduleDate))
-				: "")
-			+ (data.rejectComment.isEmpty()
-				? "."
-				: (", with comment: &quot;"
-					+ SerializeString(data.rejectComment)
-					+ "&quot;"));
-	}, [&](const ActionSuggestedPostSuccess &data) {
-		return "The paid post was shown for 24 hours and "
-			+ QString::number(data.price.value()).toUtf8()
-			+ (data.price.ton() ? " TON" : " stars")
-			+ " were transferred to the channel.";
-	}, [&](const ActionSuggestedPostRefund &data) {
-		return QByteArray() + (data.payerInitiated
-			? "The user refunded the payment, post was deleted."
-			: "The admin deleted the post early, the payment was refunded.");
 	}, [&](const ActionSuggestBirthday &data) {
 		return serviceFrom
 			+ " suggests to add a date of birth: "

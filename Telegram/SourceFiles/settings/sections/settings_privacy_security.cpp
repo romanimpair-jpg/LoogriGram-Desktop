@@ -865,16 +865,6 @@ void BuildPrivacySection(SectionBuilder &builder) {
 	});
 
 	builder.addPrivacyButton({
-		.id = u"privacy/gifts"_q,
-		.title = tr::lng_settings_gifts_privacy(),
-		.key = Key::GiftsAutoSave,
-		.controllerFactory = [] {
-			return std::make_unique<GiftsAutoSavePrivacyController>();
-		},
-		.keywords = { u"gifts"_q },
-	});
-
-	builder.addPrivacyButton({
 		.id = u"privacy/bio"_q,
 		.title = tr::lng_settings_bio_privacy(),
 		.key = Key::About,

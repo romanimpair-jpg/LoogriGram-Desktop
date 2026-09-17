@@ -318,27 +318,6 @@ public:
 
 };
 
-class GiftsAutoSavePrivacyController final : public EditPrivacyController {
-public:
-	using Option = EditPrivacyBox::Option;
-	using Exception = EditPrivacyBox::Exception;
-
-	Key key() const override;
-
-	rpl::producer<QString> title() const override;
-	rpl::producer<QString> optionsTitleKey() const override;
-	rpl::producer<QString> exceptionButtonTextKey(
-		Exception exception) const override;
-	rpl::producer<QString> exceptionBoxTitle(
-		Exception exception) const override;
-	rpl::producer<QString> exceptionsDescription() const override;
-	bool allowMiniAppsToggle(Exception exception) const override;
-
-	// LoogriGram: this box also held a "show gift icon" toggle and the list
-	// of accepted gift types. Both are premium-only; they stayed locked and
-	// reverted, and saving them did nothing.
-};
-
 class SavedMusicPrivacyController final : public EditPrivacyController {
 public:
 	using Option = EditPrivacyBox::Option;

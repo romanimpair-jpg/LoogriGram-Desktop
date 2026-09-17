@@ -1790,20 +1790,6 @@ UserpicsSlice ParseUserpicsSlice(
 	return result;
 }
 
-[[nodiscard]] ActionStarGift ParseStarGift(const MTPStarGift &gift) {
-	return gift.match([&](const MTPDstarGift &gift) {
-		return ActionStarGift{
-			.giftId = uint64(gift.vid().v),
-			.stars = int64(gift.vstars().v),
-			.limited = gift.is_limited(),
-		};
-	}, [&](const MTPDstarGiftUnique &gift) {
-		return ActionStarGift{
-			.giftId = uint64(gift.vid().v),
-		};
-	});
-}
-
 File &Story::file() {
 	return media.file();
 }
@@ -2422,12 +2408,7 @@ ServiceAction ParseServiceAction(
 	}, [&](const MTPDmessageActionPaymentSentMe &data) {
 		// Should not be in user inbox.
 	}, [&](const MTPDmessageActionPaymentSent &data) {
-		auto content = ActionPaymentSent();
-		content.currency = ParseString(data.vcurrency());
-		content.amount = data.vtotal_amount().v;
-		content.recurringInit = data.is_recurring_init();
-		content.recurringUsed = data.is_recurring_used();
-		result.content = content;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionPhoneCall &data) {
 		auto content = ActionPhoneCall();
 		if (const auto duration = data.vduration()) {
@@ -2558,12 +2539,7 @@ ServiceAction ParseServiceAction(
 		content.text = ParseString(data.vtext());
 		result.content = content;
 	}, [&](const MTPDmessageActionGiftPremium &data) {
-		auto content = ActionGiftPremium();
-		content.cost = Ui::FillAmountAndCurrency(
-			data.vamount().v,
-			qs(data.vcurrency())).toUtf8();
-		content.days = data.vdays().v;
-		result.content = content;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionTopicCreate &data) {
 		auto content = ActionTopicCreate();
 		content.title = ParseString(data.vtitle());
@@ -2599,83 +2575,31 @@ ServiceAction ParseServiceAction(
 		content.buttonId = data.vbutton_id().v;
 		result.content = content;
 	}, [&](const MTPDmessageActionGiftCode &data) {
-		auto content = ActionGiftCode();
-		content.boostPeerId = data.vboost_peer()
-			? peerFromMTP(*data.vboost_peer())
-			: PeerId();
-		content.viaGiveaway = data.is_via_giveaway();
-		content.unclaimed = data.is_unclaimed();
-		content.days = data.vdays().v;
-		content.code = data.vslug().v;
-		result.content = content;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionGiveawayLaunch &data) {
-		auto content = ActionGiveawayLaunch();
-		result.content = content;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionGiveawayResults &data) {
-		auto content = ActionGiveawayResults();
-		content.winners = data.vwinners_count().v;
-		content.unclaimed = data.vunclaimed_count().v;
-		content.credits = data.is_stars();
-		result.content = content;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionBoostApply &data) {
-		auto content = ActionBoostApply();
-		content.boosts = data.vboosts().v;
-		result.content = content;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionRequestedPeerSentMe &data) {
 		// Should not be in user inbox.
 	}, [&](const MTPDmessageActionPaymentRefunded &data) {
-		auto content = ActionPaymentRefunded();
-		content.currency = ParseString(data.vcurrency());
-		content.amount = data.vtotal_amount().v;
-		content.peerId = ParsePeerId(data.vpeer());
-		content.transactionId = data.vcharge().data().vid().v;
-		result.content = content;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionGiftStars &data) {
-		auto content = ActionGiftCredits();
-		content.cost = Ui::FillAmountAndCurrency(
-			data.vamount().v,
-			qs(data.vcurrency())).toUtf8();
-		content.amount = CreditsAmount(data.vstars().v, CreditsType::Stars);
-		result.content = content;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionGiftTon &data) {
-		auto content = ActionGiftCredits();
-		content.cost = Ui::FillAmountAndCurrency(
-			data.vamount().v,
-			qs(data.vcurrency())).toUtf8();
-		content.amount = CreditsAmount(
-			data.vamount().v / uint64(1'000'000'000),
-			data.vamount().v % uint64(1'000'000'000),
-			CreditsType::Ton);
-		result.content = content;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionPrizeStars &data) {
-		result.content = ActionPrizeStars{
-			.peerId = ParsePeerId(data.vboost_peer()),
-			.amount = data.vstars().v,
-			.transactionId = data.vtransaction_id().v,
-			.giveawayMsgId = data.vgiveaway_msg_id().v,
-			.isUnclaimed = data.is_unclaimed(),
-		};
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionStarGift &data) {
-		auto content = ParseStarGift(data.vgift());
-		content.text = (data.vmessage()
-			? ParseText(
-				data.vmessage()->data().vtext(),
-				data.vmessage()->data().ventities().v)
-			: std::vector<TextPart>());
-		content.anonymous = data.is_name_hidden();
-		result.content = content;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionStarGiftUnique &data) {
-		result.content = ParseStarGift(data.vgift());
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionPaidMessagesRefunded &data) {
-		result.content = ActionPaidMessagesRefunded{
-			.messages = data.vcount().v,
-			.stars = int64(data.vstars().v),
-		};
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionPaidMessagesPrice &data) {
-		result.content = ActionPaidMessagesPrice{
-			.stars = int(data.vstars().v),
-			.broadcastAllowed = data.is_broadcast_messages_allowed(),
-		};
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionTodoCompletions &data) {
 		const auto take = [](const MTPVector<MTPint> &list) {
 			return list.v
@@ -2695,21 +2619,11 @@ ServiceAction ParseServiceAction(
 	}, [&](const MTPDmessageActionPollAppendAnswer &data) {
 		result.content = ActionPollAppendAnswer{};
 	}, [&](const MTPDmessageActionSuggestedPostApproval &data) {
-		result.content = ActionSuggestedPostApproval{
-			.rejectComment = data.vreject_comment().value_or_empty(),
-			.scheduleDate = data.vschedule_date().value_or_empty(),
-			.price = CreditsAmountFromTL(data.vprice()),
-			.rejected = data.is_rejected(),
-			.balanceTooLow = data.is_balance_too_low(),
-		};
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionSuggestedPostSuccess &data) {
-		result.content = ActionSuggestedPostSuccess{
-			.price = CreditsAmountFromTL(data.vprice()),
-		};
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionSuggestedPostRefund &data) {
-		result.content = ActionSuggestedPostRefund{
-			.payerInitiated = data.is_payer_initiated(),
-		};
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionConferenceCall &data) {
 		auto content = ActionPhoneCall();
 		using State = ActionPhoneCall::State;
@@ -2734,20 +2648,9 @@ ServiceAction ParseServiceAction(
 			fields.vyear().value_or_empty());
 		result.content = content;
 	}, [&](const MTPDmessageActionStarGiftPurchaseOffer &data) {
-		auto content = ParseStarGift(data.vgift());
-		content.offer = true;
-		content.offerPrice = CreditsAmountFromTL(data.vprice());
-		content.offerExpireAt = data.vexpires_at().v;
-		content.offerAccepted = data.is_accepted();
-		content.offerDeclined = data.is_declined();
-		result.content = content;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionStarGiftPurchaseOfferDeclined &data) {
-		auto content = ParseStarGift(data.vgift());
-		content.offer = true;
-		content.offerDeclined = true;
-		content.offerExpired = data.is_expired();
-		content.offerPrice = CreditsAmountFromTL(data.vprice());
-		result.content = content;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
 	}, [&](const MTPDmessageActionNewCreatorPending &data) {
 		auto content = ActionNewCreatorPending();
 		content.newCreatorId = data.vnew_creator_id().v;

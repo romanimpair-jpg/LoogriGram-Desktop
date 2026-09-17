@@ -849,13 +849,6 @@ struct ActionGameScore {
 	int score = 0;
 };
 
-struct ActionPaymentSent {
-	Utf8String currency;
-	uint64 amount = 0;
-	bool recurringInit = false;
-	bool recurringUsed = false;
-};
-
 struct ActionPhoneCall {
 	enum class State {
 		Unknown,
@@ -952,11 +945,6 @@ struct ActionWebViewDataSent {
 	Utf8String text;
 };
 
-struct ActionGiftPremium {
-	Utf8String cost;
-	int days = 0;
-};
-
 struct ActionTopicCreate {
 	Utf8String title;
 };
@@ -976,75 +964,9 @@ struct ActionSetChatWallPaper {
 	// #TODO wallpapers
 };
 
-struct ActionGiftCode {
-	QByteArray code;
-	PeerId boostPeerId = 0;
-	int days = 0;
-	bool viaGiveaway = false;
-	bool unclaimed = false;
-};
-
 struct ActionRequestedPeer {
 	std::vector<PeerId> peers;
 	int buttonId = 0;
-};
-
-struct ActionGiveawayLaunch {
-};
-
-struct ActionGiveawayResults {
-	int winners = 0;
-	int unclaimed = 0;
-	bool credits = false;
-};
-
-struct ActionBoostApply {
-	int boosts = 0;
-};
-
-struct ActionPaymentRefunded {
-	PeerId peerId = 0;
-	Utf8String currency;
-	uint64 amount = 0;
-	Utf8String transactionId;
-};
-
-struct ActionGiftCredits {
-	Utf8String cost;
-	CreditsAmount amount;
-};
-
-struct ActionPrizeStars {
-	PeerId peerId = 0;
-	uint64 amount = 0;
-	Utf8String transactionId;
-	int32 giveawayMsgId = 0;
-	bool isUnclaimed = false;
-};
-
-struct ActionStarGift {
-	uint64 giftId = 0;
-	int64 stars = 0;
-	std::vector<TextPart> text;
-	bool anonymous = false;
-	bool limited = false;
-
-	CreditsAmount offerPrice;
-	TimeId offerExpireAt = 0;
-	bool offer = false;
-	bool offerAccepted = false;
-	bool offerDeclined = false;
-	bool offerExpired = false;
-};
-
-struct ActionPaidMessagesRefunded {
-	int messages = 0;
-	int64 stars = 0;
-};
-
-struct ActionPaidMessagesPrice {
-	int stars = 0;
-	bool broadcastAllowed = false;
 };
 
 struct ActionTodoCompletions {
@@ -1062,22 +984,6 @@ struct ActionPollAppendAnswer {
 
 struct ActionPollDeleteAnswer {
 	Utf8String option;
-};
-
-struct ActionSuggestedPostApproval {
-	Utf8String rejectComment;
-	TimeId scheduleDate = 0;
-	CreditsAmount price;
-	bool rejected = false;
-	bool balanceTooLow = false;
-};
-
-struct ActionSuggestedPostSuccess {
-	CreditsAmount price;
-};
-
-struct ActionSuggestedPostRefund {
-	bool payerInitiated = false;
 };
 
 struct ActionSuggestBirthday {
@@ -1121,7 +1027,6 @@ struct ServiceAction {
 		ActionPinMessage,
 		ActionHistoryClear,
 		ActionGameScore,
-		ActionPaymentSent,
 		ActionPhoneCall,
 		ActionScreenshotTaken,
 		ActionCustomAction,
@@ -1138,29 +1043,15 @@ struct ServiceAction {
 		ActionChatJoinedByRequest,
 		ActionChatJoinedViaCommunity,
 		ActionWebViewDataSent,
-		ActionGiftPremium,
 		ActionTopicCreate,
 		ActionTopicEdit,
 		ActionSuggestProfilePhoto,
 		ActionRequestedPeer,
 		ActionSetChatWallPaper,
-		ActionGiftCode,
-		ActionGiveawayLaunch,
-		ActionGiveawayResults,
-		ActionBoostApply,
-		ActionPaymentRefunded,
-		ActionGiftCredits,
-		ActionPrizeStars,
-		ActionStarGift,
-		ActionPaidMessagesRefunded,
-		ActionPaidMessagesPrice,
 		ActionTodoCompletions,
 		ActionTodoAppendTasks,
 		ActionPollAppendAnswer,
 		ActionPollDeleteAnswer,
-		ActionSuggestedPostApproval,
-		ActionSuggestedPostSuccess,
-		ActionSuggestedPostRefund,
 		ActionSuggestBirthday,
 		ActionNoForwardsToggle,
 		ActionNoForwardsRequest,
