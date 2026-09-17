@@ -126,7 +126,6 @@ void PostsSearch::pushStateUpdate(const Entry &entry) {
 		Assert(_floodState.has_value());
 		auto copy = _floodState;
 		copy->query = *_queryExact;
-		copy->needsPremium = true;
 		_stateUpdates.fire(PostsSearchState{
 			.intro = std::move(copy),
 		});

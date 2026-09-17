@@ -136,14 +136,14 @@ rpl::producer<> PostsSearchIntro::searchRequests() const {
 void PostsSearchIntro::setup() {
 	auto title = _state.value(
 	) | rpl::map([](const PostsSearchIntroState &state) {
-		return (state.needsPremium || state.freeSearchesLeft > 0)
+		return (state.freeSearchesLeft > 0)
 			? tr::lng_posts_title()
 			: tr::lng_posts_limit_reached();
 	}) | rpl::flatten_latest();
 
 	auto subtitle = _state.value(
 	) | rpl::map([](const PostsSearchIntroState &state) {
-		return (state.needsPremium || state.freeSearchesLeft > 0)
+		return (state.freeSearchesLeft > 0)
 			? tr::lng_posts_start()
 			: tr::lng_posts_limit_about(
 				lt_count,
@@ -153,9 +153,7 @@ void PostsSearchIntro::setup() {
 	auto footer = _state.value(
 	) | rpl::map([](const PostsSearchIntroState &state)
 	-> rpl::producer<QString> {
-		if (state.needsPremium) {
-			return tr::lng_posts_need_subscribe();
-		} else if (state.freeSearchesLeft > 0) {
+		if (state.freeSearchesLeft > 0) {
 			return tr::lng_posts_remaining(
 				lt_count,
 				rpl::single(state.freeSearchesLeft * 1.));
@@ -197,7 +195,9 @@ void PostsSearchIntro::setup() {
 
 	_state.value(
 	) | rpl::on_next([=](const PostsSearchIntroState &state) {
-		if (state.query.trimmed().isEmpty() && !state.needsPremium) {
+		// LoogriGram: a non-subscriber was shown "Subscribe to search" here
+		// whatever the free search count said. Only the count decides now.
+		if (state.query.trimmed().isEmpty()) {
 			_button->resize(_button->width(), 0);
 			_content->resizeToWidth(width());
 			return;
@@ -207,9 +207,7 @@ void PostsSearchIntro::setup() {
 		for (const auto child : copy) {
 			delete child;
 		}
-		if (state.needsPremium) {
-			_button->setText(tr::lng_posts_subscribe());
-		} else if (state.freeSearchesLeft > 0) {
+		if (state.freeSearchesLeft > 0) {
 			_button->setText(rpl::single(QString()));
 
 			SetSearchButtonLabel(_button, tr::lng_posts_search_button(

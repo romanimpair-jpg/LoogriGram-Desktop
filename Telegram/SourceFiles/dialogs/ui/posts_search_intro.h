@@ -22,7 +22,6 @@ struct PostsSearchIntroState {
 	int freeSearchesPerDay = 0;
 	int freeSearchesLeft = 0;
 	TimeId nextFreeSearchTime = 0;
-	uint32 needsPremium : 1 = 0;
 
 	friend inline bool operator==(
 		PostsSearchIntroState,
