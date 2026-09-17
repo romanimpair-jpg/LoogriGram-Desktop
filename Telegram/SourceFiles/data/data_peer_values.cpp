@@ -227,16 +227,14 @@ inline auto DefaultRestrictionValue(
 		using namespace rpl::mappers;
 		const auto other = rights & ~(ChatRestriction::SendVoiceMessages
 			| ChatRestriction::SendVideoMessages);
+		const auto blocking = UserDataFlag::Deleted
+			| UserDataFlag::RequiresPremiumToWrite;
 		auto allowedAny = PeerFlagsValue(
 			user,
-			(UserDataFlag::Deleted | UserDataFlag::RequiresPremiumToWrite)
+			blocking
 		) | rpl::map([=](UserDataFlags flags) {
-			return (flags & UserDataFlag::Deleted)
-				? rpl::single(false)
-				: !(flags & UserDataFlag::RequiresPremiumToWrite)
-				? rpl::single(true)
-				: AmPremiumValue(&user->session());
-		}) | rpl::flatten_latest();
+			return !(flags & blocking);
+		});
 		if (other) {
 			return allowedAny;
 		}
@@ -427,10 +425,6 @@ rpl::producer<bool> PeerPremiumValue(not_null<PeerData*> peer) {
 	}) | rpl::map([=] {
 		return user->isPremium();
 	});
-}
-
-rpl::producer<bool> AmPremiumValue(not_null<Main::Session*> session) {
-	return PeerPremiumValue(session->user());
 }
 
 TimeId SortByOnlineValue(not_null<UserData*> user, TimeId now) {

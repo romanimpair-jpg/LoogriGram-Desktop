@@ -339,8 +339,6 @@ private:
 	std::vector<Data::ReactionId> _searchTagsSelected;
 	base::unique_qptr<Ui::MultiSelect> _select;
 	std::unique_ptr<Dialogs::SearchTags> _searchTags;
-	base::unique_qptr<Ui::PopupMenu> _menu;
-	std::optional<QPoint> _mouseGlobalPosition;
 
 	const not_null<Window::SessionController*> _window;
 	const not_null<History*> _history;
@@ -501,22 +499,6 @@ void TopBar::refreshTags() {
 			st::lineWidth);
 	}, shadow->lifetime());
 
-	_searchTags->selectedChanges(
-	) | rpl::on_next([=](std::vector<Data::ReactionId> &&list) {
-		_searchTagsSelected = std::move(list);
-		requestSearch(false);
-	}, _searchTags->lifetime());
-
-	_searchTags->menuRequests(
-	) | rpl::on_next([=](Data::ReactionId id) {
-		ShowTagInListMenu(
-			&_menu,
-			_mouseGlobalPosition.value_or(QCursor::pos()),
-			this,
-			id,
-			_window);
-	}, _searchTags->lifetime());
-
 	if (!_searchTagsSelected.empty()) {
 		crl::on_main(this, [=] {
 			requestSearch(false);
@@ -547,36 +529,6 @@ void TopBar::refreshTags() {
 		auto p = Painter(parent);
 		p.fillRect(r, st::dialogsBg);
 		_searchTags->paint(p, position, crl::now(), false);
-	}, parent->lifetime());
-
-	parent->setMouseTracking(true);
-	parent->events() | rpl::on_next([=](not_null<QEvent*> e) {
-		if (e->type() == QEvent::MouseMove) {
-			const auto mouse = static_cast<QMouseEvent*>(e.get());
-			_mouseGlobalPosition = mouse->globalPos();
-			const auto point = mouse->pos() - position;
-			const auto handler = _searchTags->lookupHandler(point);
-			ClickHandler::setActive(handler);
-			parent->setCursor(handler
-				? style::cur_pointer
-				: style::cur_default);
-		} else if (e->type() == QEvent::MouseButtonPress) {
-			const auto mouse = static_cast<QMouseEvent*>(e.get());
-			if (mouse->button() == Qt::LeftButton) {
-				ClickHandler::pressed();
-			}
-		} else if (e->type() == QEvent::MouseButtonRelease) {
-			const auto mouse = static_cast<QMouseEvent*>(e.get());
-			if (mouse->button() == Qt::LeftButton) {
-				const auto handler = ClickHandler::unpressed();
-				ActivateClickHandler(parent, handler, ClickContext{
-					.button = mouse->button(),
-					.other = QVariant::fromValue(ClickHandlerContext{
-						.sessionWindow = _window,
-					}),
-				});
-			}
-		}
 	}, parent->lifetime());
 }
 

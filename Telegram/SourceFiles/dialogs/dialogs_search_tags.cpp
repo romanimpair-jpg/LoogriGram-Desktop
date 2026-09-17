@@ -7,13 +7,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/dialogs_search_tags.h"
 
-#include "base/qt/qt_key_modifiers.h"
 #include "core/click_handler_types.h"
 #include "core/ui_integration.h"
 #include "data/stickers/data_custom_emoji.h"
 #include "data/data_document.h"
 #include "data/data_message_reactions.h"
-#include "data/data_peer_values.h"
 #include "data/data_session.h"
 #include "history/view/reactions/history_view_reactions.h"
 #include "main/main_session.h"
@@ -56,7 +54,6 @@ struct SearchTags::Tag {
 	int textWidth = 0;
 	mutable QImage image;
 	QRect geometry;
-	ClickHandlerPtr link;
 	bool selected = false;
 };
 
@@ -66,13 +63,10 @@ SearchTags::SearchTags(
 	std::vector<Data::ReactionId> selected)
 : _owner(owner)
 , _added(selected) {
-	rpl::combine(
-		std::move(tags),
-		Data::AmPremiumValue(&owner->session())
-	) | rpl::on_next([=](
-			const std::vector<Data::Reaction> &list,
-			bool premium) {
-		fill(list, premium);
+	std::move(
+		tags
+	) | rpl::on_next([=](const std::vector<Data::Reaction> &list) {
+		fill(list);
 	}, _lifetime);
 
 	// Mark the `selected` reactions as selected in `_tags`.
@@ -91,33 +85,14 @@ SearchTags::SearchTags(
 
 SearchTags::~SearchTags() = default;
 
-void SearchTags::fill(
-		const std::vector<Data::Reaction> &list,
-		bool premium) {
+// LoogriGram: a tag could be clicked to filter by it, shift-clicked to add
+// it, or right-clicked for a rename menu. All three answer only to premium
+// accounts, so a tag here is shown - selected if the query named it - and
+// does nothing when pressed.
+void SearchTags::fill(const std::vector<Data::Reaction> &list) {
 	const auto selected = collectSelected();
 	_tags.clear();
 	_tags.reserve(list.size());
-	const auto link = [&](Data::ReactionId id) {
-		return std::make_shared<GenericClickHandler>(crl::guard(this, [=](
-				ClickContext context) {
-			if (!premium) {
-				return;
-			} else if (context.button == Qt::RightButton) {
-				_menuRequests.fire_copy(id);
-				return;
-			}
-			const auto i = ranges::find(_tags, id, &Tag::id);
-			if (i != end(_tags)) {
-				if (!i->selected && !base::IsShiftPressed()) {
-					for (auto &tag : _tags) {
-						tag.selected = false;
-					}
-				}
-				i->selected = !i->selected;
-				_selectedChanges.fire({});
-			}
-		}));
-	};
 	const auto push = [&](Data::ReactionId id, const QString &text) {
 		const auto customId = id.custom();
 		_tags.push_back({
@@ -129,7 +104,6 @@ void SearchTags::fill(
 				: nullptr),
 			.text = text,
 			.textWidth = st::reactionInlineTagFont->width(text),
-			.link = link(id),
 			.selected = ranges::contains(selected, id),
 		});
 		if (!customId) {
@@ -200,22 +174,6 @@ rpl::producer<> SearchTags::repaintRequests() const {
 	return _repaintRequests.events();
 }
 
-ClickHandlerPtr SearchTags::lookupHandler(QPoint point) const {
-	for (const auto &tag : _tags) {
-		if (tag.geometry.contains(point.x(), point.y())) {
-			return tag.link;
-		}
-	}
-	return nullptr;
-}
-
-auto SearchTags::selectedChanges() const
--> rpl::producer<std::vector<Data::ReactionId>> {
-	return _selectedChanges.events() | rpl::map([=] {
-		return collectSelected();
-	});
-}
-
 void SearchTags::paintCustomFrame(
 		QPainter &p,
 		not_null<Ui::Text::CustomEmoji*> emoji,
@@ -251,10 +209,6 @@ void SearchTags::paintCustomFrame(
 	p.drawImage(
 		innerTopLeft + QPoint(_customSkip, _customSkip),
 		_customCache);
-}
-
-rpl::producer<Data::ReactionId> SearchTags::menuRequests() const {
-	return _menuRequests.events();
 }
 
 void SearchTags::paint(

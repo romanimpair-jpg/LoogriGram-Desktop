@@ -21,7 +21,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "data/data_changes.h"
 #include "data/data_file_origin.h"
-#include "data/data_peer_values.h" // Data::AmPremiumValue.
 #include "data/data_photo_media.h"
 #include "data/data_session.h"
 #include "data/data_user.h"
@@ -1484,13 +1483,6 @@ object_ptr<Ui::RpWidget> BirthdayPrivacyController::setupAboveWidget(
 	return result;
 }
 
-struct GiftsAutoSavePrivacyController::AdditionalState {
-	Api::DisallowedGiftTypes disallowed;
-	rpl::event_stream<> disables;
-	Fn<void()> promo;
-	Fn<void()> save;
-};
-
 UserPrivacy::Key GiftsAutoSavePrivacyController::key() const {
 	return Key::GiftsAutoSave;
 }
@@ -1534,162 +1526,6 @@ auto GiftsAutoSavePrivacyController::exceptionsDescription() const
 bool GiftsAutoSavePrivacyController::allowMiniAppsToggle(
 		Exception exception) const {
 	return true;
-}
-
-void GiftsAutoSavePrivacyController::ensureAdditionalState(
-		not_null<Window::SessionController*> controller,
-		rpl::lifetime &on) {
-	if (_state) {
-		return;
-	}
-	const auto session = &controller->session();
-	const auto globalPrivacy = &session->api().globalPrivacy();
-
-	_state = on.make_state<AdditionalState>();
-	_state->disallowed = globalPrivacy->disallowedGiftTypesCurrent();
-	// LoogriGram: these toggles revert for anyone who is not a subscriber,
-	// which is the server's rule, so saying so is still the honest thing.
-	// The name of the subscription is plain bold text now instead of a link
-	// into the page that sells it.
-	_state->promo = [=] {
-		_state->disables.fire({});
-		controller->showToast({
-			.text = tr::lng_settings_generic_subscribe(
-				tr::now,
-				lt_link,
-				tr::bold(tr::lng_settings_generic_subscribe_link(tr::now)),
-				tr::marked),
-		});
-	};
-	_state->save = [=] {
-		const auto now = _state->disallowed;
-		if (!session->premium()) {
-			return;
-		} else if (globalPrivacy->disallowedGiftTypesCurrent() == now) {
-			return;
-		} else {
-			globalPrivacy->updateDisallowedGiftTypes(now);
-		}
-	};
-}
-
-object_ptr<Ui::RpWidget> GiftsAutoSavePrivacyController::setupAboveWidget(
-		not_null<Window::SessionController*> controller,
-		not_null<QWidget*> parent,
-		rpl::producer<Option> optionValue,
-		not_null<QWidget*> outerContainer) {
-	auto result = object_ptr<Ui::VerticalLayout>(parent);
-	const auto content = result.data();
-
-	ensureAdditionalState(controller, content->lifetime());
-	using Type = Api::DisallowedGiftType;
-
-	const auto session = &controller->session();
-	const auto icon = content->add(object_ptr<Ui::SettingsButton>(
-		content,
-		tr::lng_edit_privacy_gifts_show_icon(),
-		st::settingsButtonNoIconLocked));
-	_showIconButton = icon;
-	icon->toggleOn(rpl::single(
-		session->premium() && (_state->disallowed & Type::SendHide)
-	) | rpl::then(_state->disables.events() | rpl::map([=] {
-		return false;
-	})));
-	Data::AmPremiumValue(session) | rpl::on_next([=](bool value) {
-		icon->setToggleLocked(!value);
-		if (!value) {
-			_state->disables.fire({});
-		}
-	}, icon->lifetime());
-	icon->toggledValue() | rpl::on_next([=](bool enable) {
-		if (!enable) {
-			_state->disallowed &= ~Type::SendHide;
-		} else if (!session->premium()) {
-			_state->promo();
-		} else {
-			_state->disallowed |= Type::SendHide;
-		}
-	}, icon->lifetime());
-	Ui::AddSkip(content);
-	Ui::AddDividerText(
-		content,
-		tr::lng_edit_privacy_gifts_show_icon_about(
-			lt_emoji,
-			rpl::single(Ui::Text::IconEmoji(&st::settingsGiftIconEmoji)),
-			tr::marked));
-
-	return result;
-}
-
-object_ptr<Ui::RpWidget> GiftsAutoSavePrivacyController::setupBelowWidget(
-		not_null<Window::SessionController*> controller,
-		not_null<QWidget*> parent,
-		rpl::producer<Option> option) {
-	auto result = object_ptr<Ui::VerticalLayout>(parent);
-	const auto content = result.data();
-
-	ensureAdditionalState(controller, content->lifetime());
-	using Type = Api::DisallowedGiftType;
-
-	const auto session = &controller->session();
-	auto premium = Data::AmPremiumValue(session);
-
-	Ui::AddSkip(content, st::settingsPeerToPeerSkip);
-	const auto typesTitle = Ui::AddSubsectionTitle(
-		content,
-		tr::lng_edit_privacy_gifts_types());
-	_acceptedTypesTitle = typesTitle;
-	const auto types = base::flat_map<Type, rpl::producer<QString>>{
-		{ Type::Limited, tr::lng_edit_privacy_gifts_limited() },
-		{ Type::Unlimited, tr::lng_edit_privacy_gifts_unlimited() },
-		{ Type::Unique, tr::lng_edit_privacy_gifts_unique() },
-		{ Type::FromChannels, tr::lng_edit_privacy_gifts_channels() },
-		{ Type::Premium, tr::lng_edit_privacy_gifts_premium() },
-	};
-	for (const auto &[type, title] : types) {
-		const auto button = content->add(object_ptr<Ui::SettingsButton>(
-			content,
-			rpl::duplicate(title),
-			st::settingsButtonNoIconLocked));
-		button->toggleOn(rpl::single(
-			!session->premium() || !(_state->disallowed & type)
-		) | rpl::then(_state->disables.events() | rpl::map([=] {
-			return true;
-		})));
-		rpl::duplicate(premium) | rpl::on_next([=](bool value) {
-			button->setToggleLocked(!value);
-		}, button->lifetime());
-		button->toggledValue() | rpl::on_next([=](bool enable) {
-			if (enable) {
-				_state->disallowed &= ~type;
-			} else if (!session->premium()) {
-				_state->promo();
-			} else {
-				_state->disallowed |= type;
-			}
-		}, button->lifetime());
-	}
-	Ui::AddSkip(content);
-	Ui::AddDividerText(content, tr::lng_edit_privacy_gifts_types_about());
-
-	return result;
-}
-
-void GiftsAutoSavePrivacyController::saveAdditional() {
-	if (const auto onstack = _state->save) {
-		onstack();
-	}
-}
-
-void GiftsAutoSavePrivacyController::checkHighlightControls(
-		not_null<Window::SessionController*> controller) {
-	controller->checkHighlightControl(
-		u"privacy/show-icon"_q,
-		_showIconButton.data());
-	controller->checkHighlightControl(
-		u"privacy/accepted-types"_q,
-		_acceptedTypesTitle.data(),
-		SubsectionTitleHighlight());
 }
 
 UserPrivacy::Key SavedMusicPrivacyController::key() const {

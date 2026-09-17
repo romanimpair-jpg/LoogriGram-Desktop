@@ -90,7 +90,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_histories.h"
 #include "data/data_group_call.h"
 #include "data/data_message_reactions.h"
-#include "data/data_peer_values.h" // Data::AmPremiumValue.
+#include "data/data_peer_values.h"
 #include "data/data_premium_limits.h" // Data::PremiumLimits.
 #include "data/stickers/data_stickers.h"
 #include "data/stickers/data_custom_emoji.h"

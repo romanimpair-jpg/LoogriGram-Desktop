@@ -2575,22 +2575,6 @@ void ShowTagMenu(
 	(*menu)->popup(position);
 }
 
-void ShowTagInListMenu(
-		not_null<base::unique_qptr<Ui::PopupMenu>*> menu,
-		QPoint position,
-		not_null<QWidget*> context,
-		const Data::ReactionId &id,
-		not_null<Window::SessionController*> controller) {
-	*menu = base::make_unique_q<Ui::PopupMenu>(
-		context,
-		st::popupMenuExpandedSeparator);
-
-	AddEditTagAction(menu->get(), id, controller);
-	AddTagPackAction(menu->get(), id, controller);
-
-	(*menu)->popup(position);
-}
-
 void AddCopyFilename(
 		not_null<Ui::PopupMenu*> menu,
 		not_null<DocumentData*> document,

@@ -4203,12 +4203,6 @@ bool Widget::applySearchState(SearchState state) {
 		updateSuggestions(anim::type::instant);
 	}
 
-	_searchTagsLifetime = _inner->searchTagsChanges(
-	) | rpl::on_next([=](std::vector<Data::ReactionId> &&list) {
-		auto copy = _searchState;
-		copy.tags = std::move(list);
-		applySearchState(std::move(copy));
-	});
 	if (_subsectionTopBar) {
 		_subsectionTopBar->searchEnableJumpToDate(
 			_openedForum || _searchState.inChat);

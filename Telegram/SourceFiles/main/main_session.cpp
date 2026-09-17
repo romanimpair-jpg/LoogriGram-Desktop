@@ -345,14 +345,10 @@ rpl::producer<> Session::downloaderTaskFinished() const {
 	return downloader().taskFinished();
 }
 
-bool Session::premium() const {
-	return _user->isPremium();
-}
-
-// LoogriGram: premiumPossible() was premium() || premiumCanBuy(), and
-// nothing can be bought in-app, so the two were the same answer. Both are
-// gone and every caller asks premium() directly; premiumPossibleValue()
-// callers use Data::AmPremiumValue(), which is the same producer.
+// LoogriGram: premium(), premiumPossible() and their value producers are
+// gone. The account is treated as never premium: every caller took its
+// non-premium branch, and whatever only a premium account could reach was
+// deleted with it.
 
 void Session::applyGhostModePrivacy() {
 	// Exception lists are left alone rather than cleared. Wiping an "always

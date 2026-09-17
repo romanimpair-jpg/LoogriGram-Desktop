@@ -2138,18 +2138,13 @@ void InnerWidget::selectByMouse(QPoint globalPosition) {
 	const auto tagBase = QPoint(
 		_searchTagsLeft,
 		st::dialogsSearchTagBottom / 2);
-	const auto tagPoint = local - tagBase;
 	const auto inTags = _searchTags
 		&& QRect(
 			tagBase,
 			QSize(width() - 2 * _searchTagsLeft, _searchTags->height())
 		).contains(local);
-	const auto tagLink = inTags
-		? _searchTags->lookupHandler(tagPoint)
-		: nullptr;
-	ClickHandler::setActive(tagLink);
 	if (inTags) {
-		setCursor(tagLink ? style::cur_pointer : style::cur_default);
+		setCursor(style::cur_default);
 	}
 
 	const auto w = width();
@@ -4042,16 +4037,6 @@ void InnerWidget::applySearchState(SearchState state) {
 			update(0, 0, width(), height);
 		}, _searchTags->lifetime());
 
-		_searchTags->menuRequests(
-		) | rpl::on_next([=](Data::ReactionId id) {
-			HistoryView::ShowTagInListMenu(
-				&_menu,
-				_lastMousePosition.value_or(QCursor::pos()),
-				this,
-				id,
-				_controller);
-		}, _searchTags->lifetime());
-
 		_searchTags->heightValue() | rpl::skip(
 			1
 		) | rpl::on_next([=] {
@@ -4927,13 +4912,6 @@ WidgetState InnerWidget::state() const {
 
 bool InnerWidget::hasFilteredResults() const {
 	return !_filterResults.empty() && _hashtagResults.empty();
-}
-
-auto InnerWidget::searchTagsChanges() const
--> rpl::producer<std::vector<Data::ReactionId>> {
-	return _searchTags
-		? _searchTags->selectedChanges()
-		: rpl::never<std::vector<Data::ReactionId>>();
 }
 
 bool InnerWidget::archiveSearchActive() const {

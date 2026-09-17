@@ -36,12 +36,6 @@ public:
 	[[nodiscard]] rpl::producer<int> heightValue() const;
 	[[nodiscard]] rpl::producer<> repaintRequests() const;
 
-	[[nodiscard]] ClickHandlerPtr lookupHandler(QPoint point) const;
-	[[nodiscard]] auto selectedChanges() const
-		-> rpl::producer<std::vector<Data::ReactionId>>;
-
-	[[nodiscard]] rpl::producer<Data::ReactionId> menuRequests() const;
-
 	void paint(
 		Painter &p,
 		QPoint position,
@@ -53,7 +47,7 @@ public:
 private:
 	struct Tag;
 
-	void fill(const std::vector<Data::Reaction> &list, bool premium);
+	void fill(const std::vector<Data::Reaction> &list);
 	void paintCustomFrame(
 		QPainter &p,
 		not_null<Ui::Text::CustomEmoji*> emoji,
@@ -71,9 +65,7 @@ private:
 	const not_null<Data::Session*> _owner;
 	std::vector<Data::ReactionId> _added;
 	std::vector<Tag> _tags;
-	rpl::event_stream<> _selectedChanges;
 	rpl::event_stream<> _repaintRequests;
-	rpl::event_stream<Data::ReactionId> _menuRequests;
 	mutable QImage _normalBg;
 	mutable QImage _selectedBg;
 	mutable QImage _customCache;

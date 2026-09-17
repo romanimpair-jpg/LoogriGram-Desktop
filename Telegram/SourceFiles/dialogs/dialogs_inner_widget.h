@@ -192,8 +192,6 @@ public:
 
 	void searchRequested(bool loading);
 	void applySearchState(SearchState state);
-	[[nodiscard]] auto searchTagsChanges() const
-		-> rpl::producer<std::vector<Data::ReactionId>>;
 
 	void onHashtagFilterUpdate(QStringView newFilter);
 	void appendToFiltered(Key key);

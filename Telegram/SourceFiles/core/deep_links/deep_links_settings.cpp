@@ -856,17 +856,6 @@ void RegisterSettingsHandlers(Router &router) {
 	});
 
 	router.add(u"settings"_q, {
-		.path = u"privacy/gifts/show-icon"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowPrivacyBox(
-				ctx,
-				PrivacyKey::GiftsAutoSave,
-				[=] { return std::make_unique<::Settings::GiftsAutoSavePrivacyController>(); },
-				u"privacy/show-icon"_q);
-		}},
-	});
-
-	router.add(u"settings"_q, {
 		.path = u"privacy/gifts/never"_q,
 		.action = CodeBlock{ [](const Context &ctx) {
 			return ShowPrivacyBox(
@@ -885,17 +874,6 @@ void RegisterSettingsHandlers(Router &router) {
 				PrivacyKey::GiftsAutoSave,
 				[=] { return std::make_unique<::Settings::GiftsAutoSavePrivacyController>(); },
 				u"privacy/always"_q);
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"privacy/gifts/accepted-types"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			return ShowPrivacyBox(
-				ctx,
-				PrivacyKey::GiftsAutoSave,
-				[=] { return std::make_unique<::Settings::GiftsAutoSavePrivacyController>(); },
-				u"privacy/accepted-types"_q);
 		}},
 	});
 

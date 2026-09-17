@@ -391,7 +391,6 @@ private:
 	Data::CommunityInfo *_openedCommunity = nullptr;
 	SearchState _searchState;
 	History *_searchInMigrated = nullptr;
-	rpl::lifetime _searchTagsLifetime;
 	QString _lastSearchText;
 	bool _searchSuggestionsLocked = false;
 	bool _searchHasFocus = false;

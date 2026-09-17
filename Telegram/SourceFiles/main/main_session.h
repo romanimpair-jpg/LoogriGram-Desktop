@@ -122,8 +122,6 @@ public:
 		return _messagePrimaryEditedDate;
 	}
 
-	[[nodiscard]] bool premium() const;
-
 	// LoogriGram: sets Last Seen to Nobody. Suppressing presence client side
 	// is not enough on its own, because the server also infers it from
 	// session activity, so this is the half that actually conceals it.

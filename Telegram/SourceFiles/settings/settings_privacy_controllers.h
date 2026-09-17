@@ -334,32 +334,9 @@ public:
 	rpl::producer<QString> exceptionsDescription() const override;
 	bool allowMiniAppsToggle(Exception exception) const override;
 
-	object_ptr<Ui::RpWidget> setupAboveWidget(
-		not_null<Window::SessionController*> controller,
-		not_null<QWidget*> parent,
-		rpl::producer<Option> optionValue,
-		not_null<QWidget*> outerContainer) override;
-	object_ptr<Ui::RpWidget> setupBelowWidget(
-		not_null<Window::SessionController*> controller,
-		not_null<QWidget*> parent,
-		rpl::producer<Option> option) override;
-
-	void saveAdditional() override;
-
-	void checkHighlightControls(
-		not_null<Window::SessionController*> controller) override;
-
-private:
-	struct AdditionalState;
-
-	void ensureAdditionalState(
-		not_null<Window::SessionController*> controller,
-		rpl::lifetime &on);
-
-	AdditionalState *_state = nullptr;
-	QPointer<QWidget> _showIconButton;
-	QPointer<QWidget> _acceptedTypesTitle;
-
+	// LoogriGram: this box also held a "show gift icon" toggle and the list
+	// of accepted gift types. Both are premium-only; they stayed locked and
+	// reverted, and saving them did nothing.
 };
 
 class SavedMusicPrivacyController final : public EditPrivacyController {

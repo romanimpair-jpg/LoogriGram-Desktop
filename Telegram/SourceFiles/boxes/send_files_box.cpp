@@ -63,7 +63,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_document.h"
 #include "data/data_media_types.h"
 #include "data/data_user.h"
-#include "data/data_peer_values.h" // Data::AmPremiumValue.
 #include "data/data_premium_limits.h"
 #include "data/stickers/data_stickers.h"
 #include "data/stickers/data_custom_emoji.h"
