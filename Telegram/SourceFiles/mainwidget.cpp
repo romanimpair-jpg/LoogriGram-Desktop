@@ -1613,7 +1613,6 @@ void MainWidget::showHistory(
 		}
 	}
 
-	const auto wasActivePeer = _controller->activeChatCurrent().peer();
 	if (params.activation != anim::activation::background) {
 		_controller->window().hideSettingsAndLayer();
 	}
