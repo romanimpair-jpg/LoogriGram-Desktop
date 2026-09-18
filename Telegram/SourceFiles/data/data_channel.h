@@ -419,7 +419,6 @@ public:
 	[[nodiscard]] bool canViewAdmins() const;
 	[[nodiscard]] bool canViewBanned() const;
 	[[nodiscard]] bool canEditSignatures() const;
-	[[nodiscard]] bool canEditAutoTranslate() const;
 	[[nodiscard]] bool canEditStickers() const;
 	[[nodiscard]] bool canEditEmoji() const;
 	[[nodiscard]] bool canDelete() const;

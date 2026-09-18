@@ -21,10 +21,6 @@ struct AskBoostChannelColor {
 	int requiredLevel = 0;
 };
 
-struct AskBoostAutotranslate {
-	int requiredLevel = 0;
-};
-
 struct AskBoostWallpaper {
 	int requiredLevel = 0;
 	bool group = false;
@@ -46,7 +42,6 @@ struct AskBoostCustomReactions {
 struct AskBoostReason {
 	std::variant<
 		AskBoostChannelColor,
-		AskBoostAutotranslate,
 		AskBoostWallpaper,
 		AskBoostEmojiStatus,
 		AskBoostEmojiPack,

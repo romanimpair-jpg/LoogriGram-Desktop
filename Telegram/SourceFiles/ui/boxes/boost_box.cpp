@@ -40,12 +40,6 @@ TextWithEntities AskBoostReasonText(const AskBoostReason &reason) {
 			lt_count,
 			data.requiredLevel,
 			tr::rich);
-	}, [](AskBoostAutotranslate data) {
-		return tr::lng_boost_channel_needs_level_autotranslate(
-			tr::now,
-			lt_count,
-			data.requiredLevel,
-			tr::rich);
 	}, [](AskBoostWallpaper data) {
 		return (data.group
 			? tr::lng_boost_group_needs_level_wallpaper

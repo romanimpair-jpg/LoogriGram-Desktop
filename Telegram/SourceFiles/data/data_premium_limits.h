@@ -74,7 +74,6 @@ public:
 	[[nodiscard]] int channelEmojiStatusLevelMin() const;
 	[[nodiscard]] int channelWallpaperLevelMin() const;
 	[[nodiscard]] int channelCustomWallpaperLevelMin() const;
-	[[nodiscard]] int channelAutoTranslateLevelMin() const;
 	[[nodiscard]] int groupTranscribeLevelMin() const;
 	[[nodiscard]] int groupEmojiStickersLevelMin() const;
 	[[nodiscard]] int groupProfileBgIconLevelMin() const;

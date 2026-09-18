@@ -799,10 +799,6 @@ bool ChannelData::canEditSignatures() const {
 	return isBroadcast() && canEditInformation();
 }
 
-bool ChannelData::canEditAutoTranslate() const {
-	return isBroadcast() && canEditInformation();
-}
-
 bool ChannelData::canEditPreHistoryHidden() const {
 	return isMegagroup()
 		&& ((adminRights() & AdminRight::BanUsers) || amCreator())

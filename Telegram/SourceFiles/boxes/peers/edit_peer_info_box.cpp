@@ -422,7 +422,6 @@ private:
 		std::optional<bool> hiddenPreHistory;
 		std::optional<bool> forum;
 		std::optional<bool> forumTabs;
-		std::optional<bool> autotranslate;
 		std::optional<bool> signatures;
 		std::optional<bool> signatureProfiles;
 		std::optional<bool> noForwards;
@@ -454,7 +453,6 @@ private:
 	//void fillInviteLinkButton();
 	void fillForumButton();
 	void fillColorIndexButton();
-	void fillAutoTranslateButton();
 	void fillSignaturesButton();
 	void fillHistoryVisibilityButton();
 	void fillManageSection();
@@ -482,7 +480,6 @@ private:
 	[[nodiscard]] bool validateDescription(Saving &to) const;
 	[[nodiscard]] bool validateHistoryVisibility(Saving &to) const;
 	[[nodiscard]] bool validateForum(Saving &to) const;
-	[[nodiscard]] bool validateAutotranslate(Saving &to) const;
 	[[nodiscard]] bool validateSignatures(Saving &to) const;
 	[[nodiscard]] bool validateForwards(Saving &to) const;
 	[[nodiscard]] bool validateJoinToWrite(Saving &to) const;
@@ -497,7 +494,6 @@ private:
 	void saveDescription();
 	void saveHistoryVisibility();
 	void saveForum();
-	void saveAutotranslate();
 	void saveSignatures();
 	void saveForwards();
 	void saveJoinToWrite();
@@ -526,7 +522,6 @@ private:
 	std::optional<EditPeerTypeData> _typeDataSavedValue;
 	std::optional<bool> _forumSavedValue;
 	std::optional<bool> _forumTabsSavedValue;
-	std::optional<bool> _autotranslateSavedValue;
 	std::optional<bool> _signaturesSavedValue;
 	std::optional<bool> _signatureProfilesSavedValue;
 
@@ -1236,69 +1231,6 @@ void Controller::fillColorIndexButton() {
 		st::managePeerColorsButton);
 }
 
-void Controller::fillAutoTranslateButton() {
-	Expects(_controls.buttonsLayout != nullptr);
-
-	const auto channel = _peer->asBroadcast();
-	if (!channel) {
-		return;
-	}
-
-	const auto requiredLevel = Data::LevelLimits(&channel->session())
-		.channelAutoTranslateLevelMin();
-	const auto autotranslate = _controls.buttonsLayout->add(
-		EditPeerInfoBox::CreateButton(
-			_controls.buttonsLayout,
-			tr::lng_edit_autotranslate(),
-			rpl::single(QString()),
-			[] {},
-			st::manageGroupTopicsButton,
-			{ &st::menuIconTranslate }));
-	struct State {
-		rpl::event_stream<bool> toggled;
-		rpl::variable<bool> isLocked = false;
-	};
-	const auto state = autotranslate->lifetime().make_state<State>();
-	autotranslate->toggleOn(rpl::single(
-		channel->autoTranslation()
-	) | rpl::then(state->toggled.events()));
-	state->isLocked = (channel->levelHint() < requiredLevel);
-	const auto reason = Ui::AskBoostReason{
-		.data = Ui::AskBoostAutotranslate{ .requiredLevel = requiredLevel },
-	};
-
-	state->isLocked.value() | rpl::on_next([=](bool locked) {
-		autotranslate->setToggleLocked(locked);
-	}, autotranslate->lifetime());
-
-	autotranslate->toggledChanges(
-	) | rpl::on_next([=](bool value) {
-		if (!state->isLocked.current()) {
-			_autotranslateSavedValue = value;
-		} else if (value) {
-			state->toggled.fire(false);
-			auto weak = base::make_weak(autotranslate);
-			CheckBoostLevel(
-				_navigation->uiShow(),
-				_peer,
-				[=](int level) {
-					if (weak.get()) {
-						state->isLocked = (level < requiredLevel);
-					}
-					return (level < requiredLevel)
-						? std::make_optional(reason)
-						: std::nullopt;
-				},
-				[] {});
-		}
-	}, autotranslate->lifetime());
-
-	autotranslate->toggledValue(
-	) | rpl::on_next([=](bool toggled) {
-		_autotranslateSavedValue = toggled;
-	}, _controls.buttonsLayout->lifetime());
-}
-
 void Controller::fillSignaturesButton() {
 	Expects(_controls.buttonsLayout != nullptr);
 
@@ -1461,8 +1393,6 @@ void Controller::fillManageSection() {
 	const auto canEditSignatures = isChannel
 		&& channel->canEditSignatures()
 		&& !channel->isMegagroup();
-	const auto canEditAutoTranslate = isChannel
-		&& channel->canEditAutoTranslate();
 	const auto canEditPreHistoryHidden = isChannel
 		? channel->canEditPreHistoryHidden()
 		: chat->canEditPreHistoryHidden();
@@ -1527,9 +1457,9 @@ void Controller::fillManageSection() {
 	if (canEditColorIndex) {
 		fillColorIndexButton();
 	}
-	if (canEditAutoTranslate) {
-		fillAutoTranslateButton();
-	}
+	// LoogriGram: an Auto-translate switch sat here. It needed a channel
+	// boost level - boosts come from Premium subscribers - so it is gone
+	// rather than drawn locked.
 	if (canEditSignatures) {
 		fillSignaturesButton();
 	} else if (canEditPreHistoryHidden
@@ -2062,7 +1992,6 @@ std::optional<Controller::Saving> Controller::validate() const {
 		&& validateDescription(result)
 		&& validateHistoryVisibility(result)
 		&& validateForum(result)
-		&& validateAutotranslate(result)
 		&& validateSignatures(result)
 		&& validateForwards(result)
 		&& validateJoinToWrite(result)
@@ -2159,14 +2088,6 @@ bool Controller::validateForum(Saving &to) const {
 	return true;
 }
 
-bool Controller::validateAutotranslate(Saving &to) const {
-	if (!_autotranslateSavedValue.has_value()) {
-		return true;
-	}
-	to.autotranslate = _autotranslateSavedValue;
-	return true;
-}
-
 bool Controller::validateSignatures(Saving &to) const {
 	Expects(_signaturesSavedValue.has_value()
 		== _signatureProfilesSavedValue.has_value());
@@ -2221,7 +2142,6 @@ void Controller::save() {
 		pushSaveStage([=] { saveDescription(); });
 		pushSaveStage([=] { saveHistoryVisibility(); });
 		pushSaveStage([=] { saveForum(); });
-		pushSaveStage([=] { saveAutotranslate(); });
 		pushSaveStage([=] { saveSignatures(); });
 		pushSaveStage([=] { saveForwards(); });
 		pushSaveStage([=] { saveJoinToWrite(); });
@@ -2645,29 +2565,6 @@ void Controller::saveForum() {
 		if (weak) { // todo better to be able to save in closed already box.
 			continueSave();
 		}
-	}).fail([=](const MTP::Error &error) {
-		if (error.type() == u"CHAT_NOT_MODIFIED"_q) {
-			continueSave();
-		} else {
-			_navigation->showToast(error.type());
-			cancelSave();
-		}
-	}).send();
-}
-
-void Controller::saveAutotranslate() {
-	const auto channel = _peer->asBroadcast();
-	if (!_savingData.autotranslate
-		|| !channel
-		|| (*_savingData.autotranslate == channel->autoTranslation())) {
-		return continueSave();
-	}
-	_api.request(MTPchannels_ToggleAutotranslation(
-		channel->inputChannel(),
-		MTP_bool(*_savingData.autotranslate)
-	)).done([=](const MTPUpdates &result) {
-		channel->session().api().applyUpdates(result);
-		continueSave();
 	}).fail([=](const MTP::Error &error) {
 		if (error.type() == u"CHAT_NOT_MODIFIED"_q) {
 			continueSave();
