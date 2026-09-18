@@ -39,20 +39,3 @@ scheduleAtSkip: 24px;
 scheduleAtTop: 42px;
 scheduleAtLabel: FlatLabel(defaultFlatLabel) {
 }
-scheduleRepeatDropdownLock: IconEmoji {
-	icon: icon {{ "emoji/premium_lock", windowSubTextFg }};
-	padding: margins(1px, 1px, 0px, 0px);
-}
-scheduleRepeatDropdownArrow: IconEmoji {
-	icon: icon {{ "arrows_select", windowSubTextFg }};
-	padding: margins(6px, 5px, 0px, 0px);
-}
-scheduleRepeatHeight: 28px;
-scheduleRepeatRadius: 14px;
-scheduleRepeatTextPadding: 12px;
-scheduleRepeatLabel: FlatLabel(defaultFlatLabel) {
-	style: TextStyle(defaultTextStyle) {
-		font: font(13px);
-	}
-	textFg: windowBoldFg;
-}

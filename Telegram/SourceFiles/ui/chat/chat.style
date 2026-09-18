@@ -177,12 +177,6 @@ historyThemeSize: size(272px, 176px);
 
 historyMinimalWidth: 380px;
 
-reactionMenu: PopupMenu(defaultPopupMenu) {
-	menu: Menu(defaultMenu) {
-		widthMin: 30px;
-	}
-}
-
 historyScroll: ScrollArea(defaultScrollArea) {
 	bg: historyScrollBg;
 	bgOver: historyScrollBgOver;
@@ -232,7 +226,6 @@ membersInnerDropdown: InnerDropdown(defaultInnerDropdown) {
 	scrollMargin: margins(0px, 5px, 0px, 5px);
 	scrollPadding: margins(0px, 3px, 0px, 3px);
 }
-
 
 historySendStateSpace: 24px;
 historySendStatePosition: point(-17px, -19px);
@@ -432,7 +425,6 @@ msgVoicePlaybackMinorBlobMaxRadius: 28px;
 msgVoicePlaybackMajorBlobMinRadius: 26px;
 msgVoicePlaybackMajorBlobMaxRadius: 29px;
 
-
 historyTranscribeSkip: 10px;
 historyTranscribeSize: size(28px, 22px);
 historyTranscribeRadius: 4px;
@@ -522,22 +514,16 @@ historyMapPinShadow: BoxShadow {
 	opacity: 0.29;
 }
 
-
 webPageTitleFont: semiboldFont;
 webPageTitleStyle: semiboldTextStyle;
 webPageSponsoredHintFont: font(10px);
 webPageDescriptionFont: normalFont;
 webPageDescriptionStyle: defaultTextStyle;
 webPagePhotoDelta: 8px;
-webPageAuctionTimerPadding: margins(8px, 4px, 8px, 4px);
-webPageAuctionTimeFont: font(11px);
-webPageAuctionPreviewPadding: margins(10px, 30px, 10px, 5px);
-
 historyChecklistTaskPadding: margins(32px, 12px, 0px, 12px);
 historyChecklistCheckedTop: 4px;
 historyChecklistBottomTop: -4px;
 
-historyViewButtonHeight: 48px;
 historyViewButtonMargins: margins(10px, 5px, 10px, 10px);
 historyViewButtonTextStyle: semiboldTextStyle;
 
@@ -575,7 +561,6 @@ historyVideoTimestampProgressLine: 4px;
 historyAudioDownloadSize: 20px;
 historyAudioRadialLine: 2px;
 historyAudioDownloadShift: 28px;
-
 
 historyGroupCallUserpics: GroupCallUserpics {
 	size: 32px;
@@ -750,7 +735,6 @@ searchInChatPeerList: PeerList(defaultPeerList) {
 	item: searchInChatPeerListItem;
 }
 
-msgServiceGiftPreview: 172px;
 msgServiceGiftBoxSize: size(236px, 231px); // Plus msgServiceGiftBoxTopSkip.
 msgServiceGiftBoxRadius: 20px;
 msgServiceGiftBoxTopSkip: 4px;
@@ -758,15 +742,6 @@ msgServiceGiftBoxButtonHeight: 30px;
 msgServiceGiftBoxButtonPadding: margins(1px, 0px, 1px, 0px);
 msgServiceGiftBoxButtonMargins: margins(0px, 10px, 0px, 20px);
 msgServiceGiftBoxTitlePadding: margins(0px, 24px, 0px, 7px);
-msgServiceGiftBoxBadgeFont: font(11px semibold);
-msgServiceGiftBoxBadgePadding: margins(3px, 2px, 3px, 2px);
-msgServiceGiftBoxStickerTop: -19px;
-msgServiceGiftBoxStickerSize: 140px;
-msgServiceStarGiftBoxWidth: 224px;
-msgServiceStarGiftStickerTop: 24px;
-msgServiceStarGiftStickerSize: 100px;
-msgServiceGiftThemeStickerSize: 64px;
-msgServiceGiftThemeStickerPadding: margins(18px, 18px, 18px, 18px);
 msgServiceCommunityAddedPhoto: 66px; // About 2/3 of msgServicePhotoWidth.
 
 unsupportedNoticePadding: margins(12px, 7px, 12px, 7px);
@@ -781,18 +756,6 @@ unsupportedTearAmplitude: 5px;
 unsupportedTearPeriod: 20px;
 unsupportedNoticePlane: icon{{ "chat/unsupported_plane", msgServiceFg }};
 
-historySponsorInfoItem: FlatLabel(defaultFlatLabel) {
-	style: TextStyle(defaultTextStyle) {
-		font: font(12px);
-	}
-	minWidth: 136px;
-}
-historySponsorInfoItemDark: FlatLabel(historySponsorInfoItem) {
-	textFg: mediaviewControlFg;
-}
-historySponsorInfoMenu: PopupMenu(popupMenuExpandedSeparator) {
-	maxHeight: 420px;
-}
 historyHasCustomEmoji: FlatLabel(defaultFlatLabel) {
 	style: TextStyle(defaultTextStyle) {
 		font: font(11px);
@@ -886,25 +849,15 @@ storyMentionReadStrokeTwice: 3px;
 storyMentionButtonSkip: 5px;
 
 chatGiveawayWidth: 292px;
-chatGiveawayStickerPadding: margins(14px, -2px, 14px, 14px);
-chatGiveawayWinnersTopSkip: 25px;
 chatGiveawayBadgeFont: font(12px bold);
 chatGiveawayBadgeTop: 118px;
 chatGiveawayBadgePadding: margins(7px, 1px, 5px, 3px);
 chatGiveawayBadgeStroke: 2px;
-chatGiveawayPrizesTitleMargin: margins(11px, 16px, 11px, 4px);
-chatGiveawayPrizesMargin: margins(11px, 0px, 11px, 0px);
-chatGiveawayPrizesWithPadding: margins(22px, 2px, 22px, 2px);
 chatGiveawayPrizesWithSkip: 8px;
 chatGiveawayPrizesWithLineTop: 9px;
-chatGiveawayParticipantsMargin: margins(11px, 0px, 11px, 6px);
-chatGiveawayNoCountriesTitleMargin: margins(11px, 6px, 11px, 4px);
-chatGiveawayEndDateMargin: margins(11px, 0px, 11px, 16px);
 chatGiveawayPeerSize: 32px;
 chatGiveawayPeerPadding: margins(5px, 7px, 12px, 0px);
 chatGiveawayPeerSkip: 8px;
-chatGiveawayCreditsIconHeight: 19px;
-
 chatSimilarArrowSize: 6px;
 chatSimilarTitle: semiboldFont;
 chatSimilarTitlePosition: point(15px, 9px);
@@ -915,7 +868,6 @@ chatSimilarBadgePadding: margins(2px, 0px, 3px, 1px);
 chatSimilarBadgeTop: 43px;
 chatSimilarBadgeIcon: icon{{ "chat/mini_subscribers", premiumButtonFg }};
 chatSimilarBadgeIconPosition: point(0px, 1px);
-chatSimilarLockedIconPosition: point(0px, 1px);
 chatSimilarBadgeFont: font(10px bold);
 chatSimilarNameTop: 59px;
 chatSimilarName: TextStyle(defaultTextStyle) {
@@ -925,15 +877,11 @@ chatSimilarName: TextStyle(defaultTextStyle) {
 chatSimilarWidthMax: 424px;
 chatSimilarSkip: 12px;
 
-chatSuggestWidth: 236px;
 chatSuggestInfoWidth: 272px;
 chatSuggestInfoTitleMargin: margins(16px, 16px, 16px, 6px);
 chatSuggestInfoMiddleMargin: margins(16px, 4px, 16px, 4px);
 chatSuggestInfoLastMargin: margins(16px, 4px, 16px, 16px);
 chatSuggestBulletLeftExtra: 16px;
-chatSuggestTableMiddleMargin: margins(8px, 4px, 8px, 4px);
-chatSuggestTableLastMargin: margins(8px, 4px, 8px, 16px);
-chatSuggestInfoFullMargin: margins(16px, 16px, 16px, 16px);
 chatSuggestAcceptIcon: IconEmoji {
 	icon: icon{{ "chat/paid_approve", windowFg }};
 	padding: margins(0px, -2px, 0px, 0px);
@@ -943,10 +891,6 @@ chatSuggestDeclineIcon: IconEmoji {
 	padding: margins(0px, -2px, 0px, 0px);
 }
 
-
-repliesEmptyIcon: icon{{ "chat/large_quickreply", msgServiceFg }};
-greetingEmptyIcon: icon{{ "chat/large_welcome-56x52", msgServiceFg, margins(12px, 4px, 12px, 4px) }};
-awayEmptyIcon: icon{{ "chat/large_away", msgServiceFg }};
 repliesEmptyWidth: 264px;
 repliesEmptySkip: 16px;
 repliesEmptyPadding: margins(10px, 20px, 10px, 16px);
@@ -961,22 +905,11 @@ welcomeEmptyTitle: TextStyle(messageTextStyle) {
 }
 welcomeEmptyAbout: messageTextStyle;
 
-repliesComposeControls: ComposeControls(defaultComposeControls) {
-	tabbedHeightMin: 220px;
-}
-
 historyIvIcon: IconEmoji {
 	icon: icon {{ "boosts/boost_mini2", windowFg }};
 	padding: margins(2px, 2px, 2px, 0px);
 }
-historyExternalLinkIcon: IconEmoji {
-	icon: icon {{ "chat/mini_external_link-16x16", windowFg }};
-	padding: margins(4px, 2px, 0px, 0px);
-}
-
 chatIntroStickerSize: 96px;
-chatGiftPreviewWidth: 224px;
-
 liveLocationRemainingSize: 28px;
 
 previewMenu: PopupMenu(defaultPopupMenu) {
@@ -1017,15 +950,6 @@ effectPreviewSend: FlatButton(previewMarkRead) {
 	bgColor: transparent;
 	overBgColor: transparent;
 }
-effectPreviewPromoLabel: FlatLabel(defaultFlatLabel) {
-	minWidth: 64px;
-	align: align(top);
-	textFg: windowSubTextFg;
-	style: TextStyle(defaultTextStyle) {
-		font: font(11px);
-	}
-}
-effectPreviewPromoPadding: margins(4px, 6px, 4px, 6px);
 effectPreviewLoading: InfiniteRadialAnimation(defaultInfiniteRadialAnimation) {
 	thickness: 2px;
 }
@@ -1056,42 +980,11 @@ factcheckField: InputField(defaultInputField) {
 
 	style: defaultTextStyle;
 }
-purchasedTagPadding: margins(3px, 2px, 6px, 2px);
-
 msgSelectionCheck: RoundCheckbox(defaultPeerListCheck) {
 	bgActive: boxTextFgGood;
 }
 
 sponsoredMessageBarMaxHeight: 156px;
-
-botEmojiStatusPreviewHeight: 148px;
-botEmojiStatusTitle: FlatLabel(boxTitle) {
-	style: TextStyle(defaultTextStyle) {
-		font: font(16px semibold);
-		lineHeight: 20px;
-	}
-	minWidth: 256px;
-	maxHeight: 0px;
-	align: align(top);
-}
-botEmojiStatusText: FlatLabel(defaultFlatLabel) {
-	style: boxTextStyle;
-	minWidth: 256px;
-	maxHeight: 0px;
-	align: align(top);
-}
-botEmojiStatusUserpic: UserpicButton(defaultUserpicButton) {
-	size: size(chatGiveawayPeerSize, chatGiveawayPeerSize);
-	photoSize: chatGiveawayPeerSize;
-}
-botEmojiStatusName: FlatLabel(defaultFlatLabel) {
-	minWidth: 32px;
-	maxHeight: 20px;
-}
-botEmojiStatusEmoji: FlatLabel(botEmojiStatusName) {
-	margin: margins(4px, 4px, 4px, 4px);
-	textFg: profileVerifiedCheckBg;
-}
 
 botDownloadLabel: boxLabel;
 botDownloadProgress: FlatLabel(defaultFlatLabel) {
@@ -1112,21 +1005,9 @@ botDownloadCancel: IconButton {
 	rippleAreaSize: 20px;
 	ripple: defaultRippleAnimationBgOver;
 }
-chatUniqueGiftBorder: 4px;
-chatUniqueGiftBadgePadding: margins(12px, 0px, 12px, 2px);
-chatUniqueGiftMaxWidth: 272px;
-
-chatUniqueStickerPadding: margins(10px, 40px, 10px, 9px);
-chatUniquePreviewPadding: margins(10px, 30px, 10px, 32px);
-chatUniqueTitle: TextStyle(defaultTextStyle) {
-	font: font(15px semibold);
-}
-chatUniqueTitlePadding: margins(12px, 8px, 12px, 0px);
-chatUniqueTextPadding: margins(12px, 2px, 12px, 7px);
 chatUniqueTextStyle: TextStyle(defaultTextStyle) {
 	font: font(12px);
 }
-chatUniqueAuthorSkip: 6px;
 chatUniqueTableSkip: 9px;
 chatUniqueRowSkip: 2px;
 UniqueGiftMessageBubble {
@@ -1135,17 +1016,7 @@ UniqueGiftMessageBubble {
 	radius: pixels;
 	tailSize: size;
 }
-chatUniqueMessageBubble: UniqueGiftMessageBubble {
-	textPadding: margins(6px, 6px, 6px, 6px);
-	avatarSize: 20px;
-	radius: 10px;
-	tailSize: size(4px, 5px);
-}
-chatUniqueMessagePadding: margins(22px, 6px, 22px, 7px);
-chatUniqueButtonPadding: margins(12px, 5px, 12px, 26px);
-
 markupWebview: icon {{ "chat/markup_webview", windowFg }};
-
 
 swipeBackSize: 150px;
 
@@ -1244,35 +1115,6 @@ chatTabsOutlineVertical: ChatTabsOutline(chatTabsOutlineHorizontal) {
 
 messageSendingAnimationTextFromOffset: point(-6px, 9px);
 
-suggestPriceBox: Box(defaultBox) {
-	buttonPadding: margins(22px, 22px, 22px, 22px);
-	buttonHeight: 42px;
-	button: RoundButton(defaultActiveButton) {
-		height: 42px;
-		textTop: 12px;
-		style: semiboldTextStyle;
-	}
-	shadowIgnoreTopSkip: true;
-}
-suggestPriceEstimate: FlatLabel(defaultFlatLabel) {
-	textFg: windowSubTextFg;
-}
-suggestPriceEstimateTop: 12px;
-starsFieldIconPosition: point(0px, 10px);
-tonFieldIconSize: 16px;
-tonFieldIconPosition: point(2px, 11px);
-
-suggestBarTonIconSize: 14px;
-suggestBarTonIconMargins: margins(0px, 3px, 0px, 0px);
-
-lowTonIconPadding: margins(12px, 20px, 12px, 0px);
-lowTonTitlePadding: margins(0px, 12px, 0px, 12px);
-lowTonTextPadding: margins(0px, 0px, 0px, 8px);
-lowTonText: FlatLabel(defaultFlatLabel) {
-	minWidth: 100px;
-	align: align(top);
-}
-
 groupMembersWidgetList: PeerList(defaultPeerList) {
 	item: PeerListItem(defaultPeerListItem) {
 		photoPosition: point(12px, 6px);
@@ -1296,20 +1138,10 @@ saveMusicInfoMenu: Menu(defaultMenu) {
 	itemPadding: margins(17px, 4px, 17px, 3px);
 }
 
-
-birthdaySuggestStickerWidth: 236px;
-birthdaySuggestStickerSize: 96px;
-birthdaySuggestStickerPadding: margins(10px, 16px, 10px, 4px);
-birthdaySuggestTextPadding: margins(10px, 4px, 10px, 8px);
-birthdaySuggestTablePadding: margins(2px, 4px, 2px, 12px);
-birthdaySuggestTableLastPadding: margins(2px, 4px, 2px, 24px);
-birthdaySuggestTableSkip: 2px;
-
 messageGiftIconSkip: 30px;
 
 newChatIcon: icon{{ "chat/new_topic", windowFgActive }};
 newChatIconPadding: margins(2px, 2px, 2px, 2px);
-
 
 managedBotImageWidth: 280px;
 managedBotImageHeight: 140px;
@@ -1325,22 +1157,6 @@ stakeBox: Box(defaultBox) {
 	}
 	shadowIgnoreTopSkip: true;
 }
-stakeEmojiSize: 20px;
-stakeEmojiTop: 8px;
-stakeEmojiIcon: IconEmoji {
-	icon: icon{{ "chat/mini_roll-18x18", activeButtonFg }};
-	padding: margins(1px, 2px, 1px, 0px);
-}
-stakePresetButton: RoundButton(defaultLightButton) {
-	textBg: lightButtonBgOver;
-}
-stakePresetButtonSkip: point(8px, 8px);
-stakeChangeBadge: RoundButton(defaultTableSmallButton) {
-	textFg: mediaviewTextLinkFg;
-	textFgOver: mediaviewTextLinkFg;
-}
-stateChangeBadgeMargin: margins(0px, 1px, 0px, 0px);
-
 historySummaryHeaderIconSize: 30px;
 historySummaryHeaderIconSizeInner: 5px;
 

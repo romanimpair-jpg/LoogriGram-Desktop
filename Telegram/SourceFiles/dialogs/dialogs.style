@@ -430,12 +430,6 @@ dialogsVerifiedIconActive: icon {
 	{ "dialogs/dialogs_verified_star", dialogsVerifiedIconBgActive },
 	{ "dialogs/dialogs_verified_check", dialogsVerifiedIconFgActive },
 };
-dialogsPremiumIcon: ThreeStateIcon {
-	icon: icon {{ "dialogs/dialogs_premium", dialogsVerifiedIconBg }};
-	over: icon {{ "dialogs/dialogs_premium", dialogsVerifiedIconBgOver }};
-	active: icon {{ "dialogs/dialogs_premium", dialogsVerifiedIconBgActive }};
-}
-
 historySendingIcon: icon {{ "dialogs/dialogs_sending", historySendingOutIconFg, point(5px, 5px) }};
 historySendingInvertedIcon: icon {{ "dialogs/dialogs_sending", historySendingInvertedIconFg, point(5px, 5px) }};
 historyViewsSendingIcon: icon {{ "dialogs/dialogs_sending", historySendingInIconFg, point(3px, 0px) }};
@@ -460,7 +454,6 @@ dialogsUpdateButton: FlatButton {
 		color: activeButtonBgRipple;
 	}
 }
-
 
 dialogsSearchInHeight: 38px;
 dialogsSearchInPhotoSize: 28px;
@@ -506,13 +499,8 @@ dialogsMiniForward: DialogsMiniIcon {
 	skipMedia: 2px;
 }
 
-
 dialogsMiniPollIcon: IconEmoji {
 	icon: icon {{ "dialogs/dialogs_chatlist_poll-18x18", dialogsTextFg }};
-	padding: margins(0px, 1px, 3px, 0px);
-}
-dialogsMiniGiftIcon: IconEmoji {
-	icon: icon {{ "profile/gift-18x18", dialogsTextFg }};
 	padding: margins(0px, 1px, 3px, 0px);
 }
 dialogsMiniTodoListIcon: IconEmoji {
@@ -529,10 +517,6 @@ dialogsMiniLocationIcon: IconEmoji {
 }
 dialogsMiniContactIcon: IconEmoji {
 	icon: icon {{ "menu/profile-18x18", dialogsTextFg }};
-	padding: margins(0px, 1px, 3px, 0px);
-}
-dialogsMiniInvoiceIcon: IconEmoji {
-	icon: icon {{ "payments/payment_card-18x18", dialogsTextFg }};
 	padding: margins(0px, 1px, 3px, 0px);
 }
 dialogsMiniCallOutgoingIcon: IconEmoji {
@@ -553,10 +537,6 @@ dialogsMiniVideoCallIncomingIcon: IconEmoji {
 }
 dialogsMiniStoryIcon: IconEmoji {
 	icon: icon {{ "mini_reply_story", dialogsTextFg }};
-	padding: margins(0px, 2px, 3px, 0px);
-}
-dialogsMiniGiveawayIcon: IconEmoji {
-	icon: icon {{ "boosts/mini_giveaway", dialogsTextFg }};
 	padding: margins(0px, 2px, 3px, 0px);
 }
 dialogsMiniFileIcon: IconEmoji {
@@ -599,7 +579,6 @@ dialogsUnreadReactionMuted: ThreeStateIcon {
 	over: icon{{ "dialogs/dialogs_chatlist_reaction-18x18", dialogsUnreadBgMutedOver }};
 	active: icon{{ "dialogs/dialogs_chatlist_reaction-18x18", dialogsUnreadBgMutedActive }};
 }
-
 
 downloadBarHeight: 46px;
 downloadArrow: icon{{ "fast_to_original", menuIconFg }};
@@ -817,18 +796,6 @@ dialogsPopularAppsAbout: FlatLabel(boxDividerLabel) {
 dialogsQuickActionSize: 20px;
 dialogsQuickActionRippleSize: 80px;
 
-dialogsSponsoredButton: DialogRightButton(dialogRowOpenBot) {
-	button: RoundButton(defaultLightButton) {
-		textFg: windowActiveTextFg;
-		textFgOver: windowActiveTextFg;
-		textBg: lightButtonBgOver;
-		textBgOver: lightButtonBgOver;
-		height: 20px;
-		textTop: 1px;
-	}
-	margin: margins(0px, 9px, 10px, 0px);
-}
-
 dialogsTopBarLeftPadding: 18px;
 dialogsTopBarSuggestionTitleStyle: TextStyle(defaultTextStyle) {
 	font: font(semibold 12px);
@@ -838,12 +805,6 @@ dialogsTopBarSuggestionAboutStyle: TextStyle(defaultTextStyle) {
 }
 dialogsTopBarSuggestionMargins: margins(8px, 8px, 8px, 8px);
 dialogsTopBarSuggestionIconPadding: 12px;
-dialogsTopBarSuggestionUserpics: GroupCallUserpics {
-	size: 25px;
-	shift: 8px;
-	stroke: 2px;
-	align: align(left);
-}
 dialogsTopBarSuggestionShadow: BoxShadow {
 	blurRadius: 3px;
 	offset: point(0px, 1px);

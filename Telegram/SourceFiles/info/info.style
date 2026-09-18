@@ -364,12 +364,10 @@ infoLayerTopBar: InfoTopBar(infoTopBar) {
 
 infoLayerTopBarMenuPosition: point(48px, 37px);
 
-
 infoProfileTopBarHeightMax: 180px + infoLayerTopBarHeight;
 
 infoProfileBirthdayConfettiSize: 360px;
 infoProfileBirthdayDigitSize: 64px;
-
 
 infoProfileTopBarActionButtonBgOpacity: 0.16;
 infoProfileTopBarBackdropRippleOpacity: 0.125;
@@ -389,7 +387,6 @@ infoProfileTopBarStep1: infoProfileTopBarStep2 - infoProfileTopBarActionButtonsH
 
 infoProfileTopBarNoActionsHeightMax: infoProfileTopBarHeightMax - infoProfileTopBarActionButtonSize;
 
-
 infoProfileTopBarBoostFooter: FlatLabel(defaultFlatLabel) {
 	textFg: windowSubTextFg;
 	style: TextStyle(defaultTextStyle) {
@@ -407,7 +404,6 @@ infoProfileTopBarBoostFooterColored: FlatLabel(infoProfileTopBarBoostFooter) {
 		selectLinkFg: groupCallIconFg;
 	}
 }
-
 
 infoMinimalWidth: 324px;
 infoDesiredWidth: 392px;
@@ -505,10 +501,6 @@ infoTopicCover: InfoProfileCover(infoProfileMegagroupCover) {
 infoEditContactCover: InfoProfileCover(infoProfileCover) {
 	nameTop: 33px;
 	statusTop: 57px;
-}
-
-infoRatingDeductedBadge: RoundButton(customEmojiTextBadge) {
-	textBg: windowSubTextFg;
 }
 
 infoProfileInaccessibleUserpic: icon {{ "info/inaccessible_userpic", historyPeerUserpicFg }};
@@ -1102,45 +1094,6 @@ inviteLinkQrSkip: 24px;
 inviteLinkQrMargin: margins(0px, 0px, 0px, 13px);
 inviteLinkQrValuePadding: margins(22px, 0px, 22px, 12px);
 
-inviteLinkCreditsField: InputField(defaultInputField) {
-	textMargins: margins(23px, 10px, 0px, 0px);
-	textAlign: align(left);
-	textFg: historyComposeAreaFg;
-	textBg: historyComposeAreaBg;
-	heightMin: 36px;
-	heightMax: 36px;
-	placeholderFg: placeholderFg;
-	placeholderFgActive: placeholderFgActive;
-	placeholderFgError: placeholderFgActive;
-	placeholderMargins: margins(0px, 0px, 2px, 0px);
-	placeholderAlign: align(left);
-	placeholderScale: 0.;
-	placeholderFont: normalFont;
-	placeholderShift: -50px;
-	duration: 100;
-}
-
-inviteLinkSubscribeBoxTitle: FlatLabel(defaultFlatLabel) {
-	minWidth: 300px;
-	textFg: windowBoldFg;
-	align: align(top);
-	style: TextStyle(defaultTextStyle) {
-		font: font(17px semibold);
-	}
-}
-inviteLinkSubscribeBoxAbout: FlatLabel(defaultFlatLabel) {
-	minWidth: 300px;
-	align: align(top);
-}
-inviteLinkSubscribeBoxTerms: FlatLabel(defaultFlatLabel) {
-	minWidth: 300px;
-	align: align(top);
-	textFg: windowSubTextFg;
-	style: TextStyle(defaultTextStyle) {
-		font: font(11px);
-	}
-}
-
 usernamesReorderIcon: icon {{ "stickers_reorder", dialogsMenuIconFg }};
 
 infoAboutGigagroup: FlatLabel(defaultFlatLabel) {
@@ -1208,13 +1161,6 @@ permissionsExpandIcon: icon{{ "info/edit/expand_arrow_small", windowBoldFg }};
 // "Show more" panel at the end of the similar-peers list are gone with it.
 // The button itself is still read by settings_premium.cpp for a text metric
 // and outlives the panel until that file goes.
-similarChannelsLock: RoundButton(defaultActiveButton) {
-	height: 44px;
-	textTop: 12px;
-	style: semiboldTextStyle;
-}
-
-
 infoSharedMediaScroll: ScrollArea(defaultScrollArea) {
 	round: 1px;
 	width: 5px;
@@ -1231,15 +1177,6 @@ topicsLayoutButtonIconSize: 140px;
 topicsLayoutButtonPadding: margins(4px, 0px, 4px, 12px);
 topicsLayoutButtonSkip: 0px;
 
-infoStarsTitle: FlatLabel(defaultFlatLabel) {
-	minWidth: 40px;
-	textFg: windowBoldFg;
-	maxHeight: 24px;
-	style: TextStyle(boxTextStyle) {
-		font: font(17px semibold);
-	}
-	align: align(top);
-}
 infoStarsFeatureTitle: FlatLabel(defaultFlatLabel) {
 	textFg: windowBoldFg;
 	style: semiboldTextStyle;
@@ -1254,7 +1191,6 @@ infoStarsFeatureIconPosition: point(3px, 7px);
 infoStarsFeatureMargin: margins(0px, 8px, 0px, 6px);
 infoStarsFeatureLabelLeft: 46px;
 infoStarsFeatureSkip: 2px;
-infoStarsCrown: icon {{ "limits/filled_rating_crown-24x24", windowFgActive }};
 infoStarsUnderstood: IconEmoji{
 	icon: icon {{ "limits/filled_understood-20x20", windowFgActive }};
 	padding: margins(0px, -1px, 0px, 0px);
@@ -1300,18 +1236,6 @@ collectionEditBox: Box(defaultBox) {
 		textTop: 12px;
 		style: semiboldTextStyle;
 	}
-}
-collectionEditMenuToggle: IconButton(infoTopBarMenu) {
-	width: boxTitleHeight;
-	height: boxTitleHeight;
-
-	icon: icon {{ "title_menu_dots", boxTitleCloseFg }};
-	iconOver: icon {{ "title_menu_dots", boxTitleCloseFgOver }};
-	iconPosition: point(-1px, -1px);
-
-	rippleAreaPosition: point(4px, 4px);
-	rippleAreaSize: 40px;
-	ripple: defaultRippleAnimationBgOver;
 }
 collectionSubTabs: SubTabs(defaultSubTabs) {
 	bg: boxDividerBg;

@@ -10,7 +10,6 @@ using "ui/basic.style";
 using "ui/widgets/widgets.style";
 using "ui/menu_icons.style";
 using "media/player/media_player.style";
-using "media/stories/media_stories.style";
 using "boxes/boxes.style";
 using "calls/calls.style";
 using "chat_helpers/chat_helpers.style";
@@ -202,9 +201,6 @@ mediaviewPopupMenu: PopupMenu(defaultPopupMenu) {
 	shadowFallback: groupCallMenuBg;
 	menu: mediaviewMenu;
 	animation: mediaviewPanelAnimation;
-}
-mediaviewSponsorInfoMenu: PopupMenu(mediaviewPopupMenu) {
-	maxHeight: 420px;
 }
 mediaviewDropdownMenu: DropdownMenu(defaultDropdownMenu) {
 	menu: mediaviewMenu;
@@ -1084,34 +1080,6 @@ storiesCaptionPullThreshold: 50px;
 storiesShowMorePadding: margins(6px, 4px, 6px, 4px);
 storiesShowMoreFont: semiboldFont;
 
-storiesStealthLogoAdd: 12px;
-storiesStealthLogoMargin: margins(0px, 28px, 0px, 7px);
-storiesStealthBox: Box(defaultBox) {
-	buttonPadding: margins(10px, 10px, 10px, 10px);
-	buttonHeight: 42px;
-	button: RoundButton(defaultBoxButton) {
-		height: 42px;
-		textTop: 12px;
-		style: semiboldTextStyle;
-
-		textFg: storiesComposeWhiteText;
-		textFgOver: storiesComposeWhiteText;
-		numbersTextFg: storiesComposeWhiteText;
-		numbersTextFgOver: storiesComposeWhiteText;
-		textBg: storiesComposeBlue;
-		textBgOver: storiesComposeBlue;
-
-		ripple: universalRippleAnimation;
-	}
-	margin: margins(0px, 56px, 0px, 10px);
-	bg: groupCallMembersBg;
-	title: FlatLabel(boxTitle) {
-		textFg: groupCallMembersFg;
-		align: align(top);
-	}
-	titleAdditionalFg: groupCallMemberNotJoinedStatus;
-}
-storiesStealthTitleMargin: margins(0px, 10px, 0px, 0px);
 storiesStealthBoxClose: IconButton(defaultIconButton) {
 	width: boxTitleHeight;
 	height: boxTitleHeight;
@@ -1123,39 +1091,6 @@ storiesStealthBoxClose: IconButton(defaultIconButton) {
 	rippleAreaSize: 40px;
 	ripple: storiesComposeRippleLight;
 }
-storiesStealthAboutMargin: margins(0px, 5px, 0px, 15px);
-storiesStealthBoxBottom: 11px;
-storiesStealthToast: Toast(defaultMultilineToast) {
-	maxWidth: 340px;
-}
-
-storiesStealthStyle: StealthBoxStyle {
-	box: storiesStealthBox;
-	buttonLabel: FlatLabel(defaultFlatLabel) {
-		style: semiboldTextStyle;
-		textFg: storiesComposeWhiteText;
-		align: align(top);
-		minWidth: 20px;
-		maxHeight: 20px;
-	}
-	lockIcon: icon {{ "dialogs/dialogs_lock_on", storiesComposeWhiteText }};
-	boxClose: storiesStealthBoxClose;
-	about: FlatLabel(defaultFlatLabel) {
-		textFg: storiesComposeGrayText;
-		align: align(top);
-		minWidth: 20px;
-	}
-	featureTitle: storiesHeaderName;
-	featureAbout: FlatLabel(defaultFlatLabel) {
-		textFg: storiesComposeGrayText;
-		minWidth: 20px;
-	}
-	featurePastIcon: icon{{ "stories/stealth_5m", storiesComposeBlue }};
-	featureNextIcon: icon{{ "stories/stealth_25m", storiesComposeBlue }};
-	logoIcon: icon{{ "stories/stealth_logo", storiesComposeWhiteText }};
-	logoBg: storiesComposeBlue;
-}
-
 storiesViewsPosition: point(4px, 29px);
 storiesViewsIcon: icon{{ "mediaview/views", storiesComposeGrayText }};
 storiesViewsIconTop: 11px;

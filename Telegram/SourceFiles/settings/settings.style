@@ -68,10 +68,6 @@ settingsOptionDisabled: SettingsButton(settingsButtonNoIcon) {
 	textBgOver: windowBg;
 	toggleOver: infoProfileToggle;
 }
-settingsButtonDisabledWithIcon: SettingsButton(settingsButton) {
-	textFg: windowSubTextFg;
-	textFgOver: windowSubTextFg;
-}
 settingsButtonRightSkip: 23px;
 settingsScalePadding: margins(60px, 7px, 22px, 4px);
 settingsBigScalePadding: margins(21px, 7px, 21px, 4px);
@@ -98,22 +94,6 @@ settingsUpdate: SettingsButton(infoMainButton, settingsButtonNoIcon) {
 settingsUpdateStatePosition: point(22px, 29px);
 
 settingsIconInterfaceScale: icon {{ "settings/interface_scale", settingsIconFg }};
-
-settingsPremiumIconDouble: icon {{ "settings/premium/double", settingsIconFg }};
-
-settingsStoriesIconOrder: icon {{ "settings/premium/stories_order", premiumButtonBg1 }};
-settingsStoriesIconStealth: icon {{ "menu/stealth", premiumButtonBg1 }};
-settingsStoriesIconViews: icon {{ "menu/show_in_chat", premiumButtonBg1 }};
-settingsStoriesIconExpiration: icon {{ "settings/premium/timer", premiumButtonBg1 }};
-settingsStoriesIconDownload: icon {{ "menu/download", premiumButtonBg1 }};
-settingsStoriesIconCaption: icon {{ "settings/premium/stories_caption", premiumButtonBg1 }};
-settingsStoriesIconLinks: icon {{ "menu/links_profile", premiumButtonBg1 }};
-
-// LoogriGram: the eight row icons of the Business settings section and the
-// eight of its promo carousel went with them, and settingsIconChatAutomation
-// with the "Chat automation" row above.
-
-settingsStarRefEarnStars: icon {{ "settings/premium/business/earn_stars", settingsIconFg }};
 
 settingsPremiumNewBadge: FlatLabel(defaultFlatLabel) {
 	style: TextStyle(semiboldTextStyle) {
@@ -192,10 +172,6 @@ settingsInfoPeerBadge: InfoPeerBadge {
 	premiumFg: dialogsVerifiedIconBg;
 	sizeTag: 0; // Normal
 }
-settingsCoverBadge: InfoPeerBadge(infoPeerBadge) {
-	position: point(4px, 2px);
-}
-
 settingsBio: InputField(defaultInputField) {
 	textBg: transparent;
 	textMargins: margins(0px, 7px, 0px, 13px);
@@ -270,8 +246,6 @@ chatThemeEntryMargin: margins(16px, 10px, 16px, 8px);
 chatThemeEmptyPreviewTop: 16px;
 chatThemeEmojiBottom: 12px;
 chatThemeButtonMargin: margins(10px, 0px, 10px, 8px);
-chatThemeGiftTaken: icon {{ "mediaview/mini_repost", msgFileInBg }};
-
 autoDownloadLimitButton: SettingsButton(settingsButtonNoIcon) {
 	padding: margins(22px, 10px, 22px, 0px);
 }
@@ -294,8 +268,6 @@ settingsFilterDividerLabel: FlatLabel(boxDividerLabel) {
 settingsFilterDividerLabelPadding: margins(0px, 16px, 0px, 22px);
 settingsFilterIconSize: 74px;
 settingsFilterIconPadding: margins(0px, 17px, 0px, 5px);
-
-settingsFilterTagPreviewSkip: 14px;
 
 settingsFilterAddRecommended: RoundButton(defaultActiveButton) {
 	width: -32px;
@@ -427,61 +399,11 @@ notifyPreviewTextPosition: point(64px, 30px);
 notifyPreviewChecksSkip: 12px;
 notifyPreviewBottomSkip: 9px;
 
-settingsPremiumButtonPadding: margins(11px, 11px, 11px, 3px);
-settingsPremiumTopBarBackIcon: icon {{ "info/info_back", premiumButtonFg }};
-settingsPremiumTopBarBackIconOver: icon {{ "info/info_back", premiumButtonFg }};
-settingsPremiumTopBarBack: IconButton(infoTopBarBack) {
-	icon: settingsPremiumTopBarBackIcon;
-	iconOver: settingsPremiumTopBarBackIconOver;
-	ripple: RippleAnimation(defaultRippleAnimation) {
-		color: callMuteRipple;
-	}
-}
-settingsPremiumLayerTopBarBack: IconButton(infoLayerTopBarBack) {
-	icon: settingsPremiumTopBarBackIcon;
-	iconOver: settingsPremiumTopBarBackIconOver;
-	ripple: RippleAnimation(defaultRippleAnimation) {
-		color: callMuteRipple;
-	}
-}
-settingsPremiumTopBarClose: IconButton(infoTopBarClose) {
-	icon: icon {{ "info/info_close", premiumButtonFg }};
-	iconOver: icon {{ "info/info_close", premiumButtonFg }};
-	ripple: RippleAnimation(defaultRippleAnimation) {
-		color: callMuteRipple;
-	}
-}
-settingsPremiumMoveLeft: IconButton(settingsPremiumLayerTopBarBack) {
-	width: 52px;
-	height: 56px;
-	iconPosition: point(-1px, -1px);
-}
-settingsPremiumMoveRightIcon: icon {{ "info/info_back-flip_horizontal", premiumButtonFg }};
-settingsPremiumMoveRightIconOver: icon {{ "info/info_back-flip_horizontal", premiumButtonFg }};
-settingsPremiumMoveRight: IconButton(settingsPremiumMoveLeft) {
-	icon: settingsPremiumMoveRightIcon;
-	iconOver: settingsPremiumMoveRightIconOver;
-}
 settingsPremiumRowTitlePadding: margins(59px, 5px, 46px, 1px);
 settingsPremiumRowAboutPadding: margins(59px, 0px, 46px, 6px);
-settingsPremiumPreviewTitlePadding: margins(24px, 13px, 24px, 3px);
-settingsPremiumPreviewAboutPadding: margins(24px, 0px, 24px, 11px);
-settingsPremiumPreviewLinePadding: margins(18px, 0px, 18px, 8px);
-settingsPremiumPreviewIconTitlePadding: margins(62px, 13px, 24px, 1px);
-settingsPremiumPreviewIconAboutPadding: margins(62px, 0px, 24px, 0px);
-settingsPremiumPreviewIconPosition: point(20px, 7px);
-
 settingsPremiumArrowShift: point(-5px, -1px);
 settingsPremiumArrow: icon{{ "settings/premium/arrow", menuIconFg }};
 settingsPremiumArrowOver: icon{{ "settings/premium/arrow", menuIconFgOver }};
-
-settingsPremiumOptionsPadding: margins(0px, 9px, 0px, 2px);
-settingsPremiumTopHeight: 202px;
-settingsPremiumUserTitle: FlatLabel(boxTitle) {
-	minWidth: 300px;
-	maxHeight: 0px;
-	align: align(top);
-}
 
 settingsBlockedListSubtitleAddPadding: margins(0px, 1px, 0px, -4px);
 settingsBlockedListIconPadding: margins(0px, 24px, 0px, 5px);
@@ -565,37 +487,11 @@ peerAppearanceButton: SettingsButton(settingsButtonLight) {
 	padding: margins(60px, 8px, 22px, 8px);
 	iconLeft: 20px;
 }
-peerAppearanceCoverLabelMargin: margins(22px, 0px, 22px, 17px);
 peerAppearanceIconPadding: margins(0px, 15px, 0px, 5px);
 peerAppearanceDividerTextMargin: margins(22px, 8px, 22px, 11px);
 
-settingsChatbotsUsername: InputField(defaultMultiSelectSearchField) {
-}
-settingsChatbotsAccess: Checkbox(defaultCheckbox) {
-	textPosition: point(18px, 2px);
-}
-settingsLocationAddress: InputField(defaultMultiSelectSearchField) {
-}
-settingsChatbotsUsernameMargins: margins(20px, 0px, 20px, 8px);
-settingsChatbotsAccessMargins: margins(22px, 5px, 22px, 9px);
-settingsChatbotsAccessSkip: 4px;
-settingsChatbotsBottomTextMargin: margins(22px, 8px, 22px, 3px);
-settingsChatbotsAdd: SettingsButton(settingsButton) {
-	iconLeft: 22px;
-}
-settingsChatbotsRemove: SettingsButton(settingsAttentionButtonWithIcon, settingsChatbotsAdd) {
-	iconLeft: 16px;
-}
-settingsChatbotsRemoveIcon: infoIconDeleteRed;
-settingsWorkingHoursWeek: SettingsButton(settingsButtonNoIcon) {
-	height: 40px;
-	padding: margins(22px, 4px, 22px, 4px);
-}
-settingsWorkingHoursDetails: settingsNotificationTypeDetails;
 settingsWorkingHoursPicker: 200px;
 settingsWorkingHoursPickerItemHeight: 40px;
-
-settingsAwaySchedulePadding: margins(0px, 8px, 0px, 8px);
 
 settingsAddReplyLabel: FlatLabel(defaultFlatLabel) {
 	minWidth: 256px;
@@ -612,54 +508,7 @@ settingsAddReplyField: InputField(defaultInputField) {
 
 	heightMin: 36px;
 }
-settingsChatbotsNotFound: FlatLabel(defaultFlatLabel) {
-	textFg: windowSubTextFg;
-	align: align(top);
-}
-settingsChatbotsAddButton: RoundButton(defaultActiveButton) {
-	width: -16px;
-	height: 26px;
-	textTop: 4px;
-}
-settingsChatbotsAddMargin: 14px;
-
-settingsChatIntroField: InputField(defaultMultiSelectSearchField) {
-	textMargins: margins(2px, 0px, 32px, 0px);
-}
-settingsChatIntroFieldMargins: margins(20px, 15px, 20px, 8px);
-
-settingsChatLinkEmojiTop: 2px;
-settingsChatLinkField: InputField(defaultInputField) {
-	textBg: transparent;
-	textMargins: margins(2px, 8px, 2px, 8px);
-
-	placeholderFg: placeholderFg;
-	placeholderFgActive: placeholderFgActive;
-	placeholderFgError: placeholderFgActive;
-	placeholderMargins: margins(0px, 0px, 0px, 0px);
-	placeholderScale: 0.;
-	placeholderFont: normalFont;
-
-	border: 0px;
-	borderActive: 0px;
-
-	heightMin: 32px;
-
-	style: defaultTextStyle;
-}
-
 settingsQuickDialogActionsTriggerFont: font(11px);
-
-settingsGiftIconEmoji: IconEmoji {
-	icon: icon{{ "settings/mini_gift", windowFg }};
-	padding: margins(1px, 2px, 1px, 0px);
-}
-
-settingsCreditsButton: SettingsButton(settingsButton) {
-	padding: margins(62px, 8px, 22px, 8px);
-}
-settingsButtonIconGift: icon {{ "settings/gift", menuIconColor }};
-settingsButtonIconEarn: icon {{ "settings/earn", menuIconColor }};
 
 settingsIconPasskeys: icon {{ "menu/permissions", windowBgActive }};
 settingsIconPasskeysAboutIcon1: icon {{ "menu/permissions", boxTextFg }};
@@ -719,4 +568,3 @@ detailedSettingsButtonStyle: DetailedSettingsButtonStyle {
 	descriptionRightSkip: 4px;
 }
 
-settingsToastStarIcon: icon {{ "toast/star", toastFg }};

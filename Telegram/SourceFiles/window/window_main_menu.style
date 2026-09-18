@@ -28,8 +28,6 @@ mainMenuResetScaleTop: 2px;
 mainMenuResetScaleIconLeft: 5px;
 mainMenuCoverNameLeft: 26px;
 mainMenuCoverNameTop: 84px;
-mainMenuCoverStatusLeft: mainMenuCoverNameLeft;
-mainMenuCoverStatusTop: 103px;
 mainMenuSkip: 6px;
 mainMenuFooterHeightMin: 80px;
 mainMenu: Menu(defaultMenu) {

@@ -58,12 +58,10 @@ set(style_files
     info/profile/info_profile_actions.style
     info/profile/info_profile_top_bar.style
     info/channel_statistics/boosts/giveaway/giveaway.style
-    info/profile/info_levels.style
     info/userpic/info_userpic_builder.style
     intro/intro.style
     iv/iv.style
     media/player/media_player.style
-    media/stories/media_stories.style
     passport/passport.style
     payments/ui/payments.style
     profile/profile.style
