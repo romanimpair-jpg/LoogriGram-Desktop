@@ -730,8 +730,6 @@ PRIVATE
     dialogs/ui/dialogs_layout.h
     dialogs/ui/dialogs_message_view.cpp
     dialogs/ui/dialogs_message_view.h
-    dialogs/ui/dialogs_stories_content.cpp
-    dialogs/ui/dialogs_stories_content.h
     dialogs/ui/dialogs_suggestions.cpp
     dialogs/ui/dialogs_suggestions.h
     dialogs/ui/dialogs_topics_view.cpp
@@ -1142,8 +1140,6 @@ PRIVATE
     info/profile/tabs/adapters/info_profile_tab_media.h
     info/profile/tabs/adapters/info_profile_tab_peer_lists.cpp
     info/profile/tabs/adapters/info_profile_tab_peer_lists.h
-    info/profile/tabs/adapters/info_profile_tab_stories.cpp
-    info/profile/tabs/adapters/info_profile_tab_stories.h
     info/profile/tabs/adapters/info_profile_tab_sub_controller.cpp
     info/profile/tabs/adapters/info_profile_tab_sub_controller.h
     info/profile/tabs/adapters/info_profile_tab_chats.cpp
@@ -1192,15 +1188,6 @@ PRIVATE
     info/statistics/info_statistics_tag.h
     info/statistics/info_statistics_widget.cpp
     info/statistics/info_statistics_widget.h
-    info/stories/info_stories_albums.cpp
-    info/stories/info_stories_albums.h
-    info/stories/info_stories_common.h
-    info/stories/info_stories_inner_widget.cpp
-    info/stories/info_stories_inner_widget.h
-    info/stories/info_stories_provider.cpp
-    info/stories/info_stories_provider.h
-    info/stories/info_stories_widget.cpp
-    info/stories/info_stories_widget.h
     info/userpic/info_userpic_colors_editor.cpp
     info/userpic/info_userpic_colors_editor.h
     info/userpic/info_userpic_emoji_builder.cpp

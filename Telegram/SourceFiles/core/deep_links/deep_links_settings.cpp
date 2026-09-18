@@ -26,7 +26,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/notify/data_notify_settings.h"
 #include "info/info_memento.h"
 #include "info/settings/info_settings_widget.h"
-#include "info/stories/info_stories_widget.h"
 #include "lang/lang_keys.h"
 #include "ui/boxes/peer_qr_box.h"
 #include "ui/layers/generic_box.h"
@@ -190,8 +189,9 @@ Result ShowMyProfile(const Context &ctx) {
 	if (!ctx.controller) {
 		return Result::NeedsAuth;
 	}
-	ctx.controller->showSection(
-		Info::Stories::Make(ctx.controller->session().user()));
+	// LoogriGram: this opened your own stories page, which upstream uses
+	// as the profile. Stories are removed; see the main menu's My Profile.
+	ctx.controller->showSettings(::Settings::InformationId());
 	return Result::Handled;
 }
 
@@ -383,18 +383,8 @@ void RegisterSettingsHandlers(Router &router) {
 	// LoogriGram: a settings deep link opened your own gifts. Gifts are not
 	// browsed from this client.
 
-	router.add(u"settings"_q, {
-		.path = u"my-profile/archived-posts"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			ctx.controller->showSection(Info::Stories::Make(
-				ctx.controller->session().user(),
-				Info::Stories::ArchiveId()));
-			return Result::Handled;
-		}},
-	});
+	// LoogriGram: a settings deep link opened your archived stories.
+	// Stories are removed.
 
 	router.add(u"settings"_q, {
 		.path = u"emoji-status"_q,

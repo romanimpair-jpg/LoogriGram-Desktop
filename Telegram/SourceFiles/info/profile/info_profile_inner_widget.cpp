@@ -17,7 +17,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/profile/tabs/adapters/info_profile_tab_peer_lists.h"
 #include "info/profile/tabs/adapters/info_profile_tab_polls.h"
 #include "info/profile/tabs/adapters/info_profile_tab_saved.h"
-#include "info/profile/tabs/adapters/info_profile_tab_stories.h"
 #include "info/profile/tabs/info_profile_tabs_host.h"
 #include "info/profile/info_profile_icon.h"
 #include "info/profile/info_profile_members.h"
@@ -311,9 +310,7 @@ object_ptr<Ui::RpWidget> InnerWidget::setupContent(
 		if (_savedMessages) {
 			tabs.push_back(MakeChatsTabDescriptor());
 		}
-		if (!_topic && !_savedMessages) {
-			tabs.push_back(MakeStoriesTabDescriptor(tabsPeer));
-		}
+		// LoogriGram: a Stories (or channel Posts) tab sat here.
 		if ((_peer->isChat() || _peer->isMegagroup())
 			&& !_peer->isMonoforum()
 			&& !_topic

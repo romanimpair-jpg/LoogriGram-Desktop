@@ -65,10 +65,6 @@ namespace Info::GlobalMedia {
 struct Tag;
 } // namespace Info::GlobalMedia
 
-namespace Info::Stories {
-struct Tag;
-} // namespace Info::Stories
-
 namespace Info::Saved {
 struct MusicTag;
 } // namespace Info::Saved
@@ -261,7 +257,6 @@ public:
 	explicit ContentMemento(not_null<Data::SavedMessages*> savedMessages);
 	explicit ContentMemento(Settings::Tag settings);
 	explicit ContentMemento(Downloads::Tag downloads);
-	explicit ContentMemento(Stories::Tag stories);
 	explicit ContentMemento(Saved::MusicTag music);
 	explicit ContentMemento(Statistics::Tag statistics);
 	explicit ContentMemento(GlobalMedia::Tag global);
@@ -297,15 +292,6 @@ public:
 	}
 	[[nodiscard]] UserData *settingsSelf() const {
 		return _settingsSelf;
-	}
-	[[nodiscard]] PeerData *storiesPeer() const {
-		return _storiesPeer;
-	}
-	[[nodiscard]] int storiesAlbumId() const {
-		return _storiesAlbumId;
-	}
-	[[nodiscard]] int storiesAddToAlbumId() const {
-		return _storiesAddToAlbumId;
 	}
 	[[nodiscard]] PeerData *musicPeer() const {
 		return _musicPeer;
@@ -368,9 +354,6 @@ private:
 	Data::SavedSublist *_sublist = nullptr;
 	Data::SavedMessages * const _savedMessages = nullptr;
 	UserData * const _settingsSelf = nullptr;
-	PeerData * const _storiesPeer = nullptr;
-	int _storiesAlbumId = 0;
-	int _storiesAddToAlbumId = 0;
 	PeerData * const _musicPeer = nullptr;
 	Statistics::Tag _statisticsTag;
 	PollData * const _poll = nullptr;

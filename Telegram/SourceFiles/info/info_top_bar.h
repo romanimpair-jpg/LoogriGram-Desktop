@@ -116,15 +116,11 @@ private:
 	[[nodiscard]] Ui::StringWithNumbers generateSelectedText() const;
 	[[nodiscard]] bool computeCanDelete() const;
 	[[nodiscard]] bool computeCanForward() const;
-	[[nodiscard]] bool computeCanUnpinStories() const;
-	[[nodiscard]] bool computeCanToggleStoryPin() const;
-	[[nodiscard]] bool computeAllStoriesInProfile() const;
 	void updateSelectionState();
 	void createSelectionControls();
 
 	void performForward();
 	void performDelete();
-	void performToggleStoryPin();
 
 	void setSearchField(
 		base::unique_qptr<Ui::InputField> field,
@@ -163,15 +159,10 @@ private:
 	SelectedItems _selectedItems;
 	bool _canDelete = false;
 	bool _canForward = false;
-	bool _canToggleStoryPin = false;
-	bool _canUnpinStories = false;
-	bool _allStoriesInProfile = false;
 	QPointer<Ui::FadeWrap<Ui::IconButton>> _cancelSelection;
 	QPointer<Ui::FadeWrap<Ui::LabelWithNumbers>> _selectionText;
 	QPointer<Ui::FadeWrap<Ui::IconButton>> _forward;
 	QPointer<Ui::FadeWrap<Ui::IconButton>> _delete;
-	QPointer<Ui::FadeWrap<Ui::IconButton>> _toggleStoryInProfile;
-	QPointer<Ui::FadeWrap<Ui::IconButton>> _toggleStoryPin;
 	rpl::event_stream<SelectionAction> _selectionActionRequests;
 
 	using UpdateCallback = Fn<bool(anim::type)>;

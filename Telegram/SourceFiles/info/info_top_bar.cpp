@@ -416,12 +416,6 @@ void TopBar::updateSelectionControlsGeometry(int newWidth) {
 		_delete->moveToRight(right, 0, newWidth);
 		right += _delete->width();
 	}
-	if (_canToggleStoryPin) {
-		_toggleStoryInProfile->moveToRight(right, 0, newWidth);
-		right += _toggleStoryInProfile->width();
-		_toggleStoryPin->moveToRight(right, 0, newWidth);
-		right += _toggleStoryPin->width();
-	}
 	if (_canForward) {
 		_forward->moveToRight(right, 0, newWidth);
 		right += _forward->width();
@@ -519,36 +513,13 @@ rpl::producer<SelectionAction> TopBar::selectionActionRequests() const {
 void TopBar::updateSelectionState() {
 	Expects(_selectionText
 		&& _delete
-		&& _forward
-		&& _toggleStoryInProfile
-		&& _toggleStoryPin);
+		&& _forward);
 
 	_canDelete = computeCanDelete();
 	_canForward = computeCanForward();
-	_canUnpinStories = computeCanUnpinStories();
-	_canToggleStoryPin = computeCanToggleStoryPin();
-	_allStoriesInProfile = computeAllStoriesInProfile();
 	_selectionText->entity()->setValue(generateSelectedText());
 	_delete->toggle(_canDelete, anim::type::instant);
 	_forward->toggle(_canForward, anim::type::instant);
-	_toggleStoryInProfile->toggle(_canToggleStoryPin, anim::type::instant);
-	_toggleStoryInProfile->entity()->setIconOverride(
-		(_allStoriesInProfile
-			? &_st.storiesArchive.icon
-			: &_st.storiesSave.icon),
-		(_allStoriesInProfile
-			? &_st.storiesArchive.iconOver
-			: &_st.storiesSave.iconOver));
-	_toggleStoryInProfile->entity()->setAccessibleName(_allStoriesInProfile
-		? tr::lng_mediaview_archive_story(tr::now)
-		: tr::lng_mediaview_save_to_profile(tr::now));
-	_toggleStoryPin->entity()->setAccessibleName(_canUnpinStories
-		? tr::lng_context_unpin_from_top(tr::now)
-		: tr::lng_context_pin_to_top(tr::now));
-	_toggleStoryPin->toggle(_canToggleStoryPin, anim::type::instant);
-	_toggleStoryPin->entity()->setIconOverride(
-		_canUnpinStories ? &_st.storiesUnpin.icon : nullptr,
-		_canUnpinStories ? &_st.storiesUnpin.iconOver : nullptr);
 
 	updateSelectionControlsGeometry(width());
 }
@@ -563,9 +534,6 @@ void TopBar::createSelectionControls() {
 	};
 	_canDelete = computeCanDelete();
 	_canForward = computeCanForward();
-	_canUnpinStories = computeCanUnpinStories();
-	_canToggleStoryPin = computeCanToggleStoryPin();
-	_allStoriesInProfile = computeAllStoriesInProfile();
 	_cancelSelection = wrap(Ui::CreateChild<Ui::FadeWrap<Ui::IconButton>>(
 		this,
 		object_ptr<Ui::IconButton>(this, _st.mediaCancel),
@@ -631,57 +599,6 @@ void TopBar::createSelectionControls() {
 		_cancelSelection->lifetime());
 	_delete->entity()->setVisible(_canDelete);
 
-	_toggleStoryInProfile = wrap(
-		Ui::CreateChild<Ui::FadeWrap<Ui::IconButton>>(
-			this,
-			object_ptr<Ui::IconButton>(
-				this,
-				_allStoriesInProfile ? _st.storiesArchive : _st.storiesSave),
-			st::infoTopBarScale));
-	registerToggleControlCallback(
-		_toggleStoryInProfile.data(),
-		[this] { return selectionMode() && _canToggleStoryPin; });
-	_toggleStoryInProfile->setDuration(st::infoTopBarDuration);
-	_toggleStoryInProfile->entity()->setAccessibleName(_allStoriesInProfile
-		? tr::lng_mediaview_archive_story(tr::now)
-		: tr::lng_mediaview_save_to_profile(tr::now));
-	_toggleStoryInProfile->entity()->clicks(
-	) | rpl::map([=] {
-		return _allStoriesInProfile
-			? SelectionAction::ToggleStoryToArchive
-			: SelectionAction::ToggleStoryToProfile;
-	}) | rpl::start_to_stream(
-		_selectionActionRequests,
-		_cancelSelection->lifetime());
-	_toggleStoryInProfile->entity()->setVisible(_canToggleStoryPin);
-
-	_toggleStoryPin = wrap(
-		Ui::CreateChild<Ui::FadeWrap<Ui::IconButton>>(
-			this,
-			object_ptr<Ui::IconButton>(
-				this,
-				_st.storiesPin),
-			st::infoTopBarScale));
-	if (_canUnpinStories) {
-		_toggleStoryPin->entity()->setIconOverride(
-			_canUnpinStories ? &_st.storiesUnpin.icon : nullptr,
-			_canUnpinStories ? &_st.storiesUnpin.iconOver : nullptr);
-	}
-	registerToggleControlCallback(
-		_toggleStoryPin.data(),
-		[this] { return selectionMode() && _canToggleStoryPin; });
-	_toggleStoryPin->setDuration(st::infoTopBarDuration);
-	_toggleStoryPin->entity()->setAccessibleName(_canUnpinStories
-		? tr::lng_context_unpin_from_top(tr::now)
-		: tr::lng_context_pin_to_top(tr::now));
-	_toggleStoryPin->entity()->clicks(
-	) | rpl::map_to(
-		SelectionAction::ToggleStoryPin
-	) | rpl::start_to_stream(
-		_selectionActionRequests,
-		_cancelSelection->lifetime());
-	_toggleStoryPin->entity()->setVisible(_canToggleStoryPin);
-
 	updateControlsGeometry(width());
 }
 
@@ -691,22 +608,6 @@ bool TopBar::computeCanDelete() const {
 
 bool TopBar::computeCanForward() const {
 	return ranges::all_of(_selectedItems.list, &SelectedItem::canForward);
-}
-
-bool TopBar::computeCanUnpinStories() const {
-	return ranges::any_of(_selectedItems.list, &SelectedItem::canUnpinStory);
-}
-
-bool TopBar::computeCanToggleStoryPin() const {
-	return ranges::all_of(
-		_selectedItems.list,
-		&SelectedItem::canToggleStoryPin);
-}
-
-bool TopBar::computeAllStoriesInProfile() const {
-	return ranges::all_of(
-		_selectedItems.list,
-		&SelectedItem::storyInProfile);
 }
 
 Ui::StringWithNumbers TopBar::generateSelectedText() const {

@@ -11,7 +11,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_search_controller.h"
 #include "info/saved/info_saved_music_common.h"
 #include "info/statistics/info_statistics_tag.h"
-#include "info/stories/info_stories_common.h"
 #include "window/window_session_controller.h"
 
 namespace Api {
@@ -70,7 +69,6 @@ public:
 	explicit Key(not_null<Data::SavedMessages*> savedMessages);
 	Key(Settings::Tag settings);
 	Key(Downloads::Tag downloads);
-	Key(Stories::Tag stories);
 	Key(Saved::MusicTag music);
 	Key(Statistics::Tag statistics);
 	Key(GlobalMedia::Tag global);
@@ -88,9 +86,6 @@ public:
 	[[nodiscard]] bool isDownloads() const;
 	[[nodiscard]] bool isGlobalMedia() const;
 	[[nodiscard]] bool globalMediaOnlyForwardable() const;
-	[[nodiscard]] PeerData *storiesPeer() const;
-	[[nodiscard]] int storiesAlbumId() const;
-	[[nodiscard]] int storiesAddToAlbumId() const;
 	[[nodiscard]] PeerData *musicPeer() const;
 	[[nodiscard]] Statistics::Tag statisticsTag() const;
 	[[nodiscard]] PollData *poll() const;
@@ -117,7 +112,6 @@ private:
 		not_null<Data::SavedMessages*>,
 		Settings::Tag,
 		Downloads::Tag,
-		Stories::Tag,
 		Saved::MusicTag,
 		Statistics::Tag,
 		GlobalMedia::Tag,
@@ -147,7 +141,6 @@ public:
 		Members,
 		Settings,
 		Downloads,
-		Stories,
 		SavedMusic,
 		PollResults,
 		Statistics,
@@ -215,15 +208,6 @@ public:
 	}
 	[[nodiscard]] bool isGlobalMedia() const {
 		return key().isGlobalMedia();
-	}
-	[[nodiscard]] PeerData *storiesPeer() const {
-		return key().storiesPeer();
-	}
-	[[nodiscard]] int storiesAlbumId() const {
-		return key().storiesAlbumId();
-	}
-	[[nodiscard]] int storiesAddToAlbumId() const {
-		return key().storiesAddToAlbumId();
 	}
 	[[nodiscard]] PeerData *musicPeer() const {
 		return key().musicPeer();

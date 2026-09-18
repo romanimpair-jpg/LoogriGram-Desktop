@@ -35,8 +35,7 @@ using namespace Media;
 } // namespace
 
 Provider::Provider(not_null<AbstractController*> controller)
-: _controller(controller)
-, _storiesAddToAlbumId(_controller->storiesAddToAlbumId()) {
+: _controller(controller) {
 	style::PaletteChanged(
 	) | rpl::on_next([=] {
 		for (auto &layout : _layouts) {
@@ -516,9 +515,7 @@ void Provider::applyDragSelection(
 		return;
 	}
 	const auto search = !_queryWords.isEmpty();
-	const auto selectLimit = _storiesAddToAlbumId
-		? _controller->session().appConfig().storiesAlbumLimit()
-		: MaxSelectedItems;
+	const auto selectLimit = MaxSelectedItems;
 	auto chosen = base::flat_set<not_null<const HistoryItem*>>();
 	chosen.reserve(till - from);
 	for (auto i = from; i != till; ++i) {

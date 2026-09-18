@@ -145,8 +145,6 @@ PRIVATE
     dialogs/ui/dialogs_pill.h
     dialogs/ui/dialogs_quick_action_context.h
     dialogs/ui/dialogs_quick_action.h
-    dialogs/ui/dialogs_stories_list.cpp
-    dialogs/ui/dialogs_stories_list.h
     dialogs/ui/dialogs_top_bar_suggestion_content.cpp
     dialogs/ui/dialogs_top_bar_suggestion_content.h
     dialogs/ui/posts_search_intro.cpp
@@ -457,8 +455,6 @@ PRIVATE
     ui/controls/subsection_tabs_slider.h
     ui/controls/subsection_tabs_slider_reorder.cpp
     ui/controls/subsection_tabs_slider_reorder.h
-    ui/controls/sub_tabs.cpp
-    ui/controls/sub_tabs.h
     ui/controls/swipe_handler.cpp
     ui/controls/swipe_handler.h
     ui/controls/swipe_handler_data.h

@@ -90,7 +90,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/profile/info_profile_cover.h"
 #include "info/profile/info_profile_values.h"
 #include "info/statistics/info_statistics_widget.h"
-#include "info/stories/info_stories_widget.h"
 #include "data/components/scheduled_messages.h"
 #include "data/components/welcome_messages.h"
 #include "data/notify/data_notify_settings.h"
@@ -296,7 +295,6 @@ private:
 	void addToggleMuteSubmenu(bool addSeparator);
 	void addSupportInfo();
 	void addInfo();
-	void addStoryArchive();
 	void addNewWindow(bool addSeparator = true);
 	void addUngroup();
 	void addToggleFolder();
@@ -637,22 +635,6 @@ void Filler::addInfo() {
 			}
 		}
 	}, infoPeer->isUser() ? &st::menuIconProfile : &st::menuIconInfo);
-}
-
-void Filler::addStoryArchive() {
-	const auto channel = _peer ? _peer->asChannel() : nullptr;
-	if (!channel || !channel->canEditStories()) {
-		return;
-	}
-	const auto controller = _controller;
-	const auto weak = base::make_weak(_thread);
-	_addAction(tr::lng_stories_archive_button(tr::now), [=] {
-		if ([[maybe_unused]] const auto strong = weak.get()) {
-			controller->showSection(Info::Stories::Make(
-				channel,
-				Info::Stories::ArchiveId()));
-		}
-	}, &st::menuIconStoriesArchiveSection);
 }
 
 void Filler::addToggleFolder() {
@@ -1794,7 +1776,6 @@ void Filler::fillHistoryActions() {
 	addInfo();
 	addViewAsTopics();
 	addManageChat();
-	addStoryArchive();
 	addSupportInfo();
 	addCreatePoll();
 	addThemeEdit();
@@ -1817,7 +1798,6 @@ void Filler::fillProfileActions() {
 	addBotToGroup();
 	addNewMembers();
 	addViewStatistics();
-	addStoryArchive();
 	addManageChat();
 	addSetPersonalChannel();
 	addTopicLink();

@@ -43,23 +43,11 @@ InfoTopBar {
 	mediaActionsSkip: pixels;
 	mediaForward: IconButton;
 	mediaDelete: IconButton;
-	storiesSave: IconButton;
-	storiesArchive: IconButton;
-	storiesPin: IconButton;
-	storiesUnpin: IconButton;
 	search: IconButton;
 	searchRow: SearchFieldRow;
 	highlightBg: color;
 	highlightDuration: int;
 	radius: pixels;
-}
-
-SubTabs {
-	bg: color;
-}
-
-defaultSubTabs: SubTabs {
-	bg: windowBg;
 }
 
 ProfileTabsStrip {
@@ -189,13 +177,6 @@ infoTopBarQr: IconButton(infoTopBarMenu) {
 	iconPosition: point(8px, -1px);
 	rippleAreaPosition: point(0px, 6px);
 }
-infoTopBarEdit: IconButton(infoTopBarMenu) {
-	width: 48px;
-	icon: icon {{ "menu/edit", boxTitleCloseFg }};
-	iconOver: icon {{ "menu/edit", boxTitleCloseFgOver }};
-	iconPosition: point(8px, -1px);
-	rippleAreaPosition: point(0px, 6px);
-}
 infoTopBarForward: IconButton(infoTopBarBack) {
 	width: 46px;
 	icon: icon {{ "info/info_media_forward", boxTitleCloseFg }};
@@ -206,22 +187,6 @@ infoTopBarForward: IconButton(infoTopBarBack) {
 infoTopBarDelete: IconButton(infoTopBarForward) {
 	icon: icon {{ "info/info_media_delete", boxTitleCloseFg }};
 	iconOver: icon {{ "info/info_media_delete", boxTitleCloseFgOver }};
-}
-infoTopBarSaveStories: IconButton(infoTopBarForward) {
-	icon: icon {{ "info/info_stories_to_profile", boxTitleCloseFg }};
-	iconOver: icon {{ "info/info_stories_to_profile", boxTitleCloseFgOver }};
-}
-infoTopBarArchiveStories: IconButton(infoTopBarForward) {
-	icon: icon {{ "info/info_stories_to_archive", boxTitleCloseFg }};
-	iconOver: icon {{ "info/info_stories_to_archive", boxTitleCloseFgOver }};
-}
-infoTopBarPinStories: IconButton(infoTopBarForward) {
-	icon: icon {{ "menu/pin", boxTitleCloseFg }};
-	iconOver: icon {{ "menu/pin", boxTitleCloseFgOver }};
-}
-infoTopBarUnpinStories: IconButton(infoTopBarForward) {
-	icon: icon {{ "menu/unpin", boxTitleCloseFg }};
-	iconOver: icon {{ "menu/unpin", boxTitleCloseFgOver }};
 }
 infoTopBar: InfoTopBar {
 	height: infoTopBarHeight;
@@ -242,10 +207,6 @@ infoTopBar: InfoTopBar {
 	mediaActionsSkip: 4px;
 	mediaForward: infoTopBarForward;
 	mediaDelete: infoTopBarDelete;
-	storiesSave: infoTopBarSaveStories;
-	storiesArchive: infoTopBarArchiveStories;
-	storiesPin: infoTopBarPinStories;
-	storiesUnpin: infoTopBarUnpinStories;
 	search: infoTopBarSearch;
 	searchRow: infoTopBarSearchRow;
 	highlightBg: windowBgOver;
@@ -302,16 +263,6 @@ infoLayerTopBarSearch: IconButton(infoLayerTopBarClose) {
 	iconOver: icon {{ "top_bar_search", boxTitleCloseFgOver }};
 	iconPosition: point(7px, -1px);
 }
-infoLayerTopBarEdit: IconButton(infoLayerTopBarClose) {
-	width: 44px;
-	height: infoLayerTopBarHeight - 2px;
-	icon: icon {{ "menu/edit", boxTitleCloseFg }};
-	iconOver: icon {{ "menu/edit", boxTitleCloseFgOver }};
-	iconPosition: point(10px, -1px);
-
-	rippleAreaSize: 42px;
-	rippleAreaPosition: point(1px, 6px);
-}
 infoLayerTopBarForward: IconButton(infoLayerTopBarBack) {
 	width: 45px;
 	icon: icon {{ "info/info_media_forward", boxTitleCloseFg }};
@@ -322,22 +273,6 @@ infoLayerTopBarForward: IconButton(infoLayerTopBarBack) {
 infoLayerTopBarDelete: IconButton(infoLayerTopBarForward) {
 	icon: icon {{ "info/info_media_delete", boxTitleCloseFg }};
 	iconOver: icon {{ "info/info_media_delete", boxTitleCloseFgOver }};
-}
-infoLayerTopBarSaveStories: IconButton(infoLayerTopBarForward) {
-	icon: icon {{ "info/info_stories_to_profile", boxTitleCloseFg }};
-	iconOver: icon {{ "info/info_stories_to_profile", boxTitleCloseFgOver }};
-}
-infoLayerTopBarArchiveStories: IconButton(infoLayerTopBarForward) {
-	icon: icon {{ "info/info_stories_to_archive", boxTitleCloseFg }};
-	iconOver: icon {{ "info/info_stories_to_archive", boxTitleCloseFgOver }};
-}
-infoLayerTopBarPinStories: IconButton(infoLayerTopBarForward) {
-	icon: icon {{ "menu/pin", boxTitleCloseFg }};
-	iconOver: icon {{ "menu/pin", boxTitleCloseFgOver }};
-}
-infoLayerTopBarUnpinStories: IconButton(infoLayerTopBarForward) {
-	icon: icon {{ "menu/unpin", boxTitleCloseFg }};
-	iconOver: icon {{ "menu/unpin", boxTitleCloseFgOver }};
 }
 infoLayerTopBar: InfoTopBar(infoTopBar) {
 	height: infoLayerTopBarHeight;
@@ -351,10 +286,6 @@ infoLayerTopBar: InfoTopBar(infoTopBar) {
 	mediaActionsSkip: 6px;
 	mediaForward: infoLayerTopBarForward;
 	mediaDelete: infoLayerTopBarDelete;
-	storiesSave: infoLayerTopBarSaveStories;
-	storiesArchive: infoLayerTopBarArchiveStories;
-	storiesPin: infoLayerTopBarPinStories;
-	storiesUnpin: infoLayerTopBarUnpinStories;
 	search: infoTopBarSearch;
 	searchRow: infoTopBarSearchRow;
 	radius: boxRadius;
@@ -522,10 +453,7 @@ infoIconMediaChannel: icon {{ "menu/channel", infoIconFg, point(4px, 4px) }};
 infoIconMediaBot: icon {{ "menu/bot", infoIconFg, point(4px, 4px) }};
 infoIconMediaVoice: icon {{ "info/info_media_voice", infoIconFg }};
 infoIconMediaPoll: icon {{ "menu/create_poll", infoIconFg, point(4px, 4px) }};
-infoIconMediaStories: icon {{ "info/info_media_stories", infoIconFg }};
 infoIconMediaSaved: icon {{ "info/info_media_saved", infoIconFg }};
-infoIconMediaStoriesArchive: icon {{ "info/info_stories_archive", infoIconFg }};
-infoIconMediaStoriesRecent: icon {{ "info/info_stories_recent", infoIconFg }};
 
 infoIconReport: icon {{ "info/info_report", attentionButtonFg }};
 infoIconBlock: icon {{ "info/info_block", attentionButtonFg }};
@@ -810,14 +738,6 @@ infoEmptyLabel: FlatLabel(defaultFlatLabel) {
 	minWidth: 220px;
 	textFg: windowSubTextFg;
 }
-
-infoStoriesAboutArchive: FlatLabel(defaultFlatLabel) {
-	minWidth: 245px;
-	align: align(top);
-	textFg: windowSubTextFg;
-	style: defaultTextStyle;
-}
-infoStoriesAboutArchivePadding: margins(22px, 12px, 22px, 12px);
 
 editPeerBottomButtonsLayoutMargins: margins(0px, 7px, 0px, 0px);
 
@@ -1166,51 +1086,6 @@ infoStarsFeatureSkip: 2px;
 infoStarsUnderstood: IconEmoji{
 	icon: icon {{ "limits/filled_understood-20x20", windowFgActive }};
 	padding: margins(0px, -1px, 0px, 0px);
-}
-
-collectionAbout: FlatLabel(defaultFlatLabel) {
-	minWidth: 256px;
-}
-collectionNameField: InputField(defaultInputField) {
-	textBg: transparent;
-	textMargins: margins(2px, 10px, 32px, 2px);
-
-	placeholderFg: placeholderFg;
-	placeholderFgActive: placeholderFgActive;
-	placeholderFgError: placeholderFgActive;
-	placeholderMargins: margins(2px, 0px, 2px, 0px);
-	placeholderScale: 0.;
-
-	heightMin: 36px;
-}
-collectionEmptyTitle: FlatLabel(boxTitle) {
-}
-collectionEmptyText: FlatLabel(defaultFlatLabel) {
-	textFg: windowSubTextFg;
-	minWidth: 256px;
-}
-collectionEmptyButton: RoundButton(defaultActiveButton) {
-	width: -96px;
-}
-collectionEmptyTitleMargin: margins(10px, 24px, 10px, 4px);
-collectionEmptyTextMargin: margins(10px, 4px, 10px, 12px);
-collectionEmptyAddMargin: margins(10px, 12px, 10px, 24px);
-collectionAddIcon: IconEmoji {
-	icon: icon {{ "settings/plus", windowFgActive }};
-	padding: margins(1px, -2px, 1px, 0px);
-}
-collectionEditBox: Box(defaultBox) {
-	buttonPadding: margins(16px, 12px, 16px, 12px);
-	buttonHeight: 42px;
-	buttonWide: true;
-	button: RoundButton(defaultActiveButton) {
-		height: 42px;
-		textTop: 12px;
-		style: semiboldTextStyle;
-	}
-}
-collectionSubTabs: SubTabs(defaultSubTabs) {
-	bg: boxDividerBg;
 }
 
 infoMusicButtonRipple: universalRippleAnimation;

@@ -10,7 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/profile/info_profile_widget.h"
 #include "info/profile/info_profile_values.h"
 #include "info/media/info_media_widget.h"
-#include "info/stories/info_stories_widget.h"
 #include "info/info_content_widget.h"
 #include "info/info_controller.h"
 #include "info/info_memento.h"
@@ -68,11 +67,7 @@ const style::InfoTopBar &TopBarStyle(Wrap wrap) {
 	return (section.type() == Section::Type::Profile)
 		|| (section.type() == Section::Type::Community)
 		|| ((section.type() == Section::Type::Settings)
-			&& section.settingsType()->hasCustomTopBar())
-		|| (section.type() == Section::Type::Stories
-			&& controller->key().storiesAlbumId() != Stories::ArchiveId()
-			&& controller->key().storiesPeer()
-			&& controller->key().storiesPeer()->isSelf());
+			&& section.settingsType()->hasCustomTopBar());
 }
 
 [[nodiscard]] Fn<Ui::StringWithNumbers(int)> SelectedTitleForMedia(
@@ -308,12 +303,6 @@ Dialogs::RowDescriptor WrapWidget::activeChat() const {
 		return Dialogs::RowDescriptor(
 			peer->owner().history(peer),
 			FullMsgId());
-	} else if (const auto storiesPeer = key().storiesPeer()) {
-		return (key().storiesAlbumId() == Stories::ArchiveId())
-			? Dialogs::RowDescriptor()
-			: Dialogs::RowDescriptor(
-				storiesPeer->owner().history(storiesPeer),
-				FullMsgId());
 	} else if (const auto musicPeer = key().musicPeer()) {
 		return Dialogs::RowDescriptor(
 			musicPeer->owner().history(musicPeer),
@@ -339,8 +328,7 @@ void WrapWidget::forceContentRepaint() {
 
 void WrapWidget::setupTop() {
 	if (HasCustomTopBar(_controller.get())
-		|| wrap() == Wrap::Search
-		|| wrap() == Wrap::StoryAlbumEdit) {
+		|| wrap() == Wrap::Search) {
 		_topBar.destroy();
 		setupShortcuts();
 		return;
@@ -448,17 +436,6 @@ void WrapWidget::setupTopBarMenuToggle() {
 			}
 		}
 		setupShortcuts();
-	} else if (key.storiesPeer()
-		&& key.storiesPeer()->isSelf()
-		&& key.storiesAlbumId() != Stories::ArchiveId()) {
-		const auto &st = (wrap() == Wrap::Layer)
-			? st::infoLayerTopBarEdit
-			: st::infoTopBarEdit;
-		const auto button = _topBar->addButton(
-			base::make_unique_q<Ui::IconButton>(_topBar, st));
-		button->addClickHandler([=] {
-			_controller->showSettings(::Settings::InformationId());
-		});
 	} else if (section.type() == Section::Type::Media) {
 		addTopBarMenuButton();
 	} else if (section.type() == Section::Type::Downloads) {

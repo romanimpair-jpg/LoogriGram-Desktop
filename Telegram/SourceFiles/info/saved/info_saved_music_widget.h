@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "info/info_content_widget.h"
 #include "info/media/info_media_widget.h"
-#include "info/stories/info_stories_common.h"
 
 namespace Ui {
 template <typename Widget>

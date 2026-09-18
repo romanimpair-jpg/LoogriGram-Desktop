@@ -75,8 +75,6 @@ Memento::Memento(not_null<Controller*> controller)
 : Memento(
 	(controller->peer()
 		? controller->peer()
-		: controller->storiesPeer()
-		? controller->storiesPeer()
 		: controller->musicPeer()
 		? controller->musicPeer()
 		: controller->parentController()->session().user()),
@@ -85,8 +83,6 @@ Memento::Memento(not_null<Controller*> controller)
 	controller->migratedPeerId(),
 	(controller->section().type() == Section::Type::Downloads
 		? Type::File
-		: controller->section().type() == Section::Type::Stories
-		? Type::PhotoVideo
 		: controller->section().type() == Section::Type::SavedMusic
 		? Type::MusicFile
 		: controller->section().mediaType())) {

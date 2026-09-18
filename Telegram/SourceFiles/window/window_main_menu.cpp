@@ -30,7 +30,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/info_memento.h"
 #include "settings/settings_common.h"
 #include "info/profile/info_profile_icon.h"
-#include "info/stories/info_stories_widget.h"
 #include "lang/lang_keys.h"
 #include "main/main_account.h"
 #include "main/main_domain.h"
@@ -714,8 +713,10 @@ void MainMenu::setupMenu() {
 				st::mainMenuButton,
 				{ &st::menuIconProfile })
 		)->setClickedCallback([=] {
-			controller->showSection(
-				Info::Stories::Make(controller->session().user()));
+			// LoogriGram: this opened your own stories page, which upstream
+			// uses as the profile. Stories are removed; the profile is edited
+			// in Settings > Information, where that page's button led anyway.
+			controller->showSettings(::Settings::InformationId());
 		});
 
 		SetupMenuBots(_menu, controller);

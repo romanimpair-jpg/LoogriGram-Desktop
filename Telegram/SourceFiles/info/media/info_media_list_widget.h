@@ -255,7 +255,6 @@ private:
 	[[nodiscard]] auto computeGlobalMediaSliceView() const
 		-> std::optional<GlobalMediaSliceView>;
 	void invalidateGlobalMediaSliceView();
-	void markStoryMsgsSelected();
 	void trackSession(not_null<Main::Session*> session);
 
 	[[nodiscard]] SelectedItems collectSelectedItems() const;
@@ -275,18 +274,8 @@ private:
 	void forwardItem(GlobalMsgId globalId);
 	void forwardItems(MessageIdsList &&items);
 	void deleteSelected();
-	void toggleStoryPinSelected();
-	void toggleStoryInProfileSelected(bool toProfile);
 	void deleteItem(GlobalMsgId globalId);
 	void deleteItems(SelectedItems &&items, Fn<void()> confirmed = nullptr);
-	void toggleStoryInProfile(
-		MessageIdsList &&items,
-		bool toProfile,
-		Fn<void()> confirmed = nullptr);
-	void toggleStoryPin(
-		MessageIdsList &&items,
-		bool pin,
-		Fn<void()> confirmed = nullptr);
 	void applyItemSelection(
 		HistoryItem *item,
 		TextSelection selection);
@@ -366,7 +355,6 @@ private:
 
 	void setActionBoxWeak(base::weak_qptr<Ui::BoxContent> box);
 
-	void setupStoriesTrackIds();
 
 	void startReorder(const QPoint &globalPos);
 	void updateReorder(const QPoint &globalPos);
@@ -433,10 +421,6 @@ private:
 	int _externalViewportHeight = 0;
 
 	int _selectedLimit = 0;
-	int _storiesAddToAlbumId = 0;
-	int _storiesAddToAlbumTotal = 0;
-	base::flat_set<StoryId> _storiesInAlbum;
-	base::flat_set<MsgId> _storyMsgsToMarkSelected;
 	std::unique_ptr<StickerPremiumMark> _hiddenMark;
 
 	base::unique_qptr<Ui::PopupMenu> _contextMenu;

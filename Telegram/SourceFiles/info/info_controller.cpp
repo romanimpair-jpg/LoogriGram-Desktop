@@ -54,9 +54,6 @@ Key::Key(Settings::Tag settings) : _value(settings) {
 Key::Key(Downloads::Tag downloads) : _value(downloads) {
 }
 
-Key::Key(Stories::Tag stories) : _value(stories) {
-}
-
 Key::Key(Saved::MusicTag music) : _value(music) {
 }
 
@@ -134,27 +131,6 @@ bool Key::globalMediaOnlyForwardable() const {
 		return tag->onlyForwardable;
 	}
 	return false;
-}
-
-PeerData *Key::storiesPeer() const {
-	if (const auto tag = std::get_if<Stories::Tag>(&_value)) {
-		return tag->peer;
-	}
-	return nullptr;
-}
-
-int Key::storiesAlbumId() const {
-	if (const auto tag = std::get_if<Stories::Tag>(&_value)) {
-		return tag->albumId;
-	}
-	return 0;
-}
-
-int Key::storiesAddToAlbumId() const {
-	if (const auto tag = std::get_if<Stories::Tag>(&_value)) {
-		return tag->addingToAlbumId;
-	}
-	return 0;
 }
 
 PeerData *Key::musicPeer() const {
@@ -404,7 +380,6 @@ bool Controller::validateMementoPeer(
 	return memento->peer() == peer()
 		&& memento->migratedPeerId() == migratedPeerId()
 		&& memento->settingsSelf() == settingsSelf()
-		&& memento->storiesPeer() == storiesPeer()
 		&& memento->musicPeer() == musicPeer()
 		&& memento->statisticsTag().peer == statisticsTag().peer;
 }

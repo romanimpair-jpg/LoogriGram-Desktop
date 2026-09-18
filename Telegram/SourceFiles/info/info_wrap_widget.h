@@ -53,7 +53,6 @@ enum class Wrap {
 	Narrow,
 	Side,
 	Search,
-	StoryAlbumEdit,
 };
 
 struct SelectedItem {
@@ -63,9 +62,6 @@ struct SelectedItem {
 	GlobalMsgId globalId;
 	bool canDelete = false;
 	bool canForward = false;
-	bool canToggleStoryPin = false;
-	bool canUnpinStory = false;
-	bool storyInProfile = false;
 };
 
 struct SelectedItems {
@@ -80,9 +76,6 @@ enum class SelectionAction {
 	Clear,
 	Forward,
 	Delete,
-	ToggleStoryPin,
-	ToggleStoryToProfile,
-	ToggleStoryToArchive,
 };
 
 class WrapWidget final : public Window::SectionWidget {

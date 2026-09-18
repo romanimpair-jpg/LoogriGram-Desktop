@@ -625,14 +625,6 @@ DialogsStories {
 	nameTop: pixels;
 	nameStyle: TextStyle;
 }
-DialogsStoriesList {
-	small: DialogsStories;
-	full: DialogsStories;
-	bg: color;
-	readOpacity: double;
-	fullClickable: int;
-}
-
 dialogsStories: DialogsStories {
 	left: 4px;
 	height: 35px;
@@ -741,24 +733,9 @@ chatsFiltersTabs: SettingsSlider(dialogsSearchTabs) {
 }
 dialogsFiltersTabsIconSkip: 5px;
 
-dialogsStoriesList: DialogsStoriesList {
-	small: dialogsStories;
-	full: dialogsStoriesFull;
-	bg: dialogsBg;
-	readOpacity: 0.6;
-	fullClickable: 0;
-}
-dialogsStoriesListInfo: DialogsStoriesList(dialogsStoriesList) {
-	bg: transparent;
-	fullClickable: 1;
-}
-dialogsStoriesListMine: DialogsStoriesList(dialogsStoriesListInfo) {
-	readOpacity: 1.;
-}
 dialogsStoriesTooltip: ImportantTooltip(defaultImportantTooltip) {
 	padding: margins(0px, 0px, 0px, 0px);
 }
-dialogsStoriesTooltipLabel: defaultImportantTooltipLabel;
 dialogsStoriesTooltipMaxWidth: 200px;
 searchedBarHeight: 28px;
 searchedBarFont: normalFont;

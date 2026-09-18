@@ -28,7 +28,6 @@ class TopicIconView;
 namespace Ui {
 class UploadProgressOverlay;
 class VideoUserpicPlayer;
-struct OutlineSegment;
 namespace Text {
 class CustomEmoji;
 } // namespace Text
@@ -85,7 +84,6 @@ class TopBar final : public Ui::RpWidget {
 public:
 	enum class Source {
 		Profile,
-		Stories,
 		Preview,
 		Community,
 	};
@@ -130,9 +128,6 @@ public:
 	void setRoundEdges(bool value);
 	void setColorProfileIndex(std::optional<uint8> index);
 	void setPatternEmojiId(std::optional<DocumentId> patternEmojiId);
-	void addTopBarEditButton(
-		not_null<Window::SessionController*> controller,
-		Wrap wrap);
 
 	rpl::producer<std::optional<QColor>> edgeColor() const;
 
@@ -177,9 +172,6 @@ private:
 		const QRect &userpicGeometry);
 	void adjustColors(const std::optional<QColor> &edgeColor);
 	void updateCollectibleStatus();
-	void setupStoryOutline(const QRect &geometry = QRect());
-	void updateStoryOutline(std::optional<QColor> edgeColor);
-	void paintStoryOutline(QPainter &p, const QRect &geometry);
 	void updateTitlePosition(float64 progressCurrent);
 	void updateStatusPosition(float64 progressCurrent);
 	void applyTabBindings(TabTopBarBindings &&bindings);
@@ -247,8 +239,6 @@ private:
 	Ui::LabelWithNumbers *_tabSelectionText = nullptr;
 	Ui::IconButton *_tabSelectionForward = nullptr;
 	Ui::IconButton *_tabSelectionDelete = nullptr;
-	Ui::IconButton *_tabSelectionStoryInProfile = nullptr;
-	Ui::IconButton *_tabSelectionStoryPin = nullptr;
 	SelectedItems _tabSelectedItems;
 	Fn<void(SelectionAction)> _tabSelectionAction;
 	Fn<void(const Ui::Menu::MenuCallback&)> _tabFillMenu;
@@ -319,11 +309,6 @@ private:
 
 	base::unique_qptr<Ui::HorizontalFitContainer> _actions;
 	base::unique_qptr<Ui::RpWidget> _actionsShadow;
-
-	QBrush _storyOutlineBrush;
-	std::vector<Ui::OutlineSegment> _storySegments;
-	bool _hasStories = false;
-	bool _hasLiveStories = false;
 
 	std::optional<uint8> _localColorProfileIndex;
 	std::optional<DocumentId> _localPatternEmojiId;

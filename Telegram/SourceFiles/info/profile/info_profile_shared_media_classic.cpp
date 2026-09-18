@@ -14,7 +14,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_saved_messages.h"
 #include "data/data_saved_sublist.h"
 #include "data/data_session.h"
-#include "data/data_stories_ids.h"
 #include "data/data_user.h"
 #include "data/stickers/data_custom_emoji.h"
 #include "history/view/history_view_chat_section.h"
@@ -23,7 +22,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/media/info_media_buttons.h"
 #include "info/profile/info_profile_icon.h"
 #include "info/profile/info_profile_values.h"
-#include "info/stories/info_stories_widget.h"
 #include "main/main_session.h"
 #include "ui/text/text_utilities.h"
 #include "ui/widgets/buttons.h"
@@ -75,35 +73,6 @@ namespace {
 			std::make_shared<Info::Memento>(
 				peer,
 				Info::Section::Type::SimilarPeers));
-	});
-	return result;
-}
-
-[[nodiscard]] not_null<Ui::SettingsButton*> AddStoriesButton(
-		Ui::VerticalLayout *parent,
-		not_null<Window::SessionNavigation*> navigation,
-		not_null<PeerData*> peer,
-		Ui::MultiSlideTracker &tracker) {
-	auto count = rpl::single(0) | rpl::then(Data::AlbumStoriesIds(
-		peer,
-		0, // = Data::kStoriesAlbumIdSaved
-		ServerMaxStoryId - 1,
-		0
-	) | rpl::map([](const Data::StoriesIdsSlice &slice) {
-		return slice.fullCount().value_or(0);
-	}));
-	const auto phrase = peer->isChannel() ? (+[](int count) {
-		return tr::lng_profile_posts(tr::now, lt_count, count);
-	}) : (+[](int count) {
-		return tr::lng_profile_saved_stories(tr::now, lt_count, count);
-	});
-	auto result = Media::AddCountedButton(
-		parent,
-		std::move(count),
-		phrase,
-		tracker)->entity();
-	result->addClickHandler([=] {
-		navigation->showSection(Info::Stories::Make(peer));
 	});
 	return result;
 }
@@ -192,22 +161,6 @@ object_ptr<Ui::SlideWrap<Ui::RpWidget>> SetupSharedMediaClassic(
 			icon,
 			st::infoSharedMediaButtonIconPosition);
 	};
-	const auto addStoriesButton = [&](
-			not_null<PeerData*> peer,
-			const style::icon &icon) {
-		if (peer->isChat()) {
-			return;
-		}
-		auto result = AddStoriesButton(
-			content,
-			controller,
-			peer,
-			tracker);
-		object_ptr<FloatingIcon>(
-			result,
-			icon,
-			st::infoSharedMediaButtonIconPosition);
-	};
 	const auto addSavedSublistButton = [&](
 			not_null<PeerData*> peer,
 			const style::icon &icon) {
@@ -222,7 +175,7 @@ object_ptr<Ui::SlideWrap<Ui::RpWidget>> SetupSharedMediaClassic(
 			st::infoSharedMediaButtonIconPosition);
 	};
 	if (!topic) {
-		addStoriesButton(peer, st::infoIconMediaStories);
+		// LoogriGram: a saved stories (or channel posts) row sat here.
 		addSavedSublistButton(peer, st::infoIconMediaSaved);
 	}
 	addMediaButton(MediaType::Photo, st::infoIconMediaPhoto);

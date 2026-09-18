@@ -38,7 +38,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_photo.h"
 #include "data/data_saved_sublist.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
 #include "data/data_user.h"
 #include "data/stickers/data_custom_emoji.h"
 #include "editor/photo_editor_common.h"
@@ -67,7 +66,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/effects/animated_string.h"
 #include "ui/effects/animations.h"
 #include "ui/effects/upload_progress_overlay.h"
-#include "ui/effects/outline_segments.h"
 #include "ui/effects/round_checkbox.h"
 #include "ui/empty_userpic.h"
 #include "ui/layers/generic_box.h"
@@ -86,7 +84,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/widgets/menu/menu_add_action_callback_factory.h"
 #include "ui/widgets/popup_menu.h"
 #include "ui/widgets/shadow.h"
-#include "ui/widgets/tooltip.h"
 #include "ui/wrap/fade_wrap.h"
 #include "window/themes/window_theme.h"
 #include "window/window_peer_menu.h"
@@ -105,45 +102,17 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace Info::Profile {
 namespace {
 
-class Userpic final
-	: public Ui::AbstractButton
-	, public Ui::AbstractTooltipShower {
+// LoogriGram: the userpic also showed a "View story" tooltip, and a ring of
+// story segments was drawn around it. Stories are removed.
+class Userpic final : public Ui::AbstractButton {
 public:
-	Userpic(QWidget *parent, Fn<bool()> hasStories)
-	: Ui::AbstractButton(parent)
-	, _hasStories(std::move(hasStories)) {
-		installEventFilter(this);
+	explicit Userpic(QWidget *parent) : Ui::AbstractButton(parent) {
 		setAccessibleName(tr::lng_mediaview_profile_photo(tr::now));
 	}
-
-	QString tooltipText() const override {
-		return _hasStories() ? tr::lng_view_button_story(tr::now) : QString();
-	}
-
-	QPoint tooltipPos() const override {
-		return QCursor::pos();
-	}
-
-	bool tooltipWindowActive() const override {
-		return Ui::AppInFocus() && Ui::InFocusChain(window());
-	}
-
-protected:
-	bool eventFilter(QObject *obj, QEvent *e) override {
-		if (obj == this && e->type() == QEvent::Enter && _hasStories()) {
-			Ui::Tooltip::Show(1000, this);
-		}
-		return Ui::AbstractButton::eventFilter(obj, e);
-	}
-
-private:
-	Fn<bool()> _hasStories;
 
 };
 
 constexpr auto kMinPatternRadius = 8;
-constexpr auto kStoryOutlineFadeEnd = 0.4;
-constexpr auto kStoryOutlineFadeRange = 1. - kStoryOutlineFadeEnd;
 constexpr auto kSwapMoveAmplitude = 0.3;
 
 using AnimatedPatternPoint = TopBar::AnimatedPatternPoint;
@@ -328,7 +297,6 @@ TopBar::TopBar(
 	st::infoPeerBadge,
 	VerifiedContentForPeer(_peer)))
 , _hasActions(!_savedMessages
-	&& descriptor.source != Source::Stories
 	&& descriptor.source != Source::Preview
 	&& (_wrap.current() != Wrap::Side || !_peer->isNotificationsUser()))
 , _minForProgress([&] {
@@ -469,7 +437,6 @@ TopBar::TopBar(
 			});
 		}, lifetime());
 	}
-	setupStoryOutline();
 	if (_topic) {
 		_topicIconView = std::make_unique<TopicIconView>(
 			_topic,
@@ -1060,9 +1027,7 @@ void TopBar::setupActions(not_null<Window::SessionController*> controller) {
 
 void TopBar::setupUserpicButton(
 		not_null<Window::SessionController*> controller) {
-	_userpicButton = base::make_unique_q<Userpic>(
-		this,
-		[=] { return _hasStories; });
+	_userpicButton = base::make_unique_q<Userpic>(this);
 
 	if (_savedMessages) {
 		_userpicButton->setAttribute(Qt::WA_TransparentForMouseEvents, true);
@@ -1141,7 +1106,7 @@ void TopBar::setupUserpicButton(
 		if (canSuggestPhoto()) {
 			return true;
 		}
-		if (_hasStories || canReport()) {
+		if (canReport()) {
 			return !!_peer->userpicPhotoId();
 		}
 		return false;
@@ -1149,7 +1114,7 @@ void TopBar::setupUserpicButton(
 
 	const auto invalidate = [=] {
 		_userpicUniqueKey = InMemoryKey();
-		const auto hasLeftButton = _peer->userpicPhotoId() || _hasStories;
+		const auto hasLeftButton = !!_peer->userpicPhotoId();
 		_userpicButton->setAttribute(
 			Qt::WA_TransparentForMouseEvents,
 			!hasLeftButton && !hasMenu());
@@ -2025,27 +1990,6 @@ void TopBar::createTabSelectionBar() {
 		forwardAction(SelectionAction::Delete);
 	}, _tabSelectionDelete->lifetime());
 
-	_tabSelectionStoryInProfile = Ui::CreateChild<Ui::IconButton>(
-		inner,
-		_st.storiesSave);
-	_tabSelectionStoryInProfile->clicks(
-	) | rpl::on_next([=] {
-		const auto allInProfile = ranges::all_of(
-			_tabSelectedItems.list,
-			&SelectedItem::storyInProfile);
-		forwardAction(allInProfile
-			? SelectionAction::ToggleStoryToArchive
-			: SelectionAction::ToggleStoryToProfile);
-	}, _tabSelectionStoryInProfile->lifetime());
-
-	_tabSelectionStoryPin = Ui::CreateChild<Ui::IconButton>(
-		inner,
-		_st.storiesPin);
-	_tabSelectionStoryPin->clicks(
-	) | rpl::on_next([=] {
-		forwardAction(SelectionAction::ToggleStoryPin);
-	}, _tabSelectionStoryPin->lifetime());
-
 	_tabSelectionCancel->show();
 	_tabSelectionText->show();
 	updateTabSelectionGeometry();
@@ -2058,38 +2002,11 @@ void TopBar::updateTabSelectionState() {
 	const auto &list = _tabSelectedItems.list;
 	const auto canDelete = ranges::all_of(list, &SelectedItem::canDelete);
 	const auto canForward = ranges::all_of(list, &SelectedItem::canForward);
-	const auto canToggleStoryPin = ranges::all_of(
-		list,
-		&SelectedItem::canToggleStoryPin);
-	const auto allInProfile = ranges::all_of(
-		list,
-		&SelectedItem::storyInProfile);
-	const auto canUnpin = ranges::any_of(
-		list,
-		&SelectedItem::canUnpinStory);
 	_tabSelectionText->setValue(_tabSelectedItems.title
 		? _tabSelectedItems.title(int(list.size()))
 		: Ui::StringWithNumbers());
 	_tabSelectionForward->setVisible(canForward);
 	_tabSelectionDelete->setVisible(canDelete);
-	_tabSelectionStoryInProfile->setVisible(canToggleStoryPin);
-	_tabSelectionStoryInProfile->setIconOverride(
-		(allInProfile
-			? &_st.storiesArchive.icon
-			: &_st.storiesSave.icon),
-		(allInProfile
-			? &_st.storiesArchive.iconOver
-			: &_st.storiesSave.iconOver));
-	_tabSelectionStoryInProfile->setAccessibleName(allInProfile
-		? tr::lng_mediaview_archive_story(tr::now)
-		: tr::lng_mediaview_save_to_profile(tr::now));
-	_tabSelectionStoryPin->setVisible(canToggleStoryPin);
-	_tabSelectionStoryPin->setIconOverride(
-		canUnpin ? &_st.storiesUnpin.icon : nullptr,
-		canUnpin ? &_st.storiesUnpin.iconOver : nullptr);
-	_tabSelectionStoryPin->setAccessibleName(canUnpin
-		? tr::lng_context_unpin_from_top(tr::now)
-		: tr::lng_context_pin_to_top(tr::now));
 	updateTabSelectionGeometry();
 }
 
@@ -2107,14 +2024,6 @@ void TopBar::updateTabSelectionGeometry() {
 	if (!_tabSelectionDelete->isHidden()) {
 		_tabSelectionDelete->moveToRight(right, 0, inner->width());
 		right += _tabSelectionDelete->width();
-	}
-	if (!_tabSelectionStoryInProfile->isHidden()) {
-		_tabSelectionStoryInProfile->moveToRight(right, 0, inner->width());
-		right += _tabSelectionStoryInProfile->width();
-	}
-	if (!_tabSelectionStoryPin->isHidden()) {
-		_tabSelectionStoryPin->moveToRight(right, 0, inner->width());
-		right += _tabSelectionStoryPin->width();
 	}
 	if (!_tabSelectionForward->isHidden()) {
 		_tabSelectionForward->moveToRight(right, 0, inner->width());
@@ -2575,7 +2484,6 @@ void TopBar::paintEvent(QPaintEvent *e) {
 
 	if (clipBounds.intersects(geometry)) {
 		paintUserpic(p, geometry);
-		paintStoryOutline(p, geometry);
 	}
 
 	paintTabSubtitle(p);
@@ -2696,39 +2604,10 @@ void TopBar::setupButtons(
 		}, _tabSearchToggle->lifetime());
 		updateTabSwapVisibility();
 		updateRightButtonsPosition();
-
-		if (wrap != Wrap::Side) {
-			if (source == Source::Stories) {
-				addTopBarEditButton(controller, wrap);
-			}
-		}
 		updateButtonsColorOverride();
 		raiseTabSearchOverlay();
 		raiseTabSelectionOverlay();
 	}, lifetime());
-}
-
-void TopBar::addTopBarEditButton(
-		not_null<Window::SessionController*> controller,
-		Wrap wrap) {
-	_topBarButton = base::make_unique_q<BackdropIconButton>(
-		this,
-		((wrap == Wrap::Layer)
-			? st::infoLayerTopBarBlackEdit
-			: st::infoTopBarBlackEdit));
-	_topBarButton->show();
-	_topBarButton->addClickHandler([=] {
-		controller->showSettings(::Settings::InformationId());
-	});
-	_topBarButton->setAccessibleName(tr::lng_settings_information(tr::now));
-
-	widthValue() | rpl::on_next([=] {
-		if (_close) {
-			_topBarButton->moveToRight(_close->width(), 0);
-		} else {
-			_topBarButton->moveToRight(0, 0);
-		}
-	}, _topBarButton->lifetime());
 }
 
 std::optional<QColor> TopBar::buttonsColorOverride() const {
@@ -2984,169 +2863,6 @@ void TopBar::paintAnimatedPattern(
 		p.drawImage(target, _basePatternImage);
 	}
 	p.setOpacity(1.);
-}
-
-void TopBar::setupStoryOutline(const QRect &geometry) {
-	const auto user = _peer->asUser();
-	const auto channel = _peer->asChannel();
-	if (!user && !channel) {
-		return;
-	}
-
-	rpl::combine(
-		_edgeColor.value(),
-		rpl::merge(
-			rpl::single(rpl::empty_value()),
-			style::PaletteChanged(),
-			_peer->session().changes().peerUpdates(
-				Data::PeerUpdate::Flag::StoriesState
-					| Data::PeerUpdate::Flag::ColorProfile
-			) | rpl::filter([=](const Data::PeerUpdate &update) {
-				return update.peer == _peer;
-			}) | rpl::to_empty,
-			_peer->owner().stories().sourceChanged(
-			) | rpl::filter([=](PeerId peerId) {
-				return peerId == _peer->id;
-			}) | rpl::to_empty)
-	) | rpl::on_next([=](
-			std::optional<QColor> edgeColor,
-			rpl::empty_value) {
-		const auto geometry = QRectF(userpicGeometry());
-		const auto colorProfile
-			= _peer->session().api().peerColors().colorProfileFor(_peer);
-		const auto hasProfileColor = colorProfile
-			&& colorProfile->story.size() > 1;
-		if (hasProfileColor) {
-			edgeColor = std::nullopt;
-		}
-		_storyOutlineBrush = hasProfileColor
-			? Ui::UnreadStoryOutlineGradient(
-				geometry,
-				colorProfile->story[0],
-				colorProfile->story[1])
-			: Ui::UnreadStoryOutlineGradient(geometry);
-		updateStoryOutline(edgeColor);
-	}, lifetime());
-}
-
-void TopBar::updateStoryOutline(std::optional<QColor> edgeColor) {
-	const auto user = _peer->asUser();
-	const auto channel = _peer->asChannel();
-	if ((!user && !channel) || _savedMessages) {
-		return;
-	}
-
-	// LoogriGram: no story ring around the profile photo. The click that ring
-	// advertised now opens the photo, so drawing it would promise something
-	// that no longer happens.
-	const auto hasActiveStories = false;
-	const auto hasLiveStories = false;
-
-	if (_hasStories != hasActiveStories
-		|| _hasLiveStories != hasLiveStories) {
-		_hasStories = hasActiveStories;
-		_hasLiveStories = hasLiveStories;
-		update();
-	}
-
-	if (!hasActiveStories) {
-		_storySegments.clear();
-		return;
-	}
-	const auto widthBig = style::ConvertFloatScale(3.0);
-
-	_storySegments.clear();
-
-	if (_source == Source::Preview) {
-		const auto colorProfile = effectiveColorProfile();
-		const auto hasProfileColor = colorProfile
-			&& colorProfile->story.size() > 1;
-		const auto previewBrush = hasProfileColor
-			? Ui::UnreadStoryOutlineGradient(
-				QRectF(userpicGeometry()),
-				colorProfile->story[0],
-				colorProfile->story[1])
-			: Ui::UnreadStoryOutlineGradient(QRectF(userpicGeometry()));
-		_storySegments.push_back({
-			.brush = QBrush(previewBrush),
-			.width = widthBig,
-		});
-		return;
-	}
-
-	auto &stories = _peer->owner().stories();
-	const auto source = stories.source(_peer->id);
-	if (!source) {
-		stories.requestPeerStories(_peer);
-		return;
-	}
-
-	const auto baseColor = edgeColor
-		? Ui::BlendColors(*edgeColor, Qt::white, .5)
-		: _storyOutlineBrush.color();
-	const auto unreadBrush = _hasLiveStories
-		? st::attentionButtonFg->b
-		: edgeColor
-		? QBrush(baseColor)
-		: _storyOutlineBrush;
-	const auto readBrush = edgeColor
-		? QBrush(anim::with_alpha(baseColor, 0.5))
-		: QBrush(st::dialogsUnreadBgMuted->b);
-
-	if (_hasLiveStories) {
-		_storySegments.push_back({
-			.brush = unreadBrush,
-			.width = widthBig,
-		});
-	} else {
-		const auto readTill = source->readTill;
-		const auto widthSmall = widthBig / 2.;
-		for (const auto &storyIdDates : source->ids) {
-			const auto isUnread = (storyIdDates.id > readTill);
-			_storySegments.push_back({
-				.brush = isUnread ? unreadBrush : readBrush,
-				.width = !isUnread ? widthSmall : widthBig,
-			});
-		}
-	}
-}
-
-void TopBar::paintStoryOutline(QPainter &p, const QRect &geometry) {
-	if (!_hasStories || _storySegments.empty()) {
-		return;
-	}
-	auto hq = PainterHighQualityEnabler(p);
-
-	const auto progress = _progress.current();
-	const auto alpha = std::clamp(
-		(progress - kStoryOutlineFadeEnd) / kStoryOutlineFadeRange,
-		0.,
-		1.);
-	if (alpha <= 0.) {
-		return;
-	}
-
-	p.setOpacity(alpha);
-	const auto outlineWidth = style::ConvertFloatScale(4.0);
-	const auto padding = style::ConvertFloatScale(3.0);
-	const auto outlineRect = QRectF(geometry).adjusted(
-		-padding - outlineWidth / 2,
-		-padding - outlineWidth / 2,
-		padding + outlineWidth / 2,
-		padding + outlineWidth / 2);
-
-	Ui::PaintOutlineSegments(p, outlineRect, _storySegments);
-
-	if (_hasLiveStories) {
-		const auto outline = _edgeColor.current().value_or(
-			_solidBg.value_or(st::boxDividerBg->c));
-		Ui::PaintLiveBadge(
-			p,
-			geometry.x(),
-			geometry.y() + outlineWidth + padding,
-			geometry.width(),
-			outline);
-	}
 }
 
 void TopBar::bindStatus() {
