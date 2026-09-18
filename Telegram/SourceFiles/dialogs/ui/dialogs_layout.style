@@ -57,9 +57,6 @@ dialogsLockIcon: ThreeStateIcon {
 	over: icon {{ "emoji/premium_lock", dialogsUnreadBgMutedOver, point(4px, 0px) }};
 	active: icon {{ "emoji/premium_lock", dialogsUnreadBgMutedActive, point(4px, 0px) }};
 }
-dialogsVerifiedColorsActive: VerifiedBadge(dialogsVerifiedColors) {
-	color: dialogsVerifiedIconBgActive;
-}
 dialogsMiniReplyIcon: IconEmoji {
 	icon: icon {{ "mini_forward-flip_horizontal", attentionButtonFg }};
 	padding: margins(0px, 2px, 0px, 0px);

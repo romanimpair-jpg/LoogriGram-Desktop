@@ -176,9 +176,6 @@ public:
 	[[nodiscard]] DateText chatListTimestampText(
 		TimeId date,
 		crl::time now) const;
-	[[nodiscard]] Ui::PeerBadge &chatListPeerBadge() const {
-		return _chatListPeerBadge;
-	}
 
 	[[nodiscard]] bool hasChatsFilterTags(FilterId exclude) const;
 protected:
@@ -214,7 +211,6 @@ private:
 	uint64 _sortKeyByDate = 0;
 	base::flat_map<FilterId, int> _pinnedIndex;
 	base::flat_map<FilterId, uint8> _tagColors;
-	mutable Ui::PeerBadge _chatListPeerBadge;
 	mutable Ui::Text::String _chatListNameText;
 	mutable int _chatListNameVersion = 0;
 	mutable DateTextCache _chatListDateCache;

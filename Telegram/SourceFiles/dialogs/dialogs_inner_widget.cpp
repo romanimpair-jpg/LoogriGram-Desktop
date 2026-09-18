@@ -265,7 +265,6 @@ struct InnerWidget::PeerSearchResult {
 
 	not_null<PeerData*> peer;
 	mutable Ui::Text::String name;
-	mutable Ui::PeerBadge badge;
 	BasicRow row;
 };
 
@@ -1788,25 +1787,14 @@ void InnerWidget::paintPeerSearchResult(
 			Ui::NameTextOptions());
 	}
 
-	if (const auto info = peer->botVerifyDetails()) {
-		if (!result->badge.ready(info)) {
-			result->badge.set(
-				info,
-				peer->owner().customEmojiManager().factory(
-					Data::CustomEmojiSizeTag::Isolated),
-				[=] { updateSearchResult(peer); });
-		}
-		const auto &st = Ui::VerifiedStyle(context);
-		const auto position = rectForName.topLeft();
-		const auto skip = result->badge.drawVerified(p, position, st);
-		rectForName.setLeft(position.x() + skip + st::dialogsChatTypeSkip);
-	} else if (const auto chatTypeIcon = Ui::ChatTypeIcon(peer, context)) {
+	// LoogriGram: no bot verification icon in place of the chat type icon.
+	if (const auto chatTypeIcon = Ui::ChatTypeIcon(peer, context)) {
 		chatTypeIcon->paint(p, rectForName.topLeft(), context.width);
 		rectForName.setLeft(rectForName.left()
 			+ chatTypeIcon->width()
 			+ st::dialogsChatTypeSkip);
 	}
-	const auto badgeWidth = result->badge.drawGetWidth(p, {
+	const auto badgeWidth = Ui::DrawPeerBadgeGetWidth(p, {
 		.peer = peer,
 		.rectForName = rectForName,
 		.nameWidth = result->name.maxWidth(),

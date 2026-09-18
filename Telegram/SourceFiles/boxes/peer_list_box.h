@@ -133,15 +133,8 @@ public:
 		int availableWidth,
 		int outerWidth,
 		bool selected);
-
-	virtual int paintNameIconGetLeadingWidth(
-		Painter &p,
-		Fn<void()> repaint,
-		crl::time now,
-		int nameLeft,
-		int nameTop,
-		int outerWidth,
-		bool selected);
+	// LoogriGram: a second hook drew the bot verification icon before the
+	// name; that icon is not drawn.
 
 	void rememberUserpicKey();
 	[[nodiscard]] bool userpicKeyChanged();
@@ -335,7 +328,6 @@ private:
 	std::unique_ptr<Ui::CommunityUserpicEffect> _communityUserpicEffect;
 	Ui::Text::String _name;
 	Ui::Text::String _status;
-	Ui::PeerBadge _badge;
 	StatusType _statusType = StatusType::Online;
 	crl::time _statusValidTill = 0;
 	base::flat_set<QChar> _nameFirstLetters;
@@ -895,7 +887,6 @@ private:
 	crl::time paintRow(Painter &p, crl::time now, RowIndex index);
 	void paintRowContent(
 		Painter &p,
-		crl::time now,
 		RowIndex index,
 		bool selected,
 		int activeElement);

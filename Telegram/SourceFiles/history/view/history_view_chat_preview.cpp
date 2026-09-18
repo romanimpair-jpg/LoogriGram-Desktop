@@ -300,9 +300,7 @@ Item::Item(not_null<Ui::Menu::Menu*> parent, not_null<Data::Thread*> thread)
 , _badge(
 		_top.get(),
 		st::settingsInfoPeerBadge,
-		_session,
-		ContentForPeer(_peer),
-		nullptr) {
+		ContentForPeer(_peer)) {
 	_chatStyle->apply(_theme.get());
 	setPointerCursor(false);
 	setMinWidth(st::previewMenu.menu.widthMin);

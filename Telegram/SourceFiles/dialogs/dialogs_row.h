@@ -238,9 +238,6 @@ public:
 	[[nodiscard]] Fn<void()> repaint() const {
 		return _repaint;
 	}
-	[[nodiscard]] Ui::PeerBadge &badge() const {
-		return _badge;
-	}
 	[[nodiscard]] const Ui::Text::String &name() const;
 	[[nodiscard]] DateText dateText(
 		TimeId date,
@@ -256,7 +253,6 @@ private:
 	Data::ForumTopic *_topic = nullptr;
 	const Fn<void()> _repaint;
 	mutable Ui::MessageView _itemView;
-	mutable Ui::PeerBadge _badge;
 	mutable Ui::Text::String _name;
 	mutable DateTextCache _dateCache;
 

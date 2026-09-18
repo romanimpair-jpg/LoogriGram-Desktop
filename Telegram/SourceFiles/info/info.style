@@ -25,10 +25,8 @@ InfoToggle {
 InfoPeerBadge {
 	verified: icon;
 	verifiedCheck: icon;
-	premium: icon;
 	premiumFg: color;
 	position: point;
-	sizeTag: int;
 }
 
 InfoTopBar {
@@ -508,15 +506,12 @@ infoProfileInaccessibleUserpic: icon {{ "info/inaccessible_userpic", historyPeer
 infoVerifiedCheck: icon {{ "profile_verified_check", profileVerifiedCheckFg }};
 infoVerifiedCheckPosition: point(4px, 0px);
 infoVerifiedStar: icon {{ "profile_verified_star", profileVerifiedCheckBg }};
-infoPremiumStar: icon {{ "profile_premium", profileVerifiedCheckBg }};
 
 infoPeerBadge: InfoPeerBadge {
 	verified: infoVerifiedStar;
 	verifiedCheck: infoVerifiedCheck;
-	premium: infoPremiumStar;
 	premiumFg: profileVerifiedCheckBg;
 	position: infoVerifiedCheckPosition;
-	sizeTag: 0; // Normal
 }
 
 infoIconFg: windowBoldFg;

@@ -10,10 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/text/text_custom_emoji.h"
 #include "ui/rp_widget.h"
 
-namespace style {
-struct VerifiedBadge;
-} // namespace style
-
 namespace Ui {
 
 class UnreadBadge : public RpWidget {
@@ -45,48 +41,20 @@ struct BotVerifyDetails {
 		const BotVerifyDetails &) = default;
 };
 
-class PeerBadge {
-public:
-	PeerBadge();
-	~PeerBadge();
-
-	// LoogriGram: no premium emoji status and no gold premium star. The
-	// descriptor lost the fields that fed them - the icon, its colour, the
-	// custom emoji repaint callback, the frame time and the two flags that
-	// only ever decided whether a status could share the slot with the
-	// verified check.
-	struct Descriptor {
-		not_null<PeerData*> peer;
-		QRect rectForName;
-		int nameWidth = 0;
-		int outerWidth = 0;
-		const style::icon *verified = nullptr;
-		const style::color *scam = nullptr;
-		const style::color *direct = nullptr;
-	};
-	int drawGetWidth(Painter &p, Descriptor &&descriptor);
-
-	[[nodiscard]] bool ready(const BotVerifyDetails *details) const;
-	void set(
-		not_null<const BotVerifyDetails*> details,
-		Text::CustomEmojiFactory factory,
-		Fn<void()> repaint);
-
-	// How much horizontal space the badge took.
-	int drawVerified(
-		QPainter &p,
-		QPoint position,
-		const style::VerifiedBadge &st);
-
-private:
-	struct BotVerifiedData;
-
-	int drawTextBadge(Painter &p, const Descriptor &descriptor);
-	int drawVerifyCheck(Painter &p, const Descriptor &descriptor);
-
-	mutable std::unique_ptr<BotVerifiedData> _botVerifiedData;
-
+// LoogriGram: this was the PeerBadge class. No premium emoji status, no
+// gold premium star and no bot verification icon are drawn, and that icon
+// was the only state the class kept - so it is a function now, and the
+// badge members that rows, entries and widgets carried for it are gone.
+struct PeerBadgeDescriptor {
+	not_null<PeerData*> peer;
+	QRect rectForName;
+	int nameWidth = 0;
+	int outerWidth = 0;
+	const style::icon *verified = nullptr;
+	const style::color *scam = nullptr;
+	const style::color *direct = nullptr;
 };
+int DrawPeerBadgeGetWidth(Painter &p, PeerBadgeDescriptor &&descriptor);
 
 enum class TextBadgeType : uchar {
 	Scam,

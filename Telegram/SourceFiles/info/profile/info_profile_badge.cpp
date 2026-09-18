@@ -7,38 +7,23 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/profile/info_profile_badge.h"
 
-#include "data/data_changes.h"
-#include "data/data_emoji_statuses.h"
 #include "data/data_peer.h"
-#include "data/data_session.h"
-#include "data/data_user.h"
-#include "data/stickers/data_custom_emoji.h"
 #include "info/profile/info_profile_values.h"
 #include "lang/lang_keys.h"
 #include "ui/widgets/buttons.h"
 #include "ui/painter.h"
-#include "ui/power_saving.h"
-#include "ui/text/text_custom_emoji.h"
-#include "main/main_session.h"
 #include "styles/style_info.h"
 
 namespace Info::Profile {
-namespace {
-
-} // namespace
 
 Badge::Badge(
 	not_null<QWidget*> parent,
 	const style::InfoPeerBadge &st,
-	not_null<Main::Session*> session,
 	rpl::producer<Content> content,
-	Fn<bool()> animationPaused,
 	base::flags<BadgeType> allowed)
 : _parent(parent)
 , _st(st)
-, _session(session)
-, _allowed(allowed)
-, _animationPaused(std::move(animationPaused)) {
+, _allowed(allowed) {
 	std::move(
 		content
 	) | rpl::on_next([=](Content content) {
@@ -53,8 +38,9 @@ Ui::RpWidget *Badge::widget() const {
 }
 
 // LoogriGram: no BadgeType::Premium - the premium emoji status and the gold
-// star it fell back to are both gone, so this paints the verified check, the
-// bot verification icon and the scam / fake / direct text badges.
+// star it fell back to are both gone - and no BadgeType::BotVerified, the
+// icon a third party paid for. This paints the verified check and the scam /
+// fake / direct text badges.
 void Badge::setContent(Content content) {
 	if (!(_allowed & content.badge)) {
 		content.badge = BadgeType::None;
@@ -63,7 +49,6 @@ void Badge::setContent(Content content) {
 		return;
 	}
 	_content = content;
-	_emojiStatus = nullptr;
 	_view.destroy();
 	if (_content.badge == BadgeType::None) {
 		_updated.fire({});
@@ -74,8 +59,6 @@ void Badge::setContent(Content content) {
 		switch (_content.badge) {
 		case BadgeType::Verified:
 			return tr::lng_sr_verified_badge(tr::now);
-		case BadgeType::BotVerified:
-			return tr::lng_sr_bot_verified_badge(tr::now);
 		case BadgeType::Scam:
 			return tr::lng_scam_badge(tr::now);
 		case BadgeType::Fake:
@@ -87,65 +70,24 @@ void Badge::setContent(Content content) {
 	}());
 	_view->show();
 	switch (_content.badge) {
-	case BadgeType::Verified:
-	case BadgeType::BotVerified: {
-		// Only BotVerified carries an id now, and it is the verifying bot's
-		// icon rather than a status the peer chose for itself.
-		const auto id = _content.emojiStatusId;
-		const auto emoji = id
-			? (Data::FrameSizeFromTag(sizeTag())
-				/ style::DevicePixelRatio())
-			: 0;
+	case BadgeType::Verified: {
 		const auto &style = st();
-		const auto verified = (_content.badge == BadgeType::Verified);
-		const auto icon = verified ? &style.verified : nullptr;
-		const auto iconForeground = verified ? &style.verifiedCheck : nullptr;
-		if (id) {
-			_emojiStatus = MakeWrappedEmoji<Ui::Text::FirstFrameEmoji>(
-				_session->data().customEmojiManager().create(
-					Data::EmojiStatusCustomId(id),
-					[raw = _view.data()] { raw->update(); },
-					sizeTag()));
-		}
-		const auto width = emoji + (icon ? icon->width() : 0);
-		const auto height = std::max(emoji, icon ? icon->height() : 0);
-		_view->resize(width, height);
+		const auto icon = &style.verified;
+		const auto iconForeground = &style.verifiedCheck;
+		_view->resize(icon->size());
 		_view->paintRequest(
 		) | rpl::on_next([=, check = _view.data()]{
-			if (_emojiStatus) {
-				auto args = Ui::Text::CustomEmoji::Context{
-					.textColor = style.premiumFg->c,
-					.now = crl::now(),
-					.paused = ((_animationPaused && _animationPaused())
-						|| On(PowerSaving::kEmojiStatus)),
-				};
-				Painter p(check);
-				_emojiStatus->paint(p, args);
-			}
-			if (icon) {
-				auto p = Painter(check);
-				if (_overrideSt && !iconForeground) {
-					icon->paint(
-						p,
-						emoji,
-						0,
-						check->width(),
-						_overrideSt->premiumFg->c);
-				} else {
-					icon->paint(p, emoji, 0, check->width());
-				}
-				if (iconForeground) {
-					if (_overrideSt) {
-						iconForeground->paint(
-							p,
-							emoji,
-							0,
-							check->width(),
-							_overrideSt->premiumFg->c);
-					} else {
-						iconForeground->paint(p, emoji, 0, check->width());
-					}
-				}
+			auto p = Painter(check);
+			icon->paint(p, 0, 0, check->width());
+			if (_overrideSt) {
+				iconForeground->paint(
+					p,
+					0,
+					0,
+					check->width(),
+					_overrideSt->premiumFg->c);
+			} else {
+				iconForeground->paint(p, 0, 0, check->width());
 			}
 		}, _view->lifetime());
 	} break;
@@ -202,10 +144,8 @@ void Badge::move(int left, int top, int bottom) {
 		return;
 	}
 	const auto &style = st();
-	const auto star = !_emojiStatus
-		&& (_content.badge == BadgeType::Verified);
-	const auto fake = !_emojiStatus && !star;
-	const auto skip = fake ? 0 : style.position.x();
+	const auto star = (_content.badge == BadgeType::Verified);
+	const auto skip = star ? style.position.x() : 0;
 	const auto badgeLeft = left + skip;
 	const auto badgeTop = top
 		+ (star
@@ -216,16 +156,6 @@ void Badge::move(int left, int top, int bottom) {
 
 const style::InfoPeerBadge &Badge::st() const {
 	return _overrideSt ? *_overrideSt : _st;
-}
-
-Data::CustomEmojiSizeTag Badge::sizeTag() const {
-	using SizeTag = Data::CustomEmojiSizeTag;
-	const auto &style = st();
-	return (style.sizeTag == 2)
-		? SizeTag::Isolated
-		: (style.sizeTag == 1)
-		? SizeTag::Large
-		: SizeTag::Normal;
 }
 
 // LoogriGram: the emoji status is gone, so this is only the scam / fake /
@@ -247,20 +177,6 @@ rpl::producer<Badge::Content> VerifiedContentForPeer(
 			badge = BadgeType::None;
 		}
 		return Badge::Content{ badge };
-	});
-}
-
-rpl::producer<Badge::Content> BotVerifyBadgeForPeer(
-		not_null<PeerData*> peer) {
-	return peer->session().changes().peerFlagsValue(
-		peer,
-		Data::PeerUpdate::Flag::VerifyInfo
-	) | rpl::map([=] {
-		const auto info = peer->botVerifyDetails();
-		return Badge::Content{
-			.badge = info ? BadgeType::BotVerified : BadgeType::None,
-			.emojiStatusId = { info ? info->iconId : DocumentId() },
-		};
 	});
 }
 

@@ -76,16 +76,6 @@ public:
 			bool selected) override {
 		return 0;
 	}
-	int paintNameIconGetLeadingWidth(
-			Painter &p,
-			Fn<void()> repaint,
-			crl::time now,
-			int nameLeft,
-			int nameTop,
-			int outerWidth,
-			bool selected) override {
-		return 0;
-	}
 	QSize rightActionSize() const override {
 		return peer()->isChannel() ? QSize(_st.width, _st.height) : QSize();
 	}
@@ -333,16 +323,6 @@ public:
 			int nameTop,
 			int nameWidth,
 			int availableWidth,
-			int outerWidth,
-			bool selected) override {
-		return 0;
-	}
-	int paintNameIconGetLeadingWidth(
-			Painter &p,
-			Fn<void()> repaint,
-			crl::time now,
-			int nameLeft,
-			int nameTop,
 			int outerWidth,
 			bool selected) override {
 		return 0;

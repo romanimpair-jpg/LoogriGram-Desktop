@@ -168,9 +168,7 @@ settingsInfoPeerBadge: InfoPeerBadge {
 		{ "dialogs/dialogs_verified_star", dialogsVerifiedIconBg },
 		{ "dialogs/dialogs_verified_check", dialogsVerifiedIconFg },
 	};
-	premium: icon {{ "dialogs/dialogs_premium", dialogsVerifiedIconBg }};
 	premiumFg: dialogsVerifiedIconBg;
-	sizeTag: 0; // Normal
 }
 settingsBio: InputField(defaultInputField) {
 	textBg: transparent;

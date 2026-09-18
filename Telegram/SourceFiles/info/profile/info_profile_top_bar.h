@@ -223,7 +223,6 @@ private:
 	const Source _source;
 	const bool _savedMessages = false;
 
-	const std::unique_ptr<Badge> _botVerify;
 	rpl::variable<Badge::Content> _badgeContent;
 	const Fn<bool()> _gifPausedChecker;
 	const std::unique_ptr<Badge> _badge;
@@ -271,7 +270,6 @@ private:
 	object_ptr<Ui::RoundButton> _forumButton = { nullptr };
 
 	std::shared_ptr<style::FlatLabel> _statusSt;
-	std::shared_ptr<style::InfoPeerBadge> _botVerifySt;
 	std::shared_ptr<style::InfoPeerBadge> _badgeSt;
 	std::shared_ptr<style::InfoPeerBadge> _verifiedSt;
 

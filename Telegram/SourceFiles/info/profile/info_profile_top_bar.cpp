@@ -48,7 +48,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/info_memento.h"
 #include "info/profile/info_profile_badge.h"
 #include "info/profile/info_profile_birthday_effect.h"
-#include "info/profile/info_profile_cover.h" // LargeCustomEmojiMargins
 #include "info/profile/info_profile_status_label.h"
 #include "info/profile/info_profile_top_bar_action_button.h"
 #include "info/profile/info_profile_values.h"
@@ -313,15 +312,6 @@ TopBar::TopBar(
 , _st(st::infoTopBar)
 , _source(descriptor.source)
 , _savedMessages(_key.savedMessages() != nullptr)
-, _botVerify(std::make_unique<Badge>(
-	this,
-	st::infoBotVerifyBadge,
-	&_peer->session(),
-	BotVerifyBadgeForPeer(_peer),
-	Fn<bool()>([=, controller = descriptor.controller] {
-		return controller->isGifPausedAtLeastFor(
-			Window::GifPauseReason::Layer);
-	})))
 , _badgeContent(_savedMessages
 	? rpl::producer<Badge::Content>(rpl::single(Badge::Content()))
 	: BadgeContentForPeer(_peer))
@@ -331,15 +321,11 @@ TopBar::TopBar(
 , _badge(std::make_unique<Badge>(
 	this,
 	st::infoPeerBadge,
-	&_peer->session(),
-	_badgeContent.value(),
-	_gifPausedChecker))
+	_badgeContent.value()))
 , _verified(std::make_unique<Badge>(
 	this,
 	st::infoPeerBadge,
-	&_peer->session(),
-	VerifiedContentForPeer(_peer),
-	_gifPausedChecker))
+	VerifiedContentForPeer(_peer)))
 , _hasActions(!_savedMessages
 	&& descriptor.source != Source::Stories
 	&& descriptor.source != Source::Preview
@@ -446,11 +432,6 @@ TopBar::TopBar(
 		badgeUpdates = rpl::merge(
 			std::move(badgeUpdates),
 			_verified->updated());
-	}
-	if (_botVerify) {
-		badgeUpdates = rpl::merge(
-			std::move(badgeUpdates),
-			_botVerify->updated());
 	}
 	_title->naturalWidthValue() | rpl::on_next([=](int w) {
 		_title->resizeToWidth(w);
@@ -614,12 +595,7 @@ void TopBar::adjustColors(const std::optional<QColor> &edgeColor) {
 	}
 
 	const auto shouldOverrideBadges = shouldOverride(
-		st::infoBotVerifyBadge.premiumFg);
-	_botVerify->setOverrideStyle(shouldOverrideBadges
-		? _botVerifySt
-		? _botVerifySt.get()
-		: &st::infoColoredBotVerifyBadge
-		: nullptr);
+		st::infoPeerBadge.premiumFg);
 	_badge->setOverrideStyle(shouldOverrideBadges
 		? _badgeSt
 		? _badgeSt.get()
@@ -680,11 +656,9 @@ void TopBar::updateCollectibleStatus() {
 			result->premiumFg = st::groupCallVideoSubTextFg;
 			return std::shared_ptr<style::InfoPeerBadge>(result.release());
 		};
-		_botVerifySt = copySt(st::infoColoredBotVerifyBadge);
 		_badgeSt = copySt(st::infoColoredPeerBadge);
 		_verifiedSt = copyStVerified(st::infoColoredPeerBadge);
 	} else {
-		_botVerifySt = nullptr;
 		_badgeSt = nullptr;
 		_verifiedSt = nullptr;
 	}
@@ -1714,16 +1688,12 @@ void TopBar::updateTitlePosition(float64 progressCurrent) {
 		progressCurrent);
 	const auto verifiedWidget = _verified ? _verified->widget() : nullptr;
 	const auto badgeWidget = _badge ? _badge->widget() : nullptr;
-	const auto botVerifyWidget = _botVerify ? _botVerify->widget() : nullptr;
 	auto badgesWidth = 0;
 	if (verifiedWidget) {
 		badgesWidth += verifiedWidget->width();
 	}
 	if (badgeWidget) {
 		badgesWidth += badgeWidget->width();
-	}
-	if (botVerifyWidget) {
-		badgesWidth += botVerifyWidget->width();
 	}
 	if (verifiedWidget || badgeWidget) {
 		badgesWidth += st::infoVerifiedCheckPosition.x();
@@ -1744,12 +1714,8 @@ void TopBar::updateTitlePosition(float64 progressCurrent) {
 
 	const auto badgeTop = titleTop;
 	const auto badgeBottom = titleTop + _title->height();
-	const auto margins = LargeCustomEmojiMargins();
 
 	auto totalElementsWidth = _title->width();
-	const auto botVerifySkip = botVerifyWidget
-		? botVerifyWidget->width() + st::infoVerifiedCheckPosition.x()
-		: 0;
 	if (verifiedWidget) {
 		totalElementsWidth += verifiedWidget->width();
 	}
@@ -1759,21 +1725,13 @@ void TopBar::updateTitlePosition(float64 progressCurrent) {
 	if (verifiedWidget || badgeWidget) {
 		totalElementsWidth += st::infoVerifiedCheckPosition.x();
 	}
-	totalElementsWidth += botVerifySkip;
 
 	auto titleLeft = anim::interpolate(
 		titleMostLeft,
 		(width() - totalElementsWidth) / 2,
 		progressCurrent);
 
-	if (_botVerify) {
-		_botVerify->move(
-			titleLeft,
-			badgeTop,
-			badgeBottom);
-		titleLeft += margins.left() + botVerifySkip;
-	}
-
+	// LoogriGram: a bot verification icon stood before the title.
 	_title->moveToLeft(titleLeft, titleTop);
 	const auto badgeLeft = titleLeft + _title->width();
 	if (_badge) {

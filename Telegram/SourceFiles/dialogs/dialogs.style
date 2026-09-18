@@ -36,12 +36,6 @@ ThreeStateIcon {
 	active: icon;
 }
 
-VerifiedBadge {
-	position: point;
-	color: color;
-	height: pixels;
-}
-
 ForumTopicIcon {
 	size: pixels;
 	font: font;
@@ -407,15 +401,6 @@ dialogsPinnedIcon: ThreeStateIcon {
 	icon: icon {{ "dialogs/dialogs_pinned", dialogsUnreadBgMuted }};
 	over: icon {{ "dialogs/dialogs_pinned", dialogsUnreadBgMutedOver }};
 	active: icon {{ "dialogs/dialogs_pinned", dialogsUnreadBgMutedActive }};
-}
-
-dialogsVerifiedColors: VerifiedBadge {
-	height: 20px;
-	color: dialogsVerifiedIconBg;
-	position: point(-1px, 0px);
-}
-dialogsVerifiedColorsOver: VerifiedBadge(dialogsVerifiedColors) {
-	color: dialogsVerifiedIconBgOver;
 }
 
 dialogsVerifiedIcon: icon {

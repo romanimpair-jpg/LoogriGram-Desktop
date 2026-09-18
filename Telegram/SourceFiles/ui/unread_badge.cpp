@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/unread_badge.h"
 
 #include "data/data_peer.h"
-#include "data/stickers/data_custom_emoji.h"
 // LoogriGram: both of these were reaching this file by accident, through
 // main_session.h and data_session.h, and went with them when the emoji
 // status removal dropped those. dialogs_layout.h is what makes
@@ -18,105 +17,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "ui/painter.h"
 #include "ui/rect.h"
-#include "ui/text/text_custom_emoji.h"
 #include "ui/unread_badge_paint.h"
 #include "styles/style_dialogs.h"
 
 namespace Ui {
-namespace {
-
-constexpr auto kBotVerifiedScale = 0.88;
-
-class ScaledBotVerifiedEmoji final : public Ui::Text::CustomEmoji {
-public:
-	ScaledBotVerifiedEmoji(
-		std::unique_ptr<Ui::Text::CustomEmoji> wrapped,
-		int innerSize,
-		int outerSize);
-
-	int width() override;
-	QString entityData() override;
-	void paint(QPainter &p, const Context &context) override;
-	void unload() override;
-	bool ready() override;
-	bool readyInDefaultState() override;
-
-private:
-	const std::unique_ptr<Ui::Text::CustomEmoji> _wrapped;
-	const int _innerSize = 0;
-	const int _outerSize = 0;
-	QImage _frame;
-	QColor _frameColor;
-
-};
-
-ScaledBotVerifiedEmoji::ScaledBotVerifiedEmoji(
-	std::unique_ptr<Ui::Text::CustomEmoji> wrapped,
-	int innerSize,
-	int outerSize)
-: _wrapped(std::move(wrapped))
-, _innerSize(innerSize)
-, _outerSize(outerSize) {
-}
-
-int ScaledBotVerifiedEmoji::width() {
-	return _outerSize;
-}
-
-QString ScaledBotVerifiedEmoji::entityData() {
-	return _wrapped->entityData();
-}
-
-void ScaledBotVerifiedEmoji::paint(QPainter &p, const Context &context) {
-	if (_frame.isNull() || _frameColor != context.textColor) {
-		if (!_wrapped->ready()) {
-			return;
-		}
-		const auto ratio = style::DevicePixelRatio();
-		const auto sourcePx = Data::FrameSizeFromTag(
-			Data::CustomEmojiSizeTag::Isolated);
-		_frame = QImage(
-			QSize(sourcePx, sourcePx),
-			QImage::Format_ARGB32_Premultiplied);
-		_frame.setDevicePixelRatio(ratio);
-		_frame.fill(Qt::transparent);
-
-		auto painter = QPainter(&_frame);
-		painter.translate(-context.position);
-		const auto was = context.internal.forceFirstFrame;
-		context.internal.forceFirstFrame = true;
-		_wrapped->paint(painter, context);
-		context.internal.forceFirstFrame = was;
-		painter.end();
-
-		_frame = _frame.scaled(
-			QSize(_innerSize, _innerSize) * ratio,
-			Qt::IgnoreAspectRatio,
-			Qt::SmoothTransformation);
-		_frameColor = context.textColor;
-	}
-	const auto skip = (_outerSize - _innerSize) / 2;
-	p.drawImage(context.position + QPoint(skip, skip), _frame);
-}
-
-void ScaledBotVerifiedEmoji::unload() {
-	_wrapped->unload();
-}
-
-bool ScaledBotVerifiedEmoji::ready() {
-	return !_frame.isNull() || _wrapped->ready();
-}
-
-bool ScaledBotVerifiedEmoji::readyInDefaultState() {
-	return !_frame.isNull() || _wrapped->ready();
-}
-
-} // namespace
-
-struct PeerBadge::BotVerifiedData {
-	QImage cache;
-	std::unique_ptr<Text::CustomEmoji> icon;
-};
 
 void UnreadBadge::setText(const QString &text, bool active) {
 	_text = text;
@@ -222,26 +126,9 @@ void DrawTextBadge(
 		st::dialogsScamFont->width(phrase));
 }
 
-PeerBadge::PeerBadge() = default;
+namespace {
 
-PeerBadge::~PeerBadge() = default;
-
-// LoogriGram: the scam / fake / direct badge and the verified check. The
-// premium emoji status and the gold premium star used to share this slot and
-// are gone, which is what leaves this as two branches instead of a priority
-// puzzle between four.
-int PeerBadge::drawGetWidth(Painter &p, Descriptor &&descriptor) {
-	const auto peer = descriptor.peer;
-	if ((descriptor.scam && (peer->isScam() || peer->isFake()))
-		|| (descriptor.direct && peer->isMonoforum())) {
-		return drawTextBadge(p, descriptor);
-	} else if (descriptor.verified && peer->isVerified()) {
-		return drawVerifyCheck(p, descriptor);
-	}
-	return 0;
-}
-
-int PeerBadge::drawTextBadge(Painter &p, const Descriptor &descriptor) {
+int DrawTextBadgeInName(Painter &p, const PeerBadgeDescriptor &descriptor) {
 	const auto type = [&] {
 		if (descriptor.peer->isScam()) {
 			return TextBadgeType::Scam;
@@ -279,7 +166,9 @@ int PeerBadge::drawTextBadge(Painter &p, const Descriptor &descriptor) {
 	return st::dialogsScamSkip + width;
 }
 
-int PeerBadge::drawVerifyCheck(Painter &p, const Descriptor &descriptor) {
+int DrawVerifyCheckInName(
+		Painter &p,
+		const PeerBadgeDescriptor &descriptor) {
 	const auto iconw = descriptor.verified->width();
 	const auto rectForName = descriptor.rectForName;
 	const auto nameWidth = descriptor.nameWidth;
@@ -291,58 +180,19 @@ int PeerBadge::drawVerifyCheck(Painter &p, const Descriptor &descriptor) {
 	return iconw;
 }
 
-bool PeerBadge::ready(const BotVerifyDetails *details) const {
-	if (!details || !*details) {
-		_botVerifiedData = nullptr;
-		return true;
-	} else if (!_botVerifiedData) {
-		return false;
-	}
-	if (!details->iconId) {
-		_botVerifiedData->icon = nullptr;
-	} else if (!_botVerifiedData->icon
-		|| (_botVerifiedData->icon->entityData()
-			!= Data::SerializeCustomEmojiId(details->iconId))) {
-		return false;
-	}
-	return true;
-}
+} // namespace
 
-void PeerBadge::set(
-		not_null<const BotVerifyDetails*> details,
-		Ui::Text::CustomEmojiFactory factory,
-		Fn<void()> repaint) {
-	if (!_botVerifiedData) {
-		_botVerifiedData = std::make_unique<BotVerifiedData>();
-	}
-	if (details->iconId) {
-		const auto outer = st::emojiSize;
-		const auto inner = int(base::SafeRound(
-			st::emojiSize * kBotVerifiedScale));
-		_botVerifiedData->icon = MakeWrappedEmoji<ScaledBotVerifiedEmoji>(
-			factory(
-				Data::SerializeCustomEmojiId(details->iconId),
-				{ .repaint = repaint }),
-			inner,
-			outer);
-	}
-}
-
-int PeerBadge::drawVerified(
-		QPainter &p,
-		QPoint position,
-		const style::VerifiedBadge &st) {
-	const auto data = _botVerifiedData.get();
-	if (!data) {
-		return 0;
-	}
-	if (const auto icon = data->icon.get()) {
-		icon->paint(p, {
-			.textColor = st.color->c,
-			.now = crl::now(),
-			.position = position + st.position,
-		});
-		return icon->width();
+// LoogriGram: the scam / fake / direct badge and the verified check. The
+// premium emoji status and the gold premium star used to share this slot and
+// are gone, which is what leaves this as two branches instead of a priority
+// puzzle between four.
+int DrawPeerBadgeGetWidth(Painter &p, PeerBadgeDescriptor &&descriptor) {
+	const auto peer = descriptor.peer;
+	if ((descriptor.scam && (peer->isScam() || peer->isFake()))
+		|| (descriptor.direct && peer->isMonoforum())) {
+		return DrawTextBadgeInName(p, descriptor);
+	} else if (descriptor.verified && peer->isVerified()) {
+		return DrawVerifyCheckInName(p, descriptor);
 	}
 	return 0;
 }

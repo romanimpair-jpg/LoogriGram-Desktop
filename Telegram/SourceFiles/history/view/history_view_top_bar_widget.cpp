@@ -659,20 +659,8 @@ void TopBarWidget::paintTopBar(Painter &p) {
 				TopBarNameText(namePeer, _activeChat),
 				Ui::NameTextOptions());
 		}
-		if (const auto info = namePeer->botVerifyDetails()) {
-			if (!_titleBadge.ready(info)) {
-				_titleBadge.set(
-					info,
-					namePeer->owner().customEmojiManager().factory(
-						Data::CustomEmojiSizeTag::Isolated),
-					[=] { update(); });
-			}
-			const auto position = QPoint{ nameleft, nametop };
-			const auto skip = _titleBadge.drawVerified(p, position, st::dialogsVerifiedColors);
-			nameleft += skip + st::dialogsChatTypeSkip;
-			namewidth -= skip + st::dialogsChatTypeSkip;
-		}
-		const auto badgeWidth = _titleBadge.drawGetWidth(p, {
+		// LoogriGram: no bot verification icon before the name.
+		const auto badgeWidth = Ui::DrawPeerBadgeGetWidth(p, {
 			.peer = namePeer,
 			.rectForName = QRect(
 				nameleft,

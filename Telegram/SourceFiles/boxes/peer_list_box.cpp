@@ -919,7 +919,7 @@ int PeerListRow::paintNameIconGetWidth(
 		|| _isVerifyCodesChat) {
 		return 0;
 	}
-	return _badge.drawGetWidth(p, {
+	return Ui::DrawPeerBadgeGetWidth(p, {
 		.peer = peer(),
 		.rectForName = QRect(
 			nameLeft,
@@ -936,42 +936,6 @@ int PeerListRow::paintNameIconGetWidth(
 			? st::windowSubTextFgOver
 			: st::windowSubTextFg),
 	});
-}
-
-int PeerListRow::paintNameIconGetLeadingWidth(
-		Painter &p,
-		Fn<void()> repaint,
-		crl::time now,
-		int nameLeft,
-		int nameTop,
-		int outerWidth,
-		bool selected) {
-	if (_skipPeerBadge
-		|| special()
-		|| !_savedMessagesStatus.isEmpty()
-		|| _isRepliesMessagesChat
-		|| _isVerifyCodesChat) {
-		return 0;
-	}
-	const auto info = peer()->botVerifyDetails();
-	if (!info) {
-		return 0;
-	}
-	if (!_badge.ready(info)) {
-		_badge.set(
-			info,
-			peer()->owner().customEmojiManager().factory(
-				Data::CustomEmojiSizeTag::Isolated),
-			std::move(repaint));
-	}
-	const auto &st = selected
-		? st::dialogsVerifiedColorsOver
-		: st::dialogsVerifiedColors;
-	const auto skip = _badge.drawVerified(
-		p,
-		QPoint(nameLeft, nameTop),
-		st);
-	return skip;// ? skip + st::dialogsChatTypeSkip) : 0;
 }
 
 void PeerListRow::paintStatusText(
@@ -2054,17 +2018,16 @@ crl::time PeerListContent::paintRow(
 			ratio,
 			[&](QImage &image) {
 				auto q = Painter(&image);
-				paintRowContent(q, now, index, false, 0);
+				paintRowContent(q, index, false, 0);
 			});
 		return refreshStatusIn;
 	}
-	paintRowContent(p, now, index, selected, activeElement);
+	paintRowContent(p, index, selected, activeElement);
 	return refreshStatusIn;
 }
 
 void PeerListContent::paintRowContent(
 		Painter &p,
-		crl::time now,
 		RowIndex index,
 		bool selected,
 		int activeElement) {
@@ -2130,18 +2093,9 @@ void PeerListContent::paintRowContent(
 			+ rightActionMargins.right()
 			- skipRight;
 	}
-	const auto leading = row->paintNameIconGetLeadingWidth(
-		p,
-		[=] { updateRow(row); },
-		now,
-		namex,
-		namey,
-		width(),
-		selected);
-	namew -= leading;
 	namew -= row->paintNameIconGetWidth(
 		p,
-		namex + leading,
+		namex,
 		namey,
 		name.maxWidth(),
 		namew,
@@ -2149,7 +2103,7 @@ void PeerListContent::paintRowContent(
 		selected);
 	auto nameCheckedRatio = row->disabled() ? 0. : row->checkedRatio();
 	p.setPen(anim::pen(st.nameFg, st.nameFgChecked, nameCheckedRatio));
-	name.drawLeftElided(p, namex + leading, namey, namew, width());
+	name.drawLeftElided(p, namex, namey, namew, width());
 
 	p.setFont(st::contactsStatusFont);
 	if (row->isSearchResult()

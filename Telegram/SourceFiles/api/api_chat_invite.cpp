@@ -291,9 +291,7 @@ void ConfirmInviteBox(
 		const auto badge = box->lifetime().make_state<Info::Profile::Badge>(
 			badgeParent,
 			st::infoPeerBadge,
-			session,
-			rpl::single(Info::Profile::Badge::Content{ badgeType }),
-			[] { return false; });
+			rpl::single(Info::Profile::Badge::Content{ badgeType }));
 		title->geometryValue(
 		) | rpl::on_next([=](const QRect &r) {
 			badge->move(r.x() + r.width(), r.y(), r.y() + r.height());

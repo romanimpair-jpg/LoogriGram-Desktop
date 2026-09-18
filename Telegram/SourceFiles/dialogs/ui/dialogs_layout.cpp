@@ -443,7 +443,6 @@ void PaintRow(
 		QRect geometry,
 		not_null<Entry*> entry,
 		PeerData *from,
-		PeerBadge &rowBadge,
 		Fn<void()> customEmojiRepaint,
 		const Text::String &rowName,
 		const HiddenSenderInfo *hiddenSenderInfo,
@@ -564,11 +563,6 @@ void PaintRow(
 
 	const auto promoted = (history && history->useTopPromotion())
 		&& !context.search;
-	const auto verifyInfo = (from
-		&& (!from->isSelf()
-			|| (!(flags & Flag::SavedMessages) && !(flags & Flag::MyNotes))))
-		? from->botVerifyDetails()
-		: nullptr;
 	if (promoted) {
 		const auto type = history->topPromotionType();
 		const auto custom = type.isEmpty()
@@ -580,19 +574,9 @@ void PaintRow(
 			? tr::lng_badge_psa_default(tr::now)
 			: custom;
 		PaintRowTopRight(p, text, rectForName, context);
-	} else if (verifyInfo) {
-		if (!rowBadge.ready(verifyInfo)) {
-			rowBadge.set(
-				verifyInfo,
-				from->owner().customEmojiManager().factory(
-					Data::CustomEmojiSizeTag::Isolated),
-				customEmojiRepaint);
-		}
-		const auto &st = Ui::VerifiedStyle(context);
-		const auto position = rectForName.topLeft();
-		const auto skip = rowBadge.drawVerified(p, position, st);
-		rectForName.setLeft(position.x() + skip + st::dialogsChatTypeSkip);
 	} else if (from) {
+		// LoogriGram: a bot verification icon took this place when the
+		// peer had one. It is not drawn; the chat type icon always is.
 		if (const auto chatTypeIcon = ChatTypeIcon(from, context)) {
 			chatTypeIcon->paint(p, rectForName.topLeft(), context.width);
 			rectForName.setLeft(rectForName.left()
@@ -858,7 +842,7 @@ void PaintRow(
 
 	p.setFont(st::semiboldFont);
 	const auto paintPeerBadge = [&](int rowNameWidth) {
-		const auto badgeWidth = rowBadge.drawGetWidth(p, {
+		const auto badgeWidth = DrawPeerBadgeGetWidth(p, {
 			.peer = from,
 			.rectForName = rectForName,
 			.nameWidth = rowNameWidth,
@@ -1090,14 +1074,6 @@ const style::icon *ChatTypeIcon(
 	return nullptr;
 }
 
-const style::VerifiedBadge &VerifiedStyle(const PaintContext &context) {
-	return context.active
-		? st::dialogsVerifiedColorsActive
-		: context.selected
-		? st::dialogsVerifiedColorsOver
-		: st::dialogsVerifiedColors;
-}
-
 void RowPainter::Paint(
 		Painter &p,
 		not_null<const Row*> row,
@@ -1221,7 +1197,6 @@ void RowPainter::Paint(
 		QRect(0, 0, context.width, row->height()),
 		entry,
 		from,
-		entry->chatListPeerBadge(),
 		[=] { entry->updateChatListEntry(); },
 		entry->chatListNameText(),
 		nullptr,
@@ -1332,7 +1307,6 @@ void RowPainter::Paint(
 		QRect(0, 0, context.width, context.st->height),
 		entry,
 		from,
-		row->badge(),
 		row->repaint(),
 		row->name(),
 		hiddenSenderInfo,

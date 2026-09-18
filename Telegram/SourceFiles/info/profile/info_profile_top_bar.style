@@ -81,15 +81,8 @@ infoProfileTopBarTopicStatusButton: RoundButton(defaultTableSmallButton) {
 	radius: 4px;
 }
 infoStatusHiddenToastIcon: icon{{ "community/requests_hidden", toastFg }};
-infoBotVerifyBadge: InfoPeerBadge(infoPeerBadge) {
-	position: point(-2px, 2px);
-}
 infoColoredPeerBadge: InfoPeerBadge(infoPeerBadge) {
 	verified: icon {{ "profile_verified_star", groupCallMembersFg }}; // Will be colorized.
 	verifiedCheck: icon {{ "profile_verified_check", groupCallMembersFg }};
-	premium: icon {{ "profile_premium", groupCallMembersFg }};
 	premiumFg: groupCallVideoSubTextFg;
-}
-infoColoredBotVerifyBadge: InfoPeerBadge(infoColoredPeerBadge) {
-	position: point(-2px, 2px);
 }

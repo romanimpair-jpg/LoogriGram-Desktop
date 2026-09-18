@@ -489,11 +489,10 @@ auto GenerateNewPeerInfo(
 			normalFg,
 			copy));
 
+		// LoogriGram: the verifier's icon led its line; the text stays.
 		const auto details = user->botVerifyDetails();
 		const auto text = details
-			? Data::SingleCustomEmoji(
-				details->iconId
-			).append(' ').append(details->description)
+			? TextWithEntities(details->description)
 			: Ui::Text::IconEmoji(
 				&st::newPeerNonOfficial
 			).append(' ').append(tr::lng_new_contact_not_official(tr::now));

@@ -219,7 +219,6 @@ private:
 	std::unique_ptr<EmojiInteractionSeenAnimation> _emojiInteractionSeen;
 	rpl::lifetime _activeChatLifetime;
 
-	Ui::PeerBadge _titleBadge;
 	Ui::Text::String _title;
 	int _titleNameVersion = 0;
 
