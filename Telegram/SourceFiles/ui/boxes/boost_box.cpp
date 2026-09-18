@@ -7,9 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/boxes/boost_box.h"
 
-#include "lang/lang_keys.h"
 #include "ui/effects/fireworks_animation.h"
-#include "ui/text/text_utilities.h"
 #include "ui/rp_widget.h"
 #include "ui/ui_utility.h"
 
@@ -31,18 +29,6 @@ void StartFireworks(not_null<QWidget*> parent) {
 			crl::on_main(result, [=] { delete result; });
 		}
 	}, lifetime);
-}
-
-TextWithEntities AskBoostReasonText(const AskBoostReason &reason) {
-	return v::match(reason.data, [](AskBoostCustomReactions data) {
-		return tr::lng_boost_channel_needs_level_reactions(
-			tr::now,
-			lt_count,
-			data.count,
-			lt_same_count,
-			TextWithEntities{ QString::number(data.count) },
-			tr::rich);
-	});
 }
 
 } // namespace Ui

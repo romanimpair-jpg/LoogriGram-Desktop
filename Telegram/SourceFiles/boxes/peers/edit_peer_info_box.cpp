@@ -45,7 +45,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_changes.h"
 #include "data/data_message_reactions.h"
 #include "data/data_peer_values.h"
-#include "data/data_premium_limits.h"
 #include "data/data_user.h"
 #include "history/admin_log/history_admin_log_section.h"
 #include "history/view/history_view_welcome_messages_section.h"
@@ -57,7 +56,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mtproto/sender.h"
 #include "main/main_app_config.h"
 #include "settings/settings_common.h"
-#include "ui/boxes/boost_box.h"
 #include "ui/controls/emoji_button.h"
 #include "ui/controls/userpic_button.h"
 #include "ui/effects/premium_graphics.h"
@@ -410,7 +408,6 @@ private:
 		Ui::VerticalLayout *buttonsLayout = nullptr;
 		Ui::SettingsButton *forumToggle = nullptr;
 		bool forumToggleLocked = false;
-		bool levelRequested = false;
 		Ui::SlideWrap<> *historyVisibilityWrap = nullptr;
 	};
 	struct Saving {
@@ -1744,51 +1741,19 @@ void Controller::editReactions() {
 	const auto done = [=](const Data::AllowedReactions &chosen) {
 		SaveAllowedReactions(_peer, chosen);
 	};
-	if (!_peer->isBroadcast()) {
-		_navigation->uiShow()->show(Box(
-			EditAllowedReactionsBox,
-			EditAllowedReactionsArgs{
-				.navigation = _navigation,
-				.isGroup = true,
-				.list = _navigation->session().data().reactions().list(
-					Data::Reactions::Type::Active),
-				.allowed = Data::PeerAllowedReactions(_peer),
-				.save = done,
-			}));
-		return;
-	}
-	if (_controls.levelRequested) {
-		return;
-	}
-	_controls.levelRequested = true;
-	_api.request(MTPpremium_GetBoostsStatus(
-		_peer->input()
-	)).done([=](const MTPpremium_BoostsStatus &result) {
-		_controls.levelRequested = false;
-		const auto level = result.data().vlevel().v;
-		if (const auto channel = _peer->asChannel()) {
-			channel->updateLevelHint(level);
-		}
-		const auto show = _navigation->uiShow();
-		const auto levelRequired = [=](int required) {
-			show->showToast(Ui::AskBoostReasonText({
-				Ui::AskBoostCustomReactions{ required },
-			}));
-		};
-		_navigation->uiShow()->show(Box(
-			EditAllowedReactionsBox,
-			EditAllowedReactionsArgs{
-				.navigation = _navigation,
-				.allowedCustomReactions = level,
-				.customReactionsHardLimit = Data::PremiumLimits(
-					&_peer->session()).maxBoostLevel(),
-				.list = _navigation->session().data().reactions().list(
-					Data::Reactions::Type::Active),
-				.allowed = Data::PeerAllowedReactions(_peer),
-				.levelRequired = levelRequired,
-				.save = done,
-			}));
-	}).send();
+	// LoogriGram: for a channel this first fetched the boost level, which
+	// set how many custom emoji it could take as reactions. Channels offer
+	// the standard reactions only now, so the box opens straight away.
+	_navigation->uiShow()->show(Box(
+		EditAllowedReactionsBox,
+		EditAllowedReactionsArgs{
+			.navigation = _navigation,
+			.isGroup = !_peer->isBroadcast(),
+			.list = _navigation->session().data().reactions().list(
+				Data::Reactions::Type::Active),
+			.allowed = Data::PeerAllowedReactions(_peer),
+			.save = done,
+		}));
 }
 
 void Controller::fillPendingRequestsButton() {

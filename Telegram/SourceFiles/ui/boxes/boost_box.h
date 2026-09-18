@@ -14,19 +14,7 @@ void StartFireworks(not_null<QWidget*> parent);
 // LoogriGram: every boost screen is gone - the boost box itself, the
 // boosts page and AskBoostBox, which answered a locked channel feature with
 // the boost level bar, a boost link to share and the list of what each
-// level unlocks. Boosting spends a Telegram Premium slot. What is left is
-// the reason a feature is locked, stated as the padlock it is.
-
-struct AskBoostCustomReactions {
-	int count = 0;
-};
-
-struct AskBoostReason {
-	std::variant<
-		AskBoostCustomReactions> data;
-};
-
-[[nodiscard]] TextWithEntities AskBoostReasonText(
-	const AskBoostReason &reason);
+// level unlocks. Boosting spends a Telegram Premium slot. The level-locked
+// features went with them, so no reason is ever stated either.
 
 } // namespace Ui

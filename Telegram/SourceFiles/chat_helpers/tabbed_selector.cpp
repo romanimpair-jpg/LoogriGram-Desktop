@@ -356,8 +356,7 @@ TabbedSelector::TabbedSelector(
 : TabbedSelector(parent, {
 	.show = std::move(show),
 	.st = ((mode == Mode::ChannelStatus
-		|| mode == Mode::BackgroundEmoji
-		|| mode == Mode::FullReactions)
+		|| mode == Mode::BackgroundEmoji)
 		? st::statusEmojiPan
 		: (mode == Mode::RecentReactions)
 		? st::backgroundEmojiPan
@@ -629,8 +628,6 @@ TabbedSelector::Tab TabbedSelector::createTab(SelectorTab type, int index) {
 					? EmojiMode::ChannelStatus
 					: _mode == Mode::BackgroundEmoji
 					? EmojiMode::BackgroundEmoji
-					: _mode == Mode::FullReactions
-					? EmojiMode::FullReactions
 					: _mode == Mode::RecentReactions
 					? EmojiMode::RecentReactions
 					: _mode == Mode::CustomEmojiOnly
