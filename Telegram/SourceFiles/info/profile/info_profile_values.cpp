@@ -238,15 +238,15 @@ TextWithEntities AboutWithEntities(
 	auto flags = TextParseLinks | TextParseMentions;
 	const auto user = peer->asUser();
 	const auto isBot = user && user->isBot();
-	const auto isPremium = user && user->isPremium();
 	if (!user) {
 		flags |= TextParseHashtags;
 	} else if (isBot) {
 		flags |= TextParseHashtags | TextParseBotCommands;
 	}
+	// LoogriGram: a Premium user's bio kept its links; no user's does now.
 	const auto stripExternal = peer->isChat()
 		|| peer->isMegagroup()
-		|| (user && !isBot && !isPremium);
+		|| (user && !isBot);
 	auto result = TextWithEntities{ value };
 	TextUtilities::ParseEntities(result, flags);
 	if (stripExternal) {
@@ -705,8 +705,8 @@ rpl::producer<bool> CanViewParticipantsValue(
 	) | rpl::distinct_until_changed();
 }
 
-// LoogriGram: premium no longer earns a badge, so this no longer needs to
-// watch for it - the combine with PeerPremiumValue went with the branch.
+// LoogriGram: premium no longer earns a badge, so this no longer watches
+// for it.
 template <typename Flag, typename Peer>
 rpl::producer<BadgeType> BadgeValueFromFlags(Peer peer) {
 	return Data::PeerFlagsValue(

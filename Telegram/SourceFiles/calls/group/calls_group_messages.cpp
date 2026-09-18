@@ -271,7 +271,8 @@ void Messages::received(
 		EntityType::Italic,
 		EntityType::CustomEmoji,
 	};
-	if (checkCustomEmoji && !peer->isSelf() && !peer->isPremium()) {
+	// LoogriGram: they were also kept when the peer had Premium.
+	if (checkCustomEmoji && !peer->isSelf()) {
 		allowedEntityTypes.pop_back();
 	}
 	const auto author = peer->owner().peer(peerFromMTP(from));

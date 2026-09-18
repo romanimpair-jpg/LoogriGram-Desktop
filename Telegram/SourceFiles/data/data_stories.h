@@ -54,7 +54,6 @@ struct StoriesSourceInfo {
 	TimeId last = 0;
 	uint32 count : 15 = 0;
 	uint32 unreadCount : 15 = 0;
-	uint32 premium : 1 = 0;
 	uint32 hasVideoStream : 1 = 0;
 
 	friend inline bool operator==(

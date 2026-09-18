@@ -150,7 +150,6 @@ inline auto PeerFullFlagValue(
 	not_null<PeerData*> peer);
 [[nodiscard]] rpl::producer<bool> AllowsForwardingValue(
 	not_null<PeerData*> peer);
-[[nodiscard]] rpl::producer<bool> PeerPremiumValue(not_null<PeerData*> peer);
 
 [[nodiscard]] TimeId SortByOnlineValue(not_null<UserData*> user, TimeId now);
 [[nodiscard]] crl::time OnlineChangeTimeout(

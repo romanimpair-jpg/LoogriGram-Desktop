@@ -166,7 +166,6 @@ StoriesSourceInfo StoriesSource::info() const {
 		.last = ids.empty() ? 0 : ids.back().date,
 		.count = uint32(std::min(int(ids.size()), kMaxSegmentsCount)),
 		.unreadCount = uint32(std::min(unreadCount(), kMaxSegmentsCount)),
-		.premium = (peer->isUser() && peer->asUser()->isPremium()) ? 1U : 0,
 		.hasVideoStream = hasVideoStream ? 1U : 0,
 	};
 }
@@ -1033,8 +1032,9 @@ void Stories::sort(StorySourcesList list) {
 	const auto self = _owner->session().userPeerId();
 	const auto changelogSenderId = UserData::kServiceNotificationsId;
 	const auto proj = [&](const StoriesSourceInfo &info) {
+		// LoogriGram: Premium users' stories were also lifted ahead of the
+		// rest, in the same bit as the changelog's.
 		const auto key = int64(info.last)
-			+ (info.premium ? (int64(1) << 47) : 0)
 			+ ((info.id == changelogSenderId) ? (int64(1) << 47) : 0)
 			+ ((info.unreadCount > 0) ? (int64(1) << 49) : 0)
 			+ ((info.id == self) ? (int64(1) << 50) : 0);
