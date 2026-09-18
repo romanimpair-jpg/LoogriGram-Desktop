@@ -21,10 +21,6 @@ namespace Data {
 class SavedMessages;
 } // namespace Data
 
-namespace Dialogs::Stories {
-struct Content;
-} // namespace Dialogs::Stories
-
 namespace Storage {
 enum class SharedMediaType : signed char;
 } // namespace Storage
@@ -144,8 +140,6 @@ public:
 	[[nodiscard]] virtual rpl::producer<QString> subtitle() {
 		return nullptr;
 	}
-	[[nodiscard]] virtual auto titleStories()
-		-> rpl::producer<Dialogs::Stories::Content>;
 
 	virtual void saveChanges(FnMut<void()> done);
 	[[nodiscard]] virtual SendMenu::Details sendMenuDetails() const;

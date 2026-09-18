@@ -26,7 +26,6 @@ class Error;
 namespace Data {
 class Forum;
 class CommunityInfo;
-enum class StorySourcesList : uchar;
 struct ReactionId;
 } // namespace Data
 
@@ -67,11 +66,6 @@ class ConnectionState;
 struct SectionShow;
 struct SeparateId;
 } // namespace Window
-
-namespace Dialogs::Stories {
-class List;
-struct Content;
-} // namespace Dialogs::Stories
 
 namespace Dialogs {
 
@@ -117,7 +111,6 @@ public:
 	[[nodiscard]] Data::Forum *openedForum() const;
 
 	void jumpToTop(bool belowPinned = false);
-	void raiseWithTooltip();
 
 	[[nodiscard]] QPixmap grabNonNarrowScrollFrame();
 	void startWidthAnimation();
@@ -213,15 +206,11 @@ private:
 	void setupMoreChatsBar();
 	void setupDownloadBar();
 	void setupShortcuts();
-	void setupStories();
 	void setupSwipeBack();
 	void setupTopBarSuggestions();
 #ifdef _DEBUG
 	void setupTopBarSuggestionTestHotkeys();
 #endif // _DEBUG
-	void storiesExplicitCollapse();
-	void collectStoriesUserpicsViews(Data::StorySourcesList list);
-	void storiesToggleExplicitExpand(bool expand);
 	void trackScroll(not_null<Ui::RpWidget*> widget);
 	[[nodiscard]] bool peerSearchRequired() const;
 	[[nodiscard]] bool searchForTopicsRequired(const QString &query) const;
@@ -244,8 +233,6 @@ private:
 	void updateLockUnlockVisibility(
 		anim::type animated = anim::type::instant);
 	void updateLoadMoreChatsVisibility();
-	void updateStoriesVisibility();
-	void updateStoriesTitleShown();
 	void updateJumpToDateVisibility(bool fast = false);
 	void updateSearchFromVisibility(bool fast = false);
 	void updateControlsGeometry();
@@ -396,16 +383,6 @@ private:
 	bool _searchEngaged = false;
 	bool _processingSearch = false;
 
-	rpl::event_stream<rpl::producer<Stories::Content>> _storiesContents;
-	base::flat_map<PeerId, Ui::PeerUserpicView> _storiesUserpicsViewsHidden;
-	base::flat_map<PeerId, Ui::PeerUserpicView> _storiesUserpicsViewsShown;
-	Fn<void()> _updateScrollGeometryCached;
-	std::unique_ptr<Stories::List> _stories;
-	Ui::Animations::Simple _storiesExplicitExpandAnimation;
-	rpl::variable<int> _storiesExplicitExpandValue = 0;
-	int _storiesExplicitExpandScrollTop = 0;
-	int _aboveScrollAdded = 0;
-	bool _storiesExplicitExpand = false;
 	bool _postponeProcessSearchFocusChange = false;
 
 	base::Timer _searchTimer;

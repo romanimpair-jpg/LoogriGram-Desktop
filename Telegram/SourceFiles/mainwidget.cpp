@@ -2338,7 +2338,7 @@ bool MainWidget::showBackFromStack(const SectionShow &params) {
 
 void MainWidget::orderWidgets() {
 	if (_dialogs) {
-		_dialogs->raiseWithTooltip();
+		_dialogs->raise();
 	}
 	if (_player) {
 		_player->raise();

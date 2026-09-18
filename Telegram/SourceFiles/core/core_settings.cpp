@@ -304,7 +304,7 @@ QByteArray Settings::serialize() const {
 		+ Serialize::bytearraySize(mediaViewPosition)
 		+ sizeof(qint32) // _ignoreBatterySaving
 		+ sizeof(quint64) // _macRoundIconDigest
-		+ sizeof(qint32) // _storiesClickTooltipHidden
+		+ sizeof(qint32) // LoogriGram: was _storiesClickTooltipHidden
 		+ sizeof(qint32); // _recentEmojiSkip count
 	for (const auto &id : _recentEmojiSkip) {
 		size += Serialize::stringSize(id);
@@ -481,7 +481,9 @@ QByteArray Settings::serialize() const {
 			<< mediaViewPosition
 			<< qint32(_ignoreBatterySaving.current() ? 1 : 0)
 			<< quint64(_macRoundIconDigest.value_or(0))
-			<< qint32(_storiesClickTooltipHidden.current() ? 1 : 0)
+			// LoogriGram: the stories strip tooltip flag; the strip is gone,
+			// but the positional slot is still written.
+			<< qint32(0)
 			<< qint32(_recentEmojiSkip.size());
 		for (const auto &id : _recentEmojiSkip) {
 			stream << id;
@@ -648,7 +650,7 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	QByteArray mediaViewPosition;
 	qint32 ignoreBatterySaving = _ignoreBatterySaving.current() ? 1 : 0;
 	quint64 macRoundIconDigest = _macRoundIconDigest.value_or(0);
-	qint32 storiesClickTooltipHidden = _storiesClickTooltipHidden.current() ? 1 : 0;
+	qint32 storiesClickTooltipHidden = 0; // LoogriGram: read and discarded.
 	base::flat_set<QString> recentEmojiSkip;
 	qint32 trayIconMonochrome = (_trayIconMonochrome.current() ? 1 : 0);
 	qint32 ttlVoiceClickTooltipHidden = _ttlVoiceClickTooltipHidden.current() ? 1 : 0;
@@ -1281,7 +1283,6 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	}
 	_ignoreBatterySaving = (ignoreBatterySaving == 1);
 	_macRoundIconDigest = macRoundIconDigest ? macRoundIconDigest : std::optional<uint64>();
-	_storiesClickTooltipHidden = (storiesClickTooltipHidden == 1);
 	_recentEmojiSkip = std::move(recentEmojiSkip);
 	_trayIconMonochrome = (trayIconMonochrome == 1);
 	_ttlVoiceClickTooltipHidden = (ttlVoiceClickTooltipHidden == 1);
@@ -1742,7 +1743,6 @@ void Settings::resetOnLastLogout() {
 	_notifyFromAll = true;
 	_tabbedReplacedWithInfo = false; // per-window
 	_hiddenGroupCallTooltips = 0;
-	_storiesClickTooltipHidden = false;
 	_ttlVoiceClickTooltipHidden = false;
 	const auto srDisabled = readPref<bool>(kScreenReaderModeDisabledKey);
 	_prefs.clear();

@@ -614,22 +614,19 @@ void TopBarWidget::paintTopBar(Painter &p) {
 			: peer->isVerifyCodes()
 			? tr::lng_verification_codes(tr::now)
 			: peer->name();
-		const auto opacity = folder ? _titleShownRatio : 1.;
-		if (opacity > 0.) {
-			const auto textWidth = st::historySavedFont->width(text);
-			if (namewidth < textWidth) {
-				text = st::historySavedFont->elided(text, namewidth);
-			}
-			p.setOpacity(opacity);
-			p.setPen(st::dialogsNameFg);
-			p.setFont(st::historySavedFont);
-			p.drawTextLeft(
-				nameleft,
-				(height() - st::historySavedFont->height) / 2,
-				width(),
-				text);
-			p.setOpacity(1.);
+		// LoogriGram: a folder's title faded out here while the stories
+		// strip, expanded over it, showed the folder name instead.
+		const auto textWidth = st::historySavedFont->width(text);
+		if (namewidth < textWidth) {
+			text = st::historySavedFont->elided(text, namewidth);
 		}
+		p.setPen(st::dialogsNameFg);
+		p.setFont(st::historySavedFont);
+		p.drawTextLeft(
+			nameleft,
+			(height() - st::historySavedFont->height) / 2,
+			width(),
+			text);
 	} else if (_activeChat.section == Section::Replies) {
 		p.setPen(st::dialogsNameFg);
 		p.setFont(st::semiboldFont);
@@ -984,17 +981,6 @@ void TopBarWidget::setCustomTitle(const QString &title) {
 		_customTitleText = title;
 		update();
 	}
-}
-
-void TopBarWidget::setTitleShownRatio(float64 shown) {
-	if (_titleShownRatio != shown) {
-		_titleShownRatio = shown;
-		update();
-	}
-}
-
-int TopBarWidget::titleLeft() const {
-	return _leftTaken;
 }
 
 bool TopBarWidget::rootChatsListBar() const {

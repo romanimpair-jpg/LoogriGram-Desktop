@@ -83,8 +83,6 @@ public:
 		ActiveChat activeChat,
 		SendActionPainter *sendAction);
 	void setCustomTitle(const QString &title);
-	void setTitleShownRatio(float64 shown);
-	[[nodiscard]] int titleLeft() const;
 
 	void showChooseMessagesForReport(Data::ReportInput reportInput);
 	void clearChooseMessagesForReport();
@@ -269,7 +267,6 @@ private:
 	bool _titlePeerTextOnline = false;
 	int _leftTaken = 0;
 	int _rightTaken = 0;
-	float64 _titleShownRatio = 1.;
 	bool _animatingMode = false;
 	std::unique_ptr<Ui::InfiniteRadialAnimation> _connecting;
 

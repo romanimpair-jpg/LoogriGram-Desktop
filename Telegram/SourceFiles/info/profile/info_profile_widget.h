@@ -97,7 +97,6 @@ public:
 	void showSearch() override;
 
 	rpl::producer<QString> title() override;
-	rpl::producer<Dialogs::Stories::Content> titleStories() override;
 
 private:
 	void saveState(not_null<Memento*> memento);

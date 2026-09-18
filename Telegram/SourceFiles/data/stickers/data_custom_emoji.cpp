@@ -21,8 +21,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_peer.h"
 #include "data/data_message_reactions.h"
 #include "data/stickers/data_stickers.h"
-#include "dialogs/ui/dialogs_stories_content.h"
-#include "dialogs/ui/dialogs_stories_content.h"
 #include "lottie/lottie_common.h"
 #include "lottie/lottie_frame_generator.h"
 #include "ffmpeg/ffmpeg_frame_generator.h"

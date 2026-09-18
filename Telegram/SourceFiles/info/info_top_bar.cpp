@@ -7,7 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/info_top_bar.h"
 
-#include "dialogs/ui/dialogs_stories_list.h"
 #include "lang/lang_keys.h"
 #include "info/info_wrap_widget.h"
 #include "info/info_controller.h"
@@ -94,10 +93,10 @@ void TopBar::setTitle(TitleDescriptor descriptor) {
 			st::infoTopBarScale);
 		_subtitle->setDuration(st::infoTopBarDuration);
 		_subtitle->toggle(
-			!selectionMode() && !storiesTitle(),
+			!selectionMode(),
 			anim::type::instant);
 		registerToggleControlCallback(_subtitle.data(), [=] {
-			return !selectionMode() && !storiesTitle() && !searchMode();
+			return !selectionMode() && !searchMode();
 		});
 	}
 	_title = Ui::CreateChild<Ui::FadeWrap<Ui::FlatLabel>>(
@@ -109,10 +108,10 @@ void TopBar::setTitle(TitleDescriptor descriptor) {
 		st::infoTopBarScale);
 	_title->setDuration(st::infoTopBarDuration);
 	_title->toggle(
-		!selectionMode() && !storiesTitle(),
+		!selectionMode(),
 		anim::type::instant);
 	registerToggleControlCallback(_title.data(), [=] {
-		return !selectionMode() && !storiesTitle() && !searchMode();
+		return !selectionMode() && !searchMode();
 	});
 
 	if (_back) {
@@ -147,9 +146,6 @@ void TopBar::enableBackButton() {
 	}
 	if (_subtitle) {
 		_subtitle->setAttribute(Qt::WA_TransparentForMouseEvents);
-	}
-	if (_storiesWrap) {
-		_storiesWrap->raise();
 	}
 	updateControlsGeometry(width());
 }
@@ -365,7 +361,6 @@ int TopBar::resizeGetHeight(int newWidth) {
 void TopBar::updateControlsGeometry(int newWidth) {
 	updateDefaultControlsGeometry(newWidth);
 	updateSelectionControlsGeometry(newWidth);
-	updateStoriesGeometry(newWidth);
 }
 
 void TopBar::updateDefaultControlsGeometry(int newWidth) {
@@ -445,31 +440,6 @@ void TopBar::updateSelectionControlsGeometry(int newWidth) {
 		newWidth);
 }
 
-void TopBar::updateStoriesGeometry(int newWidth) {
-	if (!_stories) {
-		return;
-	}
-
-	auto right = 0;
-	for (auto &button : _buttons) {
-		if (!button) {
-			continue;
-		}
-		button->moveToRight(right, 0, newWidth);
-		right += button->width();
-	}
-	const auto &small = st::dialogsStories;
-	const auto wrapLeft = (_back ? _st.back.width : 0);
-	const auto left = _back
-		? 0
-		: (_st.titlePosition.x() - small.left - small.photoLeft);
-	const auto height = small.photo + 2 * small.photoTop;
-	const auto top = _st.titlePosition.y()
-		+ (_st.title.style.font->height - height) / 2;
-	_stories->setLayoutConstraints({ left, top }, style::al_left);
-	_storiesWrap->move(wrapLeft, 0);
-}
-
 void TopBar::paintEvent(QPaintEvent *e) {
 	auto p = QPainter(this);
 
@@ -518,95 +488,6 @@ void TopBar::updateControlsVisibility(anim::type animated) {
 			++i;
 		}
 	}
-}
-
-void TopBar::setStories(rpl::producer<Dialogs::Stories::Content> content) {
-	_storiesLifetime.destroy();
-	delete _storiesWrap.data();
-	if (content) {
-		using namespace Dialogs::Stories;
-
-		auto last = std::move(
-			content
-		) | rpl::start_spawning(_storiesLifetime);
-
-		_storiesWrap = _storiesLifetime.make_state<
-			Ui::FadeWrap<Ui::AbstractButton>
-		>(this, object_ptr<Ui::AbstractButton>(this), st::infoTopBarScale);
-		registerToggleControlCallback(
-			_storiesWrap.data(),
-			[this] { return _storiesCount > 0; });
-		_storiesWrap->toggle(false, anim::type::instant);
-		_storiesWrap->setDuration(st::infoTopBarDuration);
-
-		const auto button = _storiesWrap->entity();
-		const auto stories = Ui::CreateChild<List>(
-			button,
-			st::dialogsStoriesListInfo,
-			rpl::duplicate(
-				last
-			) | rpl::filter([](const Content &content) {
-				return !content.elements.empty();
-			}));
-		const auto label = Ui::CreateChild<Ui::FlatLabel>(
-			button,
-			QString(),
-			_st.title);
-		stories->setAttribute(Qt::WA_TransparentForMouseEvents);
-		label->setAttribute(Qt::WA_TransparentForMouseEvents);
-		stories->geometryValue(
-		) | rpl::on_next([=](QRect geometry) {
-			const auto skip = _st.title.style.font->spacew;
-			label->move(
-				geometry.x() + geometry.width() + skip,
-				_st.titlePosition.y());
-		}, label->lifetime());
-		rpl::combine(
-			_storiesWrap->positionValue(),
-			label->geometryValue()
-		) | rpl::on_next([=] {
-			button->resize(
-				label->x() + label->width() + _st.titlePosition.x(),
-				_st.height);
-		}, button->lifetime());
-
-		_stories = stories;
-		_stories->clicks(
-		) | rpl::start_to_stream(_storyClicks, _stories->lifetime());
-
-		button->setClickedCallback([=] {
-			_storyClicks.fire({});
-		});
-
-		rpl::duplicate(
-			last
-		) | rpl::on_next([=](const Content &content) {
-			const auto count = content.total;
-			if (_storiesCount != count) {
-				const auto was = (_storiesCount > 0);
-				_storiesCount = count;
-				const auto now = (_storiesCount > 0);
-				if (was != now) {
-					updateControlsVisibility(anim::type::normal);
-				}
-				if (now) {
-					label->setText(
-						tr::lng_contacts_stories_status(
-							tr::now,
-							lt_count,
-							_storiesCount));
-				}
-				updateControlsGeometry(width());
-			}
-		}, _storiesLifetime);
-
-		_storiesLifetime.add([weak = base::make_weak(label)] {
-			delete weak.get();
-		});
-	} else {
-		_storiesCount = 0;
-	}
-	updateControlsVisibility(anim::type::instant);
 }
 
 void TopBar::setSelectedItems(SelectedItems &&items) {
@@ -834,10 +715,6 @@ Ui::StringWithNumbers TopBar::generateSelectedText() const {
 
 bool TopBar::selectionMode() const {
 	return !_selectedItems.list.empty();
-}
-
-bool TopBar::storiesTitle() const {
-	return _storiesCount > 0;
 }
 
 bool TopBar::searchMode() const {

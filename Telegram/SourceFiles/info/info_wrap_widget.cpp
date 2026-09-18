@@ -701,7 +701,8 @@ void WrapWidget::finishShowContent() {
 			.title = _content->title(),
 			.subtitle = _content->subtitle(),
 		});
-		_topBar->setStories(_content->titleStories());
+		// LoogriGram: the title also showed the peer's active stories as
+		// small userpics with a count. Stories are removed.
 	}
 	_desiredHeights.fire(desiredHeightForContent());
 	_desiredShadowVisibilities.fire(_content->desiredShadowVisibility());

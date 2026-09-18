@@ -18,11 +18,6 @@ namespace style {
 struct InfoTopBar;
 } // namespace style
 
-namespace Dialogs::Stories {
-class List;
-struct Content;
-} // namespace Dialogs::Stories
-
 namespace Window {
 class SessionNavigation;
 } // namespace Window
@@ -57,12 +52,7 @@ public:
 	[[nodiscard]] auto backRequest() const {
 		return _backClicks.events();
 	}
-	[[nodiscard]] auto storyClicks() const {
-		return _storyClicks.events();
-	}
-
 	void setTitle(TitleDescriptor descriptor);
-	void setStories(rpl::producer<Dialogs::Stories::Content> content);
 	void enableBackButton();
 	void highlight();
 
@@ -112,7 +102,6 @@ private:
 	void updateControlsGeometry(int newWidth);
 	void updateDefaultControlsGeometry(int newWidth);
 	void updateSelectionControlsGeometry(int newWidth);
-	void updateStoriesGeometry(int newWidth);
 	Ui::FadeWrap<Ui::RpWidget> *pushButton(
 		base::unique_qptr<Ui::RpWidget> button);
 	void forceButtonVisibility(
@@ -123,7 +112,6 @@ private:
 	void updateControlsVisibility(anim::type animated);
 
 	[[nodiscard]] bool selectionMode() const;
-	[[nodiscard]] bool storiesTitle() const;
 	[[nodiscard]] bool searchMode() const;
 	[[nodiscard]] Ui::StringWithNumbers generateSelectedText() const;
 	[[nodiscard]] bool computeCanDelete() const;
@@ -171,7 +159,6 @@ private:
 	QPointer<Ui::InputField> _searchField;
 
 	rpl::event_stream<> _backClicks;
-	rpl::event_stream<uint64> _storyClicks;
 
 	SelectedItems _selectedItems;
 	bool _canDelete = false;
@@ -186,11 +173,6 @@ private:
 	QPointer<Ui::FadeWrap<Ui::IconButton>> _toggleStoryInProfile;
 	QPointer<Ui::FadeWrap<Ui::IconButton>> _toggleStoryPin;
 	rpl::event_stream<SelectionAction> _selectionActionRequests;
-
-	QPointer<Ui::FadeWrap<Ui::AbstractButton>> _storiesWrap;
-	QPointer<Dialogs::Stories::List> _stories;
-	rpl::lifetime _storiesLifetime;
-	int _storiesCount = 0;
 
 	using UpdateCallback = Fn<bool(anim::type)>;
 	std::map<QObject*, UpdateCallback> _updateControlCallbacks;
