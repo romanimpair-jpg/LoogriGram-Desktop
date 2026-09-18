@@ -17,34 +17,12 @@ void StartFireworks(not_null<QWidget*> parent);
 // level unlocks. Boosting spends a Telegram Premium slot. What is left is
 // the reason a feature is locked, stated as the padlock it is.
 
-struct AskBoostChannelColor {
-	int requiredLevel = 0;
-};
-
-struct AskBoostWallpaper {
-	int requiredLevel = 0;
-	bool group = false;
-};
-
-struct AskBoostEmojiStatus {
-	int requiredLevel = 0;
-	bool group = false;
-};
-
-struct AskBoostEmojiPack {
-	int requiredLevel = 0;
-};
-
 struct AskBoostCustomReactions {
 	int count = 0;
 };
 
 struct AskBoostReason {
 	std::variant<
-		AskBoostChannelColor,
-		AskBoostWallpaper,
-		AskBoostEmojiStatus,
-		AskBoostEmojiPack,
 		AskBoostCustomReactions> data;
 };
 

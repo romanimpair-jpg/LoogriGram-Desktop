@@ -8,12 +8,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/background_preview_box.h"
 
 #include "base/unixtime.h"
-#include "boxes/peers/edit_peer_color_box.h"
 #include "lang/lang_keys.h"
 #include "mainwidget.h"
 #include "window/themes/window_theme.h"
 #include "ui/boxes/confirm_box.h"
-#include "ui/boxes/boost_box.h"
 #include "ui/controls/chat_service_checkbox.h"
 #include "ui/chat/chat_theme.h"
 #include "ui/chat/chat_style.h"
@@ -453,14 +451,6 @@ auto BackgroundPreviewBox::prepareOverridenStyle(bool dark)
 	return result;
 }
 
-bool BackgroundPreviewBox::forChannel() const {
-	return _forPeer && _forPeer->isChannel();
-}
-
-bool BackgroundPreviewBox::forGroup() const {
-	return forChannel() && _forPeer->isMegagroup();
-}
-
 void BackgroundPreviewBox::generateBackground() {
 	if (_paper.backgroundColors().empty()) {
 		return;
@@ -486,11 +476,7 @@ void BackgroundPreviewBox::resetTitle() {
 
 void BackgroundPreviewBox::rebuildButtons(bool dark) {
 	clearButtons();
-	addButton(forGroup()
-		? tr::lng_background_apply_group()
-		: forChannel()
-		? tr::lng_background_apply_channel()
-		: _forPeer
+	addButton(_forPeer
 		? tr::lng_background_apply_button()
 		: tr::lng_settings_apply(), [=] { apply(); });
 	addButton(tr::lng_cancel(), [=] { closeBox(); });
@@ -674,30 +660,6 @@ void BackgroundPreviewBox::setExistingForPeer(
 	_controller->finishChatThemeEdit(_forPeer);
 }
 
-void BackgroundPreviewBox::checkLevelForChannel() {
-	Expects(forChannel());
-
-	const auto show = _controller->uiShow();
-	_forPeerLevelCheck = true;
-	const auto weak = base::make_weak(this);
-	CheckBoostLevel(show, _forPeer, [=](int level) {
-		if (!weak) {
-			return std::optional<Ui::AskBoostReason>();
-		}
-		const auto limits = Data::LevelLimits(&_forPeer->session());
-		const auto required = _paperEmojiId.isEmpty()
-			? limits.channelCustomWallpaperLevelMin()
-			: limits.channelWallpaperLevelMin();
-		if (level >= required) {
-			setForPeer();
-			return std::optional<Ui::AskBoostReason>();
-		}
-		return std::make_optional(Ui::AskBoostReason{
-			Ui::AskBoostWallpaper{ required, _forPeer->isMegagroup()}
-		});
-	}, [=] { _forPeerLevelCheck = false; });
-}
-
 void BackgroundPreviewBox::applyForPeer() {
 	Expects(_forPeer != nullptr);
 
@@ -712,19 +674,14 @@ void BackgroundPreviewBox::applyForPeer() {
 
 	// LoogriGram: premium accounts were offered to set the wallpaper for
 	// both sides of the chat, in an overlay with three buttons. Here it is
-	// only ever set for this side.
-	if (forChannel()) {
-		checkLevelForChannel();
-	} else {
-		setForPeer();
-	}
+	// only ever set for this side. A channel or group wallpaper, which
+	// needed a boost level, is not offered at all.
+	setForPeer();
 }
 
 void BackgroundPreviewBox::setForPeer() {
 	using namespace Data;
-	if (forChannel() && !_paperEmojiId.isEmpty()) {
-		setExistingForPeer(WallPaper::FromEmojiId(_paperEmojiId));
-	} else if (IsCustomWallPaper(_paper)) {
+	if (IsCustomWallPaper(_paper)) {
 		uploadForPeer();
 	} else {
 		setExistingForPeer(_paper);
@@ -849,7 +806,7 @@ int BackgroundPreviewBox::textsTop() const {
 		- st::historyPaddingBottom
 		- (_service ? _service->height() : 0)
 		- _text1->height()
-		- (forChannel() ? 0 : _text2->height());
+		- _text2->height();
 }
 
 QRect BackgroundPreviewBox::radialRect() const {
@@ -880,11 +837,9 @@ void BackgroundPreviewBox::paintTexts(Painter &p, crl::time ms) {
 	context.outbg = _text1->hasOutLayout();
 	_text1->draw(p, context);
 	p.translate(0, height1);
-	if (!forChannel()) {
-		context.outbg = _text2->hasOutLayout();
-		_text2->draw(p, context);
-		p.translate(0, height2);
-	}
+	context.outbg = _text2->hasOutLayout();
+	_text2->draw(p, context);
+	p.translate(0, height2);
 }
 
 void BackgroundPreviewBox::radialAnimationCallback(crl::time now) {
@@ -984,11 +939,7 @@ void BackgroundPreviewBox::updateServiceBg(const std::vector<QColor> &bg) {
 	_service = GenerateServiceItem(
 		delegate(),
 		_serviceHistory,
-		(forGroup()
-			? tr::lng_background_other_group(tr::now)
-			: forChannel()
-			? tr::lng_background_other_channel(tr::now)
-			: (_forPeer && !_fromMessageId)
+		((_forPeer && !_fromMessageId)
 			? tr::lng_background_other_info(
 				tr::now,
 				lt_user,

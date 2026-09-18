@@ -129,8 +129,6 @@ private:
 		int row) const;
 	void validatePaperThumbnail(const Paper &paper) const;
 
-	[[nodiscard]] bool forChannel() const;
-
 	const not_null<Main::Session*> _session;
 	PeerData * const _forPeer = nullptr;
 
@@ -177,23 +175,6 @@ void BackgroundBox::prepare() {
 		button,
 		st::infoIconMediaPhoto,
 		st::infoSharedMediaButtonIconPosition);
-
-	if (forChannel() && _forPeer->wallPaper()) {
-		const auto remove = container->add(object_ptr<Ui::SettingsButton>(
-			container,
-			tr::lng_settings_bg_remove(),
-			st::infoBlockButton));
-		object_ptr<Info::Profile::FloatingIcon>(
-			remove,
-			st::infoIconDeleteRed,
-			st::infoSharedMediaButtonIconPosition);
-
-		remove->setClickedCallback([=] {
-			if (const auto resolved = _inner->resolveResetCustomPaper()) {
-				chosen(*resolved);
-			}
-		});
-	}
 
 	button->setClickedCallback([=] {
 		chooseFromFile();
@@ -309,23 +290,6 @@ void BackgroundBox::chosen(const Data::WallPaper &paper) {
 			closeBox();
 		}
 		return;
-	} else if (forChannel()) {
-		if (_forPeer->wallPaper() && _forPeer->wallPaper()->equals(paper)) {
-			closeBox();
-			return;
-		}
-		const auto &themes = _forPeer->owner().cloudThemes();
-		for (const auto &theme : themes.chatThemes()) {
-			for (const auto &[type, themed] : theme.settings) {
-				if (themed.paper && themed.paper->equals(paper)) {
-					_controller->show(Box<BackgroundPreviewBox>(
-						_controller,
-						Data::WallPaper::FromEmojiId(theme.emoticon),
-						BackgroundPreviewArgs{ _forPeer }));
-					return;
-				}
-			}
-		}
 	}
 	_controller->show(Box<BackgroundPreviewBox>(
 		_controller,
@@ -350,10 +314,6 @@ void BackgroundBox::resetForPeer() {
 	if (weak) {
 		_controller->finishChatThemeEdit(_forPeer);
 	}
-}
-
-bool BackgroundBox::forChannel() const {
-	return _forPeer && _forPeer->isChannel();
 }
 
 void BackgroundBox::removePaper(const Data::WallPaper &paper) {
@@ -411,31 +371,23 @@ BackgroundBox::Inner::Inner(
 		_check->invalidateCache();
 	}, lifetime());
 
-	if (forChannel()) {
-		_session->data().cloudThemes().chatThemesUpdated(
-		) | rpl::on_next([=] {
-			updatePapers();
-		}, lifetime());
-	} else {
-		using Update = Window::Theme::BackgroundUpdate;
-		Window::Theme::Background()->updates(
-		) | rpl::on_next([=](const Update &update) {
-			if (update.type == Update::Type::New) {
-				sortPapers();
-				requestPapers();
-				this->update();
-			}
-		}, lifetime());
-	}
+	// LoogriGram: a channel or group box listed chat themes here instead.
+	// Setting a channel or group wallpaper needed a boost level, and the
+	// box is only opened for private chats and the app now.
+	using Update = Window::Theme::BackgroundUpdate;
+	Window::Theme::Background()->updates(
+	) | rpl::on_next([=](const Update &update) {
+		if (update.type == Update::Type::New) {
+			sortPapers();
+			requestPapers();
+			this->update();
+		}
+	}, lifetime());
 
 	setMouseTracking(true);
 }
 
 void BackgroundBox::Inner::requestPapers() {
-	if (forChannel()) {
-		_session->data().cloudThemes().refreshChatThemes();
-		return;
-	}
 	_api.request(MTPaccount_GetWallPapers(
 		MTP_long(_session->data().wallpapersHash())
 	)).done([=](const MTPaccount_WallPapers &result) {
@@ -452,7 +404,7 @@ auto BackgroundBox::Inner::resolveResetCustomPaper() const
 	}
 	const auto nonCustom = Window::Theme::Background()->paper();
 	const auto themeToken = _forPeer->themeToken();
-	if (forChannel() || themeToken.isEmpty()) {
+	if (themeToken.isEmpty()) {
 		return nonCustom;
 	}
 	const auto &themes = _forPeer->owner().cloudThemes();
@@ -500,8 +452,6 @@ void BackgroundBox::Inner::pushCustomPapers() {
 }
 
 void BackgroundBox::Inner::sortPapers() {
-	Expects(!forChannel());
-
 	const auto currentCustom = _forPeer ? _forPeer->wallPaper() : nullptr;
 	_currentId = currentCustom
 		? currentCustom->id()
@@ -531,60 +481,24 @@ void BackgroundBox::Inner::sortPapers() {
 }
 
 void BackgroundBox::Inner::updatePapers() {
-	if (forChannel()) {
-		if (_session->data().cloudThemes().chatThemes().empty()) {
-			return;
-		}
-	} else {
-		if (_session->data().wallpapers().empty()) {
-			return;
-		}
+	if (_session->data().wallpapers().empty()) {
+		return;
 	}
 	_over = _overDown = Selection();
 
 	const auto was = base::take(_papers);
-	if (forChannel()) {
-		const auto now = _forPeer->wallPaper();
-		const auto &list = _session->data().cloudThemes().chatThemes();
-		if (list.empty()) {
-			return;
-		}
-		using Type = Data::CloudThemeType;
-		const auto type = Window::Theme::IsNightMode()
-			? Type::Dark
-			: Type::Light;
-		_papers.reserve(list.size() + 1);
-		const auto nowEmojiId = now ? now->emojiId() : QString();
-		if (!now || !now->emojiId().isEmpty()) {
-			_papers.push_back({ Window::Theme::Background()->paper() });
-			_currentId = _papers.back().data.id();
-		} else {
-			_papers.push_back({ *now });
-			_currentId = now->id();
-		}
-		for (const auto &theme : list) {
-			const auto i = theme.settings.find(type);
-			if (i != end(theme.settings) && i->second.paper) {
-				_papers.push_back({ *i->second.paper });
-				if (nowEmojiId == theme.emoticon) {
-					_currentId = _papers.back().data.id();
-				}
-			}
-		}
-	} else {
-		_papers = _session->data().wallpapers(
-		) | ranges::views::filter([&](const Data::WallPaper &paper) {
-			return (!paper.isPattern() || !paper.backgroundColors().empty())
-				&& (!_forPeer
-					|| (!Data::IsDefaultWallPaper(paper)
-						&& (Data::IsCloudWallPaper(paper)
-							|| Data::IsCustomWallPaper(paper))));
-		}) | ranges::views::transform([](const Data::WallPaper &paper) {
-			return Paper{ paper };
-		}) | ranges::to_vector;
-		pushCustomPapers();
-		sortPapers();
-	}
+	_papers = _session->data().wallpapers(
+	) | ranges::views::filter([&](const Data::WallPaper &paper) {
+		return (!paper.isPattern() || !paper.backgroundColors().empty())
+			&& (!_forPeer
+				|| (!Data::IsDefaultWallPaper(paper)
+					&& (Data::IsCloudWallPaper(paper)
+						|| Data::IsCustomWallPaper(paper))));
+	}) | ranges::views::transform([](const Data::WallPaper &paper) {
+		return Paper{ paper };
+	}) | ranges::to_vector;
+	pushCustomPapers();
+	sortPapers();
 	resizeToContentAndPreload();
 }
 
@@ -683,10 +597,6 @@ void BackgroundBox::Inner::validatePaperThumbnail(
 	paper.thumbnail.setDevicePixelRatio(style::DevicePixelRatio());
 }
 
-bool BackgroundBox::Inner::forChannel() const {
-	return _forPeer && _forPeer->isChannel();
-}
-
 void BackgroundBox::Inner::paintPaper(
 		QPainter &p,
 		const Paper &paper,
@@ -704,8 +614,7 @@ void BackgroundBox::Inner::paintPaper(
 		const auto checkLeft = x + st::backgroundSize.width() - st::overviewCheckSkip - st::overviewCheck.size;
 		const auto checkTop = y + st::backgroundSize.height() - st::overviewCheckSkip - st::overviewCheck.size;
 		_check->paint(p, checkLeft, checkTop, width());
-	} else if (!forChannel()
-		&& Data::IsCloudWallPaper(paper.data)
+	} else if (Data::IsCloudWallPaper(paper.data)
 		&& !Data::IsDefaultWallPaper(paper.data)
 		&& !Data::IsLegacy2DefaultWallPaper(paper.data)
 		&& !Data::IsLegacy3DefaultWallPaper(paper.data)
@@ -743,8 +652,7 @@ void BackgroundBox::Inner::mouseMoveEvent(QMouseEvent *e) {
 			- st::stickerPanDeleteIconBg.width();
 		const auto deleteBottom = row * (height + skip) + skip
 			+ st::stickerPanDeleteIconBg.height();
-		const auto inDelete = !forChannel()
-			&& (x >= deleteLeft)
+		const auto inDelete = (x >= deleteLeft)
 			&& (y < deleteBottom)
 			&& Data::IsCloudWallPaper(data)
 			&& !Data::IsDefaultWallPaper(data)

@@ -94,10 +94,6 @@ private:
 	void applyDarkMode(bool dark);
 	[[nodiscard]] OverridenStyle prepareOverridenStyle(bool dark);
 
-	[[nodiscard]] bool forChannel() const;
-	[[nodiscard]] bool forGroup() const;
-	void checkLevelForChannel();
-
 	void recreate(bool dark);
 	void resetTitle();
 	void rebuildButtons(bool dark);
@@ -105,7 +101,6 @@ private:
 
 	const not_null<Window::SessionController*> _controller;
 	PeerData * const _forPeer = nullptr;
-	bool _forPeerLevelCheck = false;
 	FullMsgId _fromMessageId;
 	std::unique_ptr<Ui::ChatStyle> _chatStyle;
 	const not_null<History*> _serviceHistory;

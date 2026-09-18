@@ -2882,11 +2882,9 @@ void EmojiListWidget::displaySet(not_null<DocumentData*> document) {
 
 void EmojiListWidget::displaySet(uint64 setId) {
 	if (setId == Data::Stickers::MegagroupSetId) {
-		if (_megagroupSet->canEditEmoji()) {
-			showBoxPreventHide(
-				Box<StickersBox>(_show, _megagroupSet, true));
-			return;
-		} else if (_megagroupSet->mgInfo->emojiSet.id) {
+		// LoogriGram: for a group admin this opened the group emoji pack
+		// chooser, which needed a group boost level. Everyone sees the pack.
+		if (_megagroupSet->mgInfo->emojiSet.id) {
 			setId = _megagroupSet->mgInfo->emojiSet.id;
 		} else {
 			return;

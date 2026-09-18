@@ -34,35 +34,7 @@ void StartFireworks(not_null<QWidget*> parent) {
 }
 
 TextWithEntities AskBoostReasonText(const AskBoostReason &reason) {
-	return v::match(reason.data, [](AskBoostChannelColor data) {
-		return tr::lng_boost_channel_needs_level_color(
-			tr::now,
-			lt_count,
-			data.requiredLevel,
-			tr::rich);
-	}, [](AskBoostWallpaper data) {
-		return (data.group
-			? tr::lng_boost_group_needs_level_wallpaper
-			: tr::lng_boost_channel_needs_level_wallpaper)(
-				tr::now,
-				lt_count,
-				data.requiredLevel,
-				tr::rich);
-	}, [](AskBoostEmojiStatus data) {
-		return (data.group
-			? tr::lng_boost_group_needs_level_status
-			: tr::lng_boost_channel_needs_level_status)(
-				tr::now,
-				lt_count,
-				data.requiredLevel,
-				tr::rich);
-	}, [](AskBoostEmojiPack data) {
-		return tr::lng_boost_group_needs_level_emoji(
-			tr::now,
-			lt_count,
-			data.requiredLevel,
-			tr::rich);
-	}, [](AskBoostCustomReactions data) {
+	return v::match(reason.data, [](AskBoostCustomReactions data) {
 		return tr::lng_boost_channel_needs_level_reactions(
 			tr::now,
 			lt_count,

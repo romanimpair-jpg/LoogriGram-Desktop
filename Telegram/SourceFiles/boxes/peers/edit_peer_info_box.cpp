@@ -16,7 +16,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/boxes/confirm_box.h"
 #include "base/event_filter.h"
 #include "boxes/peers/edit_participants_box.h"
-#include "boxes/peers/edit_peer_color_box.h"
 #include "boxes/peers/edit_peer_common.h"
 #include "boxes/peers/edit_peer_type_box.h"
 #include "boxes/peers/edit_peer_history_visibility_box.h"
@@ -452,7 +451,6 @@ private:
 	void fillDirectMessagesButton();
 	//void fillInviteLinkButton();
 	void fillForumButton();
-	void fillColorIndexButton();
 	void fillSignaturesButton();
 	void fillHistoryVisibilityButton();
 	void fillManageSection();
@@ -832,9 +830,8 @@ object_ptr<Ui::RpWidget> Controller::createStickersEdit() {
 		tr::lng_group_stickers_add(),
 		rpl::single(QString()), //Empty count.
 		[=, controller = _navigation->parentController()] {
-			const auto isEmoji = false;
 			controller->show(
-				Box<StickersBox>(controller->uiShow(), channel, isEmoji));
+				Box<StickersBox>(controller->uiShow(), channel));
 		},
 		{ &st::menuIconStickers });
 
@@ -1221,16 +1218,6 @@ void Controller::refreshForumToggleLocked() {
 	_controls.forumToggle->setToggleLocked(locked);
 }
 
-void Controller::fillColorIndexButton() {
-	Expects(_controls.buttonsLayout != nullptr);
-
-	AddPeerColorButton(
-		_controls.buttonsLayout,
-		_navigation->uiShow(),
-		_peer,
-		st::managePeerColorsButton);
-}
-
 void Controller::fillSignaturesButton() {
 	Expects(_controls.buttonsLayout != nullptr);
 
@@ -1419,7 +1406,6 @@ void Controller::fillManageSection() {
 		&& (channel->hasAdminRights() || channel->amCreator());
 	const auto canEditStickers = isChannel && channel->canEditStickers();
 	const auto canDeleteChannel = isChannel && channel->canDelete();
-	const auto canEditColorIndex = isChannel && channel->canEditEmoji();
 	const auto canViewOrEditDiscussionLink = isChannel
 		&& (channel->discussionLink()
 			|| (channel->isBroadcast() && channel->canEditInformation()));
@@ -1454,9 +1440,10 @@ void Controller::fillManageSection() {
 	if (canEditForum) {
 		fillForumButton();
 	}
-	if (canEditColorIndex) {
-		fillColorIndexButton();
-	}
+	// LoogriGram: an Appearance button sat here - name colour, background
+	// emoji, profile colour and emoji, emoji status, wallpaper and the group
+	// emoji pack. Each needed a channel boost level, and boosts come from
+	// Premium subscribers, so the whole box is gone.
 	// LoogriGram: an Auto-translate switch sat here. It needed a channel
 	// boost level - boosts come from Premium subscribers - so it is gone
 	// rather than drawn locked.
@@ -1464,7 +1451,6 @@ void Controller::fillManageSection() {
 		fillSignaturesButton();
 	} else if (canEditPreHistoryHidden
 		|| canEditForum
-		|| canEditColorIndex
 		//|| canEditInviteLinks
 		|| canViewOrEditDiscussionLink
 		|| canEditType) {

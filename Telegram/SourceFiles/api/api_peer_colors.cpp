@@ -66,14 +66,6 @@ void PeerColors::requestProfile() {
 	}).send();
 }
 
-std::vector<uint8> PeerColors::suggested() const {
-	return _suggested.current();
-}
-
-rpl::producer<std::vector<uint8>> PeerColors::suggestedValue() const {
-	return _suggested.value();
-}
-
 auto PeerColors::indicesValue() const
 -> rpl::producer<Ui::ColorIndicesCompressed> {
 	return rpl::single(
@@ -89,42 +81,11 @@ Ui::ColorIndicesCompressed PeerColors::indicesCurrent() const {
 		: Ui::ColorIndicesCompressed();
 }
 
-const base::flat_map<uint8, int> &PeerColors::requiredLevelsGroup() const {
-	return _requiredLevelsGroup;
-}
-
-const base::flat_map<uint8, int> &PeerColors::requiredLevelsChannel() const {
-	return _requiredLevelsChannel;
-}
-
-int PeerColors::requiredLevelFor(
-		PeerId channel,
-		uint8 index,
-		bool isMegagroup,
-		bool profile) const {
-	if (Data::DecideColorIndex(channel) == index) {
-		return 0;
-	}
-	if (profile) {
-		const auto it = _profileColors.find(index);
-		if (it != end(_profileColors)) {
-			return isMegagroup
-				? it->second.requiredLevelsGroup
-				: it->second.requiredLevelsChannel;
-		}
-		return 1;
-	}
-	const auto &levels = isMegagroup
-		? _requiredLevelsGroup
-		: _requiredLevelsChannel;
-	if (const auto i = levels.find(index); i != end(levels)) {
-		return i->second;
-	}
-	return 1;
-}
-
+// LoogriGram: this also kept the boost level each colour needed for a
+// channel or group, and which colours to suggest. Both only fed the channel
+// appearance box, which is gone; the colours are still read to draw other
+// peers' names and profiles.
 void PeerColors::apply(const MTPDhelp_peerColors &data) {
-	auto suggested = std::vector<uint8>();
 	auto colors = std::make_shared<
 		std::array<Ui::ColorIndexData, Ui::kColorIndexCount>>();
 
@@ -150,9 +111,6 @@ void PeerColors::apply(const MTPDhelp_peerColors &data) {
 	};
 
 	const auto &list = data.vcolors().v;
-	_requiredLevelsGroup.clear();
-	_requiredLevelsChannel.clear();
-	suggested.reserve(list.size());
 	for (const auto &color : list) {
 		const auto &data = color.data();
 		const auto colorIndexBare = data.vcolor_id().v;
@@ -161,15 +119,6 @@ void PeerColors::apply(const MTPDhelp_peerColors &data) {
 			continue;
 		}
 		const auto colorIndex = uint8(colorIndexBare);
-		if (const auto min = data.vgroup_min_level()) {
-			_requiredLevelsGroup[colorIndex] = min->v;
-		}
-		if (const auto min = data.vchannel_min_level()) {
-			_requiredLevelsChannel[colorIndex] = min->v;
-		}
-		if (!data.is_hidden()) {
-			suggested.push_back(colorIndex);
-		}
 		if (const auto light = data.vcolors()) {
 			auto &fields = (*colors)[colorIndex];
 			fields.light = parseColors(*light);
@@ -189,7 +138,6 @@ void PeerColors::apply(const MTPDhelp_peerColors &data) {
 		_colorIndicesCurrent->colors = std::move(colors);
 		_colorIndicesChanged.fire({});
 	}
-	_suggested = std::move(suggested);
 }
 
 void PeerColors::applyProfile(const MTPDhelp_peerColors &data) {
@@ -218,9 +166,7 @@ void PeerColors::applyProfile(const MTPDhelp_peerColors &data) {
 		});
 	};
 
-	auto suggested = std::vector<Data::ColorProfileData>();
 	const auto &list = data.vcolors().v;
-	suggested.reserve(list.size());
 	for (const auto &color : list) {
 		const auto &data = color.data();
 		const auto colorIndexBare = data.vcolor_id().v;
@@ -229,19 +175,12 @@ void PeerColors::applyProfile(const MTPDhelp_peerColors &data) {
 			continue;
 		}
 		const auto colorIndex = uint8(colorIndexBare);
-		auto result = ProfileColorOption();
-		result.isHidden = data.is_hidden();
-		if (const auto min = data.vgroup_min_level()) {
-			result.requiredLevelsGroup = min->v;
-		}
-		if (const auto min = data.vchannel_min_level()) {
-			result.requiredLevelsChannel = min->v;
-		}
+		auto result = Data::ColorProfileData();
 		if (const auto light = data.vcolors()) {
-			result.data.light = parseColors(*light);
+			result.light = parseColors(*light);
 		}
 		if (const auto dark = data.vdark_colors()) {
-			result.data.dark = parseColors(*dark);
+			result.dark = parseColors(*dark);
 		}
 		_profileColors[colorIndex] = std::move(result);
 	}
@@ -260,19 +199,10 @@ std::optional<Data::ColorProfileSet> PeerColors::colorProfileFor(
 	const auto i = _profileColors.find(index);
 	if (i != end(_profileColors)) {
 		return Window::Theme::IsNightMode()
-			? i->second.data.dark
-			: i->second.data.light;
+			? i->second.dark
+			: i->second.light;
 	}
 	return std::nullopt;
-}
-
-std::vector<uint8> PeerColors::profileColorIndices() const {
-	auto result = std::vector<uint8>();
-	result.reserve(_profileColors.size());
-	for (const auto &[index, option] : _profileColors) {
-		result.push_back(index);
-	}
-	return result;
 }
 
 } // namespace Api

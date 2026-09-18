@@ -29,8 +29,6 @@ settingsButtonLight: SettingsButton(settingsButton) {
 	textFg: lightButtonFg;
 	textFgOver: lightButtonFgOver;
 }
-settingsButtonLightNoIcon: SettingsButton(settingsButtonLight, settingsButtonNoIcon) {
-}
 settingsButtonNoIconLocked: SettingsButton(settingsButtonNoIcon) {
 	toggle: Toggle(infoProfileToggle) {
 		lockIcon: icon {{ "info/info_rights_lock", menuIconFg }};
@@ -462,31 +460,13 @@ filterLinkChatsList: PeerList(peerListBox) {
 	padding: margins(0px, 0px, 0px, membersMarginBottom);
 }
 
-settingsColorSampleCutout: 3px;
-settingsColorProfileSampleShift: 5px;
 settingsColorSampleSize: 20px;
 settingsColorSampleCenter: 6px;
 settingsColorSampleCenterRadius: 2px;
 settingsColorSamplePadding: margins(8px, 2px, 8px, 2px);
-settingsColorSampleSkip: 6px;
-settingsColorButton: SettingsButton(settingsButton) {
-	padding: margins(60px, 10px, 48px, 10px);
-}
-settingsColorRadioMargin: 17px;
 settingsColorRadioSkip: 13px;
 settingsColorRadioStroke: 2px;
-settingsLevelBadgeLock: IconEmoji{
-	icon: icon {{ "chat/mini_lock", premiumButtonFg }};
-	padding: margins(0px, 4px, 0px, 0px);
-	useIconColor: true;
-}
-
-peerAppearanceButton: SettingsButton(settingsButtonLight) {
-	padding: margins(60px, 8px, 22px, 8px);
-	iconLeft: 20px;
-}
 peerAppearanceIconPadding: margins(0px, 15px, 0px, 5px);
-peerAppearanceDividerTextMargin: margins(22px, 8px, 22px, 11px);
 
 settingsWorkingHoursPicker: 200px;
 settingsWorkingHoursPickerItemHeight: 40px;

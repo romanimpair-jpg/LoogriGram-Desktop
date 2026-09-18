@@ -18,9 +18,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "mainwidget.h"
 #include "mainwindow.h"
-#include "ui/boxes/boost_box.h"
 #include "ui/boxes/confirm_box.h"
-#include "boxes/peers/edit_peer_color_box.h"
 #include "boxes/sticker_set_box.h"
 #include "apiwrap.h"
 #include "storage/storage_account.h"
@@ -103,8 +101,7 @@ public:
 	Inner(
 		QWidget *parent,
 		std::shared_ptr<ChatHelpers::Show> show,
-		not_null<ChannelData*> megagroup,
-		bool isEmoji);
+		not_null<ChannelData*> megagroup);
 
 	[[nodiscard]] Main::Session &session() const;
 
@@ -225,7 +222,6 @@ private:
 	StickersSetsOrder collectSets(Check check) const;
 
 	void updateSelected();
-	void checkGroupLevel(Fn<void()> done);
 
 	void checkLoadMore();
 	void updateScrollbarWidth();
@@ -327,8 +323,6 @@ private:
 
 	int _scrollbar = 0;
 	ChannelData *_megagroupSet = nullptr;
-	bool _megagroupSetEmoji = false;
-	bool _checkingGroupLevel = false;
 	StickerSetIdentifier _megagroupSetInput;
 	std::unique_ptr<Row> _megagroupSelectedSet;
 	object_ptr<AddressField> _megagroupSetField = { nullptr };
@@ -434,15 +428,14 @@ StickersBox::StickersBox(
 StickersBox::StickersBox(
 	QWidget*,
 	std::shared_ptr<ChatHelpers::Show> show,
-	not_null<ChannelData*> megagroup,
-	bool isEmoji)
+	not_null<ChannelData*> megagroup)
 : _show(std::move(show))
 , _session(&_show->session())
 , _api(&_session->mtp())
 , _section(Section::Installed)
 , _isMasks(false)
-, _isEmoji(isEmoji)
-, _installed(0, this, _show, megagroup, isEmoji)
+, _isEmoji(false)
+, _installed(0, this, _show, megagroup)
 , _megagroupSet(megagroup) {
 	_installed.widget()->scrollsToY(
 	) | rpl::on_next([=](int y) {
@@ -1224,8 +1217,7 @@ StickersBox::Inner::Inner(
 StickersBox::Inner::Inner(
 	QWidget *parent,
 	std::shared_ptr<ChatHelpers::Show> show,
-	not_null<ChannelData*> megagroup,
-	bool isEmoji)
+	not_null<ChannelData*> megagroup)
 : RpWidget(parent)
 , _st(st::stickersRowItem)
 , _show(std::move(show))
@@ -1253,26 +1245,20 @@ StickersBox::Inner::Inner(
 })
 , _itemsTop(st::lineWidth)
 , _megagroupSet(megagroup)
-, _megagroupSetEmoji(isEmoji)
-, _megagroupSetInput(isEmoji
-	? _megagroupSet->mgInfo->emojiSet
-	: _megagroupSet->mgInfo->stickerSet)
+, _megagroupSetInput(_megagroupSet->mgInfo->stickerSet)
 , _megagroupSetField(
 	this,
 	st::groupStickersField,
-	rpl::single(isEmoji ? u"emojipack"_q : u"stickerset"_q),
+	rpl::single(u"stickerset"_q),
 	QString(),
 	_session->createInternalLink(QString()))
 , _megagroupDivider(this)
 , _megagroupSubTitle(
 		this,
-		(isEmoji
-			? tr::lng_emoji_group_from_your
-			: tr::lng_stickers_group_from_your)(tr::now),
+		tr::lng_stickers_group_from_your(tr::now),
 		st::boxTitle) {
 	_megagroupSetField->setLinkPlaceholder(
-		_session->createInternalLink(
-			isEmoji ? u"addemoji/"_q : u"addstickers/"_q));
+		_session->createInternalLink(u"addstickers/"_q));
 	_megagroupSetField->setPlaceholderHidden(false);
 	_megagroupSetAddressChangedTimer.setCallback([this] {
 		handleMegagroupSetAddressChange();
@@ -2020,57 +2006,17 @@ void StickersBox::Inner::mouseReleaseEvent(QMouseEvent *e) {
 void StickersBox::Inner::saveGroupSet(Fn<void()> done) {
 	Expects(_megagroupSet != nullptr);
 
-	auto oldId = _megagroupSetEmoji
-		? _megagroupSet->mgInfo->emojiSet.id
-		: _megagroupSet->mgInfo->stickerSet.id;
+	// LoogriGram: this box also chose a group's emoji pack, which applied
+	// only at a group boost level; boosts come from Premium subscribers.
+	auto oldId = _megagroupSet->mgInfo->stickerSet.id;
 	auto newId = _megagroupSetInput.id;
 	if (newId == oldId) {
 		done();
-	} else if (_megagroupSetEmoji) {
-		checkGroupLevel(done);
 	} else {
 		session().api().setGroupStickerSet(_megagroupSet, _megagroupSetInput);
 		session().data().stickers().notifyStickerSetInstalled(
 			Data::Stickers::MegagroupSetId);
 	}
-}
-
-void StickersBox::Inner::checkGroupLevel(Fn<void()> done) {
-	Expects(_megagroupSet != nullptr);
-	Expects(_megagroupSetEmoji);
-
-	const auto peer = _megagroupSet;
-	const auto save = [=] {
-		session().api().setGroupEmojiSet(peer, _megagroupSetInput);
-		session().data().stickers().notifyEmojiSetInstalled(
-			Data::Stickers::MegagroupSetId);
-		done();
-	};
-
-	if (!_megagroupSetInput) {
-		save();
-		return;
-	} else if (_checkingGroupLevel) {
-		return;
-	}
-	_checkingGroupLevel = true;
-
-	const auto weak = base::make_weak(this);
-	CheckBoostLevel(_show, peer, [=](int level) {
-		if (!weak) {
-			return std::optional<Ui::AskBoostReason>();
-		}
-		_checkingGroupLevel = false;
-		const auto required = Data::LevelLimits(
-			&peer->session()).groupEmojiStickersLevelMin();
-		if (level >= required) {
-			save();
-			return std::optional<Ui::AskBoostReason>();
-		}
-		return std::make_optional(Ui::AskBoostReason{
-			Ui::AskBoostEmojiPack{ required }
-		});
-	}, [=] { _checkingGroupLevel = false; });
 }
 
 void StickersBox::Inner::setRowRemovedBySetId(uint64 setId, bool removed) {
@@ -2315,13 +2261,9 @@ void StickersBox::Inner::rebuild(bool masks) {
 	clear();
 	const auto &order = ([&]() -> const StickersSetsOrder & {
 		if (_section == Section::Installed) {
-			const auto &result = _megagroupSetEmoji
-				? session().data().stickers().emojiSetsOrder()
-				: session().data().stickers().setsOrder();
+			const auto &result = session().data().stickers().setsOrder();
 			if (_megagroupSet && result.empty()) {
-				return _megagroupSetEmoji
-					? session().data().stickers().featuredEmojiSetsOrder()
-					: session().data().stickers().featuredSetsOrder();
+				return session().data().stickers().featuredSetsOrder();
 			}
 			return result;
 		} else if (_section == Section::Masks) {
@@ -2338,15 +2280,11 @@ void StickersBox::Inner::rebuild(bool masks) {
 
 	const auto &sets = session().data().stickers().sets();
 	if (_megagroupSet) {
-		auto usingFeatured = _megagroupSetEmoji
-			? session().data().stickers().emojiSetsOrder().empty()
-			: session().data().stickers().setsOrder().empty();
+		auto usingFeatured = session().data().stickers().setsOrder().empty();
+		// LoogriGram: upstream's ternary had the two "trending" labels
+		// swapped, so this sticker chooser said "trending emoji".
 		_megagroupSubTitle->setText(usingFeatured
-			? (_megagroupSetEmoji
-				? tr::lng_stickers_group_from_featured(tr::now)
-				: tr::lng_emoji_group_from_featured(tr::now))
-			: _megagroupSetEmoji
-			? tr::lng_emoji_group_from_your(tr::now)
+			? tr::lng_stickers_group_from_featured(tr::now)
 			: tr::lng_stickers_group_from_your(tr::now));
 		updateControlsGeometry();
 	} else if (_isInstalledTab) {

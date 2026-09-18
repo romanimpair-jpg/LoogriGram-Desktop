@@ -186,10 +186,6 @@ menuIconMuteForAnyTextPosition: point(14px, 9px);
 menuIconMuteForAnyTextFont: font(8px semibold);
 
 menuBlueIconPhotoSet: icon {{ "menu/photo_set", lightButtonFg }};
-menuBlueIconColorNames: icon{{ "settings/premium/features/feature_color_names", lightButtonFg }};
-menuBlueIconWallpaper: icon{{ "settings/premium/features/feature_wallpaper", lightButtonFg }};
-menuBlueIconEmojiStatus: icon{{ "settings/premium/features/feature_status", lightButtonFg }};
-menuBlueIconEmojiPack: icon{{ "settings/premium/features/feature_emoji_pack", lightButtonFg }};
 menuBlueIconGroupCreate: icon {{ "menu/groups_create", lightButtonFg }};
 
 mediaMenuIconStickers: icon {{ "menu/stickers", mediaviewMenuFg }};

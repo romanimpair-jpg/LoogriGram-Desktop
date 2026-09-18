@@ -385,24 +385,6 @@ infoProfileTopBarStep1: infoProfileTopBarStep2 - infoProfileTopBarActionButtonsH
 
 infoProfileTopBarNoActionsHeightMax: infoProfileTopBarHeightMax - infoProfileTopBarActionButtonSize;
 
-infoProfileTopBarBoostFooter: FlatLabel(defaultFlatLabel) {
-	textFg: windowSubTextFg;
-	style: TextStyle(defaultTextStyle) {
-		font: font(11px);
-	}
-	palette: TextPalette(defaultTextPalette) {
-		linkFg: windowBoldFg;
-		selectLinkFg: windowBoldFg;
-	}
-}
-infoProfileTopBarBoostFooterColored: FlatLabel(infoProfileTopBarBoostFooter) {
-	textFg: groupCallVideoSubTextFg;
-	palette: TextPalette(defaultTextPalette) {
-		linkFg: groupCallIconFg;
-		selectLinkFg: groupCallIconFg;
-	}
-}
-
 infoMinimalWidth: 324px;
 infoDesiredWidth: 392px;
 infoMinimalLayerMargin: 48px;
@@ -545,7 +527,6 @@ infoIconMediaSaved: icon {{ "info/info_media_saved", infoIconFg }};
 infoIconMediaStoriesArchive: icon {{ "info/info_stories_archive", infoIconFg }};
 infoIconMediaStoriesRecent: icon {{ "info/info_stories_recent", infoIconFg }};
 
-infoIconDeleteRed: icon {{ "info/info_delete", attentionButtonFg }};
 infoIconReport: icon {{ "info/info_report", attentionButtonFg }};
 infoIconBlock: icon {{ "info/info_block", attentionButtonFg }};
 infoIconMembers: icon {{ "info/info_members", infoIconFg }};
@@ -768,10 +749,6 @@ manageGroupTopicsButton: SettingsCountButton(manageGroupTopButtonWithText) {
 		}
 	}
 }
-managePeerColorsButton: SettingsButton(infoProfileButton) {
-	padding: margins(60px, 10px, 48px, 8px);
-}
-
 manageGroupNoIconButtonInner: SettingsButton(infoProfileButton) {
 	padding: margins(25px, 11px, 24px, 8px);
 }
