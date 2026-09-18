@@ -5,7 +5,7 @@ the official desktop application for the Telegram messaging service.
 For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
-#include "info/channel_statistics/boosts/giveaway/boost_badge.h"
+#include "ui/widgets/infinite_radial_animation_widget.h"
 
 #include "ui/effects/radial_animation.h"
 #include "ui/painter.h"
@@ -16,7 +16,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_statistics.h"
 #include "styles/style_widgets.h"
 
-namespace Info::Statistics {
+namespace Ui {
 
 not_null<Ui::RpWidget*> InfiniteRadialAnimationWidget(
 		not_null<Ui::RpWidget*> parent,
@@ -69,4 +69,4 @@ void AddChildToWidgetCenter(
 	}, child->lifetime());
 }
 
-} // namespace Info::Statistics
+} // namespace Ui

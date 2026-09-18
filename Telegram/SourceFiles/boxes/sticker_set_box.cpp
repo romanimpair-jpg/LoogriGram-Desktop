@@ -27,7 +27,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/stickers/data_custom_emoji.h"
 #include "data/stickers/data_stickers.h"
 #include "dialogs/ui/dialogs_layout.h"
-#include "info/channel_statistics/boosts/giveaway/boost_badge.h" // InfiniteRadialAnimationWidget.
+#include "ui/widgets/infinite_radial_animation_widget.h" // InfiniteRadialAnimationWidget.
 #include "lang/lang_keys.h"
 #include "lottie/lottie_animation.h"
 #include "lottie/lottie_multi_player.h"
@@ -747,12 +747,11 @@ void ChangeSetNameBox(
 			tr::lng_box_done()),
 		save);
 	if (const auto saveButton = state->saveButton) {
-		using namespace Info::Statistics;
-		const auto loadingAnimation = InfiniteRadialAnimationWidget(
+		const auto loadingAnimation = Ui::InfiniteRadialAnimationWidget(
 			saveButton,
 			saveButton->height() / 2,
 			&st::editStickerSetNameLoading);
-		AddChildToWidgetCenter(saveButton, loadingAnimation);
+		Ui::AddChildToWidgetCenter(saveButton, loadingAnimation);
 		loadingAnimation->showOn(
 			state->requestId.value() | rpl::map(rpl::mappers::_1 > 0));
 	}
@@ -1920,12 +1919,11 @@ void StickerSetBox::Inner::fillDeleteStickerBox(
 		save,
 		st::attentionBoxButton);
 	if (const auto saveButton = state->saveButton) {
-		using namespace Info::Statistics;
-		const auto loadingAnimation = InfiniteRadialAnimationWidget(
+		const auto loadingAnimation = Ui::InfiniteRadialAnimationWidget(
 			saveButton,
 			saveButton->height() / 2,
 			&st::editStickerSetNameLoading);
-		AddChildToWidgetCenter(saveButton, loadingAnimation);
+		Ui::AddChildToWidgetCenter(saveButton, loadingAnimation);
 		loadingAnimation->showOn(
 			state->requestId.value() | rpl::map(rpl::mappers::_1 > 0));
 	}

@@ -12,7 +12,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_peer.h"
 #include "data/data_session.h"
 #include "data/data_user.h"
-#include "info/channel_statistics/boosts/giveaway/boost_badge.h" // InfiniteRadialAnimationWidget.
+#include "ui/widgets/infinite_radial_animation_widget.h" // InfiniteRadialAnimationWidget.
 #include "info/profile/info_profile_values.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
@@ -988,11 +988,10 @@ void FillPeerQrBox(
 	});
 
 	if (const auto saveButton = state->saveButton) {
-		using namespace Info::Statistics;
-		const auto loadingAnimation = InfiniteRadialAnimationWidget(
+		const auto loadingAnimation = Ui::InfiniteRadialAnimationWidget(
 			saveButton,
 			saveButton->height() / 2);
-		AddChildToWidgetCenter(saveButton, loadingAnimation);
+		Ui::AddChildToWidgetCenter(saveButton, loadingAnimation);
 		loadingAnimation->showOn(state->saveButtonBusy.value());
 
 		box->showFinishes(

@@ -13,10 +13,11 @@ struct TextStyle;
 } // namespace style
 
 namespace Ui {
-class RpWidget;
-} // namespace Ui
 
-namespace Info::Statistics {
+class RpWidget;
+
+// LoogriGram: these lived in boost_badge.h under the giveaway statistics,
+// in Info::Statistics, though nothing about them is a boost or a giveaway.
 
 [[nodiscard]] not_null<Ui::RpWidget*> InfiniteRadialAnimationWidget(
 	not_null<Ui::RpWidget*> parent,
@@ -27,4 +28,4 @@ void AddChildToWidgetCenter(
 	not_null<Ui::RpWidget*> parent,
 	not_null<Ui::RpWidget*> child);
 
-} // namespace Info::Statistics
+} // namespace Ui

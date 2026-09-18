@@ -21,7 +21,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "editor/video/video_editor.h"
 #include "editor/video/video_editor_common.h"
 #include "editor/video/video_editor_layer.h"
-#include "info/channel_statistics/boosts/giveaway/boost_badge.h"
+#include "ui/widgets/infinite_radial_animation_widget.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "media/media_video_encode.h"
@@ -570,12 +570,11 @@ void CreateMediaBox(
 	});
 
 	{
-		using namespace Info::Statistics;
-		const auto loadingAnimation = InfiniteRadialAnimationWidget(
+		const auto loadingAnimation = Ui::InfiniteRadialAnimationWidget(
 			addButton,
 			addButton->height() / 2,
 			&st::editStickerSetNameLoading);
-		AddChildToWidgetCenter(addButton, loadingAnimation);
+		Ui::AddChildToWidgetCenter(addButton, loadingAnimation);
 		loadingAnimation->showOn(state->uploading.value());
 	}
 

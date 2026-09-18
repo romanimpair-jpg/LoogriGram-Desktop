@@ -17,7 +17,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_photo_media.h"
 #include "data/data_session.h"
 #include "data/data_user.h"
-#include "info/channel_statistics/boosts/giveaway/boost_badge.h"
 #include "info/profile/info_profile_badge.h"
 #include "inline_bots/bot_attach_web_view.h"
 #include "lang/lang_keys.h"

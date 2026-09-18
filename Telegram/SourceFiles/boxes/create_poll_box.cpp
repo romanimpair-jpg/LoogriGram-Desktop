@@ -43,7 +43,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/controls/history_view_webpage_processor.h"
 #include "history/view/media/menu/history_view_poll_menu.h"
 #include "history/view/history_view_schedule_box.h"
-#include "info/channel_statistics/boosts/giveaway/select_countries_box.h"
+#include "ui/boxes/select_countries_box.h"
 #include "lang/lang_keys.h"
 #include "layout/layout_document_generic_preview.h"
 #include "main/main_app_config.h"

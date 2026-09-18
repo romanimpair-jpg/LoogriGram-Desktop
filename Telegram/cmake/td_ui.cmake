@@ -57,7 +57,7 @@ set(style_files
     info/info.style
     info/profile/info_profile_actions.style
     info/profile/info_profile_top_bar.style
-    info/channel_statistics/boosts/giveaway/giveaway.style
+    ui/boxes/giveaway.style
     info/userpic/info_userpic_builder.style
     intro/intro.style
     iv/iv.style
@@ -213,10 +213,10 @@ PRIVATE
     info/userpic/info_userpic_emoji_builder_layer.cpp
     info/userpic/info_userpic_emoji_builder_layer.h
 
-    info/channel_statistics/boosts/giveaway/boost_badge.cpp
-    info/channel_statistics/boosts/giveaway/boost_badge.h
-    info/channel_statistics/boosts/giveaway/select_countries_box.cpp
-    info/channel_statistics/boosts/giveaway/select_countries_box.h
+    ui/widgets/infinite_radial_animation_widget.cpp
+    ui/widgets/infinite_radial_animation_widget.h
+    ui/boxes/select_countries_box.cpp
+    ui/boxes/select_countries_box.h
 
     intro/intro_code_input.cpp
     intro/intro_code_input.h

@@ -9,7 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "api/api_cloud_password.h"
 #include "core/core_cloud_password.h"
-#include "info/channel_statistics/boosts/giveaway/boost_badge.h" // InfiniteRadialAnimationWidget.
+#include "ui/widgets/infinite_radial_animation_widget.h" // InfiniteRadialAnimationWidget.
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "settings/cloud_password/settings_cloud_password_common.h"
@@ -152,11 +152,10 @@ void LoginEmail::setupContent() {
 		}
 	});
 	{
-		using namespace Info::Statistics;
-		const auto loadingAnimation = InfiniteRadialAnimationWidget(
+		const auto loadingAnimation = Ui::InfiniteRadialAnimationWidget(
 			button,
 			st::giveawayGiftCodeStartButton.height / 2);
-		AddChildToWidgetCenter(button, loadingAnimation);
+		Ui::AddChildToWidgetCenter(button, loadingAnimation);
 		loadingAnimation->showOn(_confirmButtonBusy.value());
 	}
 
