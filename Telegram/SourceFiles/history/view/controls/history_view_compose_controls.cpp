@@ -1259,11 +1259,9 @@ Main::Session &ComposeControls::session() const {
 }
 
 void ComposeControls::updateTopicRootId(MsgId topicRootId) {
-	untrackThreadFieldVisibility();
 	unregisterDraftSources();
 	_topicRootId = topicRootId;
 	_header->updateTopicRootId(_topicRootId);
-	trackThreadFieldVisibility();
 	registerDraftSource();
 	updateFieldVisibility();
 	updateSendButtonType();
@@ -1288,7 +1286,6 @@ void ComposeControls::setHistory(SetHistoryArgs &&args) {
 	if (_history == history) {
 		return;
 	}
-	untrackThreadFieldVisibility();
 	unregisterDraftSources();
 	_history = history;
 	_fieldDisabled = nullptr;
@@ -1296,7 +1293,6 @@ void ComposeControls::setHistory(SetHistoryArgs &&args) {
 	_monoforumPeerId = args.monoforumPeerId;
 	_historyLifetime.destroy();
 	_header->setHistory(args);
-	trackThreadFieldVisibility();
 	registerDraftSource();
 	_selector->setCurrentPeer(history ? history->peer.get() : nullptr);
 	initFieldAutocomplete();
@@ -1413,13 +1409,11 @@ void ComposeControls::updateFeatures(ChatHelpers::ComposeFeatures features) {
 
 void ComposeControls::setCurrentDialogsEntryState(
 		Dialogs::EntryState state) {
-	untrackThreadFieldVisibility();
 	unregisterDraftSources();
 	state.currentReplyTo.topicRootId = _topicRootId;
 	state.currentReplyTo.monoforumPeerId = _monoforumPeerId;
 	_currentDialogsEntryState = state;
 	updateForwarding();
-	trackThreadFieldVisibility();
 	registerDraftSource();
 }
 

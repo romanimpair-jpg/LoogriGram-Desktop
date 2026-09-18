@@ -424,8 +424,6 @@ private:
 
 	void unregisterDraftSources();
 	void registerDraftSource();
-	void untrackThreadFieldVisibility();
-	void trackThreadFieldVisibility();
 	void updateFieldVisibility();
 	void updateFieldDisabled();
 	void changeFocusedControl();
