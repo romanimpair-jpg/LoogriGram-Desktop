@@ -283,7 +283,6 @@ void SendExistingMedia(
 
 	const auto performRequest = [=](const auto &repeatRequest) -> void {
 		auto &histories = history->owner().histories();
-		const auto session = &history->session();
 		const auto usedFileReference = media->fileReference();
 		histories.sendPreparedMessage(
 			history,
