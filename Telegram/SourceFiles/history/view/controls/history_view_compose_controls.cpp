@@ -1750,13 +1750,6 @@ void ComposeControls::processChosenSticker(FileChosen &&chosen) {
 	_stickerOrEmojiChosen.fire(std::move(chosen));
 }
 
-void ComposeControls::clearFieldAfterStickerSend() {
-	if (_autocomplete && _autocomplete->stickersShown()) {
-		setText({});
-		saveCloudDraft();
-	}
-}
-
 rpl::producer<FileChosen> ComposeControls::fileChosen() const {
 	return _fileChosen.events();
 }
@@ -2351,18 +2344,8 @@ void ComposeControls::initFieldAutocomplete() {
 			}
 			if (isEditingMessage()) {
 				result.autocompleteCommands = false;
-				result.suggestStickersByEmoji = false;
 			}
 			return result;
-		},
-		.sendMenuDetails = [=] { return sendMenuDetails(); },
-		.stickerChoosing = [=] {
-			_sendActionUpdates.fire({
-				.type = Api::SendProgressType::ChooseSticker,
-			});
-		},
-		.stickerChosen = [=](ChatHelpers::FileChosen &&data) {
-			_fileChosen.fire(std::move(data));
 		},
 		.setText = [=](TextWithTags text) { setText(text); },
 		.sendBotCommand = [=](QString command) {
@@ -2503,9 +2486,7 @@ void ComposeControls::fieldChanged() {
 	}
 	InvokeQueued(_field.get(), [=] {
 		updateInlineBotQuery();
-		if ((!_autocomplete || !_autocomplete->stickersEmoji())
-			&& typing
-			&& _hasSendText.current()) {
+		if (typing && _hasSendText.current()) {
 			_sendActionUpdates.fire({ Api::SendProgressType::Typing });
 		}
 	});
@@ -2723,11 +2704,6 @@ void ComposeControls::applyDraft(FieldHistoryAction fieldHistoryAction) {
 		? draft->reply.messageId
 		: FullMsgId();
 
-	InvokeQueued(_autocomplete.get(), [=] {
-		if (_autocomplete) {
-			_autocomplete->requestStickersUpdate();
-		}
-	});
 	const auto guard = gsl::finally([&] {
 		updateSendButtonType();
 		updateReplaceMediaButton();

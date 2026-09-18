@@ -239,9 +239,7 @@ public:
 	void gifsReceived(const QVector<MTPDocument> &items, uint64 hash);
 
 	[[nodiscard]] std::vector<not_null<DocumentData*>> getListByEmoji(
-		std::vector<EmojiPtr> emoji,
-		uint64 seed,
-		bool forceAllResults = false);
+		std::vector<EmojiPtr> emoji);
 	[[nodiscard]] auto getEmojiListFromSet(not_null<DocumentData*> document)
 		-> std::optional<std::vector<not_null<EmojiPtr>>>;
 

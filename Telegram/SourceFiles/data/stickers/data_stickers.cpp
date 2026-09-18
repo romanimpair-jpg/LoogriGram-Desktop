@@ -1105,9 +1105,7 @@ void Stickers::gifsReceived(const QVector<MTPDocument> &items, uint64 hash) {
 }
 
 std::vector<not_null<DocumentData*>> Stickers::getListByEmoji(
-		std::vector<EmojiPtr> emoji,
-		uint64 seed,
-		bool forceAllResults) {
+		std::vector<EmojiPtr> emoji) {
 	auto all = base::flat_set<EmojiPtr>();
 	for (const auto &one : emoji) {
 		all.emplace(one->original());
@@ -1137,7 +1135,7 @@ std::vector<not_null<DocumentData*>> Stickers::getListByEmoji(
 		if (document->sticker() && document->sticker()->isAnimated()) {
 			base += kSlice;
 		}
-		return TimeId(base + int((document->id ^ seed) % kSlice));
+		return TimeId(base + int(document->id % kSlice));
 	};
 	const auto CreateRecentSortKey = [&](not_null<DocumentData*> document) {
 		return CreateSortKey(document, kSlice * 6);
@@ -1273,20 +1271,15 @@ std::vector<not_null<DocumentData*>> Stickers::getListByEmoji(
 		session().api().requestStickerSets();
 	}
 
-	if (forceAllResults) {
-		const auto key = ranges::accumulate(
-			all,
-			QString(),
-			ranges::plus(),
-			&Ui::Emoji::One::text);
-		const auto others = session().api().stickersByEmoji(key);
-		if (others) {
-			result.reserve(result.size() + others->size());
-			for (const auto &document : *others) {
-				add(document, CreateOtherSortKey(document));
-			}
-		} else if (!forceAllResults) {
-			return {};
+	const auto key = ranges::accumulate(
+		all,
+		QString(),
+		ranges::plus(),
+		&Ui::Emoji::One::text);
+	if (const auto others = session().api().stickersByEmoji(key)) {
+		result.reserve(result.size() + others->size());
+		for (const auto &document : *others) {
+			add(document, CreateOtherSortKey(document));
 		}
 	}
 

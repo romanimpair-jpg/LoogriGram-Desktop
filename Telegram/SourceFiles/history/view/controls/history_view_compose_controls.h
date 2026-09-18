@@ -195,7 +195,6 @@ public:
 			std::shared_ptr<Ui::PreparedBundle>,
 			Api::SendOptions)> confirmed);
 	void processChosenSticker(FileChosen &&chosen);
-	void clearFieldAfterStickerSend();
 	[[nodiscard]] rpl::producer<FileChosen> fileChosen() const;
 	[[nodiscard]] rpl::producer<PhotoChosen> photoChosen() const;
 	[[nodiscard]] rpl::producer<FullReplyTo> jumpToItemRequests() const;

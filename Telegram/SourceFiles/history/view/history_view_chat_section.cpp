@@ -2824,7 +2824,6 @@ bool ChatWidget::sendExistingDocument(
 		document,
 		localId);
 
-	_composeControls->clearFieldAfterStickerSend();
 	_composeControls->cancelReplyMessage();
 	finishSending();
 	return true;

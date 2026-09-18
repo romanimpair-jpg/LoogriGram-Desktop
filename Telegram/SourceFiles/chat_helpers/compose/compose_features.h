@@ -24,7 +24,6 @@ struct ComposeFeatures {
 	bool autocompleteHashtags : 1 = true;
 	bool autocompleteMentions : 1 = true;
 	bool autocompleteCommands : 1 = true;
-	bool suggestStickersByEmoji : 1 = true;
 	bool commonTabbedPanel : 1 = true;
 	bool recordMediaMessage : 1 = true;
 	bool emojiOnlyPanel : 1 = false;

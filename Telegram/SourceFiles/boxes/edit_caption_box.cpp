@@ -619,7 +619,6 @@ void EditCaptionBox::setupFieldAutocomplete() {
 		.features = [=] {
 			auto result = ChatHelpers::ComposeFeatures();
 			result.autocompleteCommands = false;
-			result.suggestStickersByEmoji = false;
 			return result;
 		},
 	});

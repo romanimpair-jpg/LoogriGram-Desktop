@@ -536,10 +536,8 @@ void CaptionBox(
 		.features = [=] {
 			auto result = ChatHelpers::ComposeFeatures();
 			result.autocompleteCommands = false;
-			result.suggestStickersByEmoji = false;
 			return result;
 		},
-		.sendMenuDetails = sendMenuDetails,
 	});
 	const auto raw = autocomplete->dropdown.get();
 	const auto recountPostponed = [=] {

@@ -680,9 +680,7 @@ void StickersListWidget::searchForSets(
 		filterEffectsByEmoji(std::move(emoji));
 	} else {
 		_filteredStickers = session().data().stickers().getListByEmoji(
-			std::move(emoji),
-			0,
-			true);
+			std::move(emoji));
 	}
 	if (_searchQuery != cleaned) {
 		toggleSearchLoading(false);

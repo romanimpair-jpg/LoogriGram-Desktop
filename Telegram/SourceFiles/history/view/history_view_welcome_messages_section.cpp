@@ -563,7 +563,6 @@ bool WelcomeMessagesWidget::sendExistingDocument(
 	auto message = Api::MessageToSend(prepareSendAction(options));
 	message.textWithTags = std::move(caption);
 	Api::SendExistingDocument(std::move(message), document);
-	_composeControls->clearFieldAfterStickerSend();
 	finishSending();
 	return true;
 }

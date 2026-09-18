@@ -1659,20 +1659,8 @@ void HistoryWidget::initFieldAutocomplete() {
 			}
 			if (_editMsgId) {
 				result.autocompleteCommands = false;
-				result.suggestStickersByEmoji = false;
 			}
 			return result;
-		},
-		.sendMenuDetails = [=] { return sendMenuDetails(); },
-		.stickerChoosing = [=] {
-			if (_history && !suppressSendAction()) {
-				session().sendProgressManager().update(
-					_history,
-					Api::SendProgressType::ChooseSticker);
-			}
-		},
-		.stickerChosen = [=](ChatHelpers::FileChosen &&data) {
-			fileChosen(std::move(data));
 		},
 		.setText = [=](TextWithTags text) { if (_peer) setFieldText(text); },
 		.sendBotCommand = [=](QString command) {
@@ -1912,7 +1900,6 @@ void HistoryWidget::fieldChanged() {
 		if (_history
 			&& !_inlineBot
 			&& !_editMsgId
-			&& (!_autocomplete || !_autocomplete->stickersEmoji())
 			&& updateTyping
 			&& fieldHasSendText()
 			&& !suppressSendAction()) {
@@ -2364,12 +2351,6 @@ void HistoryWidget::fastShowAtEnd(not_null<History*> history) {
 }
 
 bool HistoryWidget::applyDraft(FieldHistoryAction fieldHistoryAction) {
-	InvokeQueued(this, [=] {
-		if (_autocomplete) {
-			_autocomplete->requestStickersUpdate();
-		}
-	});
-
 	const auto editDraft = _history
 		? _history->localEditDraft(MsgId(), PeerId())
 		: nullptr;
@@ -8435,14 +8416,6 @@ bool HistoryWidget::sendExistingDocument(
 		std::move(messageToSend),
 		document,
 		localId);
-
-	if (_autocomplete && _autocomplete->stickersShown()) {
-		clearFieldText();
-		//saveDraftWithTextNow();
-
-		// won't be needed if SendInlineBotResult will clear the cloud draft
-		saveCloudDraft();
-	}
 
 	hideSelectorControlsAnimated();
 
