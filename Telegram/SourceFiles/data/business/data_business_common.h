@@ -10,84 +10,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/flags.h"
 #include "data/data_location.h"
 
-class UserData;
-
 namespace Data {
 
 class Session;
-
-enum class BusinessChatType {
-	NewChats = (1 << 0),
-	ExistingChats = (1 << 1),
-	Contacts = (1 << 2),
-	NonContacts = (1 << 3),
-};
-inline constexpr bool is_flag_type(BusinessChatType) { return true; }
-
-using BusinessChatTypes = base::flags<BusinessChatType>;
-
-struct BusinessChats {
-	BusinessChatTypes types;
-	std::vector<not_null<UserData*>> list;
-
-	[[nodiscard]] bool empty() const {
-		return !types && list.empty();
-	}
-
-	friend inline bool operator==(
-		const BusinessChats &a,
-		const BusinessChats &b) = default;
-};
-
-struct BusinessRecipients {
-	BusinessChats included;
-	BusinessChats excluded;
-	bool allButExcluded = false;
-
-	[[nodiscard]] static BusinessRecipients MakeValid(
-		BusinessRecipients value);
-
-	friend inline bool operator==(
-		const BusinessRecipients &a,
-		const BusinessRecipients &b) = default;
-};
-
-enum class BusinessRecipientsType : uchar {
-	Messages,
-	Bots,
-};
-
-enum class ChatbotsPermission {
-	ViewMessages    = 0x0001,
-	ReplyToMessages = 0x0002,
-	MarkAsRead      = 0x0004,
-	DeleteSent      = 0x0008,
-	DeleteReceived  = 0x0010,
-	EditName        = 0x0020,
-	EditBio         = 0x0040,
-	EditUserpic     = 0x0080,
-	EditUsername    = 0x0100,
-	ViewGifts       = 0x0200,
-	SellGifts       = 0x0400,
-	GiftSettings    = 0x0800,
-	TransferGifts   = 0x1000,
-	TransferStars   = 0x2000,
-	ManageStories   = 0x4000,
-};
-inline constexpr bool is_flag_type(ChatbotsPermission) { return true; }
-using ChatbotsPermissions = base::flags<ChatbotsPermission>;
-
-[[nodiscard]] MTPInputBusinessBotRecipients ForBotsToMTP(
-	const BusinessRecipients &data);
-[[nodiscard]] BusinessRecipients FromMTP(
-	not_null<Session*> owner,
-	const MTPBusinessRecipients &recipients);
-[[nodiscard]] BusinessRecipients FromMTP(
-	not_null<Session*> owner,
-	const MTPBusinessBotRecipients &recipients);
-[[nodiscard]] ChatbotsPermissions FromMTP(
-	const MTPBusinessBotRights &rights);
-[[nodiscard]] MTPBusinessBotRights ToMTP(ChatbotsPermissions rights);
 
 struct Timezone {
 	QString id;

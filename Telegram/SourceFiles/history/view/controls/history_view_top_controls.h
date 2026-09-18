@@ -40,7 +40,6 @@ class ElasticScroll;
 
 namespace HistoryView {
 
-class BusinessBotStatus;
 class ContactStatus;
 class ListWidget;
 class PinnedTracker;
@@ -143,7 +142,6 @@ private:
 	std::unique_ptr<Ui::PinnedBar> _repliesRootView;
 	std::unique_ptr<TopicReopenBar> _topicReopenBar;
 	std::unique_ptr<ContactStatus> _contactStatus;
-	std::unique_ptr<BusinessBotStatus> _businessBotStatus;
 	rpl::variable<int> _height = 0;
 	rpl::variable<bool> _repliesRootVisible = false;
 	int _width = 0;
@@ -154,7 +152,6 @@ private:
 	int _repliesRootViewHeight = 0;
 	int _topicReopenBarHeight = 0;
 	int _contactStatusHeight = 0;
-	int _businessBotStatusHeight = 0;
 	HistoryItem *_shownRepliesRootItem = nullptr;
 	HistoryItem *_shownPinnedBarItem = nullptr;
 	FullMsgId _pinnedClickedId;

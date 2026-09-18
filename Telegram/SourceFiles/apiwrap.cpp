@@ -11,7 +11,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_attached_stickers.h"
 #include "api/api_blocked_peers.h"
 #include "api/api_chat_invite.h"
-#include "api/api_chat_links.h"
 #include "api/api_chat_participants.h"
 #include "api/api_cloud_password.h"
 #include "api/api_communities.h"
@@ -190,7 +189,6 @@ ApiWrap::ApiWrap(not_null<Main::Session*> session)
 	std::make_unique<Api::ReactionsNotifySettings>(this))
 , _userPrivacy(std::make_unique<Api::UserPrivacy>(this))
 , _inviteLinks(std::make_unique<Api::InviteLinks>(this))
-, _chatLinks(std::make_unique<Api::ChatLinks>(this))
 , _views(std::make_unique<Api::ViewsManager>(this))
 , _readMetrics(std::make_unique<Api::ReadMetrics>(this))
 , _confirmPhone(std::make_unique<Api::ConfirmPhone>(this))
@@ -5114,10 +5112,6 @@ Api::UserPrivacy &ApiWrap::userPrivacy() {
 
 Api::InviteLinks &ApiWrap::inviteLinks() {
 	return *_inviteLinks;
-}
-
-Api::ChatLinks &ApiWrap::chatLinks() {
-	return *_chatLinks;
 }
 
 Api::ViewsManager &ApiWrap::views() {

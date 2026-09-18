@@ -558,29 +558,6 @@ void TopControls::setupPeerBars() {
 			applyHeightChangeWithRelayout(was, this->height());
 		}, _contactStatus->bar().lifetime());
 	}
-	const auto user = _history->peer->asUser();
-	if (!user) {
-		return;
-	}
-	if (!_businessBotStatus) {
-		_businessBotStatus = std::make_unique<BusinessBotStatus>(
-			_controller,
-			_topBars.get(),
-			_history->peer);
-		_businessBotStatus->show();
-		_businessBotStatusHeight = 0;
-		_businessBotStatus->bar().heightValue(
-		) | rpl::on_next([=] {
-			const auto height = _businessBotStatus->bar().height();
-			if (height == _businessBotStatusHeight) {
-				return;
-			}
-			const auto was = this->height();
-			_businessBotStatusHeight = height;
-			updateLayout();
-			applyHeightChangeWithRelayout(was, this->height());
-		}, _businessBotStatus->bar().lifetime());
-	}
 }
 
 void TopControls::setupPinnedTracker() {
@@ -951,11 +928,9 @@ void TopControls::rebuildModeSensitiveBars() {
 		_groupCallBar = nullptr;
 		_requestsBar = nullptr;
 		_contactStatus = nullptr;
-		_businessBotStatus = nullptr;
 		_groupCallBarHeight = 0;
 		_requestsBarHeight = 0;
 		_contactStatusHeight = 0;
-		_businessBotStatusHeight = 0;
 		if (fullChat) {
 			setupGroupCallBar();
 			setupRequestsBar();
@@ -1025,10 +1000,6 @@ void TopControls::updateLayout() {
 		_contactStatus->bar().move(0, top);
 		top += _contactStatusHeight;
 	}
-	if (_businessBotStatus) {
-		_businessBotStatus->bar().move(0, top);
-		top += _businessBotStatusHeight;
-	}
 	_topBars->resize(_width, top + st::lineWidth);
 	_wrap->resize(_width, top + st::lineWidth);
 	_height = top;
@@ -1039,9 +1010,6 @@ void TopControls::updateZOrder() {
 		? _pinnedBar.get()
 		: _hidingPinnedBar.get();
 	_topBars->raise();
-	if (_businessBotStatus) {
-		_businessBotStatus->bar().raise();
-	}
 	if (_contactStatus) {
 		_contactStatus->bar().raise();
 	}

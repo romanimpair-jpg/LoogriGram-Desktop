@@ -1821,9 +1821,6 @@ void HistoryWidget::orderWidgets() {
 	_send->raise();
 	_sendAsFile->raise();
 	_topBars->raise();
-	if (_businessBotStatus) {
-		_businessBotStatus->bar().raise();
-	}
 	if (_contactStatus) {
 		_contactStatus->bar().raise();
 	}
@@ -2696,7 +2693,6 @@ void HistoryWidget::showHistory(
 	_showAtMsgParams = params;
 	_historyInited = false;
 	_contactStatus = nullptr;
-	_businessBotStatus = nullptr;
 
 	Core::App().mediaDevices().refreshRecordAvailability();
 
@@ -2714,16 +2710,6 @@ void HistoryWidget::showHistory(
 		}, _contactStatus->bar().lifetime());
 
 		refreshDirectMessageShown();
-		if (const auto user = _peer->asUser()) {
-			_businessBotStatus = std::make_unique<BusinessBotStatus>(
-				controller(),
-				_topBars.get(),
-				user);
-			_businessBotStatus->bar().heightValue(
-			) | rpl::on_next([=] {
-				updateControlsGeometry();
-			}, _businessBotStatus->bar().lifetime());
-		}
 		orderWidgets();
 		controller()->tabbedSelector()->setCurrentPeer(_peer);
 	}
@@ -3370,9 +3356,6 @@ void HistoryWidget::updateControlsVisibility() {
 	_topBars->show();
 	if (_contactStatus) {
 		_contactStatus->show();
-	}
-	if (_businessBotStatus) {
-		_businessBotStatus->show();
 	}
 	if (_subsectionTabs) {
 		_subsectionTabs->show();
@@ -4690,9 +4673,6 @@ void HistoryWidget::hideChildWidgets() {
 	}
 	if (_contactStatus) {
 		_contactStatus->hide();
-	}
-	if (_businessBotStatus) {
-		_businessBotStatus->hide();
 	}
 	hideChildren();
 }
@@ -6816,14 +6796,9 @@ void HistoryWidget::updateControlsGeometry() {
 	if (_contactStatus) {
 		_contactStatus->bar().move(tabsLeftSkip, contactStatusTop);
 	}
-	const auto businessBotTop = contactStatusTop
-		+ (_contactStatus ? _contactStatus->bar().height() : 0);
-	if (_businessBotStatus) {
-		_businessBotStatus->bar().move(tabsLeftSkip, businessBotTop);
-	}
 	const auto scrollAreaTop = _topBars->y()
-		+ businessBotTop
-		+ (_businessBotStatus ? _businessBotStatus->bar().height() : 0);
+		+ contactStatusTop
+		+ (_contactStatus ? _contactStatus->bar().height() : 0);
 	_topBars->resize(
 		innerWidth,
 		scrollAreaTop - _topBars->y() + st::lineWidth);
@@ -7086,9 +7061,6 @@ void HistoryWidget::updateHistoryGeometry(
 	}
 	if (_contactStatus) {
 		newScrollHeight -= _contactStatus->bar().height();
-	}
-	if (_businessBotStatus) {
-		newScrollHeight -= _businessBotStatus->bar().height();
 	}
 	if (isChoosingTheme()) {
 		newScrollHeight -= _chooseTheme->height();
@@ -7530,7 +7502,6 @@ int HistoryWidget::computeMaxFieldHeight() const {
 	const auto available = height()
 		- _topBar->height()
 		- (_contactStatus ? _contactStatus->bar().height() : 0)
-		- (_businessBotStatus ? _businessBotStatus->bar().height() : 0)
 		- (_pinnedBar ? _pinnedBar->height() : 0)
 		- (_groupCallBar ? _groupCallBar->height() : 0)
 		- (_requestsBar ? _requestsBar->height() : 0)

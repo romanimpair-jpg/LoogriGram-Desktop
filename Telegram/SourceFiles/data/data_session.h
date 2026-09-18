@@ -71,7 +71,6 @@ class CustomEmojiManager;
 class Stories;
 class SavedMusic;
 class SavedMessages;
-class Chatbots;
 class BusinessInfo;
 struct ReactionId;
 struct UnavailableReason;
@@ -192,9 +191,6 @@ public:
 	}
 	[[nodiscard]] SavedMessages &savedMessages() const {
 		return *_savedMessages;
-	}
-	[[nodiscard]] Chatbots &chatbots() const {
-		return *_chatbots;
 	}
 	[[nodiscard]] BusinessInfo &businessInfo() const {
 		return *_businessInfo;
@@ -1347,7 +1343,6 @@ private:
 	const std::unique_ptr<Stories> _stories;
 	const std::unique_ptr<SavedMusic> _savedMusic;
 	const std::unique_ptr<SavedMessages> _savedMessages;
-	const std::unique_ptr<Chatbots> _chatbots;
 	const std::unique_ptr<BusinessInfo> _businessInfo;
 
 	MsgId _nonHistoryEntryId = WelcomeMaxMsgId;

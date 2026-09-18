@@ -116,8 +116,6 @@ PRIVATE
     api/api_chat_filters_remove_manager.h
     api/api_chat_invite.cpp
     api/api_chat_invite.h
-    api/api_chat_links.cpp
-    api/api_chat_links.h
     api/api_chat_participants.cpp
     api/api_chat_participants.h
     api/api_cloud_password.cpp
@@ -551,8 +549,6 @@ PRIVATE
     core/version.h
     countries/countries_manager.cpp
     countries/countries_manager.h
-    data/business/data_business_chatbots.cpp
-    data/business/data_business_chatbots.h
     data/business/data_business_common.cpp
     data/business/data_business_common.h
     data/business/data_business_info.cpp

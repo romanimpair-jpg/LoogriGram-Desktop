@@ -177,9 +177,7 @@ enum class PeerBarSetting {
 	AutoArchived = (1 << 5),
 	RequestChat = (1 << 6),
 	RequestChatIsBroadcast = (1 << 7),
-	HasBusinessBot = (1 << 8),
-	BusinessBotPaused = (1 << 9),
-	BusinessBotCanReply = (1 << 10),
+	// LoogriGram: bits 8-10 marked a chat our own Business bot works in.
 	Unknown = (1 << 11),
 };
 inline constexpr bool is_flag_type(PeerBarSetting) { return true; };
@@ -192,8 +190,6 @@ struct PeerBarDetails {
 	TimeId photoChangeDate = 0;
 	QString requestChatTitle;
 	TimeId requestChatDate = 0;
-	UserData *businessBot = nullptr;
-	QString businessBotManageUrl;
 };
 
 struct PaintUserpicContext {
@@ -484,9 +480,6 @@ public:
 	[[nodiscard]] bool hideLinks() const;
 	[[nodiscard]] QString requestChatTitle() const;
 	[[nodiscard]] TimeId requestChatDate() const;
-	[[nodiscard]] UserData *businessBot() const;
-	[[nodiscard]] QString businessBotManageUrl() const;
-	void clearBusinessBot();
 	[[nodiscard]] QString phoneCountryCode() const;
 	[[nodiscard]] int registrationMonth() const;
 	[[nodiscard]] int registrationYear() const;

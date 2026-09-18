@@ -105,7 +105,6 @@ namespace HistoryView {
 class SelfForwardsTagger;
 class TopBarWidget;
 class ContactStatus;
-class BusinessBotStatus;
 class Element;
 class PinnedTracker;
 class TranslateBar;
@@ -818,7 +817,6 @@ private:
 	Webrtc::RecordAvailability _recordAvailability = {};
 
 	std::unique_ptr<HistoryView::ContactStatus> _contactStatus;
-	std::unique_ptr<HistoryView::BusinessBotStatus> _businessBotStatus;
 
 	const std::shared_ptr<Ui::SendButton> _send;
 	Ui::IconButton * const _sendAsFile = nullptr;

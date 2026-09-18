@@ -768,24 +768,6 @@ void PeerData::checkFolder(FolderId folderId) {
 	}
 }
 
-void PeerData::clearBusinessBot() {
-	if (const auto details = _barDetails.get()) {
-		if (details->requestChatDate
-			|| !details->phoneCountryCode.isEmpty()) {
-			details->businessBot = nullptr;
-			details->businessBotManageUrl = QString();
-		} else {
-			_barDetails = nullptr;
-		}
-	}
-	if (const auto settings = barSettings()) {
-		setBarSettings(*settings
-			& ~PeerBarSetting::BusinessBotPaused
-			& ~PeerBarSetting::BusinessBotCanReply
-			& ~PeerBarSetting::HasBusinessBot);
-	}
-}
-
 void PeerData::setTranslationDisabled(bool disabled) {
 	const auto flag = disabled
 		? TranslationFlag::Disabled
@@ -814,8 +796,7 @@ void PeerData::saveTranslationDisabled(bool disabled) {
 
 void PeerData::setBarSettings(const MTPPeerSettings &data) {
 	data.match([&](const MTPDpeerSettings &data) {
-		if (!data.vbusiness_bot_id()
-			&& !data.vrequest_chat_title()
+		if (!data.vrequest_chat_title()
 			&& !data.vphone_country()
 			&& !data.vregistration_month()
 			&& !data.vname_change_date()
@@ -837,11 +818,6 @@ void PeerData::setBarSettings(const MTPPeerSettings &data) {
 				= qs(data.vrequest_chat_title().value_or_empty());
 			_barDetails->requestChatDate
 				= data.vrequest_chat_date().value_or_empty();
-			_barDetails->businessBot = data.vbusiness_bot_id()
-				? _owner->user(data.vbusiness_bot_id()->v).get()
-				: nullptr;
-			_barDetails->businessBotManageUrl
-				= qs(data.vbusiness_bot_manage_url().value_or_empty());
 		}
 		using Flag = PeerBarSetting;
 		setBarSettings((data.is_add_contact() ? Flag::AddContact : Flag())
@@ -855,15 +831,8 @@ void PeerData::setBarSettings(const MTPPeerSettings &data) {
 			| (data.is_report_spam() ? Flag::ReportSpam : Flag())
 			| (data.is_share_contact() ? Flag::ShareContact : Flag())
 			| (data.vrequest_chat_title() ? Flag::RequestChat : Flag())
-			| (data.vbusiness_bot_id() ? Flag::HasBusinessBot : Flag())
 			| (data.is_request_chat_broadcast()
 				? Flag::RequestChatIsBroadcast
-				: Flag())
-			| (data.is_business_bot_paused()
-				? Flag::BusinessBotPaused
-				: Flag())
-			| (data.is_business_bot_can_reply()
-				? Flag::BusinessBotCanReply
 				: Flag()));
 	});
 }
@@ -904,14 +873,6 @@ QString PeerData::requestChatTitle() const {
 
 TimeId PeerData::requestChatDate() const {
 	return _barDetails ? _barDetails->requestChatDate : 0;
-}
-
-UserData *PeerData::businessBot() const {
-	return _barDetails ? _barDetails->businessBot : nullptr;
-}
-
-QString PeerData::businessBotManageUrl() const {
-	return _barDetails ? _barDetails->businessBotManageUrl : QString();
 }
 
 QString PeerData::phoneCountryCode() const {

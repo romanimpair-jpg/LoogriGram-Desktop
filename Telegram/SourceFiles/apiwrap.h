@@ -78,7 +78,6 @@ class GlobalPrivacy;
 class ReactionsNotifySettings;
 class UserPrivacy;
 class InviteLinks;
-class ChatLinks;
 class ViewsManager;
 class ConfirmPhone;
 class PeerPhoto;
@@ -436,7 +435,6 @@ public:
 	[[nodiscard]] Api::ReactionsNotifySettings &reactionsNotifySettings();
 	[[nodiscard]] Api::UserPrivacy &userPrivacy();
 	[[nodiscard]] Api::InviteLinks &inviteLinks();
-	[[nodiscard]] Api::ChatLinks &chatLinks();
 	[[nodiscard]] Api::ViewsManager &views();
 	[[nodiscard]] Api::ReadMetrics &readMetrics();
 	[[nodiscard]] Api::ConfirmPhone &confirmPhone();
@@ -801,7 +799,6 @@ private:
 	const std::unique_ptr<Api::ReactionsNotifySettings> _reactionsNotifySettings;
 	const std::unique_ptr<Api::UserPrivacy> _userPrivacy;
 	const std::unique_ptr<Api::InviteLinks> _inviteLinks;
-	const std::unique_ptr<Api::ChatLinks> _chatLinks;
 	const std::unique_ptr<Api::ViewsManager> _views;
 	const std::unique_ptr<Api::ReadMetrics> _readMetrics;
 	const std::unique_ptr<Api::ConfirmPhone> _confirmPhone;
