@@ -77,10 +77,6 @@ class PathShiftGradient;
 struct PeerUserpicView;
 } // namespace Ui
 
-namespace Dialogs::Ui {
-using namespace ::Ui;
-class VideoUserpic;
-} // namespace Dialogs::Ui
 
 class HistoryInner;
 class HistoryMainElementDelegate;
@@ -336,7 +332,6 @@ private:
 		not_null<const Element*> view);
 
 	using ChosenReaction = HistoryView::Reactions::ChosenReaction;
-	using VideoUserpic = Dialogs::Ui::VideoUserpic;
 	using SelectedItems = base::flat_set<not_null<HistoryItem*>, std::less<>>;
 	enum class MouseAction {
 		None,
@@ -562,7 +557,6 @@ private:
 	bool showCopyRestrictionForSelected();
 	[[nodiscard]] bool hasSelectRestriction() const;
 
-	VideoUserpic *validateVideoUserpic(not_null<PeerData*> peer);
 
 	// Does any of the shown histories has this flag set.
 	bool hasPendingResizedItems() const;
@@ -635,9 +629,6 @@ private:
 	base::flat_map<not_null<PeerData*>, Ui::PeerUserpicView> _userpics;
 	base::flat_map<not_null<PeerData*>, Ui::PeerUserpicView> _userpicsCache;
 	base::flat_map<MsgId, Ui::PeerUserpicView> _hiddenSenderUserpics;
-	base::flat_map<
-		not_null<PeerData*>,
-		std::unique_ptr<VideoUserpic>> _videoUserpics;
 
 	std::unique_ptr<HistoryView::Reactions::Manager> _reactionsManager;
 	rpl::variable<HistoryItem*> _reactionsItem;

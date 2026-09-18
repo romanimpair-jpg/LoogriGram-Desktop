@@ -71,7 +71,6 @@ struct ReactionId;
 
 namespace Dialogs::Ui {
 using namespace ::Ui;
-class VideoUserpic;
 class MessageView;
 struct PaintContext;
 struct TopicJumpCache;
@@ -310,7 +309,6 @@ private:
 		QImage band;
 		std::pair<uint64, uint64> userpic;
 		bool bandDirty = true;
-		bool video = false;
 	};
 
 	struct FilterResult {
@@ -534,8 +532,6 @@ private:
 
 	[[nodiscard]] bool computeSearchWithPostsPreview() const;
 
-	Ui::VideoUserpic *validateVideoUserpic(not_null<Row*> row);
-	Ui::VideoUserpic *validateVideoUserpic(not_null<History*> history);
 
 	Row *shownRowByKey(Key key);
 	[[nodiscard]] const std::vector<SubItem> &activeSubItems(
@@ -755,9 +751,6 @@ private:
 	Ui::Text::String _searchFromUserText;
 	RowDescriptor _menuRow;
 
-	base::flat_map<
-		not_null<PeerData*>,
-		std::unique_ptr<Ui::VideoUserpic>> _videoUserpics;
 
 	base::flat_map<FilterId, int> _chatsFilterScrollStates;
 

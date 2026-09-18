@@ -29,7 +29,6 @@ class RippleAnimation;
 namespace Dialogs::Ui {
 using namespace ::Ui;
 class RowPainter;
-class VideoUserpic;
 struct PaintContext;
 struct TopicJumpCache;
 } // namespace Dialogs::Ui
@@ -51,7 +50,6 @@ public:
 		Painter &p,
 		not_null<Entry*> entry,
 		PeerData *peer,
-		Ui::VideoUserpic *videoUserpic,
 		const Ui::PaintContext &context,
 		bool hasUnreadBadgesAbove) const;
 
@@ -112,7 +110,6 @@ public:
 		Painter &p,
 		not_null<Entry*> entry,
 		PeerData *peer,
-		Ui::VideoUserpic *videoUserpic,
 		const Ui::PaintContext &context,
 		bool hasUnreadBadgesAbove) const final override;
 
@@ -185,7 +182,6 @@ private:
 		QImage frame;
 		QImage cacheTTL;
 		QImage cacheHidden;
-		int frameIndex = -1;
 		uint32 paletteVersion : 16 = 0;
 		uint32 storiesCount : 6 = 0;
 		uint32 storiesUnreadCount : 6 = 0;
@@ -203,7 +199,6 @@ private:
 		int framePadding,
 		not_null<Entry*> entry,
 		PeerData *peer,
-		Ui::VideoUserpic *videoUserpic,
 		Ui::PeerUserpicView &view,
 		const Ui::PaintContext &context,
 		bool subscribed,

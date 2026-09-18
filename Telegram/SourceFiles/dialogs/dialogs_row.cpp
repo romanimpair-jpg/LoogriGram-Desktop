@@ -20,7 +20,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/text/text_utilities.h"
 #include "ui/painter.h"
 #include "dialogs/dialogs_entry.h"
-#include "dialogs/ui/dialogs_video_userpic.h"
+#include "dialogs/ui/dialogs_userpic.h"
 #include "dialogs/ui/dialogs_layout.h"
 #include "data/data_channel.h"
 #include "data/data_community.h"
@@ -259,10 +259,9 @@ void BasicRow::paintUserpic(
 		Painter &p,
 		not_null<Entry*> entry,
 		PeerData *peer,
-		Ui::VideoUserpic *videoUserpic,
 		const Ui::PaintContext &context,
 		bool hasUnreadBadgesAbove) const {
-	PaintUserpic(p, entry, peer, videoUserpic, _userpic, context);
+	PaintUserpic(p, entry, peer, _userpic, context);
 }
 
 Row::Row(Key key, int index, int top) : _id(key), _top(top), _index(index) {
@@ -376,7 +375,6 @@ void Row::PaintCornerBadgeFrame(
 		int framePadding,
 		not_null<Entry*> entry,
 		PeerData *peer,
-		Ui::VideoUserpic *videoUserpic,
 		Ui::PeerUserpicView &view,
 		const Ui::PaintContext &context,
 		bool subscribed,
@@ -405,7 +403,6 @@ void Row::PaintCornerBadgeFrame(
 		q,
 		entry,
 		peer,
-		videoUserpic,
 		view,
 		context);
 	q.translate(context.st->padding.left(), context.st->padding.top());
@@ -560,7 +557,6 @@ void Row::paintUserpic(
 		Painter &p,
 		not_null<Entry*> entry,
 		PeerData *peer,
-		Ui::VideoUserpic *videoUserpic,
 		const Ui::PaintContext &context,
 		bool hasUnreadBadgesAbove) const {
 	const auto communityChannel = peer ? peer->asChannel() : nullptr;
@@ -604,7 +600,7 @@ void Row::paintUserpic(
 	const auto storiesUnreadCount = 0;
 	const auto storiesHasVideoStream = 0;
 	if (!cornerBadgeShown) {
-		BasicRow::paintUserpic(p, entry, peer, videoUserpic, context, false);
+		BasicRow::paintUserpic(p, entry, peer, context, false);
 		if (!peer || !_cornerBadgeShown) {
 			_cornerBadgeUserpic = nullptr;
 		}
@@ -627,7 +623,6 @@ void Row::paintUserpic(
 	}
 	auto key = peer ? peer->userpicUniqueKey(userpicView()) : InMemoryKey();
 	key.first += peer ? peer->messagesTTL() : 0;
-	const auto frameIndex = videoUserpic ? videoUserpic->frameIndex() : -1;
 	const auto paletteVersionReal = style::PaletteVersion();
 	const auto paletteVersion = (paletteVersionReal & ((1 << 17) - 1));
 	const auto active = context.active ? 1 : 0;
@@ -650,11 +645,9 @@ void Row::paintUserpic(
 		|| !_cornerBadgeUserpic->layersManager.isFinished()
 		|| (activeMatters && _cornerBadgeUserpic->active != active)
 		|| _cornerBadgeUserpic->hidden != (hidden ? 1 : 0)
-		|| _cornerBadgeUserpic->frameIndex != frameIndex
 		|| _cornerBadgeUserpic->storiesCount != storiesCount
 		|| _cornerBadgeUserpic->storiesUnreadCount != storiesUnreadCount
-		|| _cornerBadgeUserpic->storiesHasVideoStream != storiesHasVideoStream
-		|| videoUserpic) {
+		|| _cornerBadgeUserpic->storiesHasVideoStream != storiesHasVideoStream) {
 		_cornerBadgeUserpic->key = key;
 		_cornerBadgeUserpic->paletteVersion = paletteVersion;
 		_cornerBadgeUserpic->active = active;
@@ -662,14 +655,12 @@ void Row::paintUserpic(
 		_cornerBadgeUserpic->storiesCount = storiesCount;
 		_cornerBadgeUserpic->storiesUnreadCount = storiesUnreadCount;
 		_cornerBadgeUserpic->storiesHasVideoStream = storiesHasVideoStream;
-		_cornerBadgeUserpic->frameIndex = frameIndex;
 		_cornerBadgeUserpic->layersManager.markFrameShown();
 		PaintCornerBadgeFrame(
 			_cornerBadgeUserpic.get(),
 			framePadding,
 			_id.entry(),
 			peer,
-			videoUserpic,
 			userpicView(),
 			context,
 			subscribed,

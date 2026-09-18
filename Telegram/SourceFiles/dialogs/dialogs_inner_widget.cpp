@@ -12,7 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "dialogs/ui/chat_search_in.h"
 #include "dialogs/ui/dialogs_layout.h"
 #include "dialogs/ui/dialogs_message_view.h"
-#include "dialogs/ui/dialogs_video_userpic.h"
 #include "dialogs/dialogs_indexed_list.h"
 #include "dialogs/dialogs_row.h"
 #include "dialogs/dialogs_community_requestable_list.h"
@@ -1053,7 +1052,6 @@ void InnerWidget::paintEvent(QPaintEvent *e) {
 
 		context.st = (forum || monoforum) ? &st::forumDialogRow : _st.get();
 
-		const auto videoUserpic = validateVideoUserpic(row);
 		const auto cacheRatio = style::DevicePixelRatio();
 		const auto cacheKey = RowsCacheKey(row->entry());
 		const auto cacheSize = QSize(fullWidth, row->height()) * cacheRatio;
@@ -1063,7 +1061,6 @@ void InnerWidget::paintEvent(QPaintEvent *e) {
 			? (row->key() == _chatPreviewRow.key)
 			: selected;
 		const auto cacheAllowed = _rowsScrollCache.scrolling()
-			&& (!videoUserpic || !context.narrow)
 			&& !active
 			&& !cacheSelected
 			&& !context.quickActionContext
@@ -1178,12 +1175,11 @@ void InnerWidget::paintEvent(QPaintEvent *e) {
 					}
 					auto q = Painter(&image);
 					q.setInactive(p.inactive());
-					Ui::RowPainter::Paint(q, row, nullptr, context);
+					Ui::RowPainter::Paint(q, row, context);
 					auto cached = CachedRow();
 					cached.preview = (view && view->hasAnimatedContent())
 						? view->lastPaintGeometry()
 						: QRect();
-					cached.video = (videoUserpic != nullptr);
 					cached.userpic = history
 						? history->peer->userpicUniqueKey(
 							row->userpicView())
@@ -1192,7 +1188,7 @@ void InnerWidget::paintEvent(QPaintEvent *e) {
 				});
 			paintCachedRowOverlays(p, row, cacheKey, context);
 		} else {
-			Ui::RowPainter::Paint(p, row, videoUserpic, context);
+			Ui::RowPainter::Paint(p, row, context);
 		}
 		if (context.quickActionContext) {
 			context.quickActionContext = nullptr;
@@ -1682,36 +1678,6 @@ void InnerWidget::fillRightButton(
 		}
 	}
 	return nullptr;
-}
-
-Ui::VideoUserpic *InnerWidget::validateVideoUserpic(not_null<Row*> row) {
-	const auto history = row->history();
-	return history ? validateVideoUserpic(history) : nullptr;
-}
-
-Ui::VideoUserpic *InnerWidget::validateVideoUserpic(
-		not_null<History*> history) {
-	const auto peer = history->peer;
-	if (!peer->isPremium()
-		|| peer->userpicPhotoUnknown()
-		|| !peer->userpicHasVideo()
-		|| peer->isSelf()
-		|| peer->isRepliesChat()) {
-		_videoUserpics.remove(peer);
-		return nullptr;
-	}
-	const auto i = _videoUserpics.find(peer);
-	if (i != end(_videoUserpics)) {
-		return i->second.get();
-	}
-	const auto repaint = [=] {
-		updateDialogRow({ history, FullMsgId() });
-		updateSearchResult(history->peer);
-	};
-	return _videoUserpics.emplace(peer, std::make_unique<Ui::VideoUserpic>(
-		peer,
-		repaint
-	)).first->second.get();
 }
 
 void InnerWidget::paintCollapsedRows(Painter &p, QRect clip) const {
@@ -3479,7 +3445,7 @@ bool InnerWidget::animatedPreviewCached(not_null<Row*> row) {
 	}
 	const auto i = _cachedRows.find(RowsCacheKey(row->entry()));
 	if (i == end(_cachedRows)
-		|| (i->second.preview.isEmpty() && !i->second.video)) {
+		|| i->second.preview.isEmpty()) {
 		return false;
 	}
 	const auto thread = row->thread();
@@ -3546,18 +3512,6 @@ void InnerWidget::paintCachedRowOverlays(
 	const auto i = _cachedRows.find(rowId);
 	if (i == end(_cachedRows)) {
 		return;
-	}
-	if (!context.narrow) {
-		if (const auto videoUserpic = validateVideoUserpic(row)) {
-			const auto history = row->history();
-			row->paintUserpic(
-				p,
-				row->entry(),
-				history ? history->peer.get() : nullptr,
-				videoUserpic,
-				context,
-				false);
-		}
 	}
 	if (!i->second.preview.isEmpty()) {
 		if (const auto thread = row->thread()) {

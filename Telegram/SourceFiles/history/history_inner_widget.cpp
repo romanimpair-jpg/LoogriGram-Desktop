@@ -118,7 +118,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_file_click_handler.h"
 #include "data/data_histories.h"
 #include "data/data_changes.h"
-#include "dialogs/ui/dialogs_video_userpic.h"
 #include "styles/style_chat.h"
 #include "styles/style_menu_icons.h"
 
@@ -1691,16 +1690,13 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 						st::msgPhotoSize));
 			}
 			if (const auto from = item->displayFrom()) {
-				Dialogs::Ui::PaintUserpic(
+				from->paintUserpicLeft(
 					p,
-					from,
-					validateVideoUserpic(from),
 					_userpics[from],
 					st::historyPhotoLeft,
 					userpicTop,
 					width(),
-					st::msgPhotoSize,
-					context.paused);
+					st::msgPhotoSize);
 			} else if (const auto info = item->displayHiddenSenderInfo()) {
 				if (info->customUserpic.empty()) {
 					info->emptyUserpic.paintCircle(
@@ -1832,49 +1828,6 @@ int HistoryInner::SelectionViewOffset(
 		return translation * progress;
 	}
 	return 0;
-}
-
-HistoryInner::VideoUserpic *HistoryInner::validateVideoUserpic(
-		not_null<PeerData*> peer) {
-	if (!peer->isPremium()
-		|| peer->userpicPhotoUnknown()
-		|| !peer->userpicHasVideo()) {
-		_videoUserpics.remove(peer);
-		return nullptr;
-	}
-	const auto i = _videoUserpics.find(peer);
-	if (i != end(_videoUserpics)) {
-		return i->second.get();
-	}
-	const auto repaint = [=] {
-		if (hasPendingResizedItems()) {
-			return;
-		}
-		enumerateUserpics([&](not_null<Element*> view, int userpicTop) {
-			// stop the enumeration if the userpic is below the painted rect
-			if (userpicTop >= _visibleAreaBottom) {
-				return false;
-			}
-
-			// repaint the userpic if it intersects the painted rect
-			if (userpicTop + st::msgPhotoSize > _visibleAreaTop) {
-				if (const auto from = view->data()->displayFrom()) {
-					if (from == peer) {
-						rtlupdate(
-							st::historyPhotoLeft,
-							userpicTop,
-							st::msgPhotoSize,
-							st::msgPhotoSize);
-					}
-				}
-			}
-			return true;
-		});
-	};
-	return _videoUserpics.emplace(peer, std::make_unique<VideoUserpic>(
-		peer,
-		repaint
-	)).first->second.get();
 }
 
 void HistoryInner::onTouchScrollTimer() {

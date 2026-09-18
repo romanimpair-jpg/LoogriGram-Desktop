@@ -23,7 +23,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "dialogs/dialogs_list.h"
 #include "dialogs/dialogs_three_state_icon.h"
 #include "dialogs/dialogs_quick_action.h"
-#include "dialogs/ui/dialogs_video_userpic.h"
+#include "dialogs/ui/dialogs_userpic.h"
 #include "history/history.h"
 #include "history/history_item.h"
 #include "history/history_item_components.h"
@@ -442,7 +442,6 @@ void PaintRow(
 		not_null<const BasicRow*> row,
 		QRect geometry,
 		not_null<Entry*> entry,
-		VideoUserpic *videoUserpic,
 		PeerData *from,
 		PeerBadge &rowBadge,
 		Fn<void()> customEmojiRepaint,
@@ -530,7 +529,6 @@ void PaintRow(
 			p,
 			entry,
 			from,
-			videoUserpic,
 			row->userpicView(),
 			context);
 	} else {
@@ -538,7 +536,6 @@ void PaintRow(
 			p,
 			entry,
 			from,
-			videoUserpic,
 			context,
 			(context.narrow
 				&& !badgesState.empty()
@@ -1104,7 +1101,6 @@ const style::VerifiedBadge &VerifiedStyle(const PaintContext &context) {
 void RowPainter::Paint(
 		Painter &p,
 		not_null<const Row*> row,
-		VideoUserpic *videoUserpic,
 		const PaintContext &context) {
 	const auto entry = row->entry();
 	const auto history = row->history();
@@ -1224,7 +1220,6 @@ void RowPainter::Paint(
 		row,
 		QRect(0, 0, context.width, row->height()),
 		entry,
-		videoUserpic,
 		from,
 		entry->chatListPeerBadge(),
 		[=] { entry->updateChatListEntry(); },
@@ -1336,7 +1331,6 @@ void RowPainter::Paint(
 		row,
 		QRect(0, 0, context.width, context.st->height),
 		entry,
-		nullptr,
 		from,
 		row->badge(),
 		row->repaint(),

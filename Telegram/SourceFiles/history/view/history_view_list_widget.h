@@ -42,10 +42,6 @@ struct PeerUserpicView;
 class MessageSendingAnimationController;
 } // namespace Ui
 
-namespace Dialogs::Ui {
-using namespace ::Ui;
-class VideoUserpic;
-} // namespace Dialogs::Ui
 
 namespace Window {
 class SessionController;
@@ -610,7 +606,6 @@ private:
 	using PointState = HistoryView::PointState;
 	using CursorState = HistoryView::CursorState;
 	using ChosenReaction = HistoryView::Reactions::ChosenReaction;
-	using VideoUserpic = Dialogs::Ui::VideoUserpic;
 	using ViewsMap = base::flat_map<
 		not_null<HistoryItem*>,
 		std::unique_ptr<Element>>;
@@ -885,7 +880,6 @@ private:
 		Painter &p,
 		const Ui::ChatPaintContext &context,
 		QRect clip);
-	VideoUserpic *validateVideoUserpic(not_null<PeerData*> peer);
 	void paintDates(
 		Painter &p,
 		const Ui::ChatPaintContext &context,
@@ -960,9 +954,6 @@ private:
 	base::flat_map<not_null<PeerData*>, Ui::PeerUserpicView> _userpics;
 	base::flat_map<not_null<PeerData*>, Ui::PeerUserpicView> _userpicsCache;
 	base::flat_map<MsgId, Ui::PeerUserpicView> _hiddenSenderUserpics;
-	base::flat_map<
-		not_null<PeerData*>,
-		std::unique_ptr<VideoUserpic>> _videoUserpics;
 
 	const std::unique_ptr<Ui::PathShiftGradient> _pathGradient;
 	QPainterPath _highlightPathCache;

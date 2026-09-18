@@ -37,7 +37,6 @@ namespace Dialogs::Ui {
 
 using namespace ::Ui;
 
-class VideoUserpic;
 
 struct TopicJumpCorners {
 	CornersPixmaps normal;
@@ -94,7 +93,6 @@ public:
 	static void Paint(
 		Painter &p,
 		not_null<const Row*> row,
-		VideoUserpic *videoUserpic,
 		const PaintContext &context);
 	static void Paint(
 		Painter &p,

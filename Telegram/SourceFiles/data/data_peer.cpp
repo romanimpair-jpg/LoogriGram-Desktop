@@ -575,12 +575,11 @@ void PeerData::setUserpicChecked(
 	if (_userpicPhotoId != photoId
 		|| _userpic.location() != location
 		|| _userpicHasVideo != (hasVideo ? 1 : 0)) {
-		const auto known = !userpicPhotoUnknown();
+		// LoogriGram: a Premium user's new photo also fetched their full
+		// profile, to learn whether it was a video to play in lists. Profile
+		// videos do not play in lists for anyone now.
 		setUserpic(photoId, location, hasVideo);
 		session().changes().peerUpdated(this, UpdateFlag::Photo);
-		if (known && isPremium() && userpicPhotoUnknown()) {
-			updateFull();
-		}
 	}
 }
 

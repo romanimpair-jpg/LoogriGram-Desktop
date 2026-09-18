@@ -177,7 +177,7 @@ void CommunityChatsList::paintEvent(QPaintEvent *e) {
 			: (_selected == index);
 		context.st = &ComputeCommunityInfoSt(row);
 		p.translate(0, top);
-		Ui::RowPainter::Paint(p, row.get(), nullptr, context);
+		Ui::RowPainter::Paint(p, row.get(), context);
 		p.translate(0, -top);
 	});
 }
