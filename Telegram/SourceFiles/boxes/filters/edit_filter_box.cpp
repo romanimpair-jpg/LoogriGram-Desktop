@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/filters/edit_filter_chats_preview.h"
 #include "boxes/filters/edit_filter_links.h"
 #include "boxes/premium_limits_box.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/message_field.h"
 #include "chat_helpers/tabbed_panel.h"
 #include "chat_helpers/tabbed_selector.h"

@@ -25,7 +25,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/toast/toast.h"
 #include "ui/widgets/fields/input_field.h"
 #include "chat_helpers/message_field.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "base/unixtime.h"
 #include "lang/lang_keys.h"
 #include "window/window_session_controller.h"
@@ -122,10 +121,6 @@ void EditInfoBox::prepare() {
 	) | rpl::on_next([=] {
 		closeBox();
 	}, _field->lifetime());
-	Ui::Emoji::SuggestionsController::Init(
-		getDelegate()->outerContainer(),
-		_field,
-		&_controller->session());
 
 	auto cursor = _field->textCursor();
 	cursor.movePosition(QTextCursor::End);

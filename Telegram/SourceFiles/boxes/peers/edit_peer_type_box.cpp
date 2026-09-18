@@ -19,7 +19,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peers/edit_peer_invite_links.h"
 #include "boxes/peers/edit_peer_usernames_list.h"
 #include "boxes/username_box.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "data/data_channel.h"
 #include "data/data_chat.h"
 #include "data/data_peer.h"

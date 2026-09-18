@@ -10,7 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/event_filter.h"
 #include "calls/group/calls_group_messages.h"
 #include "chat_helpers/compose/compose_show.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/message_field.h"
 #include "chat_helpers/tabbed_panel.h"
 #include "chat_helpers/tabbed_selector.h"
@@ -415,15 +414,6 @@ void MessageField::createControls(PeerData *peer) {
 			Ui::InputField::kTagSpoiler,
 		},
 	});
-	Ui::Emoji::SuggestionsController::Init(
-		_parent,
-		_field,
-		&_show->session(),
-		{
-			.suggestCustomEmoji = true,
-			.allowCustomWithoutPremium = allow,
-			.st = &st.suggestions,
-		});
 
 	_send = Ui::CreateChild<Ui::SendButton>(_wrap.get(), st.send);
 	_send->show();

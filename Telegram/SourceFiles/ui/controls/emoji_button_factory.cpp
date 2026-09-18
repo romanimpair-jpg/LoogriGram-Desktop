@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/controls/emoji_button_factory.h"
 
 #include "base/event_filter.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/message_field.h"
 #include "chat_helpers/tabbed_panel.h"
 #include "chat_helpers/tabbed_selector.h"
@@ -65,21 +64,12 @@ namespace Ui {
 	}
 
 
-	const auto outer = box->getDelegate()->outerContainer();
 	const auto allow = [](not_null<DocumentData*>) { return true; };
 	InitMessageFieldHandlers(
 		controller,
 		field,
 		Window::GifPauseReason::Layer,
 		allow);
-	Ui::Emoji::SuggestionsController::Init(
-		outer,
-		field,
-		&controller->session(),
-		Ui::Emoji::SuggestionsController::Options{
-			.suggestCustomEmoji = true,
-			.allowCustomWithoutPremium = allow,
-		});
 	const auto updateEmojiPanelGeometry = [=] {
 		const auto parent = emojiPanel->parentWidget();
 		const auto global = emojiToggle->mapToGlobal({ 0, 0 });

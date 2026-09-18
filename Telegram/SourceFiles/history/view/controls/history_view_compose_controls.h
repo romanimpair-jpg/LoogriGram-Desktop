@@ -77,10 +77,6 @@ class ReactionFlyAnimation;
 class ChatStyle;
 } // namespace Ui
 
-namespace Ui::Emoji {
-class SuggestionsController;
-} // namespace Ui::Emoji
-
 namespace Main {
 class Session;
 struct SendAsKey;
@@ -506,7 +502,6 @@ private:
 	std::unique_ptr<ChatHelpers::TabbedPanel> _tabbedPanel;
 	std::unique_ptr<Ui::DropdownMenu> _attachBotsMenu;
 	std::unique_ptr<ChatHelpers::FieldAutocomplete> _autocomplete;
-	std::unique_ptr<Ui::Emoji::SuggestionsController> _emojiSuggestions;
 
 	friend class FieldHeader;
 	const std::unique_ptr<FieldHeader> _header;

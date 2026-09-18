@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/event_filter.h"
 #include "boxes/premium_limits_box.h"
 #include "boxes/send_files_box.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/field_autocomplete.h"
 #include "chat_helpers/message_field.h"
 #include "chat_helpers/tabbed_panel.h"
@@ -578,11 +577,6 @@ void EditCaptionBox::setupField() {
 		.allowPremiumEmoji = allow,
 	});
 	setupFieldAutocomplete();
-	Ui::Emoji::SuggestionsController::Init(
-		getDelegate()->outerContainer(),
-		_field,
-		&_controller->session(),
-		{ .suggestCustomEmoji = true, .allowCustomWithoutPremium = allow });
 
 	_field->setSubmitSettings(
 		Core::App().settings().sendSubmitWay());

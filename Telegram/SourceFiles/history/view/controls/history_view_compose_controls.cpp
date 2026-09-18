@@ -21,7 +21,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/send_files_box.h"
 #include "boxes/send_gif_with_caption_box.h"
 #include "chat_helpers/compose/compose_show.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/message_field.h"
 #include "chat_helpers/tabbed_panel.h"
 #include "chat_helpers/tabbed_section.h"
@@ -1828,9 +1827,6 @@ void ComposeControls::raisePanels() {
 	if (_attachBotsMenu) {
 		_attachBotsMenu->raise();
 	}
-	if (_emojiSuggestions) {
-		_emojiSuggestions->raise();
-	}
 }
 
 void ComposeControls::showForGrab() {
@@ -2336,7 +2332,6 @@ void ComposeControls::updateSubmitSettings() {
 }
 
 void ComposeControls::initFieldAutocomplete() {
-	_emojiSuggestions = nullptr;
 	_autocomplete = nullptr;
 	if (!_history || _features.emojiOnlyPanel) {
 		return;
@@ -2379,18 +2374,6 @@ void ComposeControls::initFieldAutocomplete() {
 			})
 			: nullptr),
 	});
-	const auto allow = [=](not_null<DocumentData*> emoji) {
-		return Data::AllowEmojiWithoutPremium(_history->peer, emoji);
-	};
-	_emojiSuggestions.reset(Ui::Emoji::SuggestionsController::Init(
-		_panelsParent,
-		_field,
-		_session,
-		{
-			.suggestCustomEmoji = true,
-			.allowCustomWithoutPremium = allow,
-			.st = &_st.suggestions,
-		}));
 }
 
 void ComposeControls::updateFieldPlaceholder() {

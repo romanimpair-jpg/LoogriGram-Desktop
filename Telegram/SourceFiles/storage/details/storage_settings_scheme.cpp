@@ -879,21 +879,13 @@ bool ReadSetting(
 		context.legacyRead = true;
 	} break;
 
-	case dbiSuggestEmojiOld: {
-		qint32 v;
-		stream >> v;
-		if (!CheckStreamStatus(stream)) return false;
-
-		Core::App().settings().setSuggestEmoji(v == 1);
-		context.legacyRead = true;
-	} break;
-
+	// LoogriGram: both settings are gone; the values are read and dropped.
+	case dbiSuggestEmojiOld:
 	case dbiSuggestStickersByEmojiOld: {
 		qint32 v;
 		stream >> v;
 		if (!CheckStreamStatus(stream)) return false;
 
-		Core::App().settings().setSuggestStickersByEmoji(v == 1);
 		context.legacyRead = true;
 	} break;
 

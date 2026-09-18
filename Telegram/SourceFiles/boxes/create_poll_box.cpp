@@ -18,7 +18,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/random.h"
 #include "base/unique_qptr.h"
 #include "countries/countries_instance.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/message_field.h"
 #include "chat_helpers/tabbed_panel.h"
 #include "chat_helpers/tabbed_selector.h"
@@ -172,7 +171,6 @@ private:
 	class Option {
 	public:
 		Option(
-			not_null<QWidget*> outer,
 			not_null<Ui::VerticalLayout*> container,
 			not_null<Main::Session*> session,
 			int position,
@@ -287,7 +285,6 @@ private:
 };
 
 void InitField(
-		not_null<QWidget*> container,
 		not_null<Ui::InputField*> field,
 		not_null<Main::Session*> session,
 		std::shared_ptr<Main::SessionShow> show = nullptr,
@@ -298,13 +295,6 @@ void InitField(
 		.field = field,
 		.allowMarkdownTags = std::move(markdownTags),
 	});
-	auto options = Ui::Emoji::SuggestionsController::Options();
-	options.suggestExactFirstWord = false;
-	Ui::Emoji::SuggestionsController::Init(
-		container,
-		field,
-		session,
-		options);
 }
 
 void DisableFieldMarkdown(not_null<Ui::InputField*> field) {
@@ -386,7 +376,6 @@ not_null<DetailedSettingsButton*> AddPollToggleButton(
 }
 
 Options::Option::Option(
-	not_null<QWidget*> outer,
 	not_null<Ui::VerticalLayout*> container,
 	not_null<Main::Session*> session,
 	int position,
@@ -410,7 +399,7 @@ Options::Option::Option(
 , _fieldDropCallback(std::move(fieldDropCallback))
 , _widgetDropCallback(std::move(widgetDropCallback))
 , _media(std::make_shared<PollMediaState>()) {
-	InitField(outer, _field, session);
+	InitField(_field, session);
 	_field->setMaxLength(kOptionLimit + kErrorLimit);
 	_field->show();
 	if (_fieldDropCallback) {
@@ -1012,7 +1001,6 @@ void Options::insertOption(
 		: findLayoutPosition(_list[beforeIndex].get());
 
 	auto option = std::make_unique<Option>(
-		_box,
 		_optionsLayout,
 		&_controller->session(),
 		layoutPosition,
@@ -1356,7 +1344,6 @@ not_null<Ui::InputField*> CreatePollBox::setupQuestion(
 		st::createPollFieldPadding
 			+ QMargins(0, 0, st::defaultComposeFiles.emoji.inner.width, 0));
 	InitField(
-		getDelegate()->outerContainer(),
 		question,
 		session,
 		_controller->uiShow());
@@ -1434,7 +1421,6 @@ not_null<Ui::InputField*> CreatePollBox::setupDescription(
 			tr::lng_polls_create_description_placeholder()),
 		st::pollDescriptionFieldPadding);
 	InitField(
-		getDelegate()->outerContainer(),
 		description,
 		session,
 		_controller->uiShow());
@@ -1490,7 +1476,6 @@ not_null<Ui::InputField*> CreatePollBox::setupSolution(
 			tr::lng_polls_solution_placeholder()),
 		st::createPollFieldPadding);
 	InitField(
-		getDelegate()->outerContainer(),
 		solution,
 		session,
 		_controller->uiShow(),

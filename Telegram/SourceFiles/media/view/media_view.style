@@ -785,19 +785,6 @@ storiesComposeControls: ComposeControls(defaultComposeControls) {
 	commentsUnreadSize: 6px;
 	commentsUnreadMargin: 2px;
 	commentsUnreadPosition: point(24px, 8px);
-	suggestions: EmojiSuggestions(defaultEmojiSuggestions) {
-		dropdown: InnerDropdown(emojiSuggestionsDropdown) {
-			animation: PanelAnimation(defaultPanelAnimation) {
-				fadeBg: storiesComposeBg;
-			}
-			bg: storiesComposeBg;
-		}
-		bg: storiesComposeBg;
-		overBg: storiesComposeBgOver;
-		textFg: storiesComposeWhiteText;
-		fadeLeft: icon {{ "fade_horizontal-flip_horizontal", storiesComposeBg }};
-		fadeRight: icon {{ "fade_horizontal", storiesComposeBg }};
-	}
 	tabbed: storiesEmojiPan;
 	tabbedHeightMin: 220px;
 	tabbedHeightMax: 480px;

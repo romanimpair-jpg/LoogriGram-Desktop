@@ -40,7 +40,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_user.h"
 #include "data/data_document.h"
 #include "data/stickers/data_custom_emoji.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "history/view/controls/compose_controls_common.h"
 #include "window/window_session_controller.h"
 #include "lang/lang_keys.h"
@@ -181,10 +180,6 @@ void EditLinkBox(
 	text->setInstantReplacesEnabled(
 		Core::App().settings().replaceEmojiValue(),
 		Core::App().settings().systemTextReplaceValue());
-	Ui::Emoji::SuggestionsController::Init(
-		box->getDelegate()->outerContainer(),
-		text,
-		&show->session());
 	InitSpellchecker(show, text, fieldStyle != nullptr);
 
 	const auto placeholder = content->add(

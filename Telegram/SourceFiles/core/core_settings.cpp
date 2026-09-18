@@ -236,8 +236,8 @@ QByteArray Settings::serialize() const {
 		+ sizeof(qint32) // _loopAnimatedStickers
 		+ sizeof(qint32) // _largeEmoji (removed, slot kept)
 		+ sizeof(qint32) // _replaceEmoji
-		+ sizeof(qint32) // _suggestEmoji
-		+ sizeof(qint32) // _suggestStickersByEmoji
+		+ sizeof(qint32) // _suggestEmoji (removed, slot kept)
+		+ sizeof(qint32) // _suggestStickersByEmoji (removed, slot kept)
 		+ sizeof(qint32) // _spellcheckerEnabled
 		+ sizeof(qint32) // _videoPlaybackSpeed
 		+ Serialize::bytearraySize(_videoPipGeometry)
@@ -290,7 +290,7 @@ QByteArray Settings::serialize() const {
 		+ sizeof(qint32) // legacy hardware accelerated video
 		+ sizeof(qint32) // _chatQuickAction
 		+ sizeof(qint32) // _hardwareAcceleratedVideo
-		+ sizeof(qint32) // _suggestAnimatedEmoji
+		+ sizeof(qint32) // _suggestAnimatedEmoji (removed, slot kept)
 		+ sizeof(qint32) // _cornerReaction
 		+ sizeof(qint32) // _translateButtonEnabled
 		+ sizeof(qint32) // skipLanguages count
@@ -393,8 +393,8 @@ QByteArray Settings::serialize() const {
 		// after it and misread an existing tdata.
 		<< qint32(0)
 			<< qint32(_replaceEmoji.current() ? 1 : 0)
-			<< qint32(_suggestEmoji ? 1 : 0)
-			<< qint32(_suggestStickersByEmoji ? 1 : 0)
+			<< qint32(0)
+			<< qint32(0)
 			<< qint32(_spellcheckerEnabled.current() ? 1 : 0)
 			<< qint32(SerializePlaybackSpeed(_videoPlaybackSpeed))
 			<< _videoPipGeometry
@@ -461,7 +461,7 @@ QByteArray Settings::serialize() const {
 			<< qint32(0) // old hardwareAcceleratedVideo
 			<< qint32(_chatQuickAction)
 			<< qint32(_hardwareAcceleratedVideo ? 1 : 0)
-			<< qint32(_suggestAnimatedEmoji ? 1 : 0)
+			<< qint32(0)
 			<< qint32(_cornerReaction.current() ? 1 : 0)
 			<< qint32(_translateButtonEnabled ? 1 : 0);
 
@@ -582,8 +582,10 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	qint32 loopAnimatedStickers = _loopAnimatedStickers ? 1 : 0;
 	qint32 largeEmoji = 0; // LoogriGram: read and discarded.
 	qint32 replaceEmoji = _replaceEmoji.current() ? 1 : 0;
-	qint32 suggestEmoji = _suggestEmoji ? 1 : 0;
-	qint32 suggestStickersByEmoji = _suggestStickersByEmoji ? 1 : 0;
+	// LoogriGram: the three emoji and sticker suggestion settings went with
+	// the popups they controlled; their slots are read and discarded.
+	qint32 suggestEmoji = 0;
+	qint32 suggestStickersByEmoji = 0;
 	qint32 spellcheckerEnabled = _spellcheckerEnabled.current() ? 1 : 0;
 	qint32 videoPlaybackSpeed = SerializePlaybackSpeed(_videoPlaybackSpeed);
 	qint32 voicePlaybackSpeed = SerializePlaybackSpeed(
@@ -629,7 +631,7 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	std::vector<uint64> accountsOrder;
 	qint32 hardwareAcceleratedVideo = _hardwareAcceleratedVideo ? 1 : 0;
 	qint32 chatQuickAction = static_cast<qint32>(_chatQuickAction);
-	qint32 suggestAnimatedEmoji = _suggestAnimatedEmoji ? 1 : 0;
+	qint32 suggestAnimatedEmoji = 0; // LoogriGram: read and discarded.
 	qint32 cornerReply = _cornerReply.current() ? 1 : 0;
 	qint32 cornerReaction = _cornerReaction.current() ? 1 : 0;
 	qint32 pullToNextChannel = _pullToNextChannel.current() ? 1 : 0;
@@ -1130,8 +1132,6 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	_loopAnimatedStickers = (loopAnimatedStickers == 1);
 	_replaceEmoji = (replaceEmoji == 1);
 	_systemTextReplace = (systemTextReplace == 1);
-	_suggestEmoji = (suggestEmoji == 1);
-	_suggestStickersByEmoji = (suggestStickersByEmoji == 1);
 	_spellcheckerEnabled = (spellcheckerEnabled == 1);
 	_videoPlaybackSpeed = DeserializePlaybackSpeed(videoPlaybackSpeed);
 	{
@@ -1236,7 +1236,6 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 		case Quick::React: _chatQuickAction = uncheckedChatQuickAction; break;
 		}
 	}
-	_suggestAnimatedEmoji = (suggestAnimatedEmoji == 1);
 	_cornerReply = (cornerReply == 1);
 	_cornerReaction = (cornerReaction == 1);
 	_pullToNextChannel = (pullToNextChannel == 1);
@@ -1724,9 +1723,6 @@ void Settings::resetOnLastLogout() {
 	_loopAnimatedStickers = true;
 	_replaceEmoji = true;
 	_systemTextReplace = true;
-	_suggestEmoji = true;
-	_suggestStickersByEmoji = true;
-	_suggestAnimatedEmoji = true;
 	_spellcheckerEnabled = true;
 	_videoPlaybackSpeed = PlaybackSpeed();
 	_voicePlaybackSpeed = PlaybackSpeed();

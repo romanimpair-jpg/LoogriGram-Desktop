@@ -179,7 +179,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "inline_bots/inline_results_widget.h"
 #include "inline_bots/bot_attach_web_view.h"
 #include "info/profile/info_profile_values.h" // SharedMediaCountValue.
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "core/shortcuts.h"
 #include "core/ui_integration.h"
 #include "support/support_common.h"
@@ -1640,7 +1639,6 @@ int HistoryWidget::itemTopForHighlight(
 }
 
 void HistoryWidget::initFieldAutocomplete() {
-	_emojiSuggestions = nullptr;
 	_autocomplete = nullptr;
 	if (!_peer) {
 		return;
@@ -1692,14 +1690,6 @@ void HistoryWidget::initFieldAutocomplete() {
 				context);
 		},
 	});
-	const auto allow = [=](const auto&) {
-		return _peer->isSelf();
-	};
-	_emojiSuggestions.reset(Ui::Emoji::SuggestionsController::Init(
-		this,
-		_field,
-		&controller()->session(),
-		{ .suggestCustomEmoji = true, .allowCustomWithoutPremium = allow }));
 }
 
 InlineBotQuery HistoryWidget::parseInlineBotQuery() const {
@@ -1854,9 +1844,6 @@ void HistoryWidget::orderWidgets() {
 	}
 	if (_tabbedPanel) {
 		_tabbedPanel->raise();
-	}
-	if (_emojiSuggestions) {
-		_emojiSuggestions->raise();
 	}
 	if (_attachBotsMenu) {
 		_attachBotsMenu->raise();

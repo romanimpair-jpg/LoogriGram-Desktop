@@ -47,7 +47,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/emoji_keywords.h"
 #include "chat_helpers/stickers_list_widget.h"
 #include "chat_helpers/stickers_list_footer.h"
-#include "emoji_suggestions_data.h"
 #include "emoji_suggestions_helper.h"
 #include "main/main_session.h"
 #include "main/main_session_settings.h"
@@ -3261,33 +3260,6 @@ void EmojiListWidget::showMegagroupSet(ChannelData *megagroup) {
 	}
 }
 
-QString EmojiListWidget::tooltipText() const {
-	if (_mode != Mode::Full) {
-		return {};
-	}
-	const auto &replacements = Ui::Emoji::internal::GetAllReplacements();
-	const auto over = std::get_if<OverEmoji>(&_selected);
-	if (const auto emoji = lookupOverEmoji(over)) {
-		const auto text = emoji->original()->text();
-		// find the replacement belonging to the emoji
-		const auto it = ranges::find_if(replacements, [&](const auto &one) {
-			return text == Ui::Emoji::QStringFromUTF16(one.emoji);
-		});
-		if (it != replacements.end()) {
-			return Ui::Emoji::QStringFromUTF16(it->replacement);
-		}
-	}
-	return {};
-}
-
-QPoint EmojiListWidget::tooltipPos() const {
-	return _lastMousePos;
-}
-
-bool EmojiListWidget::tooltipWindowActive() const {
-	return Ui::AppInFocus() && Ui::InFocusChain(window());
-}
-
 TabbedSelector::InnerFooter *EmojiListWidget::getFooter() const {
 	return _footer;
 }
@@ -3820,9 +3792,6 @@ void EmojiListWidget::setSelected(OverState newSelected) {
 	updateSelected();
 
 	const auto hasSelection = !v::is_null(_selected);
-	if (hasSelection && Core::App().settings().suggestEmoji()) {
-		Ui::Tooltip::Show(1000, this);
-	}
 
 	setCursor(hasSelection ? style::cur_pointer : style::cur_default);
 	if (hasSelection && !_picker->isHidden()) {

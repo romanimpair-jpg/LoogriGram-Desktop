@@ -18,7 +18,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peers/edit_participant_box.h"
 #include "core/application.h"
 #include "core/core_settings.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "countries/countries_instance.h" // Countries::ExtractPhoneCode.
 #include "history/history_item_reply_markup.h"
 #include "window/window_session_controller.h"
@@ -576,10 +575,6 @@ void GroupInfoBox::prepare() {
 	_title->setInstantReplacesEnabled(
 		Core::App().settings().replaceEmojiValue(),
 		Core::App().settings().systemTextReplaceValue());
-	Ui::Emoji::SuggestionsController::Init(
-		getDelegate()->outerContainer(),
-		_title,
-		&_navigation->session());
 
 	if (_type != Type::Group) {
 		_description.create(
@@ -606,11 +601,6 @@ void GroupInfoBox::prepare() {
 		) | rpl::on_next([=] {
 			closeBox();
 		}, _description->lifetime());
-
-		Ui::Emoji::SuggestionsController::Init(
-			getDelegate()->outerContainer(),
-			_description,
-			&_navigation->session());
 	}
 	_title->submits(
 	) | rpl::on_next([=] { submitName(); }, _title->lifetime());

@@ -10,7 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/compose/compose_features.h"
 #include "chat_helpers/tabbed_selector.h"
 #include "ui/effects/animations.h"
-#include "ui/widgets/tooltip.h"
 #include "ui/round_rect.h"
 #include "base/timer.h"
 
@@ -103,9 +102,7 @@ struct EmojiListDescriptor {
 	bool mediaPreviewPanelStyle = true;
 };
 
-class EmojiListWidget final
-	: public TabbedSelector::Inner
-	, public Ui::AbstractTooltipShower {
+class EmojiListWidget final : public TabbedSelector::Inner {
 public:
 	using Mode = EmojiListMode;
 
@@ -133,11 +130,6 @@ public:
 	[[nodiscard]] uint64 currentSet(int yOffset) const;
 	void setAllowWithoutPremium(bool allow);
 	void showMegagroupSet(ChannelData *megagroup);
-
-	// Ui::AbstractTooltipShower interface.
-	QString tooltipText() const override;
-	QPoint tooltipPos() const override;
-	bool tooltipWindowActive() const override;
 
 	void refreshEmoji();
 

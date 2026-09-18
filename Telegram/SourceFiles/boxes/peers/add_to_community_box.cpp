@@ -12,7 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "boxes/peers/edit_peer_common.h"
 #include "boxes/peer_list_box.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "core/application.h"
 #include "core/core_settings.h"
 #include "data/data_channel.h"
@@ -174,10 +173,6 @@ void CommunityIdentityBox::prepare() {
 	_title->setInstantReplacesEnabled(
 		Core::App().settings().replaceEmojiValue(),
 		Core::App().settings().systemTextReplaceValue());
-	Ui::Emoji::SuggestionsController::Init(
-		getDelegate()->outerContainer(),
-		_title,
-		&_navigation->session());
 
 	_title->submits(
 	) | rpl::on_next([=] { submit(); }, _title->lifetime());

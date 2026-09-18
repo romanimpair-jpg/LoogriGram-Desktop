@@ -1273,7 +1273,7 @@ std::vector<not_null<DocumentData*>> Stickers::getListByEmoji(
 		session().api().requestStickerSets();
 	}
 
-	if (forceAllResults || Core::App().settings().suggestStickersByEmoji()) {
+	if (forceAllResults) {
 		const auto key = ranges::accumulate(
 			all,
 			QString(),

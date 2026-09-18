@@ -12,7 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "core/ui_integration.h"
 #include "core/version.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/message_field.h"
 #include "lang/lang_keys.h"
 #include "ui/widgets/buttons.h"
@@ -1126,18 +1125,6 @@ void Notification::showReplyField() {
 		.session = session,
 		.field = _replyArea.data(),
 	});
-	const auto peer = _item->history()->peer;
-	Ui::Emoji::SuggestionsController::Init(
-		this,
-		_replyArea.data(),
-		session,
-		{
-			.suggestCustomEmoji = true,
-			.allowCustomWithoutPremium = [=](
-					not_null<DocumentData*> emoji) {
-				return Data::AllowEmojiWithoutPremium(peer, emoji);
-			},
-		});
 
 	// Catch mouse press event to activate the window.
 	QCoreApplication::instance()->installEventFilter(this);

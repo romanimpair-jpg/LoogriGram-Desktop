@@ -21,7 +21,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/message_field.h"
 #include "menu/menu_checked_action.h"
 #include "menu/menu_send.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/field_autocomplete.h"
 #include "chat_helpers/tabbed_panel.h"
 #include "chat_helpers/tabbed_selector.h"
@@ -1761,15 +1760,6 @@ void SendFilesBox::setupCaption() {
 		.fieldStyle = &_st.files.caption,
 	});
 	setupCaptionAutocomplete();
-	Ui::Emoji::SuggestionsController::Init(
-		getDelegate()->outerContainer(),
-		_caption,
-		&_show->session(),
-		{
-			.suggestCustomEmoji = true,
-			.allowCustomWithoutPremium = allow,
-			.st = &_st.suggestions,
-		});
 
 	if (!_prefilledCaptionText.text.isEmpty()) {
 		_caption->setTextWithTags(

@@ -33,7 +33,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/edit_privacy_box.h" // EditDirectMessagesBox
 #include "boxes/stickers_box.h"
 #include "boxes/username_box.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/tabbed_panel.h"
 #include "chat_helpers/tabbed_selector.h"
 #include "core/application.h"
@@ -686,10 +685,6 @@ object_ptr<Ui::RpWidget> Controller::createTitleEdit() {
 	result->entity()->setInstantReplacesEnabled(
 		Core::App().settings().replaceEmojiValue(),
 		Core::App().settings().systemTextReplaceValue());
-	Ui::Emoji::SuggestionsController::Init(
-		_wrap->window(),
-		result->entity(),
-		&_peer->session());
 
 	result->entity()->submits(
 	) | rpl::on_next([=] {
@@ -797,10 +792,6 @@ object_ptr<Ui::RpWidget> Controller::createDescriptionEdit() {
 		Core::App().settings().systemTextReplaceValue());
 	result->entity()->setSubmitSettings(
 		Core::App().settings().sendSubmitWay());
-	Ui::Emoji::SuggestionsController::Init(
-		_wrap->window(),
-		result->entity(),
-		&_peer->session());
 
 	result->entity()->submits(
 	) | rpl::on_next([=] {

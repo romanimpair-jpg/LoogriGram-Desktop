@@ -478,30 +478,6 @@ public:
 	[[nodiscard]] rpl::producer<bool> systemTextReplaceChanges() const {
 		return _systemTextReplace.changes();
 	}
-	// LoogriGram: no suggestion popups above the message field - not emoji,
-	// not stickers matched to an emoji, not animated emoji. Forced at the
-	// getters rather than by unticking the settings, because the settings did
-	// not reliably suppress them and this leaves no call site able to
-	// re-enable one. The setters and stored fields are kept so the existing
-	// settings rows and serialization continue to work unchanged.
-	[[nodiscard]] bool suggestEmoji() const {
-		return false;
-	}
-	void setSuggestEmoji(bool value) {
-		_suggestEmoji = value;
-	}
-	[[nodiscard]] bool suggestStickersByEmoji() const {
-		return false;
-	}
-	void setSuggestStickersByEmoji(bool value) {
-		_suggestStickersByEmoji = value;
-	}
-	[[nodiscard]] bool suggestAnimatedEmoji() const {
-		return false;
-	}
-	void setSuggestAnimatedEmoji(bool value) {
-		_suggestAnimatedEmoji = value;
-	}
 	void setCornerReaction(bool value) {
 		_cornerReaction = value;
 	}
@@ -1154,9 +1130,6 @@ private:
 	bool _loopAnimatedStickers = true;
 	rpl::variable<bool> _replaceEmoji = true;
 	rpl::variable<bool> _systemTextReplace = true;
-	bool _suggestEmoji = true;
-	bool _suggestStickersByEmoji = true;
-	bool _suggestAnimatedEmoji = true;
 	rpl::variable<bool> _cornerReply = true;
 	rpl::variable<bool> _cornerReaction = true;
 	rpl::variable<bool> _pullToNextChannel = true;

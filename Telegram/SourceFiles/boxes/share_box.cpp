@@ -38,7 +38,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_context_menu.h" // CopyPostLink.
 #include "window/window_session_controller.h"
 #include "boxes/peer_list_controllers.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/share_message_phrase_factory.h"
 #include "data/data_channel.h"
 #include "data/data_chat_filters.h"
@@ -352,12 +351,6 @@ void ShareBox::prepare() {
 			setCloseByOutsideClick(true);
 		}
 	});
-
-	Ui::Emoji::SuggestionsController::Init(
-		getDelegate()->outerContainer(),
-		_comment->entity(),
-		_descriptor.session,
-		{ .suggestCustomEmoji = true });
 
 	_select->raise();
 

@@ -86,10 +86,6 @@ template <typename Widget>
 class SlideWrap;
 } // namespace Ui
 
-namespace Ui::Emoji {
-class SuggestionsController;
-} // namespace Ui::Emoji
-
 namespace Webrtc {
 enum class RecordAvailability : uchar;
 } // namespace Webrtc
@@ -805,7 +801,6 @@ private:
 	std::unique_ptr<HistoryView::PullToNextChannel> _pullToNext;
 
 	std::unique_ptr<ChatHelpers::FieldAutocomplete> _autocomplete;
-	std::unique_ptr<Ui::Emoji::SuggestionsController> _emojiSuggestions;
 	object_ptr<Support::Autocomplete> _supportAutocomplete;
 
 	UserData *_inlineBot = nullptr;

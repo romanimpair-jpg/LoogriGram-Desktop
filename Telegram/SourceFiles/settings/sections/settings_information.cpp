@@ -33,7 +33,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "core/click_handler_types.h"
 #include "core/core_settings.h"
-#include "chat_helpers/emoji_suggestions_widget.h"
 #include "boxes/add_contact_box.h"
 #include "boxes/premium_limits_box.h"
 #include "boxes/username_box.h"
@@ -692,10 +691,6 @@ void SetupBio(
 	bio->setInstantReplacesEnabled(
 		Core::App().settings().replaceEmojiValue(),
 		Core::App().settings().systemTextReplaceValue());
-	Ui::Emoji::SuggestionsController::Init(
-		container->window(),
-		bio,
-		&self->session());
 	updated();
 
 	Ui::AddDividerText(container, tr::lng_settings_about_bio());

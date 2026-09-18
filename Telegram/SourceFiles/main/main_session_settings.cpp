@@ -239,8 +239,8 @@ void SessionSettings::addFromSerialized(const QByteArray &serialized) {
 	// LoogriGram: large emoji removed; slot kept, this stream is positional.
 	qint32 appLargeEmoji = 0;
 	qint32 appReplaceEmoji = app.replaceEmoji() ? 1 : 0;
-	qint32 appSuggestEmoji = app.suggestEmoji() ? 1 : 0;
-	qint32 appSuggestStickersByEmoji = app.suggestStickersByEmoji() ? 1 : 0;
+	qint32 appSuggestEmoji = 0; // LoogriGram: read and discarded.
+	qint32 appSuggestStickersByEmoji = 0; // LoogriGram: read and discarded.
 	qint32 appSpellcheckerEnabled = app.spellcheckerEnabled() ? 1 : 0;
 	qint32 appVideoPlaybackSpeed = app.videoPlaybackSpeedSerialized();
 	QByteArray appVideoPipGeometry = app.videoPipGeometry();
@@ -833,8 +833,6 @@ void SessionSettings::addFromSerialized(const QByteArray &serialized) {
 		app.setNotifyAboutPinned(appNotifyAboutPinned == 1);
 		app.setLoopAnimatedStickers(appLoopAnimatedStickers == 1);
 		app.setReplaceEmoji(appReplaceEmoji == 1);
-		app.setSuggestEmoji(appSuggestEmoji == 1);
-		app.setSuggestStickersByEmoji(appSuggestStickersByEmoji == 1);
 		app.setSpellcheckerEnabled(appSpellcheckerEnabled == 1);
 		app.setVideoPlaybackSpeedSerialized(appVideoPlaybackSpeed);
 		app.setVideoPipGeometry(appVideoPipGeometry);

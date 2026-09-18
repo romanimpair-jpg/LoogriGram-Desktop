@@ -262,7 +262,6 @@ ComposeControls {
 	commentsUnreadSize: pixels;
 	commentsUnreadMargin: pixels;
 	commentsUnreadPosition: point;
-	suggestions: EmojiSuggestions;
 	tabbed: EmojiPan;
 	tabbedHeightMin: pixels;
 	tabbedHeightMax: pixels;
@@ -842,10 +841,6 @@ emojiSuggestionsDropdown: InnerDropdown(defaultInnerDropdown) {
 	scrollMargin: margins(0px, emojiColorsPadding, 0px, emojiColorsPadding);
 	scrollPadding: margins(0px, 0px, 0px, 0px);
 }
-emojiSuggestionSize: 40px;
-emojiSuggestionsScrolledWidth: 240px;
-emojiSuggestionsPadding: margins(emojiColorsPadding, 0px, emojiColorsPadding, 0px);
-emojiSuggestionsFadeAfter: 20px;
 
 defaultEmojiSuggestions: EmojiSuggestions {
 	dropdown: emojiSuggestionsDropdown;
@@ -1547,7 +1542,6 @@ defaultComposeControls: ComposeControls {
 	send: historySend;
 	attach: historyAttach;
 	emoji: historyAttachEmoji;
-	suggestions: defaultEmojiSuggestions;
 	tabbed: defaultEmojiPan;
 	tabbedHeightMin: emojiPanMinHeight;
 	tabbedHeightMax: emojiPanMaxHeight;

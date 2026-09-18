@@ -11,6 +11,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/widgets/scroll_area.h"
 #include "ui/widgets/popup_menu.h"
 #include "ui/widgets/shadow.h"
+#include "ui/widgets/tooltip.h"
 #include "ui/wrap/vertical_layout.h"
 #include "ui/text/text_custom_emoji.h"
 #include "ui/text/text_utilities.h"

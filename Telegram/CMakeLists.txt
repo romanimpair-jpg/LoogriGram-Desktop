@@ -447,8 +447,6 @@ PRIVATE
     chat_helpers/emoji_picker_overlay.h
     chat_helpers/emoji_sets_manager.cpp
     chat_helpers/emoji_sets_manager.h
-    chat_helpers/emoji_suggestions_widget.cpp
-    chat_helpers/emoji_suggestions_widget.h
     chat_helpers/field_autocomplete.cpp
     chat_helpers/field_autocomplete.h
     chat_helpers/gifs_list_widget.cpp
