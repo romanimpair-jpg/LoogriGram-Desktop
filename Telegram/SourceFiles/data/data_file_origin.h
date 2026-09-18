@@ -129,20 +129,6 @@ struct FileOriginWebPage {
 	}
 };
 
-struct FileOriginCloudDraft {
-	PeerId peerId = 0;
-	MsgId topicRootId = 0;
-	PeerId monoforumPeerId = 0;
-
-	inline bool operator<(const FileOriginCloudDraft &other) const {
-		return std::tie(peerId, topicRootId, monoforumPeerId)
-			< std::tie(
-				other.peerId,
-				other.topicRootId,
-				other.monoforumPeerId);
-	}
-};
-
 struct FileOrigin {
 	using Variant = std::variant<
 		v::null_t,
@@ -157,7 +143,6 @@ struct FileOrigin {
 		FileOriginRingtones,
 		FileOriginPremiumPreviews,
 		FileOriginWebPage,
-		FileOriginCloudDraft,
 		FileOriginStory>;
 
 	FileOrigin() = default;
@@ -182,8 +167,6 @@ struct FileOrigin {
 	FileOrigin(FileOriginPremiumPreviews data) : data(data) {
 	}
 	FileOrigin(FileOriginWebPage data) : data(data) {
-	}
-	FileOrigin(FileOriginCloudDraft data) : data(data) {
 	}
 	FileOrigin(FileOriginStory data) : data(data) {
 	}

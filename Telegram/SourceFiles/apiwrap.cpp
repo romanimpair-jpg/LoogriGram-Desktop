@@ -2708,14 +2708,6 @@ void ApiWrap::refreshFileReference(
 						std::move(handler));
 				}
 			}
-			if (const auto source
-					= item->Get<HistoryMessageRichPageSource>()) {
-				if (source->draftOrigin) {
-					return refreshFileReference(
-						Data::FileOrigin(*source->draftOrigin),
-						std::move(handler));
-				}
-			}
 			const auto media = item->media();
 			const auto mediaStory = media ? media->storyId() : FullStoryId();
 			const auto storyId = mediaStory
@@ -2797,26 +2789,6 @@ void ApiWrap::refreshFileReference(
 			request(MTPmessages_GetFullChat(chat->inputChat()));
 		} else {
 			fail();
-		}
-	}, [&](Data::FileOriginCloudDraft data) {
-		const auto peer = _session->data().peer(data.peerId);
-		if (data.topicRootId) {
-			request(MTPmessages_GetForumTopicsByID(
-				peer->input(),
-				MTP_vector<MTPint>(1, MTP_int(data.topicRootId.bare))));
-		} else if (data.monoforumPeerId) {
-			const auto sublistPeer = _session->data().peer(data.monoforumPeerId);
-			using Flag = MTPmessages_GetSavedDialogsByID::Flag;
-			const auto hasParent = !peer->isSelf();
-			request(MTPmessages_GetSavedDialogsByID(
-				MTP_flags(hasParent ? Flag::f_parent_peer : Flag(0)),
-				hasParent ? peer->input() : MTPInputPeer(),
-				MTP_vector<MTPInputPeer>(1, sublistPeer->input())));
-		} else {
-			request(MTPmessages_GetPeerDialogs(
-				MTP_vector<MTPInputDialogPeer>(
-					1,
-					MTP_inputDialogPeer(peer->input()))));
 		}
 	}, [&](Data::FileOriginStickerSet data) {
 		const auto isRecentAttached

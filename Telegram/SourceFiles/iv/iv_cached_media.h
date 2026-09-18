@@ -48,7 +48,6 @@ namespace Iv {
 	FullMsgId itemId,
 	Fn<void(QString)> openChannel,
 	Fn<void(QString)> joinChannel,
-	::Data::FileOrigin draftOrigin = {},
 	base::weak_ptr<Window::SessionController> controller = {})
 -> std::shared_ptr<Markdown::MediaRuntime>;
 

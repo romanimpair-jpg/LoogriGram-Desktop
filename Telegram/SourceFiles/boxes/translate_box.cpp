@@ -198,8 +198,7 @@ void SetupRichArticleBody(
 			session,
 			itemId,
 			[](QString) {},
-			[](QString) {},
-			::Data::FileOrigin()),
+			[](QString) {}),
 		.dimensionsOverride = Iv::Markdown::CaptureMarkdownPrepareDimensions(
 			st::translateBoxMarkdown),
 		.tableRenderLimits
