@@ -9,37 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "ui/effects/round_checkbox.h"
 
-namespace style {
-struct PremiumLimits;
-} // namespace style
-
-namespace tr {
-template <typename ...>
-struct phrase;
-} // namespace tr
-
-enum lngtag_count : int;
-
-namespace Data {
-} // namespace Data
-
-namespace style {
-struct RoundImageCheckbox;
-struct PremiumOption;
-struct TextStyle;
-struct PremiumBubble;
-} // namespace style
-
-namespace Ui {
-
-class GenericBox;
-class RadiobuttonGroup;
-class VerticalLayout;
-
-namespace Premium {
-
-[[nodiscard]] QString Svg();
-[[nodiscard]] QByteArray ColorizedSvg(const QGradientStops &gradientStops);
+namespace Ui::Premium {
 
 [[nodiscard]] QGradientStops ButtonGradientStops();
 [[nodiscard]] QGradientStops GiftGradientStops();
@@ -49,5 +19,4 @@ namespace Premium {
 	int left,
 	int width);
 
-} // namespace Premium
-} // namespace Ui
+} // namespace Ui::Premium
