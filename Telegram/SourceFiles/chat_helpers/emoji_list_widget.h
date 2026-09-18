@@ -70,14 +70,15 @@ class EmojiColorPicker;
 class StickersListFooter;
 class LocalStickersManager;
 
+// LoogriGram: ChannelStatus and BackgroundEmoji modes were here, for the
+// panel that picked a channel's status and profile background emoji. Both
+// needed a boost level; the panel and the modes are gone.
 enum class EmojiListMode {
 	Full,
 	TopicIcon,
-	ChannelStatus,
 	FullReactions,
 	RecentReactions,
 	UserpicBuilder,
-	BackgroundEmoji,
 	PeerTitle,
 	MessageEffects,
 	CustomOnly,
@@ -89,7 +90,6 @@ enum class EmojiListMode {
 struct EmojiListDescriptor {
 	std::shared_ptr<Show> show;
 	EmojiListMode mode = EmojiListMode::Full;
-	Fn<QColor()> customTextColor;
 	Fn<bool()> paused;
 	std::vector<EmojiStatusId> customRecentList;
 	Fn<std::unique_ptr<Ui::Text::CustomEmoji>(
@@ -361,10 +361,6 @@ private:
 		not_null<Ui::PopupMenu*> menu,
 		int section,
 		int index);
-	void fillEmojiStatusMenu(
-		not_null<Ui::PopupMenu*> menu,
-		int section,
-		int index);
 	[[nodiscard]] base::unique_qptr<Ui::PopupMenu> fillSetContextMenu(
 		const CustomSet &set);
 
@@ -501,12 +497,10 @@ private:
 	bool _grabbingChosen = false;
 	QVector<EmojiPtr> _emoji[kEmojiSectionCount];
 	std::vector<CustomSet> _custom;
-	base::flat_set<DocumentId> _restrictedCustomList;
 	std::map<EmojiStatusId, CustomEmojiInstance> _customEmoji;
 	base::flat_map<
 		DocumentId,
 		std::unique_ptr<Ui::Text::CustomEmoji>> _customRecent;
-	Fn<QColor()> _customTextColor;
 	int _customSingleSize = 0;
 	bool _allowWithoutPremium = false;
 	Ui::RoundRect _overBg;

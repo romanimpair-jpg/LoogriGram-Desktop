@@ -79,14 +79,14 @@ struct EmojiChosen {
 
 using InlineChosen = InlineBots::ResultSelected;
 
+// LoogriGram: ChannelStatus, BackgroundEmoji and FullReactions modes were
+// here - see EmojiListMode and EditAllowedReactionsBox.
 enum class TabbedSelectorMode {
 	Full,
 	EmojiOnly,
 	CustomEmojiOnly,
 	StickersOnly,
 	MediaEditor,
-	ChannelStatus,
-	BackgroundEmoji,
 	RecentReactions,
 	PeerTitle,
 	ChatIntro,
@@ -97,7 +97,6 @@ struct TabbedSelectorDescriptor {
 	const style::EmojiPan &st;
 	PauseReason level = {};
 	TabbedSelectorMode mode = TabbedSelectorMode::Full;
-	Fn<QColor()> customTextColor;
 	ComposeFeatures features;
 	uint64 excludeStickerSetId = 0;
 	int searchRightReserved = 0;
@@ -118,7 +117,6 @@ enum class TabbedSearchType {
 
 class TabbedSelector : public Ui::RpWidget {
 public:
-	static constexpr auto kPickCustomTimeId = -1;
 	using Mode = TabbedSelectorMode;
 	enum class Action {
 		Update,
@@ -297,7 +295,6 @@ private:
 	const ComposeFeatures _features;
 	const std::shared_ptr<Show> _show;
 	const PauseReason _level = {};
-	const Fn<QColor()> _customTextColor;
 	const uint64 _excludeStickerSetId = 0;
 
 	Ui::Controls::SwipeBackResult _swipeBackData;

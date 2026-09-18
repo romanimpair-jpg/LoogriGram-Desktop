@@ -1118,8 +1118,6 @@ PRIVATE
     info/profile/info_profile_birthday_effect.h
     info/profile/info_profile_cover.cpp
     info/profile/info_profile_cover.h
-    info/profile/info_profile_emoji_status_panel.cpp
-    info/profile/info_profile_emoji_status_panel.h
     info/profile/info_profile_inner_widget.cpp
     info/profile/info_profile_inner_widget.h
     info/profile/info_profile_members.cpp

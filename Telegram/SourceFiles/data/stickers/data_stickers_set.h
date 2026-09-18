@@ -58,7 +58,8 @@ enum class StickersSetFlag : ushort {
 	Special = (1 << 7),
 	Emoji = (1 << 9),
 	TextColor = (1 << 10),
-	ChannelStatus = (1 << 11),
+	// LoogriGram: 1 << 11 was ChannelStatus, read only by the channel
+	// status panel.
 	AmCreator = (1 << 12),
 };
 inline constexpr bool is_flag_type(StickersSetFlag) { return true; };
@@ -88,7 +89,6 @@ public:
 	[[nodiscard]] StickerSetIdentifier identifier() const;
 	[[nodiscard]] StickersType type() const;
 	[[nodiscard]] bool textColor() const;
-	[[nodiscard]] bool channelStatus() const;
 
 	void setThumbnail(const ImageWithLocation &data, StickerType type);
 

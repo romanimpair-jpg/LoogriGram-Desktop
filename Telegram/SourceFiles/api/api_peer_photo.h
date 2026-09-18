@@ -37,8 +37,6 @@ public:
 	enum class EmojiListType {
 		Profile,
 		Group,
-		Background,
-		NoChannelStatus,
 	};
 
 	struct UserPhoto {
@@ -169,8 +167,6 @@ private:
 
 	EmojiListData _profileEmojiList;
 	EmojiListData _groupEmojiList;
-	EmojiListData _backgroundEmojiList;
-	EmojiListData _noChannelStatusEmojiList;
 
 };
 

@@ -851,8 +851,6 @@ auto PeerPhoto::emojiList(EmojiListType type) -> EmojiListData & {
 	switch (type) {
 	case EmojiListType::Profile: return _profileEmojiList;
 	case EmojiListType::Group: return _groupEmojiList;
-	case EmojiListType::Background: return _backgroundEmojiList;
-	case EmojiListType::NoChannelStatus: return _noChannelStatusEmojiList;
 	}
 	Unexpected("Type in PeerPhoto::emojiList.");
 }
@@ -885,13 +883,12 @@ void PeerPhoto::requestEmojiList(EmojiListType type) {
 			emojiList(type).requestId = 0;
 		}).send();
 	};
+	// LoogriGram: this also fetched the emoji allowed as a profile
+	// background and those barred as a channel status, for the Appearance
+	// box and its emoji panel. Both needed Premium or a boost level.
 	list.requestId = (type == EmojiListType::Profile)
 		? send(MTPaccount_GetDefaultProfilePhotoEmojis())
-		: (type == EmojiListType::Group)
-		? send(MTPaccount_GetDefaultGroupPhotoEmojis())
-		: (type == EmojiListType::NoChannelStatus)
-		? send(MTPaccount_GetChannelRestrictedStatusEmojis())
-		: send(MTPaccount_GetDefaultBackgroundEmojis());
+		: send(MTPaccount_GetDefaultGroupPhotoEmojis());
 }
 
 rpl::producer<PeerPhoto::EmojiList> PeerPhoto::emojiListValue(

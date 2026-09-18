@@ -27,7 +27,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "history/view/history_view_chat_section.h"
 #include "lang/lang_keys.h"
-#include "info/profile/info_profile_emoji_status_panel.h"
 #include "window/window_session_controller.h"
 #include "window/window_controller.h"
 #include "apiwrap.h"

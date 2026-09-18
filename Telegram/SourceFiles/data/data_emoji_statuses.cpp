@@ -8,11 +8,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_emoji_statuses.h"
 
 #include "main/main_session.h"
-#include "data/data_channel.h"
+#include "data/data_peer.h"
 #include "data/data_session.h"
-#include "data/data_document.h"
-#include "data/data_wall_paper.h"
-#include "data/stickers/data_stickers.h"
 #include "base/unixtime.h"
 #include "apiwrap.h"
 #include "ui/controls/tabbed_search.h"
@@ -25,9 +22,9 @@ constexpr auto kMaxTimeout = 6 * 60 * 60 * crl::time(1000);
 } // namespace
 
 // LoogriGram: the default and coloured lists for our own status were
-// requested here at startup and every hour after, with the channel list
-// refreshed on the same timer. Our own status is gone; the channel lists
-// load when the channel appearance box opens, which already asks for them.
+// requested here at startup and every hour after, and the channel lists
+// with a way to set a channel's status. Our own status needs Premium and a
+// channel's a boost level, so only the parsing of others' statuses is left.
 EmojiStatuses::EmojiStatuses(not_null<Session*> owner)
 : _owner(owner)
 , _clearingTimer([=] { processClearing(); }) {
@@ -37,22 +34,6 @@ EmojiStatuses::~EmojiStatuses() = default;
 
 Main::Session &EmojiStatuses::session() const {
 	return _owner->session();
-}
-
-void EmojiStatuses::refreshChannelDefault() {
-	requestChannelDefault();
-}
-
-void EmojiStatuses::refreshChannelColored() {
-	requestChannelColored();
-}
-
-const std::vector<EmojiStatusId> &EmojiStatuses::list(Type type) const {
-	switch (type) {
-	case Type::ChannelDefault: return _channelDefault;
-	case Type::ChannelColored: return _channelColored;
-	}
-	Unexpected("Type in EmojiStatuses::list.");
 }
 
 EmojiStatusData EmojiStatuses::parse(const MTPEmojiStatus &status) {
@@ -216,109 +197,9 @@ void EmojiStatuses::processClearing() {
 	}
 }
 
-std::vector<EmojiStatusId> EmojiStatuses::parse(
-		const MTPDaccount_emojiStatuses &data) {
-	const auto &list = data.vstatuses().v;
-	auto result = std::vector<EmojiStatusId>();
-	result.reserve(list.size());
-	for (const auto &status : list) {
-		const auto parsed = parse(status);
-		if (!parsed.id) {
-			LOG(("API Error: empty status in account.emojiStatuses."));
-		} else {
-			result.push_back(parsed.id);
-		}
-	}
-	return result;
-}
-
 void EmojiStatuses::processClearingIn(TimeId wait) {
 	const auto waitms = wait * crl::time(1000);
 	_clearingTimer.callOnce(std::min(waitms, kMaxTimeout));
-}
-
-void EmojiStatuses::requestChannelDefault() {
-	if (_channelDefaultRequestId) {
-		return;
-	}
-	auto &api = _owner->session().api();
-	_channelDefaultRequestId = api.request(MTPaccount_GetDefaultEmojiStatuses(
-		MTP_long(_channelDefaultHash)
-	)).done([=](const MTPaccount_EmojiStatuses &result) {
-		_channelDefaultRequestId = 0;
-		result.match([&](const MTPDaccount_emojiStatuses &data) {
-			updateChannelDefault(data);
-		}, [&](const MTPDaccount_emojiStatusesNotModified &) {
-		});
-	}).fail([=] {
-		_channelDefaultRequestId = 0;
-		_channelDefaultHash = 0;
-	}).send();
-}
-
-void EmojiStatuses::requestChannelColored() {
-	if (_channelColoredRequestId) {
-		return;
-	}
-	auto &api = _owner->session().api();
-	_channelColoredRequestId = api.request(MTPmessages_GetStickerSet(
-		MTP_inputStickerSetEmojiChannelDefaultStatuses(),
-		MTP_int(0) // hash
-	)).done([=](const MTPmessages_StickerSet &result) {
-		_channelColoredRequestId = 0;
-		result.match([&](const MTPDmessages_stickerSet &data) {
-			updateChannelColored(data);
-		}, [](const MTPDmessages_stickerSetNotModified &) {
-			LOG(("API Error: Unexpected messages.stickerSetNotModified."));
-		});
-	}).fail([=] {
-		_channelColoredRequestId = 0;
-	}).send();
-}
-
-void EmojiStatuses::updateChannelDefault(
-		const MTPDaccount_emojiStatuses &data) {
-	_channelDefaultHash = data.vhash().v;
-	_channelDefault = parse(data);
-}
-
-void EmojiStatuses::updateChannelColored(
-		const MTPDmessages_stickerSet &data) {
-	const auto &list = data.vdocuments().v;
-	_channelColored.clear();
-	_channelColored.reserve(list.size());
-	for (const auto &sticker : data.vdocuments().v) {
-		_channelColored.push_back({
-			.documentId = _owner->processDocument(sticker)->id,
-		});
-	}
-}
-
-void EmojiStatuses::set(
-		not_null<ChannelData*> channel,
-		EmojiStatusId id,
-		TimeId until) {
-	auto &api = _owner->session().api();
-	auto &requestId = _sentRequests[channel];
-	if (requestId) {
-		api.request(base::take(requestId)).cancel();
-	}
-	channel->setEmojiStatus(id, until);
-	using EFlag = MTPDemojiStatus::Flag;
-	const auto status = !id
-		? MTP_emojiStatusEmpty()
-		: MTP_emojiStatus(
-			MTP_flags(until ? EFlag::f_until : EFlag()),
-			MTP_long(id.documentId),
-			MTP_int(until));
-	requestId = api.request(MTPchannels_UpdateEmojiStatus(
-		channel->inputChannel(),
-		status
-	)).done([=] {
-		_sentRequests.remove(channel);
-	}).fail([=] {
-		_sentRequests.remove(channel);
-	}).send();
 }
 
 } // namespace Data

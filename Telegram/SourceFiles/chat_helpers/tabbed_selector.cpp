@@ -355,10 +355,7 @@ TabbedSelector::TabbedSelector(
 	Mode mode)
 : TabbedSelector(parent, {
 	.show = std::move(show),
-	.st = ((mode == Mode::ChannelStatus
-		|| mode == Mode::BackgroundEmoji)
-		? st::statusEmojiPan
-		: (mode == Mode::RecentReactions)
+	.st = ((mode == Mode::RecentReactions)
 		? st::backgroundEmojiPan
 		: st::defaultEmojiPan),
 	.level = level,
@@ -374,7 +371,6 @@ TabbedSelector::TabbedSelector(
 , _features(descriptor.features)
 , _show(std::move(descriptor.show))
 , _level(descriptor.level)
-, _customTextColor(std::move(descriptor.customTextColor))
 , _excludeStickerSetId(descriptor.excludeStickerSetId)
 , _mode(descriptor.mode)
 , _panelRounding(Ui::PrepareCornerPixmaps(st::emojiPanRadius, _st.bg))
@@ -624,18 +620,13 @@ TabbedSelector::Tab TabbedSelector::createTab(SelectorTab type, int index) {
 			using Descriptor = EmojiListDescriptor;
 			return object_ptr<EmojiListWidget>(this, Descriptor{
 				.show = _show,
-				.mode = (_mode == Mode::ChannelStatus
-					? EmojiMode::ChannelStatus
-					: _mode == Mode::BackgroundEmoji
-					? EmojiMode::BackgroundEmoji
-					: _mode == Mode::RecentReactions
+				.mode = (_mode == Mode::RecentReactions
 					? EmojiMode::RecentReactions
 					: _mode == Mode::CustomEmojiOnly
 					? EmojiMode::CustomOnly
 					: _mode == Mode::PeerTitle
 					? EmojiMode::PeerTitle
 					: EmojiMode::Full),
-				.customTextColor = _customTextColor,
 				.paused = paused,
 				.st = &_st,
 				.features = _features,
