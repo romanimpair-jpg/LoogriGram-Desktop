@@ -201,7 +201,6 @@ private:
 		PeerData *peer,
 		Ui::PeerUserpicView &view,
 		const Ui::PaintContext &context,
-		bool subscribed,
 		bool communityMember,
 		bool hidden);
 

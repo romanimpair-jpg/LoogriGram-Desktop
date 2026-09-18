@@ -34,7 +34,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/media/history_view_story_mention.h"
 #include "history/view/media/history_view_userpic_suggestion.h"
 #include "dialogs/ui/dialogs_message_view.h"
-#include "ui/controls/ton_common.h"
 #include "ui/image/image.h"
 #include "ui/effects/spoiler_mess.h"
 #include "ui/text/format_song_document_name.h"

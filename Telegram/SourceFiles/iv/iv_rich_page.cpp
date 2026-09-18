@@ -1901,8 +1901,6 @@ void AppendSimpleBlock(
 // serialization sinks, the single source of truth they shared, the
 // premium-formatting and flatten-safety checks and page equality. All of
 // them served composing, sending or drafting an article, which is deleted.
-template <typename Accumulator>
-template <typename Accumulator>
 void AppendSummaryBlock(
 		TextWithEntities *result,
 		const Block &block,

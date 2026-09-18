@@ -1339,7 +1339,6 @@ object_ptr<Ui::BoxContent> EditLinkBox(
 				result.expireDate,
 				result.usageLimit,
 				result.requestApproval,
-				{},
 			});
 		} else {
 			peer->session().api().inviteLinks().edit(

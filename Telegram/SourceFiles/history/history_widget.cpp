@@ -3411,7 +3411,6 @@ void HistoryWidget::updateControlsVisibility() {
 		if (_sendRestriction) {
 			_sendRestriction->hide();
 		}
-		hidePreview();
 		hideField();
 	} else if (editingMessage() || _canSendMessages) {
 		if (_autocomplete) {
@@ -3581,7 +3580,6 @@ void HistoryWidget::updateControlsVisibility() {
 			_sendRestriction->show();
 		}
 		_kbScroll->hide();
-		hidePreview();
 		hideField();
 	}
 	//checkTabbedSelectorToggleTooltip();

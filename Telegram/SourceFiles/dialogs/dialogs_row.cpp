@@ -377,7 +377,6 @@ void Row::PaintCornerBadgeFrame(
 		PeerData *peer,
 		Ui::PeerUserpicView &view,
 		const Ui::PaintContext &context,
-		bool subscribed,
 		bool communityMember,
 		bool hidden) {
 	data->frame.fill(Qt::transparent);
@@ -663,7 +662,6 @@ void Row::paintUserpic(
 			peer,
 			userpicView(),
 			context,
-			subscribed,
 			communityMember,
 			hidden);
 	}
@@ -674,7 +672,6 @@ void Row::paintUserpic(
 	const auto history = _id.history();
 	if (!history
 		|| history->peer->isUser()
-		|| subscribed
 		|| communityMember
 		|| (hidden
 			&& !(badgeChannel && Data::ChannelHasActiveCall(badgeChannel)))) {

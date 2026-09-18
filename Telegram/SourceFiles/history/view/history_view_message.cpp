@@ -285,7 +285,6 @@ void CopyRichPageCodeBlockText(TextForMimeData text, ClickContext context) {
 		&& (a.channel.get() == b.channel.get());
 }
 
-[[nodiscard]] std::optional<Iv::Markdown::PreparedEditListItemSource>
 class RichPageActionClickHandler final : public ClickHandler {
 public:
 	RichPageActionClickHandler(

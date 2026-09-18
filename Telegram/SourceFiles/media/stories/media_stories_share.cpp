@@ -22,6 +22,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_thread.h"
 #include "data/data_user.h"
 #include "history/history.h"
+#include "history/history_item.h"
 #include "history/history_item_helpers.h" // GetErrorForSending.
 #include "history/view/history_view_context_menu.h" // CopyStoryLink.
 #include "lang/lang_keys.h"
