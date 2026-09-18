@@ -107,7 +107,6 @@ struct StickersListWidget::Sticker {
 	Media::Clip::ReaderPointer webm;
 	QImage savedFrame;
 	QSize savedFrameFor;
-	QImage premiumLock;
 
 	void ensureMediaCreated();
 };
@@ -249,8 +248,6 @@ StickersListWidget::StickersListWidget(
 	st::stickersTrendingInstalled.style.font->width(_installedText))
 , _settings(this, tr::lng_stickers_you_have(tr::now))
 , _previewTimer([=] { showPreview(); })
-, _premiumMark(std::make_unique<StickerPremiumMark>(
-	st::stickersPremiumLock))
 , _searchRequestTimer([=] { sendSearchRequest(); }) {
 	setMouseTracking(true);
 	if (st().bg->c.alpha() > 0) {
@@ -611,14 +608,6 @@ void StickersListWidget::sendSearchRequest() {
 	_searchRequestTimer.cancel();
 	_searchQuery = _searchNextQuery;
 
-	if (_searchQuery == Ui::PremiumGroupFakeEmoticon()) {
-		toggleSearchLoading(false);
-		_searchSetsCache.emplace(_searchQuery, std::vector<uint64>());
-		_searchStickersCache.emplace(_searchQuery, std::vector<DocumentId>());
-		showSearchResults();
-		return;
-	}
-
 	const auto stickersCached = (_searchStickersCache.find(_searchQuery)
 		!= _searchStickersCache.cend());
 	const auto setsCached = (_searchSetsCache.find(_searchQuery)
@@ -689,8 +678,6 @@ void StickersListWidget::searchForSets(
 	_filterStickersCornerEmoji.clear();
 	if (_isEffects) {
 		filterEffectsByEmoji(std::move(emoji));
-	} else if (query == Ui::PremiumGroupFakeEmoticon()) {
-		_filteredStickers = session().data().stickers().getPremiumList(0);
 	} else {
 		_filteredStickers = session().data().stickers().getListByEmoji(
 			std::move(emoji),
@@ -2160,7 +2147,6 @@ void StickersListWidget::paintSticker(
 		return;
 	}
 
-	const auto premium = document->isPremiumSticker();
 	const auto isLottie = document->sticker()->isLottie();
 	const auto isWebm = document->sticker()->isWebm();
 	if (isLottie
@@ -2225,9 +2211,6 @@ void StickersListWidget::paintSticker(
 			&& (sticker.savedFrameFor == _singleSize);
 		if (useSavedFrame) {
 			p.drawImage(ppos, sticker.savedFrame);
-			if (premium) {
-				lottieFrame = sticker.savedFrame;
-			}
 		} else if (image) {
 			const auto pixmap = image->pixSingle(size, { .outer = size });
 			p.drawPixmapLeft(ppos, width(), pixmap);
@@ -2235,10 +2218,6 @@ void StickersListWidget::paintSticker(
 				sticker.savedFrame = pixmap.toImage().convertToFormat(
 					QImage::Format_ARGB32_Premultiplied);
 				sticker.savedFrameFor = _singleSize;
-			}
-			if (premium) {
-				lottieFrame = pixmap.toImage().convertToFormat(
-					QImage::Format_ARGB32_Premultiplied);
 			}
 		} else {
 			p.setOpacity(1.);
@@ -2264,16 +2243,6 @@ void StickersListWidget::paintSticker(
 			: st::stickerPanDeleteOpacityFg);
 		st::stickerPanDeleteIconFg.paint(p, xPos, width());
 		p.setOpacity(1.);
-	}
-
-	if (premium) {
-		_premiumMark->paint(
-			p,
-			lottieFrame,
-			sticker.premiumLock,
-			pos,
-			_singleSize,
-			width());
 	}
 }
 
@@ -3253,6 +3222,9 @@ auto StickersListWidget::collectRecentStickers() -> std::vector<Sticker> {
 				// Mark stickers from local recent as custom.
 				_custom[index] = true;
 			}
+		} else if (document->isPremiumSticker()) {
+			// LoogriGram: like every set here, recents leave premium
+			// stickers out; they could only be drawn locked.
 		} else if (!_favedStickersMap.contains(document)) {
 			result.push_back(Sticker{
 				document

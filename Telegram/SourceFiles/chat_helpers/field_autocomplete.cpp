@@ -176,7 +176,6 @@ private:
 	bool _adjustShadowLeft = false;
 
 	const std::unique_ptr<Ui::PathShiftGradient> _pathGradient;
-	StickerPremiumMark _premiumMark;
 
 	Fn<SendMenu::Details()> _sendMenuDetails;
 
@@ -196,7 +195,6 @@ struct FieldAutocomplete::StickerSuggestion {
 	std::shared_ptr<Data::DocumentMedia> documentMedia;
 	std::unique_ptr<Lottie::SinglePlayer> lottie;
 	Media::Clip::ReaderPointer webm;
-	QImage premiumLock;
 };
 
 struct FieldAutocomplete::MentionRow {
@@ -1026,7 +1024,6 @@ FieldAutocomplete::Inner::Inner(
 	_st.pathBg,
 	_st.pathFg,
 	[=] { update(); }))
-, _premiumMark(st::stickersPremiumLock)
 , _previewTimer([=] { showPreview(); }) {
 	_session->downloaderTaskFinished(
 	) | rpl::on_next([=] {
@@ -1131,16 +1128,6 @@ void FieldAutocomplete::Inner::paintEvent(QPaintEvent *e) {
 						media.get(),
 						QRect(ppos, size),
 						_pathGradient.get());
-				}
-
-				if (document->isPremiumSticker()) {
-					_premiumMark.paint(
-						p,
-						lottieFrame,
-						sticker.premiumLock,
-						pos,
-						st::stickerPanSize,
-						width());
 				}
 			}
 		}

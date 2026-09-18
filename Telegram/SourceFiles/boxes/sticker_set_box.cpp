@@ -352,8 +352,6 @@ private:
 		Media::Clip::ReaderPointer webm;
 		Ui::Text::CustomEmoji *emoji = nullptr;
 		Ui::Animations::Simple overAnimation;
-
-		mutable QImage premiumLock;
 	};
 
 	void visibleTopBottomUpdated(int visibleTop, int visibleBottom) override;
@@ -475,7 +473,6 @@ private:
 	base::flat_map<int, ShiftAnimation> _shiftAnimations;
 
 	const std::unique_ptr<Ui::PathShiftGradient> _pathGradient;
-	mutable StickerPremiumMark _premiumMark;
 
 	int _visibleTop = 0;
 	int _visibleBottom = 0;
@@ -1121,7 +1118,6 @@ StickerSetBox::Inner::Inner(
 	st::windowBgRipple,
 	st::windowBgOver,
 	[=] { repaintItems(); }))
-, _premiumMark(st::stickersPremiumLock)
 , _updateItemsTimer([=] { updateItems(); })
 , _input(set)
 , _padding((type == Data::StickersType::Emoji)
@@ -2368,7 +2364,6 @@ void StickerSetBox::Inner::paintSticker(
 		}
 	}
 
-	const auto premium = document->isPremiumSticker();
 	const auto size = ChatHelpers::ComputeStickerSize(
 		document,
 		boundingBoxSize());
@@ -2398,25 +2393,12 @@ void StickerSetBox::Inner::paintSticker(
 	} else if (const auto image = media->getStickerSmall()) {
 		const auto pixmap = image->pix(size);
 		p.drawPixmapLeft(ppos, width(), pixmap);
-		if (premium) {
-			lottieFrame = pixmap.toImage().convertToFormat(
-				QImage::Format_ARGB32_Premultiplied);
-		}
 	} else {
 		ChatHelpers::PaintStickerThumbnailPath(
 			p,
 			media.get(),
 			QRect(ppos, size),
 			_pathGradient.get());
-	}
-	if (premium) {
-		_premiumMark.paint(
-			p,
-			lottieFrame,
-			element.premiumLock,
-			position,
-			_singleSize,
-			width());
 	}
 	if (hasShake) {
 		p.resetTransform();

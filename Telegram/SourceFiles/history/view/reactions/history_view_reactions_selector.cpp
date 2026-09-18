@@ -1084,7 +1084,6 @@ void Selector::createList() {
 		: st::reactPanelScrollRounded);
 	_scroll->hide();
 
-	const auto effects = !_reactions.stickers.empty();
 	const auto st = lifetime().make_state<style::EmojiPan>(_st);
 	st->padding.setTop(_skipy);
 	if (!_reactions.customAllowed) {
@@ -1095,24 +1094,6 @@ void Selector::createList() {
 	auto recentList = _strip
 		? _unifiedFactoryOwner->unifiedIdsList()
 		: _recent;
-	auto freeEffects = base::flat_set<DocumentId>();
-	if (effects) {
-		auto free = base::flat_set<Data::ReactionId>();
-		free.reserve(_reactions.recent.size());
-		for (const auto &reaction : _reactions.recent) {
-			if (!reaction.premium) {
-				free.emplace(reaction.id);
-			}
-		}
-		for (const auto &id : recentList) {
-			const auto reactionId = _strip
-				? _unifiedFactoryOwner->lookupReactionId(id)
-				: Data::ReactionId{ id };
-			if (free.contains(reactionId)) {
-				freeEffects.insert(id);
-			}
-		}
-	}
 	_list = lists->add(
 		object_ptr<EmojiListWidget>(lists, EmojiListDescriptor{
 			.show = _show,
@@ -1120,7 +1101,6 @@ void Selector::createList() {
 			.paused = _paused ? _paused : [] { return false; },
 			.customRecentList = DocumentListToRecent(recentList),
 			.customRecentFactory = _unifiedFactoryOwner->factory(),
-			.freeEffects = std::move(freeEffects),
 			.st = st,
 			.mediaPreviewParent = _mediaPreviewParent
 				? _mediaPreviewParent

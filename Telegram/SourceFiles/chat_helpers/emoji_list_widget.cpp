@@ -147,7 +147,6 @@ struct EmojiListWidget::CustomEmojiInstance {
 struct EmojiListWidget::RecentOne {
 	Ui::Text::CustomEmoji *custom = nullptr;
 	RecentEmojiId id;
-	mutable QImage premiumLock;
 };
 
 EmojiColorPicker::EmojiColorPicker(
@@ -498,12 +497,9 @@ EmojiListWidget::EmojiListWidget(
 , _localSetsManager(
 	std::make_unique<LocalStickersManager>(&session()))
 , _customRecentFactory(std::move(descriptor.customRecentFactory))
-, _freeEffects(std::move(descriptor.freeEffects))
 , _customTextColor(std::move(descriptor.customTextColor))
 , _overBg(st::emojiPanRadius, st().overBg)
 , _markedBg(st::emojiPanRadius, st::stickersEmojiPickerSelectedBg)
-, _premiumMark(std::make_unique<StickerPremiumMark>(
-	st::emojiPremiumLock))
 , _collapsedBg(st::emojiPanExpand.height / 2, st().headerFg)
 , _searchRequestTimer([=] { sendSearchRequest(); })
 , _picker(this, st())
@@ -2566,21 +2562,6 @@ void EmojiListWidget::drawRecent(
 		QPoint position,
 		const RecentOne &recent) {
 	_recentPainted = true;
-	const auto locked = (_mode == Mode::MessageEffects)
-		&& v::is<RecentEmojiDocument>(recent.id.data)
-		&& !_freeEffects.contains(
-			v::get<RecentEmojiDocument>(recent.id.data).id);
-	auto lockedPainted = false;
-	if (locked) {
-		if (_premiumMarkFrameCache.isNull()) {
-			const auto ratio = style::DevicePixelRatio();
-			_premiumMarkFrameCache = QImage(
-				QSize(_customSingleSize, _customSingleSize) * ratio,
-				QImage::Format_ARGB32_Premultiplied);
-			_premiumMarkFrameCache.setDevicePixelRatio(ratio);
-		}
-		_premiumMarkFrameCache.fill(Qt::transparent);
-	}
 	if (const auto custom = recent.custom) {
 		const auto exactPosition = position
 			+ _innerPosition
@@ -2590,33 +2571,12 @@ void EmojiListWidget::drawRecent(
 			_emojiPaintContext->internal.forceFirstFrame
 				= (recent.id == _recent.front().id);
 		}
-		if (locked) {
-			lockedPainted = custom->ready();
-
-			auto q = Painter(&_premiumMarkFrameCache);
-			_emojiPaintContext->position = QPoint();
-			custom->paint(q, *_emojiPaintContext);
-			q.end();
-
-			p.drawImage(exactPosition, _premiumMarkFrameCache);
-		} else {
-			_emojiPaintContext->position = exactPosition;
-			custom->paint(p, *_emojiPaintContext);
-		}
+		_emojiPaintContext->position = exactPosition;
+		custom->paint(p, *_emojiPaintContext);
 	} else if (const auto emoji = std::get_if<EmojiPtr>(&recent.id.data)) {
 		drawEmoji(p, context, position, *emoji);
 	} else {
 		Unexpected("Empty custom emoji in EmojiListWidget::drawRecent.");
-	}
-
-	if (locked) {
-		_premiumMark->paint(
-			p,
-			lockedPainted ? _premiumMarkFrameCache : QImage(),
-			recent.premiumLock,
-			position,
-			_singleSize,
-			width());
 	}
 }
 

@@ -15,8 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/variant.h"
 #include "base/timer.h"
 
-class StickerPremiumMark;
-
 namespace Main {
 class Session;
 } // namespace Main
@@ -501,8 +499,6 @@ private:
 
 	base::Timer _previewTimer;
 	bool _previewShown = false;
-
-	std::unique_ptr<StickerPremiumMark> _premiumMark;
 
 	std::vector<not_null<DocumentData*>> _filteredStickers;
 	std::vector<EmojiPtr> _filterStickersCornerEmoji;

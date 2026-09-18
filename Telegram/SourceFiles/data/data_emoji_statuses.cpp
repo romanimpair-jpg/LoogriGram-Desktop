@@ -144,10 +144,8 @@ void EmojiStatuses::requestProfilePhotoGroups() {
 	result.reserve(list.size());
 	for (const auto &group : list) {
 		group.match([&](const MTPDemojiGroupPremium &data) {
-			result.push_back({
-				.iconId = QString::number(data.vicon_emoji_id().v),
-				.type = Ui::EmojiGroupType::Premium,
-			});
+			// LoogriGram: the Premium category listed every premium
+			// sticker, all of them locked. It is not shown.
 		}, [&](const auto &data) {
 			auto emoticons = ranges::views::all(
 				data.vemoticons().v

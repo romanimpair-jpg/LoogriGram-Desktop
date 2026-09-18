@@ -34,7 +34,6 @@ class FadeWrap;
 enum class EmojiGroupType {
 	Normal,
 	Greeting,
-	Premium,
 };
 
 struct EmojiGroup {
@@ -47,7 +46,6 @@ struct EmojiGroup {
 		const EmojiGroup &b) = default;
 };
 
-[[nodiscard]] const QString &PremiumGroupFakeEmoticon();
 
 struct SearchDescriptor {
 	const style::TabbedSearch &st;
