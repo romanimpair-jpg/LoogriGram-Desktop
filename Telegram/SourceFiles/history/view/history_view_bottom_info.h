@@ -39,7 +39,6 @@ public:
 			RepliesContext = 0x008,
 			Pinned         = 0x020,
 			Imported       = 0x040,
-			Shortcut       = 0x080,
 			EstimateDate   = 0x100,
 			ForwardedDate  = 0x200,
 			Silent         = 0x400,

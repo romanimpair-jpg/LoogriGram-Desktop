@@ -18,7 +18,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/storage_user_photos.h"
 #include "main/main_session.h"
 #include "data/business/data_business_common.h"
-#include "data/business/data_business_info.h"
 #include "data/data_cloud_themes.h"
 #include "data/data_forum.h"
 #include "data/data_forum_icons.h"
@@ -929,12 +928,6 @@ void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update) {
 		update.vpersonal_channel_id().value_or_empty(),
 		update.vpersonal_channel_message().value_or_empty());
 	user->setBotManagerId(update.vbot_manager_id().value_or_empty());
-	if (user->isSelf()) {
-		user->owner().businessInfo().applyAwaySettings(
-			FromMTP(&user->owner(), update.vbusiness_away_message()));
-		user->owner().businessInfo().applyGreetingSettings(
-			FromMTP(&user->owner(), update.vbusiness_greeting_message()));
-	}
 	user->setBotVerifyDetails(
 		ParseBotVerifyDetails(update.vbot_verification()));
 	user->setStarsRating(ParseStarsRating(update.vstars_rating()));

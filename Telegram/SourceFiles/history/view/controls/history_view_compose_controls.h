@@ -163,7 +163,6 @@ public:
 	void setHistory(SetHistoryArgs &&args);
 	void updateFeatures(ChatHelpers::ComposeFeatures features);
 	void updateTopicRootId(MsgId topicRootId);
-	void updateShortcutId(BusinessShortcutId shortcutId);
 	void setCurrentDialogsEntryState(Dialogs::EntryState state);
 	[[nodiscard]] PeerData *sendAsPeer() const;
 
@@ -456,7 +455,6 @@ private:
 	History *_history = nullptr;
 	MsgId _topicRootId = 0;
 	PeerId _monoforumPeerId = 0;
-	BusinessShortcutId _shortcutId = 0;
 	Fn<bool()> _showSlowmodeError;
 	Fn<bool()> _showScheduleSendError;
 	Fn<Api::SendAction()> _sendActionFactory;

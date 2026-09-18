@@ -44,7 +44,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h" // tr::lng_deleted(tr::now) in user name
 #include "data/business/data_business_chatbots.h"
 #include "data/business/data_business_info.h"
-#include "data/business/data_shortcut_messages.h"
 #include "data/components/ephemeral_messages.h"
 #include "data/components/scheduled_messages.h"
 #include "data/components/welcome_messages.h"
@@ -337,8 +336,7 @@ Session::Session(not_null<Main::Session*> session)
 , _savedMusic(std::make_unique<SavedMusic>(this))
 , _savedMessages(std::make_unique<SavedMessages>(this))
 , _chatbots(std::make_unique<Chatbots>(this))
-, _businessInfo(std::make_unique<BusinessInfo>(this))
-, _shortcutMessages(std::make_unique<ShortcutMessages>(this)) {
+, _businessInfo(std::make_unique<BusinessInfo>(this)) {
 	_cache->open(_session->local().cacheKey());
 	_bigFileCache->open(_session->local().cacheBigFileKey());
 
@@ -496,7 +494,6 @@ void Session::clear() {
 
 	clearScheduledPhotoCache();
 	_histories->unloadAll();
-	_shortcutMessages = nullptr;
 	_session->scheduledMessages().clear();
 	_session->welcomeMessages().clear();
 	_session->ephemeralMessages().clear();

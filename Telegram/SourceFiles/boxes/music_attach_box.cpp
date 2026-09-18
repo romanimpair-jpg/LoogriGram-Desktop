@@ -1374,9 +1374,6 @@ void ApplySendOptions(
 	if (options.scheduleRepeatPeriod != empty.scheduleRepeatPeriod) {
 		base.scheduleRepeatPeriod = options.scheduleRepeatPeriod;
 	}
-	if (options.shortcutId != empty.shortcutId) {
-		base.shortcutId = options.shortcutId;
-	}
 	if (options.effectId != empty.effectId) {
 		base.effectId = options.effectId;
 	}

@@ -87,7 +87,6 @@ struct HistoryItemCommonFields {
 	FullReplyTo replyTo;
 	TimeId date = 0;
 	TimeId scheduleRepeatPeriod = 0;
-	BusinessShortcutId shortcutId = 0;
 	UserId viaBotId = 0;
 	QString postAuthor;
 	uint64 groupedId = 0;
@@ -192,10 +191,7 @@ public:
 	[[nodiscard]] bool skipNotification() const;
 	[[nodiscard]] bool isUserpicSuggestion() const;
 	[[nodiscard]] bool isSavedMusicItem() const;
-	[[nodiscard]] BusinessShortcutId shortcutId() const;
-	[[nodiscard]] bool isBusinessShortcut() const;
 	[[nodiscard]] bool isWelcomeTemplate() const;
-	void setRealShortcutId(BusinessShortcutId id);
 	void setCustomServiceLink(ClickHandlerPtr link);
 
 	void addLogEntryOriginal(
@@ -769,7 +765,6 @@ private:
 
 	TimeId _date = 0;
 	TimeId _ttlDestroyAt = 0;
-	BusinessShortcutId _shortcutId = 0;
 
 	MessageGroupId _groupId = MessageGroupId();
 	EffectId _effectId = 0;

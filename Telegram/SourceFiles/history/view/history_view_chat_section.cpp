@@ -60,7 +60,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_editing.h"
 #include "api/api_sending.h"
 #include "apiwrap.h"
-#include "data/business/data_shortcut_messages.h"
 #include "ui/boxes/confirm_box.h"
 #include "chat_helpers/bot_keyboard.h"
 #include "chat_helpers/message_field.h"

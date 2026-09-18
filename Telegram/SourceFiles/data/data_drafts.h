@@ -127,18 +127,6 @@ public:
 	[[nodiscard]] static constexpr DraftKey WelcomeMessagesEdit() {
 		return kWelcomeMessagesDraftIndex + kEditDraftShift;
 	}
-	[[nodiscard]] static constexpr DraftKey Shortcut(
-			BusinessShortcutId shortcutId) {
-		return (shortcutId < 0 || shortcutId >= ServerMaxMsgId)
-			? None()
-			: (kShortcutDraftShift + shortcutId);
-	}
-	[[nodiscard]] static constexpr DraftKey ShortcutEdit(
-			BusinessShortcutId shortcutId) {
-		return (shortcutId < 0 || shortcutId >= ServerMaxMsgId)
-			? None()
-			: (kShortcutDraftShift + kEditDraftShift + shortcutId);
-	}
 
 	[[nodiscard]] static constexpr DraftKey FromSerialized(qint64 value) {
 		return value;
@@ -233,7 +221,6 @@ private:
 	static constexpr auto kMonoforumDraftMask = (kMonoforumDraftBit - 1);
 	static constexpr auto kEditDraftShift = ServerMaxMsgId.bare;
 	static constexpr auto kCloudDraftShift = 2 * ServerMaxMsgId.bare;
-	static constexpr auto kShortcutDraftShift = 3 * ServerMaxMsgId.bare;
 	static constexpr auto kEditDraftShiftOld = 0x3FFF'FFFF;
 
 	int64 _value = 0;

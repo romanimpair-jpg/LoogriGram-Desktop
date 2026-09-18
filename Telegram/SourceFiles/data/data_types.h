@@ -117,8 +117,6 @@ using MessageIdsList = std::vector<FullMsgId>;
 	const MTPmessage &message);
 [[nodiscard]] MsgId IdFromMessage(const MTPmessage &message);
 [[nodiscard]] TimeId DateFromMessage(const MTPmessage &message);
-[[nodiscard]] BusinessShortcutId BusinessShortcutIdFromMessage(
-	const MTPmessage &message);
 
 [[nodiscard]] inline MTPint MTP_int(MsgId id) noexcept {
 	return MTP_int(id.bare);
@@ -336,8 +334,6 @@ enum class MessageFlag : uint64 {
 	DisplayFromProfiles   = (1ULL << 41),
 
 	ShowSimilarChannels   = (1ULL << 42),
-
-	ShortcutMessage       = (1ULL << 45),
 
 	EffectWatched         = (1ULL << 46),
 

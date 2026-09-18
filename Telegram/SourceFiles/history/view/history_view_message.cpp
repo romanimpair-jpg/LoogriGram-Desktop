@@ -3661,7 +3661,6 @@ bool Message::hasFromPhoto() const {
 		return !item->out() && !item->history()->peer->isUser();
 	} break;
 	case Context::ContactPreview:
-	case Context::ShortcutMessages:
 		return false;
 	}
 	Unexpected("Context in Message::hasFromPhoto.");
@@ -5429,7 +5428,6 @@ bool Message::hasFromName() const {
 		return false;
 	} break;
 	case Context::ContactPreview:
-	case Context::ShortcutMessages:
 		return false;
 	}
 	Unexpected("Context in Message::hasFromName.");
@@ -5471,9 +5469,6 @@ bool Message::hasOutLayout() const {
 	const auto item = data();
 	if (item->history()->peer->isSelf()) {
 		if (const auto forwarded = item->Get<HistoryMessageForwarded>()) {
-			if (context() == Context::ShortcutMessages) {
-				return true;
-			}
 			return (context() == Context::SavedSublist
 					|| context() == Context::History)
 				&& (!forwarded->forwardOfForward()

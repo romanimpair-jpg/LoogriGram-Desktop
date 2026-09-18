@@ -641,8 +641,7 @@ bool EphemeralMessages::trySend(const Api::MessageToSend &message) {
 	const auto peer = history->peer;
 	if (!SupportsEphemeral(peer)) {
 		return false;
-	} else if (message.action.options.scheduled
-		|| message.action.options.shortcutId) {
+	} else if (message.action.options.scheduled) {
 		const auto replyToId = realReplyId(message);
 		const auto replyTo = replyToId
 			? _session->data().message(replyToId)

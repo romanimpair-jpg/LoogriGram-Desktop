@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_histories.h"
 
 #include "api/api_text_entities.h"
-#include "data/business/data_shortcut_messages.h"
 #include "data/components/ephemeral_messages.h"
 #include "data/components/scheduled_messages.h"
 #include "data/components/welcome_messages.h"
@@ -944,7 +943,6 @@ void Histories::deleteMessages(const MessageIdsList &ids, bool revoke) {
 	remove.reserve(ids.size());
 	base::flat_map<not_null<History*>, QVector<MTPint>> idsByPeer;
 	base::flat_map<not_null<PeerData*>, QVector<MTPint>> scheduledIdsByPeer;
-	base::flat_map<BusinessShortcutId, QVector<MTPint>> quickIdsByShortcut;
 	base::flat_set<not_null<DocumentData*>> savedMusic;
 	for (const auto &itemId : ids) {
 		if (const auto item = _owner->message(itemId)) {
@@ -961,16 +959,6 @@ void Histories::deleteMessages(const MessageIdsList &ids, bool revoke) {
 						MTP_int(scheduled.lookupId(item)));
 				} else {
 					scheduled.removeSending(item);
-				}
-				continue;
-			} else if (item->isBusinessShortcut()) {
-				const auto wasOnServer = !item->isSending()
-					&& !item->hasFailed();
-				if (wasOnServer) {
-					quickIdsByShortcut[item->shortcutId()].push_back(MTP_int(
-						_owner->shortcutMessages().lookupId(item)));
-				} else {
-					_owner->shortcutMessages().removeSending(item);
 				}
 				continue;
 			} else if (item->isWelcomeTemplate()) {
@@ -1001,15 +989,6 @@ void Histories::deleteMessages(const MessageIdsList &ids, bool revoke) {
 			MTP_vector<MTPint>(ids)
 		)).done([peer = peer](const MTPUpdates &result) {
 			peer->session().api().applyUpdates(result);
-		}).send();
-	}
-	for (const auto &[shortcutId, ids] : quickIdsByShortcut) {
-		const auto api = &_owner->session().api();
-		api->request(MTPmessages_DeleteQuickReplyMessages(
-			MTP_int(shortcutId),
-			MTP_vector<MTPint>(ids)
-		)).done([=](const MTPUpdates &result) {
-			api->applyUpdates(result);
 		}).send();
 	}
 	for (const auto &document : savedMusic) {

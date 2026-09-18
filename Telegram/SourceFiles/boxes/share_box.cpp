@@ -40,7 +40,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peer_list_controllers.h"
 #include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/share_message_phrase_factory.h"
-#include "data/business/data_shortcut_messages.h"
 #include "data/data_channel.h"
 #include "data/data_chat_filters.h"
 #include "data/data_community.h"
@@ -1828,9 +1827,6 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 					| (ShouldSendSilent(peer, options)
 						? Flag::f_silent
 						: Flag(0))
-					| (options.shortcutId
-						? Flag::f_quick_reply_shortcut
-						: Flag(0))
 					| (sublistPeer ? Flag::f_reply_to : Flag())
 					| (options.effectId ? Flag::f_effect : Flag())
 					| (range.fromEphemeral
@@ -1870,9 +1866,7 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 						MTP_int(options.scheduled),
 						MTP_int(options.scheduleRepeatPeriod),
 						MTP_inputPeerEmpty(),
-						Data::ShortcutIdToMTP(
-							&history->session(),
-							options.shortcutId),
+						MTPInputQuickReplyShortcut(),
 						MTP_long(options.effectId),
 						MTP_int(videoTimestamp.value_or(0)),
 						MTP_long(0),

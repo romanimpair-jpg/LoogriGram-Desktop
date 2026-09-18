@@ -229,7 +229,6 @@ membersInnerDropdown: InnerDropdown(defaultInnerDropdown) {
 
 historySendStateSpace: 24px;
 historySendStatePosition: point(-17px, -19px);
-historyShortcutStateSpace: 18px;
 
 historyViewsSpace: 8px;
 historyViewsWidth: 20px;

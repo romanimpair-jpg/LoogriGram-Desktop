@@ -22,7 +22,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mtproto/mtproto_config.h"
 #include "mtproto/mtproto_dc_options.h"
 #include "chat_helpers/stickers_dice_pack.h"
-#include "data/business/data_shortcut_messages.h"
 #include "data/components/ephemeral_messages.h"
 #include "data/components/promo_suggestions.h"
 #include "data/components/scheduled_messages.h"
@@ -1661,8 +1660,6 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 			if (const auto local = owner.message(id)) {
 				if (local->isScheduled()) {
 					session().scheduledMessages().apply(d, local);
-				} else if (local->isBusinessShortcut()) {
-					session().data().shortcutMessages().apply(d, local);
 				} else {
 					const auto existing = session().data().message(
 						id.peer,
@@ -1902,30 +1899,14 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 		session().ephemeralMessages().apply(d);
 	} break;
 
-	case mtpc_updateQuickReplies: {
-		const auto &d = update.c_updateQuickReplies();
-		session().data().shortcutMessages().apply(d);
-	} break;
-
-	case mtpc_updateNewQuickReply: {
-		const auto &d = update.c_updateNewQuickReply();
-		session().data().shortcutMessages().apply(d);
-	} break;
-
-	case mtpc_updateDeleteQuickReply: {
-		const auto &d = update.c_updateDeleteQuickReply();
-		session().data().shortcutMessages().apply(d);
-	} break;
-
-	case mtpc_updateQuickReplyMessage: {
-		const auto &d = update.c_updateQuickReplyMessage();
-		session().data().shortcutMessages().apply(d);
-	} break;
-
-	case mtpc_updateDeleteQuickReplyMessages: {
-		const auto &d = update.c_updateDeleteQuickReplyMessages();
-		session().data().shortcutMessages().apply(d);
-	} break;
+	// LoogriGram: quick replies are a Premium Business feature and are not
+	// kept; the server still reports changes made on other devices.
+	case mtpc_updateQuickReplies:
+	case mtpc_updateNewQuickReply:
+	case mtpc_updateDeleteQuickReply:
+	case mtpc_updateQuickReplyMessage:
+	case mtpc_updateDeleteQuickReplyMessages:
+		break;
 
 	case mtpc_updateWebPage: {
 		const auto &d = update.c_updateWebPage();

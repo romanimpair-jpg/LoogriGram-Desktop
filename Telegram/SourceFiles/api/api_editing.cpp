@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/random.h"
 #include "core/application.h"
 #include "ui/boxes/confirm_box.h"
-#include "data/business/data_shortcut_messages.h"
 #include "data/components/scheduled_messages.h"
 #include "data/components/welcome_messages.h"
 #include "data/data_file_origin.h"
@@ -84,17 +83,12 @@ constexpr auto ErrorWithoutId
 			: emptyFlag)
 		| ((options.scheduled && options.scheduleRepeatPeriod)
 			? MTPmessages_EditMessage::Flag::f_schedule_repeat_period
-			: emptyFlag)
-		| (item->isBusinessShortcut()
-			? MTPmessages_EditMessage::Flag::f_quick_reply_shortcut_id
 			: emptyFlag);
 }
 
 [[nodiscard]] MsgId EditMessageRequestId(not_null<HistoryItem*> item) {
 	return item->isScheduled()
 		? item->history()->session().scheduledMessages().lookupId(item)
-		: item->isBusinessShortcut()
-		? item->history()->session().data().shortcutMessages().lookupId(item)
 		: item->id;
 }
 
@@ -141,7 +135,7 @@ mtpRequestId EditMessage(
 		sentEntities,
 		MTP_int(options.scheduled),
 		MTP_int(options.scheduleRepeatPeriod),
-		MTP_int(item->shortcutId()),
+		MTPint(), // quick_reply_shortcut_id
 		MTPInputRichMessage()
 	)).done([=](
 			const MTPUpdates &result,

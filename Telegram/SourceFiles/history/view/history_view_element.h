@@ -74,7 +74,6 @@ enum class Context : char {
 	Monoforum,
 	SavedSublist,
 	TTLViewer,
-	ShortcutMessages,
 	ScheduledTopic,
 	ChatPreview,
 	WelcomeMessages,

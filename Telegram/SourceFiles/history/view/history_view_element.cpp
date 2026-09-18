@@ -1227,7 +1227,7 @@ Element::Element(
 	Flag serviceFlag)
 : _delegate(delegate)
 , _data(data)
-, _dateTime((IsItemScheduledUntilOnline(data) || data->shortcutId())
+, _dateTime(IsItemScheduledUntilOnline(data)
 	? QDateTime()
 	: ItemDateTime(data))
 , _text(st::msgMinWidth)

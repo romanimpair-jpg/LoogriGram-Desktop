@@ -43,7 +43,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/timer_rpl.h"
 #include "api/api_text_entities.h"
 #include "api/api_updates.h"
-#include "data/business/data_shortcut_messages.h"
 #include "data/components/ephemeral_messages.h"
 #include "data/components/scheduled_messages.h"
 #include "data/components/welcome_messages.h"
@@ -466,7 +465,6 @@ HistoryItem::HistoryItem(
 	.from = data.vfrom_id() ? peerFromMTP(*data.vfrom_id()) : PeerId(0),
 	.date = data.vdate().v,
 	.scheduleRepeatPeriod = data.vschedule_repeat_period().value_or_empty(),
-	.shortcutId = data.vquick_reply_shortcut_id().value_or_empty(),
 	.effectId = data.veffect().value_or_empty(),
 }) {
 	if (LoogriGram::MoneyMessage(data)) {
@@ -851,12 +849,7 @@ HistoryItem::HistoryItem(
 	: history->peer)
 , _flags(FinalizeMessageFlags(history, fields.flags))
 , _date(fields.date)
-, _shortcutId(fields.shortcutId)
 , _effectId(fields.effectId) {
-	Expects(!_shortcutId
-		|| isSending()
-		|| _history->owner().shortcutMessages().lookupId(this));
-
 	if (isHistoryEntry() && IsClientMsgId(id)) {
 		_history->registerClientSideMessage(this);
 	}
@@ -2079,23 +2072,11 @@ bool HistoryItem::isSavedMusicItem() const {
 	return (_flags & MessageFlag::SavedMusicItem);
 }
 
-BusinessShortcutId HistoryItem::shortcutId() const {
-	return _shortcutId;
-}
-
-bool HistoryItem::isBusinessShortcut() const {
-	return _shortcutId != 0;
-}
-
 bool HistoryItem::isWelcomeTemplate() const {
 	return !isHistoryEntry()
 		&& !isAdminLogEntry()
 		&& (Data::IsWelcomeMsgId(id)
 			|| history()->session().welcomeMessages().owns(this));
-}
-
-void HistoryItem::setRealShortcutId(BusinessShortcutId id) {
-	_shortcutId = id;
 }
 
 void HistoryItem::setCustomServiceLink(ClickHandlerPtr link) {
@@ -2923,9 +2904,6 @@ void HistoryItem::setRealId(MsgId newId) {
 	if (textAppearing()) {
 		markTextAppearingStarted();
 	}
-	if (isBusinessShortcut()) {
-		_date = 0;
-	}
 	if (isRegular()) {
 		_history->unregisterClientSideMessage(this);
 	}
@@ -3014,7 +2992,6 @@ bool HistoryItem::allowsEditMedia() const {
 bool HistoryItem::canBeEdited() const {
 	if ((!isRegular()
 			&& !isScheduled()
-			&& !isBusinessShortcut()
 			&& !isWelcomeTemplate())
 		|| Has<HistoryMessageVia>()
 		|| Has<HistoryMessageForwarded>()) {
@@ -3079,7 +3056,6 @@ bool HistoryItem::canDelete() const {
 		return false;
 	} else if (!isHistoryEntry()
 		&& !isScheduled()
-		&& !isBusinessShortcut()
 		&& !isWelcomeTemplate()) {
 		return false;
 	}
@@ -4306,7 +4282,7 @@ bool HistoryItem::isEmpty() const {
 }
 
 Data::SavedSublist *HistoryItem::savedSublist() const {
-	if (isBusinessShortcut() || isScheduled()) {
+	if (isScheduled()) {
 		return nullptr;
 	} else if (const auto saved = Get<HistoryMessageSaved>()) {
 		if (saved->savedMessagesSublist) {
@@ -4544,8 +4520,7 @@ void HistoryItem::createComponents(CreateConfig &&config) {
 		mask |= HistoryMessageSchedulePeriod::Bit();
 	}
 	const auto requiresMonoforumPeer = _history->peer->amMonoforumAdmin();
-	if (!isBusinessShortcut()
-		&& !isScheduled()
+	if (!isScheduled()
 		&& (_history->peer->isSelf()
 			|| config.savedSublistPeer
 			|| requiresMonoforumPeer)) {
@@ -5361,8 +5336,7 @@ void HistoryItem::createServiceFromMtp(const MTPDmessageService &message) {
 		? peerFromMTP(*message.vsaved_peer_id())
 		: PeerId();
 	const auto requiresMonoforumPeer = _history->peer->amMonoforumAdmin();
-	if (!isBusinessShortcut()
-		&& (savedSublistPeer || requiresMonoforumPeer)) {
+	if (savedSublistPeer || requiresMonoforumPeer) {
 		AddComponents(HistoryMessageSaved::Bit());
 		const auto saved = Get<HistoryMessageSaved>();
 		saved->sublistPeerId = savedSublistPeer

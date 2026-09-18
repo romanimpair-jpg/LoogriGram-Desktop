@@ -525,7 +525,6 @@ FileLoadTask::FileLoadTask(Args &&args)
 , _animationJob(std::move(args.animationJob))
 , _archive(std::move(args.archive)) {
 	Expects(_to.options.scheduled
-		|| _to.options.shortcutId
 		|| !_to.replaceMediaOf
 		|| IsServerMsgId(_to.replaceMediaOf));
 }

@@ -127,8 +127,7 @@ constexpr auto kScrollDateHideOnDayCrossingTimeout = crl::time(3000);
 }
 
 [[nodiscard]] bool HidesDates(Context context) {
-	return (context == Context::ShortcutMessages)
-		|| (context == Context::WelcomeMessages);
+	return (context == Context::WelcomeMessages);
 }
 
 } // namespace
@@ -3197,9 +3196,6 @@ void ListWidget::paintUserpics(
 		Painter &p,
 		const Ui::ChatPaintContext &context,
 		QRect clip) {
-	if (_context == Context::ShortcutMessages) {
-		return;
-	}
 	const auto session = &this->session();
 	enumerateUserpics([&](not_null<Element*> view, int userpicTop) {
 		// stop the enumeration if the userpic is below the painted rect

@@ -78,15 +78,6 @@ BusinessRecipients BusinessRecipients::MakeValid(BusinessRecipients value) {
 	return value;
 }
 
-MTPInputBusinessRecipients ForMessagesToMTP(const BusinessRecipients &data) {
-	using Flag = MTPDinputBusinessRecipients::Flag;
-	const auto &chats = data.allButExcluded ? data.excluded : data.included;
-	return MTP_inputBusinessRecipients(
-		MTP_flags(RecipientsFlags<Flag>(data)),
-		MTP_vector_from_range(chats.list
-			| ranges::views::transform(&UserData::inputUser)));
-}
-
 MTPInputBusinessBotRecipients ForBotsToMTP(const BusinessRecipients &data) {
 	using Flag = MTPDinputBusinessBotRecipients::Flag;
 	const auto &chats = data.allButExcluded ? data.excluded : data.included;
@@ -241,47 +232,6 @@ BusinessDetails FromMTP(
 		}
 	}
 	return result;
-}
-
-[[nodiscard]] AwaySettings FromMTP(
-		not_null<Session*> owner,
-		const tl::conditional<MTPBusinessAwayMessage> &message) {
-	if (!message) {
-		return AwaySettings();
-	}
-	const auto &data = message->data();
-	auto result = AwaySettings{
-		.recipients = FromMTP(owner, data.vrecipients()),
-		.shortcutId = data.vshortcut_id().v,
-		.offlineOnly = data.is_offline_only(),
-	};
-	data.vschedule().match([&](
-			const MTPDbusinessAwayMessageScheduleAlways &) {
-		result.schedule.type = AwayScheduleType::Always;
-	}, [&](const MTPDbusinessAwayMessageScheduleOutsideWorkHours &) {
-		result.schedule.type = AwayScheduleType::OutsideWorkingHours;
-	}, [&](const MTPDbusinessAwayMessageScheduleCustom &data) {
-		result.schedule.type = AwayScheduleType::Custom;
-		result.schedule.customInterval = WorkingInterval{
-			data.vstart_date().v,
-			data.vend_date().v,
-		};
-	});
-	return result;
-}
-
-[[nodiscard]] GreetingSettings FromMTP(
-		not_null<Session*> owner,
-		const tl::conditional<MTPBusinessGreetingMessage> &message) {
-	if (!message) {
-		return GreetingSettings();
-	}
-	const auto &data = message->data();
-	return GreetingSettings{
-		.recipients = FromMTP(owner, data.vrecipients()),
-		.noActivityDays = data.vno_activity_days().v,
-		.shortcutId = data.vshortcut_id().v,
-	};
 }
 
 WorkingIntervals WorkingIntervals::normalized() const {

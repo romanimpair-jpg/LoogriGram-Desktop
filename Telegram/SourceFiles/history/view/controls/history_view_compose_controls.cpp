@@ -1034,7 +1034,6 @@ MessageToEdit FieldHeader::queryToEdit() {
 		.fullId = item->fullId(),
 		.options = {
 			.scheduled = item->isScheduled() ? item->date() : 0,
-			.shortcutId = item->shortcutId(),
 			.invertCaption = _mediaEditManager.invertCaption(),
 		},
 		.spoilered = _mediaEditManager.spoilered(),
@@ -1270,12 +1269,6 @@ void ComposeControls::updateTopicRootId(MsgId topicRootId) {
 	updateFieldVisibility();
 	updateSendButtonType();
 	updateFieldPlaceholder();
-}
-
-void ComposeControls::updateShortcutId(BusinessShortcutId shortcutId) {
-	unregisterDraftSources();
-	_shortcutId = shortcutId;
-	registerDraftSource();
 }
 
 void ComposeControls::setHistory(SetHistoryArgs &&args) {
@@ -2572,10 +2565,6 @@ Data::DraftKey ComposeControls::draftKey(DraftType type) const {
 		return (type == DraftType::Edit)
 			? Key::ScheduledEdit()
 			: Key::Scheduled();
-	case Section::ShortcutMessages:
-		return (type == DraftType::Edit)
-			? Key::ShortcutEdit(_shortcutId)
-			: Key::Shortcut(_shortcutId);
 	case Section::WelcomeMessages:
 		return (type == DraftType::Edit)
 			? Key::WelcomeMessagesEdit()

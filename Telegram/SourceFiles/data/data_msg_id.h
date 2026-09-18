@@ -58,7 +58,6 @@ Q_DECLARE_METATYPE(MsgId);
 }
 
 using StoryId = int32;
-using BusinessShortcutId = int32;
 
 struct FullStoryId {
 	PeerId peer = 0;

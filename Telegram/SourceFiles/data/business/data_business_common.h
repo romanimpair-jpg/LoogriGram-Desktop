@@ -77,8 +77,6 @@ enum class ChatbotsPermission {
 inline constexpr bool is_flag_type(ChatbotsPermission) { return true; }
 using ChatbotsPermissions = base::flags<ChatbotsPermission>;
 
-[[nodiscard]] MTPInputBusinessRecipients ForMessagesToMTP(
-	const BusinessRecipients &data);
 [[nodiscard]] MTPInputBusinessBotRecipients ForBotsToMTP(
 	const BusinessRecipients &data);
 [[nodiscard]] BusinessRecipients FromMTP(
@@ -245,58 +243,5 @@ struct BusinessDetails {
 	const tl::conditional<MTPBusinessWorkHours> &hours,
 	const tl::conditional<MTPBusinessLocation> &location,
 	const tl::conditional<MTPBusinessIntro> &intro);
-
-enum class AwayScheduleType : uchar {
-	Never = 0,
-	Always = 1,
-	OutsideWorkingHours = 2,
-	Custom = 3,
-};
-
-struct AwaySchedule {
-	AwayScheduleType type = AwayScheduleType::Never;
-	WorkingInterval customInterval;
-
-	friend inline bool operator==(
-		const AwaySchedule &a,
-		const AwaySchedule &b) = default;
-};
-
-struct AwaySettings {
-	BusinessRecipients recipients;
-	AwaySchedule schedule;
-	BusinessShortcutId shortcutId = 0;
-	bool offlineOnly = false;
-
-	explicit operator bool() const {
-		return schedule.type != AwayScheduleType::Never;
-	}
-
-	friend inline bool operator==(
-		const AwaySettings &a,
-		const AwaySettings &b) = default;
-};
-
-[[nodiscard]] AwaySettings FromMTP(
-	not_null<Session*> owner,
-	const tl::conditional<MTPBusinessAwayMessage> &message);
-
-struct GreetingSettings {
-	BusinessRecipients recipients;
-	int noActivityDays = 0;
-	BusinessShortcutId shortcutId = 0;
-
-	explicit operator bool() const {
-		return noActivityDays > 0;
-	}
-
-	friend inline bool operator==(
-		const GreetingSettings &a,
-		const GreetingSettings &b) = default;
-};
-
-[[nodiscard]] GreetingSettings FromMTP(
-	not_null<Session*> owner,
-	const tl::conditional<MTPBusinessGreetingMessage> &message);
 
 } // namespace Data

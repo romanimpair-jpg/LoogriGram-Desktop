@@ -18,40 +18,18 @@ public:
 	explicit BusinessInfo(not_null<Session*> owner);
 	~BusinessInfo();
 
-	void preload();
-
-	void saveWorkingHours(WorkingHours data, Fn<void(QString)> fail);
-	void saveChatIntro(ChatIntro data, Fn<void(QString)> fail);
-	void saveLocation(BusinessLocation data, Fn<void(QString)> fail);
-
-	void saveAwaySettings(AwaySettings data, Fn<void(QString)> fail);
-	void applyAwaySettings(AwaySettings data);
-	[[nodiscard]] AwaySettings awaySettings() const;
-	[[nodiscard]] bool awaySettingsLoaded() const;
-	[[nodiscard]] rpl::producer<> awaySettingsChanged() const;
-
-	void saveGreetingSettings(
-		GreetingSettings data,
-		Fn<void(QString)> fail);
-	void applyGreetingSettings(GreetingSettings data);
-	[[nodiscard]] GreetingSettings greetingSettings() const;
-	[[nodiscard]] bool greetingSettingsLoaded() const;
-	[[nodiscard]] rpl::producer<> greetingSettingsChanged() const;
-
-	void preloadTimezones();
-	[[nodiscard]] bool timezonesLoaded() const;
+	// LoogriGram: this also saved our own business hours, location, intro,
+	// away message and greeting message. Those are Premium Business
+	// settings; what is left is the timezone list that other users'
+	// business hours are shown against.
 	[[nodiscard]] rpl::producer<Timezones> timezonesValue() const;
 
 private:
+	void preloadTimezones();
+
 	const not_null<Session*> _owner;
 
 	rpl::variable<Timezones> _timezones;
-
-	std::optional<AwaySettings> _awaySettings;
-	rpl::event_stream<> _awaySettingsChanged;
-
-	std::optional<GreetingSettings> _greetingSettings;
-	rpl::event_stream<> _greetingSettingsChanged;
 
 	mtpRequestId _timezonesRequestId = 0;
 	int32 _timezonesHash = 0;

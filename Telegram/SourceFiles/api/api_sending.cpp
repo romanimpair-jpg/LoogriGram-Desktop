@@ -10,7 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_text_entities.h"
 #include "base/random.h"
 #include "base/unixtime.h"
-#include "data/business/data_shortcut_messages.h"
 #include "data/data_document.h"
 #include "data/data_photo.h"
 #include "data/data_channel.h" // ChannelData::addsSignature.
@@ -79,7 +78,6 @@ void SendSimpleMedia(SendAction action, MTPInputMedia inputMedia) {
 	api->sendAction(action);
 
 	if (!action.options.scheduled
-		&& !action.options.shortcutId
 		&& session->ephemeralMessages().sendSimpleMedia(
 			history,
 			action.replyTo,
@@ -127,10 +125,6 @@ void SendSimpleMedia(SendAction action, MTPInputMedia inputMedia) {
 			sendFlags |= MTPmessages_SendMedia::Flag::f_schedule_repeat_period;
 		}
 	}
-	if (action.options.shortcutId) {
-		flags |= MessageFlag::ShortcutMessage;
-		sendFlags |= MTPmessages_SendMedia::Flag::f_quick_reply_shortcut;
-	}
 	if (action.options.effectId) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
 	}
@@ -156,7 +150,7 @@ void SendSimpleMedia(SendAction action, MTPInputMedia inputMedia) {
 			MTP_int(action.options.scheduled),
 			MTP_int(action.options.scheduleRepeatPeriod),
 			(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
-			Data::ShortcutIdToMTP(session, action.options.shortcutId),
+			MTPInputQuickReplyShortcut(),
 			MTP_long(action.options.effectId),
 			MTP_long(0),
 			MTPSuggestedPost()
@@ -213,7 +207,6 @@ void SendExistingMedia(
 	}
 	if (!welcomeTemplate
 		&& !action.options.scheduled
-		&& !action.options.shortcutId
 		&& session->ephemeralMessages().wouldSendMedia(
 			peer,
 			action.replyTo,
@@ -249,10 +242,6 @@ void SendExistingMedia(
 			sendFlags |= MTPmessages_SendMedia::Flag::f_schedule_repeat_period;
 		}
 	}
-	if (action.options.shortcutId) {
-		flags |= MessageFlag::ShortcutMessage;
-		sendFlags |= MTPmessages_SendMedia::Flag::f_quick_reply_shortcut;
-	}
 	if (action.options.effectId) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
 	}
@@ -268,7 +257,6 @@ void SendExistingMedia(
 		.replyTo = action.replyTo,
 		.date = NewMessageDate(action.options),
 		.scheduleRepeatPeriod = action.options.scheduleRepeatPeriod,
-		.shortcutId = action.options.shortcutId,
 		.postAuthor = NewMessagePostAuthor(action),
 		.effectId = action.options.effectId,
 		.mediaSpoiler = action.options.mediaSpoiler,
@@ -313,7 +301,7 @@ void SendExistingMedia(
 				MTP_int(action.options.scheduled),
 				MTP_int(action.options.scheduleRepeatPeriod),
 				(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
-				Data::ShortcutIdToMTP(session, action.options.shortcutId),
+				MTPInputQuickReplyShortcut(),
 				MTP_long(action.options.effectId),
 				MTP_long(0),
 				MTPSuggestedPost()
@@ -413,7 +401,6 @@ void SendMusicSelectionBatch(
 	}
 	if (!multi
 		&& !action.options.scheduled
-		&& !action.options.shortcutId
 		&& session->ephemeralMessages().isEphemeralBotReply(
 			action.replyTo.messageId)) {
 		flags |= MessageFlag::Ephemeral;
@@ -421,9 +408,6 @@ void SendMusicSelectionBatch(
 	InnerFillMessagePostFlags(action.options, peer, flags);
 	if (action.options.scheduled) {
 		flags |= MessageFlag::IsOrWasScheduled;
-	}
-	if (action.options.shortcutId) {
-		flags |= MessageFlag::ShortcutMessage;
 	}
 	if (action.options.invertCaption) {
 		flags |= MessageFlag::InvertMedia;
@@ -447,7 +431,6 @@ void SendMusicSelectionBatch(
 			.replyTo = action.replyTo,
 			.date = NewMessageDate(action.options),
 			.scheduleRepeatPeriod = action.options.scheduleRepeatPeriod,
-			.shortcutId = action.options.shortcutId,
 			.postAuthor = NewMessagePostAuthor(action),
 			.groupedId = groupId,
 			.effectId = action.options.effectId,
@@ -555,9 +538,6 @@ void SendMusicSelectionBatch(
 					sendFlags |= MTPmessages_SendMedia::Flag::f_schedule_repeat_period;
 				}
 			}
-			if (action.options.shortcutId) {
-				sendFlags |= MTPmessages_SendMedia::Flag::f_quick_reply_shortcut;
-			}
 			if (sendAs) {
 				sendFlags |= MTPmessages_SendMedia::Flag::f_send_as;
 			}
@@ -584,7 +564,7 @@ void SendMusicSelectionBatch(
 					MTP_int(action.options.scheduled),
 					MTP_int(action.options.scheduleRepeatPeriod),
 					(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
-					Data::ShortcutIdToMTP(session, action.options.shortcutId),
+					MTPInputQuickReplyShortcut(),
 					MTP_long(action.options.effectId),
 					MTP_long(0),
 					MTPSuggestedPost()
@@ -606,9 +586,6 @@ void SendMusicSelectionBatch(
 				? Flag::f_schedule_date
 				: Flag(0))
 			| (sendAs ? Flag::f_send_as : Flag(0))
-			| (action.options.shortcutId
-				? Flag::f_quick_reply_shortcut
-				: Flag(0))
 			| (action.options.effectId ? Flag::f_effect : Flag(0))
 			| (action.options.invertCaption
 				? Flag::f_invert_media
@@ -635,7 +612,7 @@ void SendMusicSelectionBatch(
 				MTP_vector<MTPInputSingleMedia>(std::move(media)),
 				MTP_int(action.options.scheduled),
 				(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
-				Data::ShortcutIdToMTP(session, action.options.shortcutId),
+				MTPInputQuickReplyShortcut(),
 				MTP_long(action.options.effectId),
 				MTP_long(0)
 			), [=](const MTPUpdates &result, const MTP::Response &response) {
@@ -813,10 +790,6 @@ bool SendDice(MessageToSend &message) {
 			sendFlags |= MTPmessages_SendMedia::Flag::f_schedule_repeat_period;
 		}
 	}
-	if (action.options.shortcutId) {
-		flags |= MessageFlag::ShortcutMessage;
-		sendFlags |= MTPmessages_SendMedia::Flag::f_quick_reply_shortcut;
-	}
 	if (action.options.effectId) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
 	}
@@ -834,7 +807,6 @@ bool SendDice(MessageToSend &message) {
 		.replyTo = action.replyTo,
 		.date = NewMessageDate(action.options),
 		.scheduleRepeatPeriod = action.options.scheduleRepeatPeriod,
-		.shortcutId = action.options.shortcutId,
 		.postAuthor = NewMessagePostAuthor(action),
 		.effectId = action.options.effectId,
 	}, TextWithEntities(), MTP_messageMediaDice(
@@ -861,7 +833,7 @@ bool SendDice(MessageToSend &message) {
 			MTP_int(action.options.scheduled),
 			MTP_int(action.options.scheduleRepeatPeriod),
 			(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
-			Data::ShortcutIdToMTP(session, action.options.shortcutId),
+			MTPInputQuickReplyShortcut(),
 			MTP_long(action.options.effectId),
 			MTP_long(0),
 			MTPSuggestedPost()
@@ -962,7 +934,6 @@ struct ConfirmedLocalFile {
 		&& !welcomeTemplate
 		&& !groupId
 		&& !file->to.options.scheduled
-		&& !file->to.options.shortcutId
 		&& session->ephemeralMessages().wouldSendMedia(
 			peer,
 			file->to.replyTo,
@@ -974,12 +945,6 @@ struct ConfirmedLocalFile {
 		flags |= MessageFlag::IsOrWasScheduled;
 
 		// Scheduled messages have no 'edited' badge.
-		flags |= MessageFlag::HideEdited;
-	}
-	if (file->to.options.shortcutId) {
-		flags |= MessageFlag::ShortcutMessage;
-
-		// Shortcut messages have no 'edited' badge.
 		flags |= MessageFlag::HideEdited;
 	}
 	const auto mediaTtlSeconds = (file->to.options.scheduled
@@ -1153,7 +1118,6 @@ void AddConfirmedLocalPlaceholder(const ConfirmedLocalFile &local) {
 		.replyTo = local.file->to.replyTo,
 		.date = NewMessageDate(local.file->to.options),
 		.scheduleRepeatPeriod = local.file->to.options.scheduleRepeatPeriod,
-		.shortcutId = local.file->to.options.shortcutId,
 		.postAuthor = NewMessagePostAuthor(local.action),
 		.groupedId = welcomeTemplate
 			? uint64(0)

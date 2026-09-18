@@ -21,7 +21,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_unread_things.h"
 #include "core/ui_integration.h"
 #include "dialogs/ui/dialogs_layout.h"
-#include "data/business/data_shortcut_messages.h"
 #include "data/components/scheduled_messages.h"
 #include "data/components/top_peers.h"
 #include "data/notify/data_notify_settings.h"
@@ -782,9 +781,6 @@ not_null<HistoryItem*> History::addNewItem(
 		bool unread) {
 	if (item->isScheduled()) {
 		session().scheduledMessages().appendSending(item);
-		return item;
-	} else if (item->isBusinessShortcut()) {
-		owner().shortcutMessages().appendSending(item);
 		return item;
 	} else if (!item->isHistoryEntry()) {
 		return item;

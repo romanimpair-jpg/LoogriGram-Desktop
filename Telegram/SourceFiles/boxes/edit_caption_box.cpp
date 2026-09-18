@@ -1278,7 +1278,6 @@ void EditCaptionBox::save() {
 
 	auto options = Api::SendOptions();
 	options.scheduled = item->isScheduled() ? item->date() : 0;
-	options.shortcutId = item->shortcutId();
 	options.invertCaption = _mediaEditManager.invertCaption();
 
 	if (!_preparedList.files.empty()) {

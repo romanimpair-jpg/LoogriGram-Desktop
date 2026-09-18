@@ -260,7 +260,7 @@ TimeId NewMessageDate(TimeId scheduled) {
 }
 
 TimeId NewMessageDate(const Api::SendOptions &options) {
-	return options.shortcutId ? 1 : NewMessageDate(options.scheduled);
+	return NewMessageDate(options.scheduled);
 }
 
 PeerId NewMessageFromId(const Api::SendAction &action) {
@@ -578,9 +578,6 @@ MessageFlags FlagsFromMTP(
 		| ((flags & MTP::f_from_id) ? Flag::HasFromId : Flag())
 		| ((flags & MTP::f_reply_to) ? Flag::HasReplyInfo : Flag())
 		| ((flags & MTP::f_reply_markup) ? Flag::HasReplyMarkup : Flag())
-		| ((flags & MTP::f_quick_reply_shortcut_id)
-			? Flag::ShortcutMessage
-			: Flag())
 		| ((flags & MTP::f_from_scheduled)
 			? Flag::IsOrWasScheduled
 			: Flag())
@@ -881,7 +878,6 @@ std::optional<bool> PeerHasThisCall(
 		MessageFlags flags) {
 	if (!(flags & MessageFlag::FakeHistoryItem)
 		&& !(flags & MessageFlag::IsOrWasScheduled)
-		&& !(flags & MessageFlag::ShortcutMessage)
 		&& !(flags & MessageFlag::AdminLogEntry)) {
 		flags |= MessageFlag::HistoryEntry;
 	}

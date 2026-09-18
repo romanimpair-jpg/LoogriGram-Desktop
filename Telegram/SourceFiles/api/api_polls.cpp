@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/call_delayed.h"
 #include "base/qt/qt_key_modifiers.h"
 #include "base/random.h"
-#include "data/business/data_shortcut_messages.h"
 #include "data/data_changes.h"
 #include "data/data_histories.h"
 #include "data/data_poll.h"
@@ -253,9 +252,6 @@ void Polls::create(
 			sendFlags |= MTPmessages_SendMedia::Flag::f_schedule_repeat_period;
 		}
 	}
-	if (action.options.shortcutId) {
-		sendFlags |= MTPmessages_SendMedia::Flag::f_quick_reply_shortcut;
-	}
 	if (action.options.effectId) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
 	}
@@ -288,7 +284,7 @@ void Polls::create(
 			MTP_int(action.options.scheduled),
 			MTP_int(action.options.scheduleRepeatPeriod),
 			(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
-			Data::ShortcutIdToMTP(_session, action.options.shortcutId),
+			MTPInputQuickReplyShortcut(),
 			MTP_long(action.options.effectId),
 			MTP_long(0),
 			MTPSuggestedPost()

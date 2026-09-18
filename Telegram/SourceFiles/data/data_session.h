@@ -53,7 +53,6 @@ namespace Data {
 class Folder;
 class LocationPoint;
 class WallPaper;
-class ShortcutMessages;
 class SendActionManager;
 class Reactions;
 class EmojiStatuses;
@@ -151,9 +150,6 @@ public:
 	}
 	[[nodiscard]] ChatFilters &chatsFilters() const {
 		return *_chatsFilters;
-	}
-	[[nodiscard]] ShortcutMessages &shortcutMessages() const {
-		return *_shortcutMessages;
 	}
 	[[nodiscard]] SendActionManager &sendActionManager() const {
 		return *_sendActionManager;
@@ -1353,7 +1349,6 @@ private:
 	const std::unique_ptr<SavedMessages> _savedMessages;
 	const std::unique_ptr<Chatbots> _chatbots;
 	const std::unique_ptr<BusinessInfo> _businessInfo;
-	std::unique_ptr<ShortcutMessages> _shortcutMessages;
 
 	MsgId _nonHistoryEntryId = WelcomeMaxMsgId;
 

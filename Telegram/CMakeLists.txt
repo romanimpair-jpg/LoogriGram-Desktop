@@ -557,8 +557,6 @@ PRIVATE
     data/business/data_business_common.h
     data/business/data_business_info.cpp
     data/business/data_business_info.h
-    data/business/data_shortcut_messages.cpp
-    data/business/data_shortcut_messages.h
     data/components/ephemeral_messages.cpp
     data/components/ephemeral_messages.h
     data/components/factchecks.cpp

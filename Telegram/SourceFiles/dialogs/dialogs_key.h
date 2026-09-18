@@ -115,7 +115,6 @@ struct EntryState {
 		SavedSublist,
 		ContextMenu,
 		SubsectionTabsMenu,
-		ShortcutMessages,
 		WelcomeMessages,
 	};
 
