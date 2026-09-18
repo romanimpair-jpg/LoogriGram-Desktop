@@ -452,9 +452,18 @@ One master toggle, **default on**, in the main menu beside Night Mode
 recommends this for simple flags and it avoids the append-only ordering trap.
 
 Suppressed: typing/activity broadcasts (group-call *speaking* is exempt), online
-presence, story views, delivery receipts. Plus, unconditionally and not tied to
-the toggle: reading telemetry (`api_read_metrics` — per-message dwell time and
-scroll depth) and post view-count contributions.
+presence and story views. Deleted outright, not tied to the toggle: reading
+telemetry (per-message dwell time and scroll depth) and post view-count
+contributions — `ReadMetrics`, `ViewsManager` and the list-side tracker are
+gone.
+
+**Delivery reports are sent, deliberately.** Ordinary chats have no delivery
+receipt at all (one tick means the server has it). The only report the client
+sends is `messages.reportMessagesDelivery`, for messages carrying
+`report_delivery_until_date` — login codes sent through Telegram Gateway —
+and it tells the sending service the code arrived. The user chose to keep it
+(2026-09-19): blocking it mostly makes services resend codes by SMS. Earlier
+versions of these notes wrongly listed delivery receipts as suppressed.
 
 Server-side half, applied once per account on first login and on every explicit
 enable, never reversed: **Last Seen → Nobody** and **hide read date**
@@ -597,11 +606,11 @@ nothing about the account — an unauthenticated GET of a public endpoint.
 - **Removed UI**: hover quick-reaction strip (right-click reactions kept), the
   Telegram FAQ / Features / Ask a Question rows, the "is this still your number?"
   nag (the 2FA password reminder is kept on purpose — losing that locks you out).
-- **No suggestion popups above the message field**: `suggestEmoji()`,
-  `suggestStickersByEmoji()` and `suggestAnimatedEmoji()` return false at the
-  getter. Forced there rather than by unticking the settings, because unticking
-  did not reliably suppress them. Setters and stored fields are kept so the
-  settings rows and serialization still work.
+- **No suggestion popups above the message field**: the emoji suggestion
+  controller, the emoji panel's `:shortcode:` tooltip and the sticker half of
+  the field autocomplete (a lone emoji offered stickers even with the setting
+  forced off) are deleted, with the three settings; their slots in the stored
+  settings streams are kept and read into nothing.
 - **Auto-download defaults**: photos + GIFs only, across all three categories.
   Voice and Music keep upstream values because the box does not expose them.
 - **Notification defaults**: muted chats excluded from the unread badge (but kept
@@ -777,33 +786,31 @@ Still sitting at the "forced getter" stage:
   hidden. The lesson it left stands: **a gate in front of two painters is not
   a removal, and a third painter can have its own slot.** That is exactly how
   the author-name status survived it.
-- **Suggestion popups.** `suggestEmoji()`, `suggestStickersByEmoji()` and
-  `suggestAnimatedEmoji()` return false at the getter, with the setters and
-  stored fields deliberately kept so the settings rows and serialization still
-  work. If the rows go too, the fields can go with them.
-- **Ghost-mode suppression sites**, all early returns rather than removals:
-  `SendProgressManager::skipRequest`, the `MTPaccount_UpdateStatus` block in
-  `Updates::updateOnline`, `ViewsManager::viewsIncrement`,
-  `Histories::reportPendingDeliveries`, `RepliesList::sendReadTillRequest` and
-  `ReadMetrics::send`.
-- **The bot verification icon.** `PeerBadge::drawVerified` paints an arbitrary
-  server-supplied custom emoji *before* a name, from a path that never touched
-  `premiumBadgesShown()` and so survived the emoji status removal. It is a
-  different feature - a third party paid to mark that account - and it is the
-  only coloured emoji left beside a name. Four call sites: `dialogs_layout`,
-  `dialogs_inner_widget`, `history_view_top_bar_widget`, `peer_list_box`. Take
-  it and `PeerBadge` holds no state at all, so it becomes a free function and
-  every `_badge` member that exists to carry that state goes with it.
-- **`specific_win.cpp:450`** hard-codes "Telegram autorun link. You can
-  disable autorun in Telegram settings." into the Startup shortcut's
-  description. A branding leak of the same class as the `lang.strings` one,
-  in a file that survives, found by reading the shortcut rather than the
-  source.
-
-Two of these cannot simply be deleted and need the caller rewritten instead,
-which is the work rather than a reason to stop: `updateOnline` also drives
-`checkAutoLock`, `saveCurrentDraftToCloud` and `quitPreventFinished()`, and the
-suggestion getters are read by the settings UI.
+- ~~**Suggestion popups.**~~ **Done** (2026-09-18) - see "Other desktop
+  changes". The setting was never the whole story: sticker suggestions by
+  emoji still came from installed sets with it forced off.
+- **Ghost-mode suppression sites.** Telemetry and view counts are deleted.
+  Typing (`SendProgressManager::skipRequest`), online status
+  (`Updates::updateOnline`) and story views stay: they follow the ghost-mode
+  switch, so they are settings, not dead code. `updateOnline` also drives
+  `checkAutoLock`, `saveCurrentDraftToCloud` and `quitPreventFinished()` -
+  only the reported value changes. `Histories::reportPendingDeliveries` and
+  `RepliesList::sendReadTillRequest` were listed here by mistake: neither was
+  ever suppressed (see Ghost mode).
+- ~~**The bot verification icon.**~~ **Done** (2026-09-18, the user chose
+  "icon only"). Not drawn before any name, on the profile or in the new-chat
+  intro; the verifier's text stays on the profile and in that intro.
+  `PeerBadge` is the free function `Ui::DrawPeerBadgeGetWidth`.
+- ~~**`specific_win.cpp:450`**~~ **Done** earlier: the Startup shortcut reads
+  "LoogriGram autorun link".
+- **Level-locked channel and group admin options** (2026-09-19, the user:
+  remove entirely, at every level). Channel levels come from boosts, which
+  only Premium subscribers give. Auto-translate is gone; the appearance box
+  (colour, background emoji, profile colour and emoji, emoji status,
+  wallpaper) and the group emoji pack chooser are in progress; channel custom
+  reactions are next. Kept: free voice transcription in boosted groups - it
+  is not an admin option and removing it would only take a working feature
+  away.
 
 ### Stories: scoped down deliberately, not forgotten
 
