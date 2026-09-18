@@ -727,10 +727,10 @@ void Story::applyFields(
 			&session(),
 			data.ventities().value_or_empty()),
 	};
-	if (const auto user = _peer->asUser()) {
-		if (!user->isVerified() && !user->isPremium()) {
-			caption = StripLinks(std::move(caption));
-		}
+	if (_peer->isUser()) {
+		// LoogriGram: links stayed live only for verified and Premium users.
+		// A user's story caption is plain text for everyone now.
+		caption = StripLinks(std::move(caption));
 	}
 	auto counts = ViewsCounts();
 	auto viewsKnown = _views.known;

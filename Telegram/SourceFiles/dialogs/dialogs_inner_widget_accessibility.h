@@ -22,7 +22,7 @@ enum class SubItem : int {
 	Type,
 	Name,
 	Warning,
-	Premium,
+	// LoogriGram: a Premium column announced other users' subscription.
 	Verified,
 	Activity,
 	Muted,

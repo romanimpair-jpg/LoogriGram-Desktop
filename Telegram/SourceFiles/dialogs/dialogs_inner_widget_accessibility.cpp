@@ -203,11 +203,7 @@ QString RowAccessibilityName(
 		parts << tr::lng_sr_chat_fake(tr::now);
 	}
 
-	if (const auto user = peer->asUser()) {
-		if (user->isPremium()) {
-			parts << tr::lng_premium(tr::now);
-		}
-	}
+	// LoogriGram: other users' Premium is not announced.
 
 	if (peer->isVerified()) {
 		parts << tr::lng_sr_chat_verified(tr::now);
@@ -263,7 +259,6 @@ QString SubItemLabel(SubItem item) {
 	case SubItem::Type: return tr::lng_sr_chat_column_type(tr::now);
 	case SubItem::Name: return tr::lng_sr_chat_column_name(tr::now);
 	case SubItem::Warning: return tr::lng_sr_chat_column_warning(tr::now);
-	case SubItem::Premium: return tr::lng_sr_chat_column_premium(tr::now);
 	case SubItem::Verified: return tr::lng_sr_chat_column_verified(tr::now);
 	case SubItem::Activity: return tr::lng_sr_chat_column_activity(tr::now);
 	case SubItem::Muted: return tr::lng_sr_chat_column_muted(tr::now);
@@ -351,13 +346,6 @@ QString SubItemValue(
 			return tr::lng_sr_chat_scam(tr::now);
 		} else if (peer->isFake()) {
 			return tr::lng_sr_chat_fake(tr::now);
-		}
-		return {};
-	case SubItem::Premium:
-		if (const auto user = peer->asUser()) {
-			if (user->isPremium()) {
-				return tr::lng_premium(tr::now);
-			}
 		}
 		return {};
 	case SubItem::Verified:
@@ -607,11 +595,7 @@ QString PeerSearchResultAccessibilityName(not_null<PeerData*> peer) {
 		parts << tr::lng_sr_chat_fake(tr::now);
 	}
 
-	if (const auto user = peer->asUser()) {
-		if (user->isPremium()) {
-			parts << tr::lng_premium(tr::now);
-		}
-	}
+	// LoogriGram: other users' Premium is not announced.
 
 	if (peer->isVerified()) {
 		parts << tr::lng_sr_chat_verified(tr::now);
