@@ -155,8 +155,6 @@ PRIVATE
     api/api_premium.h
     api/api_reactions_notify_settings.cpp
     api/api_reactions_notify_settings.h
-    api/api_read_metrics.cpp
-    api/api_read_metrics.h
     api/api_report.cpp
     api/api_report.h
     api/api_ringtones.cpp
@@ -195,8 +193,6 @@ PRIVATE
     api/api_user_names.h
     api/api_user_privacy.cpp
     api/api_user_privacy.h
-    api/api_views.cpp
-    api/api_views.h
     api/api_websites.cpp
     api/api_websites.h
     api/api_who_reacted.cpp
@@ -998,8 +994,6 @@ PRIVATE
     history/view/history_view_quick_action.h
     history/view/history_view_reaction_preview.cpp
     history/view/history_view_reaction_preview.h
-    history/view/history_view_read_metrics_tracker.cpp
-    history/view/history_view_read_metrics_tracker.h
     history/view/history_view_reply.cpp
     history/view/history_view_reply.h
     history/view/history_view_reply_button.cpp

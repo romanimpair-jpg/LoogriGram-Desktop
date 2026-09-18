@@ -342,7 +342,6 @@ public:
 	void handleAppActivated();
 	void handleAppDeactivated();
 	[[nodiscard]] rpl::producer<bool> appDeactivatedValue() const;
-	[[nodiscard]] rpl::producer<> inAppKeyPressed() const;
 
 	void materializeLocalDrafts();
 	[[nodiscard]] rpl::producer<> materializeLocalDraftsRequests() const;
@@ -475,7 +474,6 @@ private:
 	base::flat_map<not_null<QWidget*>, LeaveFilter> _leaveFilters;
 
 	rpl::event_stream<Media::View::OpenRequest> _openInMediaViewRequests;
-	rpl::event_stream<> _inAppKeyPressed;
 
 	rpl::event_stream<> _materializeLocalDraftsRequests;
 

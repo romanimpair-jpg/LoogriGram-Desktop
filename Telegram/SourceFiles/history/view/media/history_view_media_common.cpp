@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/media/history_view_media_common.h"
 
 #include "api/api_sensitive_content.h"
-#include "api/api_views.h"
 #include "apiwrap.h"
 #include "base/unixtime.h"
 #include "inline_bots/bot_attach_web_view.h"

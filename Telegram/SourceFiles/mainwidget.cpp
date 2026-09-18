@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mainwidget.h"
 
 #include "api/api_updates.h"
-#include "api/api_views.h"
 #include "data/components/scheduled_messages.h"
 #include "data/data_document_media.h"
 #include "data/data_document_resolver.h"
@@ -1531,9 +1530,6 @@ void MainWidget::showHistory(
 			&& (way != Way::Forward)) {
 			ClearBotStartToken(wasActivePeer);
 		}
-		if (wasActivePeer != history->peer) {
-			session().api().views().removeIncremented(history->peer);
-		}
 		auto memento = std::make_shared<ChatMemento>(
 			ChatViewId{ .history = history },
 			showAtMsgId,
@@ -1694,10 +1690,6 @@ void MainWidget::showHistory(
 			}
 		}
 	} else {
-		const auto nowActivePeer = _controller->activeChatCurrent().peer();
-		if (nowActivePeer && nowActivePeer != wasActivePeer) {
-			session().api().views().removeIncremented(nowActivePeer);
-		}
 		if (isOneColumn() && _dialogs && !_dialogs->isHidden()) {
 			_dialogs->hide();
 		}

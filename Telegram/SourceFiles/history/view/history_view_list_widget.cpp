@@ -33,7 +33,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_service_message.h"
 #include "history/view/history_view_cursor_state.h"
 #include "history/view/history_view_translate_tracker.h"
-#include "history/view/history_view_read_metrics_tracker.h"
 #include "history/view/history_view_add_poll_option.h"
 #include "history/view/history_view_element_overlay.h"
 #include "data/data_poll.h"
@@ -50,7 +49,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/phone_click_handler.h"
 #include "apiwrap.h"
 #include "api/api_who_reacted.h"
-#include "api/api_views.h"
 #include "layout/layout_selection.h"
 #include "window/section_widget.h"
 #include "window/window_adaptive.h"
@@ -114,16 +112,6 @@ constexpr auto kScrollDateHideOnDayCrossingTimeout = crl::time(3000);
 [[nodiscard]] std::unique_ptr<TranslateTracker> MaybeTranslateTracker(
 		History *history) {
 	return history ? std::make_unique<TranslateTracker>(history) : nullptr;
-}
-
-[[nodiscard]] std::unique_ptr<ReadMetricsTracker> MaybeReadMetricsTracker(
-		Context context,
-		History *history) {
-	if (!history
-		|| (context != Context::History && context != Context::Replies)) {
-		return nullptr;
-	}
-	return std::make_unique<ReadMetricsTracker>(history->peer);
 }
 
 [[nodiscard]] bool HidesDates(Context context) {
@@ -540,9 +528,6 @@ ListWidget::ListWidget(
 , _replyButtonManager(std::make_unique<ReplyButton::Manager>(
 	[=](QRect updated) { update(updated); }))
 , _translateTracker(MaybeTranslateTracker(_delegate->listTranslateHistory()))
-, _readMetricsTracker(MaybeReadMetricsTracker(
-	_delegate->listContext(),
-	_delegate->listTranslateHistory()))
 , _scrollDateCheck([this] { scrollDateCheck(); })
 , _applyUpdatedScrollState([this] { applyUpdatedScrollState(); })
 , _selectEnabled(_delegate->listAllowsMultiSelect())
@@ -568,13 +553,6 @@ ListWidget::ListWidget(
 			return consumeScrollAction(delta, phase);
 		});
 	}
-	if (_readMetricsTracker) {
-		Core::App().inAppKeyPressed(
-		) | rpl::on_next([=] {
-			registerReadMetricsActivity();
-		}, lifetime());
-	}
-
 	_scrollDateHideTimer.setCallback([this] { scrollDateHideByTimer(); });
 
 	if (const auto window = controllerOrNull()) {
@@ -629,7 +607,9 @@ ListWidget::ListWidget(
 	_session->data().viewLayoutChanged(
 	) | rpl::on_next([this](auto view) {
 		if (view->delegate() == this) {
-			markReadMetricsStale();
+			// LoogriGram: this repaint used to come from marking the reading
+			// telemetry stale; the telemetry is gone, the repaint is kept.
+			update();
 			if (view->isUnderCursor()) {
 				mouseActionUpdate();
 			}
@@ -1507,8 +1487,8 @@ void ListWidget::visibleTopBottomUpdated(
 	const auto scrolledUp = (visibleTop < _visibleTop);
 	_visibleTop = visibleTop;
 	_visibleBottom = visibleBottom;
-	markReadMetricsStale();
-	registerReadMetricsActivity();
+	// LoogriGram: the repaint that marking the reading telemetry stale did.
+	update();
 
 	// Unload userpics.
 	if (_userpics.size() > kClearUserpicsAfter) {
@@ -2970,19 +2950,10 @@ void ListWidget::checkActivation() {
 
 void ListWidget::paintEvent(QPaintEvent *e) {
 	const auto overlapped = _delegate->listIgnorePaintEvent(this, e);
-	if (_readMetricsTracker) {
-		_readMetricsTracker->setScreenActive(
-			!overlapped && markingContentsRead());
-	}
 	if (overlapped) {
 		return;
 	} else if (_translateTracker) {
 		_translateTracker->startBunch();
-	}
-	const auto metricsStale = _readMetricsTracker
-		&& base::take(_readMetricsStale);
-	if (metricsStale) {
-		_readMetricsTracker->startBatch(_visibleTop, _visibleBottom);
 	}
 	auto readTill = (HistoryItem*)nullptr;
 	auto readContents = base::flat_set<not_null<HistoryItem*>>();
@@ -2995,9 +2966,6 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 		if (_translateTracker) {
 			_delegate->listAddTranslatedItems(_translateTracker.get());
 			_translateTracker->finishBunch();
-		}
-		if (metricsStale) {
-			_readMetricsTracker->endBatch();
 		}
 		if (!startEffects.empty()) {
 			for (const auto &view : startEffects) {
@@ -3119,9 +3087,6 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 		if (_translateTracker) {
 			_translateTracker->add(view);
 		}
-		if (metricsStale && height > 0) {
-			_readMetricsTracker->push(item, top, height);
-		}
 		const auto isUnread = _delegate->listElementShownUnread(view)
 			&& item->isRegular();
 		const auto withReaction = context.reactionInfo
@@ -3152,9 +3117,6 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 				&& CanPlayEmojiInteraction(view)
 				&& session->emojiStickersPack().hasAnimationsFor(item)) {
 				startInteractions.emplace(view);
-			}
-			if (markingAsViewed && item->hasViews()) {
-				session->api().views().scheduleIncrement(item);
 			}
 			if (withReaction) {
 				readContents.insert(item);
@@ -3822,7 +3784,6 @@ auto ListWidget::scrollKeyEvents() const
 }
 
 void ListWidget::mouseDoubleClickEvent(QMouseEvent *e) {
-	registerReadMetricsActivity();
 	mouseActionStart(e->globalPos(), e->button());
 	trySwitchToWordSelection();
 	if (!ClickHandler::getActive()
@@ -4135,7 +4096,6 @@ void ListWidget::mousePressEvent(QMouseEvent *e) {
 		return;
 	}
 	_mouseActive = true;
-	registerReadMetricsActivity();
 	mouseActionStart(e->globalPos(), e->button());
 }
 
@@ -4249,7 +4209,6 @@ void ListWidget::touchEvent(QTouchEvent *e) {
 		_touchPrevPos = _touchPos;
 		_touchPos = e->touchPoints().cbegin()->screenPos().toPoint();
 	}
-	registerReadMetricsActivity();
 
 	switch (e->type()) {
 	case QEvent::TouchBegin: {
@@ -4365,7 +4324,6 @@ void ListWidget::mouseMoveEvent(QMouseEvent *e) {
 	}
 	if (reallyMoved) {
 		_mouseActive = true;
-		registerReadMetricsActivity();
 		lastGlobalPosition = e->globalPos();
 		if (!buttonsPressed
 			|| (_scrollDateLink
@@ -4385,21 +4343,9 @@ void ListWidget::mouseReleaseEvent(QMouseEvent *e) {
 		e->accept();
 		return;
 	}
-	registerReadMetricsActivity();
 	mouseActionFinish(e->globalPos(), e->button());
 	if (!rect().contains(e->pos())) {
 		leaveEvent(e);
-	}
-}
-
-void ListWidget::markReadMetricsStale() {
-	_readMetricsStale = true;
-	update();
-}
-
-void ListWidget::registerReadMetricsActivity() {
-	if (_readMetricsTracker && markingContentsRead()) {
-		_readMetricsTracker->registerActivity();
 	}
 }
 
