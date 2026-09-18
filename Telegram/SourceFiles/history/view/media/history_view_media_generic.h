@@ -202,25 +202,6 @@ private:
 
 };
 
-class TextDelimeterPart final : public MediaGenericPart {
-public:
-	TextDelimeterPart(const QString &text, QMargins margins);
-
-	void draw(
-		Painter &p,
-		not_null<const MediaGeneric*> owner,
-		const PaintContext &context,
-		int outerWidth) const override;
-
-	QSize countOptimalSize() override;
-	QSize countCurrentSize(int newWidth) override;
-
-private:
-	Ui::Text::String _text;
-	QMargins _margins;
-
-};
-
 class LambdaGenericPart final : public MediaGenericPart {
 public:
 	LambdaGenericPart(
@@ -342,98 +323,6 @@ private:
 	const int _size = 0;
 	const bool _communityEffect = false;
 	mutable std::unique_ptr<Ui::CommunityUserpicEffect> _communityCache;
-	mutable bool _subscribed = false;
-
-};
-
-class StickerWithBadgePart final : public MediaGenericPart {
-public:
-	using Data = StickerInBubblePart::Data;
-	StickerWithBadgePart(
-		not_null<Element*> parent,
-		Element *replacing,
-		Fn<Data()> lookup,
-		QMargins padding,
-		QString badge,
-		QImage customLeftIcon,
-		std::optional<QColor> colorOverride);
-
-	void draw(
-		Painter &p,
-		not_null<const MediaGeneric*> owner,
-		const PaintContext &context,
-		int outerWidth) const override;
-	TextState textState(
-		QPoint point,
-		StateRequest request,
-		int outerWidth) const override;
-	bool hasHeavyPart() override;
-	void unloadHeavyPart() override;
-
-	QSize countOptimalSize() override;
-	QSize countCurrentSize(int newWidth) override;
-
-	std::unique_ptr<StickerPlayer> stickerTakePlayer(
-		not_null<DocumentData*> data,
-		const Lottie::ColorReplacements *replacements) override;
-
-private:
-	void validateBadge(const PaintContext &context) const;
-	void paintBadge(Painter &p, const PaintContext &context) const;
-
-	const QImage _customLeftIcon;
-	StickerInBubblePart _sticker;
-	QString _badgeText;
-	mutable QColor _badgeFg;
-	mutable QColor _badgeBorder;
-	mutable QImage _badge;
-	mutable QImage _badgeCache;
-	std::optional<QColor> _colorOverride;
-
-};
-
-class PeerBubbleListPart final : public MediaGenericPart {
-public:
-	PeerBubbleListPart(
-		not_null<Element*> parent,
-		const std::vector<not_null<PeerData*>> &list);
-	~PeerBubbleListPart();
-
-	void draw(
-		Painter &p,
-		not_null<const MediaGeneric*> owner,
-		const PaintContext &context,
-		int outerWidth) const override;
-	TextState textState(
-		QPoint point,
-		StateRequest request,
-		int outerWidth) const override;
-	void clickHandlerPressedChanged(
-		const ClickHandlerPtr &p,
-		bool pressed) override;
-	bool hasHeavyPart() override;
-	void unloadHeavyPart() override;
-
-	QSize countOptimalSize() override;
-	QSize countCurrentSize(int newWidth) override;
-
-private:
-	int layout(int x, int y, int available);
-
-	struct Peer {
-		Ui::Text::String name;
-		std::shared_ptr<Ui::DynamicImage> thumbnail;
-		QRect geometry;
-		ClickHandlerPtr link;
-		mutable std::unique_ptr<Ui::RippleAnimation> ripple;
-		mutable std::array<QImage, 4> corners;
-		mutable QColor bg;
-		uint8 colorIndex = 0;
-	};
-
-	const not_null<Element*> _parent;
-	std::vector<Peer> _peers;
-	mutable QPoint _lastPoint;
 	mutable bool _subscribed = false;
 
 };

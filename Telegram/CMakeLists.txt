@@ -1816,8 +1816,6 @@ PRIVATE
     ui/widgets/expandable_peer_list.h
     ui/widgets/chat_filters_tabs_strip.cpp
     ui/widgets/chat_filters_tabs_strip.h
-    ui/widgets/peer_bubble.cpp
-    ui/widgets/peer_bubble.h
     ui/countryinput.cpp
     ui/countryinput.h
     ui/dynamic_thumbnails.cpp

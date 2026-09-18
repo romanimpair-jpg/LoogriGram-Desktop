@@ -564,8 +564,7 @@ translateBoxCopy: IconButton {
 
 // LoogriGram: these five lived in channel_earn.style, the channel revenue
 // page's styles, which is deleted. They were only ever generic labels, and
-// what still uses them is the archive hint, passkeys, the report box and the
-// peer bubble.
+// what still uses them is the archive hint, passkeys and the report box.
 boxSemiboldLabel: FlatLabel(defaultFlatLabel) {
 	maxHeight: 30px;
 	style: semiboldTextStyle;

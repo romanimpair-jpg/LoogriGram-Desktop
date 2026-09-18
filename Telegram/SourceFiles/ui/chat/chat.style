@@ -849,15 +849,6 @@ storyMentionReadStrokeTwice: 3px;
 storyMentionButtonSkip: 5px;
 
 chatGiveawayWidth: 292px;
-chatGiveawayBadgeFont: font(12px bold);
-chatGiveawayBadgeTop: 118px;
-chatGiveawayBadgePadding: margins(7px, 1px, 5px, 3px);
-chatGiveawayBadgeStroke: 2px;
-chatGiveawayPrizesWithSkip: 8px;
-chatGiveawayPrizesWithLineTop: 9px;
-chatGiveawayPeerSize: 32px;
-chatGiveawayPeerPadding: margins(5px, 7px, 12px, 0px);
-chatGiveawayPeerSkip: 8px;
 chatSimilarArrowSize: 6px;
 chatSimilarTitle: semiboldFont;
 chatSimilarTitlePosition: point(15px, 9px);
