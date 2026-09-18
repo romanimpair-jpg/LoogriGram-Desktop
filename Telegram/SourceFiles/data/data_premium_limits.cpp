@@ -120,12 +120,6 @@ LevelLimits::LevelLimits(not_null<Main::Session*> session)
 : _session(session) {
 }
 
-int LevelLimits::channelColorLevelMin() const {
-	return _session->appConfig().get<int>(
-		u"channel_color_level_min"_q,
-		5);
-}
-
 int LevelLimits::channelBgIconLevelMin() const {
 	return _session->appConfig().get<int>(
 		u"channel_bg_icon_level_min"_q,
@@ -156,12 +150,6 @@ int LevelLimits::channelCustomWallpaperLevelMin() const {
 		10);
 }
 
-int LevelLimits::channelRestrictSponsoredLevelMin() const {
-	return _session->appConfig().get<int>(
-		u"channel_restrict_sponsored_level_min"_q,
-		20);
-}
-
 int LevelLimits::channelAutoTranslateLevelMin() const {
 	return _session->appConfig().get<int>(
 		u"channel_autotranslation_level_min"_q,
@@ -190,12 +178,6 @@ int LevelLimits::groupEmojiStatusLevelMin() const {
 	return _session->appConfig().get<int>(
 		u"group_emoji_status_level_min"_q,
 		8);
-}
-
-int LevelLimits::groupWallpaperLevelMin() const {
-	return _session->appConfig().get<int>(
-		u"group_wallpaper_level_min"_q,
-		9);
 }
 
 int LevelLimits::groupCustomWallpaperLevelMin() const {
