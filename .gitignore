@@ -76,4 +76,4 @@ settings.local.json
 /docs/changelog/
 
 # Session handoff notes - local working state, not repository content
-/PREMIUM-HANDOFF.md
+/*HANDOFF*.md

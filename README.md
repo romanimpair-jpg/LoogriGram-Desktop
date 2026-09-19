@@ -1,95 +1,70 @@
-# [Telegram Desktop][telegram_desktop] – Official Messenger
+# LoogriGram Desktop
 
-This is the complete source code and the build instructions for the official [Telegram][telegram] messenger desktop client, based on the [Telegram API][telegram_api] and the [MTProto][telegram_proto] secure protocol.
+A personal, privacy-minded build of [Telegram Desktop](https://github.com/telegramdesktop/tdesktop) for Windows. It has no ads, no Premium, no Stars or other paid features, no stories, and no non-essential telemetry, and ghost mode is on by default.
 
-[![Version](https://badge.fury.io/gh/telegramdesktop%2Ftdesktop.svg)](https://github.com/telegramdesktop/tdesktop/releases)
-[![Build Status](https://github.com/telegramdesktop/tdesktop/workflows/Windows./badge.svg)](https://github.com/telegramdesktop/tdesktop/actions)
-[![Build Status](https://github.com/telegramdesktop/tdesktop/workflows/MacOS./badge.svg)](https://github.com/telegramdesktop/tdesktop/actions)
-[![Build Status](https://github.com/telegramdesktop/tdesktop/workflows/Linux./badge.svg)](https://github.com/telegramdesktop/tdesktop/actions)
-[![Built with Depot](https://img.shields.io/badge/Built%20with-Depot.dev-46A75A)](https://depot.dev)
+**Not affiliated with Telegram.** LoogriGram is an unofficial third-party client built on the official Telegram Desktop source and the public Telegram API. It talks to Telegram's servers exactly as the official client does, so nothing here hides your activity from Telegram itself.
 
-[![Preview of Telegram Desktop][preview_image]][preview_image_url]
+It's built for one person's daily use and published because the license requires the source. There are no support or feature promises.
 
-The source code is published under GPLv3 with OpenSSL exception, the license is available [here][license].
+## What's different
 
-## Supported systems
+### Ghost mode (on by default)
 
-The latest version is available for
+One switch in the main menu, next to Night Mode.
 
-* [Windows 7 and above (64 bit)](https://telegram.org/dl/desktop/win64) ([portable](https://telegram.org/dl/desktop/win64_portable))
-* [Windows 7 and above (32 bit)](https://telegram.org/dl/desktop/win) ([portable](https://telegram.org/dl/desktop/win_portable))
-* [macOS 10.13 and above](https://telegram.org/dl/desktop/mac)
-* [Linux static build for 64 bit](https://telegram.org/dl/desktop/linux)
-* [Snap](https://snapcraft.io/telegram-desktop)
-* [Flatpak](https://flathub.org/apps/details/org.telegram.desktop)
+- No "typing…" or other activity indicators are sent. Speaking in a group call still shows.
+- You always appear offline.
+- It sets **Last Seen** to *Nobody* and turns on **hide read time** on the server, once when an account first logs in and again each time you switch ghost mode on. Turning ghost mode off doesn't change them back, and your exception lists are left as they are.
 
-## Old system versions
+**Read receipts are still sent.** Telegram uses the same request both to tell the sender you've read a message and to sync your read position to your other devices, so blocking it made everything read on the desktop show up unread on the phone. Hiding the read *time* is the part that can be had without breaking sync.
 
-Version **4.9.9** was the last that supports older systems
+### Removed
 
-* [macOS 10.12](https://updates.tdesktop.com/tmac/tsetup.4.9.9.dmg)
-* [Linux with glibc < 2.28 static build](https://updates.tdesktop.com/tlinux/tsetup.4.9.9.tar.xz)
+- **Ads.** No sponsored messages in channels, in the media viewer, or in search results.
+- **Telemetry that isn't needed to use Telegram.** Per-message reading time and scroll depth, and view-count reporting from channels.
+- **Everything to do with money, in either direction.** Premium subscriptions and upsells, Stars, TON, gifts, giveaways, paid media, paid posts, paid reactions, paid messages, boosts, Telegram Business and channel earnings. Messages that carry a gift, a giveaway, a payment or a price are hidden rather than shown. Chats with people who charge per message are locked, with a note explaining why.
+- **Premium is shown for nobody.** Everyone looks the same: no Premium badges or emoji statuses on anyone, and no Premium-only tools in the interface. Limits that Telegram's servers enforce on free accounts still apply.
+- **Stories**, entirely: the strip, profile rings and tabs, the viewer, statistics and data export. Messages that carry a story are hidden. Replies to a story keep their text.
+- **AI compose**, **large animated emoji**, the **greeting sticker** in empty chats, and **emoji and sticker suggestion popups** above the message field.
+- **Bots can't set your emoji status.** The permission is revoked if a bot already had it.
+- **Nags and help links:** the quick-reaction strip on hover (reactions are still on right-click), the FAQ / Features / Ask a Question rows, and the "is this still your number?" prompt. The two-step verification password reminder is kept, because forgetting that password locks you out.
+- **Telegram's updater and crash-report uploads.** Updates come from this repository instead (see below).
+- **macOS and Linux builds.** This tree builds for Windows only.
 
-Version **2.4.4** was the last that supports older systems
+### Changed defaults
 
-* [OS X 10.10 and 10.11](https://updates.tdesktop.com/tosx/tsetup-osx.2.4.4.dmg)
-* [Linux static build for 32 bit](https://updates.tdesktop.com/tlinux32/tsetup32.2.4.4.tar.xz)
+- Media auto-download: photos and GIFs only.
+- Muted chats don't count toward the unread badge (folder counters still include them).
+- Notifications for pinned messages are off.
 
-Version **1.8.15** was the last that supports older systems
+### Kept on purpose
 
-* [Windows XP and Vista](https://updates.tdesktop.com/tsetup/tsetup.1.8.15.exe) ([portable](https://updates.tdesktop.com/tsetup/tportable.1.8.15.zip))
-* [OS X 10.8 and 10.9](https://updates.tdesktop.com/tmac/tsetup.1.8.15.dmg)
-* [OS X 10.6 and 10.7](https://updates.tdesktop.com/tmac32/tsetup32.1.8.15.dmg)
+- Read receipts (see above).
+- Delivery confirmations for login codes sent through Telegram Gateway. Without them, services tend to resend the code by SMS.
+- Verified, scam and fake badges. They're warnings, not purchases.
+- The proxy sponsor channel label, because it discloses who runs the proxy.
 
-## Third-party
+## Installing and updating
 
-* Qt 6 ([LGPL](http://doc.qt.io/qt-6/lgpl.html)) and Qt 5.15 ([LGPL](http://doc.qt.io/qt-5/lgpl.html)) slightly patched
-* OpenSSL 3.2.1 ([Apache License 2.0](https://openssl-library.org/source/license/apache-license-2.0.txt))
-* WebRTC ([New BSD License](https://github.com/desktop-app/tg_owt/blob/master/LICENSE))
-* zlib ([zlib License](http://www.zlib.net/zlib_license.html))
-* LZMA SDK 9.20 ([public domain](http://www.7-zip.org/sdk.html))
-* liblzma ([public domain](http://tukaani.org/xz/))
-* Google Breakpad ([License](https://chromium.googlesource.com/breakpad/breakpad/+/master/LICENSE))
-* Google Crashpad ([Apache License 2.0](https://chromium.googlesource.com/crashpad/crashpad/+/master/LICENSE))
-* GYP ([BSD License](https://github.com/bnoordhuis/gyp/blob/master/LICENSE))
-* Ninja ([Apache License 2.0](https://github.com/ninja-build/ninja/blob/master/COPYING))
-* OpenAL Soft ([LGPL](https://github.com/kcat/openal-soft/blob/master/COPYING))
-* Opus codec ([BSD License](http://www.opus-codec.org/license/))
-* FFmpeg ([LGPL](https://www.ffmpeg.org/legal.html))
-* Guideline Support Library ([MIT License](https://github.com/Microsoft/GSL/blob/master/LICENSE))
-* Range-v3 ([Boost License](https://github.com/ericniebler/range-v3/blob/master/LICENSE.txt))
-* Open Sans font ([Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0.html))
-* Vazirmatn font ([SIL Open Font License 1.1](https://github.com/rastikerdar/vazirmatn/blob/master/OFL.txt))
-* Emoji alpha codes ([MIT License](https://github.com/emojione/emojione/blob/master/extras/alpha-codes/LICENSE.md))
-* xxHash ([BSD License](https://github.com/Cyan4973/xxHash/blob/dev/LICENSE))
-* QR Code generator ([MIT License](https://github.com/nayuki/QR-Code-generator#license))
-* CMake ([New BSD License](https://github.com/Kitware/CMake/blob/master/Copyright.txt))
-* Hunspell ([LGPL](https://github.com/hunspell/hunspell/blob/master/COPYING.LESSER))
-* Ada ([Apache License 2.0](https://github.com/ada-url/ada/blob/main/LICENSE-APACHE))
+1. Download `LoogriGram.exe.gz` from the [latest release](https://github.com/romanimpair-jpg/LoogriGram-Desktop/releases/latest) and unpack it (7-Zip or any gzip tool).
+2. Put `LoogriGram.exe` in a folder of its own and run it.
 
-## Build instructions
+Your session and settings are stored in a `tdata` folder next to the executable, so **always run it from the same folder**. A copy started from somewhere else starts a fresh, logged-out profile. To update by hand, replace only the `.exe`.
 
-* [Windows (32-bit and 64-bit)][win]
+The app checks this repository's releases once per launch and offers new builds from the main menu. The check is an anonymous request to GitHub and carries nothing about your account. Releases are verified only by GitHub's HTTPS, not by a signature.
 
-[//]: # (LINKS)
-[telegram]: https://telegram.org
-[telegram_desktop]: https://desktop.telegram.org
-[telegram_api]: https://core.telegram.org
-[telegram_proto]: https://core.telegram.org/mtproto
-[license]: LICENSE
-[win]: docs/building-win.md
-[preview_image]: https://github.com/telegramdesktop/tdesktop/blob/dev/docs/assets/preview.png "Preview of Telegram Desktop"
-[preview_image_url]: https://raw.githubusercontent.com/telegramdesktop/tdesktop/dev/docs/assets/preview.png
+## Building
 
-## Thanks to
+Builds run on GitHub Actions and are started by hand. See [`.github/workflows/win.yml`](.github/workflows/win.yml). The fork's work lives on the `patches` branch, and `dev` holds the upstream baseline it was forked from. [`LOOGRIGRAM.md`](LOOGRIGRAM.md) on `patches` holds the maintainer notes: build details, pitfalls, and the reasons behind each change.
 
-<a href="https://depot.dev">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://depot.dev/assets/brand/1693758816/depot-logo-horizontal-on-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://depot.dev/assets/brand/1693758816/depot-logo-horizontal-on-light.svg">
-    <img alt="Depot" src="https://depot.dev/assets/brand/1693758816/depot-logo-horizontal-on-light.svg" width="150">
-  </picture>
-</a>
+Every change from upstream in the source carries a `LoogriGram:` comment, so
 
-CI infrastructure sponsored by [Depot](https://depot.dev) — fast GitHub Actions runners.
+```
+grep -rn "LoogriGram:" Telegram/SourceFiles
+```
 
+lists the complete behavioural difference from Telegram Desktop.
+
+## License
+
+GPLv3 with the OpenSSL exception, the same as Telegram Desktop. See [LICENSE](LICENSE) and [LEGAL](LEGAL).
