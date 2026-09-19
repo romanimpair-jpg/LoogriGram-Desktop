@@ -774,8 +774,14 @@ void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update) {
 	} else {
 		user->setBotInfoVersion(-1);
 	}
-	if (const auto info = user->botInfo.get()) {
-		info->canManageEmojiStatus = update.is_bot_can_manage_emoji_status();
+	// LoogriGram: a bot holding this can set our emoji status from its side.
+	// Nothing here shows one, so a permission granted earlier, from here or
+	// another client, is revoked as soon as we see it.
+	if (user->isBot() && update.is_bot_can_manage_emoji_status()) {
+		user->session().api().request(MTPbots_ToggleUserEmojiStatusPermission(
+			user->inputUser(),
+			MTP_bool(false)
+		)).send();
 	}
 	if (const auto pinned = update.vpinned_msg_id()) {
 		SetTopPinnedMessageId(user, pinned->v);

@@ -1667,10 +1667,9 @@ void WebViewInstance::botStorageClear() {
 
 void WebViewInstance::botRequestEmojiStatusAccess(
 		Fn<void(bool allowed)> callback) {
-	// LoogriGram: permission is never newly granted - see above - but a bot
-	// that already holds it keeps it, because that is the server's state and
-	// not ours to misreport.
-	callback(_bot->botInfo->canManageEmojiStatus);
+	// LoogriGram: permission is never granted - see above - and one held
+	// from before is revoked when the bot's full info arrives.
+	callback(false);
 }
 
 void WebViewInstance::botSharePhone(Fn<void(bool shared)> callback) {

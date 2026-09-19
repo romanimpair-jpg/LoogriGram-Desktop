@@ -1062,7 +1062,6 @@ private:
 	[[nodiscard]] Section makeAddAsContact(not_null<UserData*> user);
 	void addBotVerify();
 	void addMainApp(not_null<UserData*> user);
-	[[nodiscard]] Section makeBotPermissions(not_null<UserData*> user);
 	void addManagedBotFooter(not_null<UserData*> managerUser);
 	[[nodiscard]] Section makeReportOrDeleteReaction();
 	[[nodiscard]] Section makeViewChannel(not_null<ChannelData*> channel);
@@ -2062,44 +2061,6 @@ void DetailsFiller::addMainApp(not_null<UserData*> user) {
 		std::move(setup));
 }
 
-Section DetailsFiller::makeBotPermissions(not_null<UserData*> user) {
-	const auto parent = _stack->layout();
-	auto wrap = object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-		parent,
-		object_ptr<Ui::VerticalLayout>(parent));
-	const auto raw = wrap.data();
-	const auto inner = raw->entity();
-	AddSkip(inner);
-	AddSubsectionTitle(inner, tr::lng_profile_bot_permissions_title());
-	const auto emoji = inner->add(
-		object_ptr<Ui::SettingsButton>(
-			inner,
-			tr::lng_profile_bot_emoji_status_access(),
-			st::infoSharedMediaButton));
-	object_ptr<Profile::FloatingIcon>(
-		emoji,
-		st::infoIconEmojiStatusAccess,
-		st::infoSharedMediaButtonIconPosition);
-
-	emoji->toggleOn(
-		rpl::single(bool(user->botInfo->canManageEmojiStatus))
-	)->toggledValue() | rpl::filter([=](bool allowed) {
-		return allowed != user->botInfo->canManageEmojiStatus;
-	}) | rpl::on_next([=](bool allowed) {
-		user->botInfo->canManageEmojiStatus = allowed;
-		const auto session = &user->session();
-		session->api().request(MTPbots_ToggleUserEmojiStatusPermission(
-			user->inputUser(),
-			MTP_bool(allowed)
-		)).send();
-	}, emoji->lifetime());
-	AddSkip(inner);
-	return Section{
-		.widget = std::move(wrap),
-		.shown = rpl::single(true),
-	};
-}
-
 Section DetailsFiller::makeAddAsContact(not_null<UserData*> user) {
 	const auto parent = _stack->layout();
 	auto wrap = object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
@@ -2534,9 +2495,6 @@ void DetailsFiller::buildSections() {
 		if (const auto info = user->botInfo.get()) {
 			if (info->hasMainApp) {
 				addMainApp(user);
-			}
-			if (info->canManageEmojiStatus) {
-				_stack->add(makeBotPermissions(user));
 			}
 			if (const auto id = user->botManagerId()) {
 				if (const auto mgr = user->owner().userLoaded(id)) {
