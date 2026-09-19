@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_peer.h"
 #include "data/data_poll.h"
 #include "data/data_session.h"
-#include "data/data_story.h"
 #include "data/data_todo_list.h"
 #include "data/data_web_page.h"
 #include "history/history.h"

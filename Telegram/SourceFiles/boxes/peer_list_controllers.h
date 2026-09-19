@@ -32,10 +32,6 @@ class SavedSublist;
 class SavedMessages;
 } // namespace Data
 
-namespace Ui {
-struct OutlineSegment;
-} // namespace Ui
-
 namespace Window {
 class SessionController;
 } // namespace Window

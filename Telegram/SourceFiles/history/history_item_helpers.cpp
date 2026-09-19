@@ -25,7 +25,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_poll.h"
 #include "data/data_premium_limits.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
 #include "data/data_user.h"
 #include "history/history.h"
 #include "history/history_item.h"
@@ -92,7 +91,6 @@ int ComputeSendingMessagesCount(
 		}
 	}
 	return result
-		+ (request.story ? 1 : 0)
 		+ (request.forward ? int(request.forward->size()) : 0);
 }
 
@@ -109,11 +107,6 @@ Data::SendError GetErrorForSending(
 	const auto messageLengthLimit = Data::PremiumLimits(
 		&thread->owningHistory()->session()
 	).messageLengthCurrent();
-	if (request.story) {
-		if (const auto error = request.story->errorTextForForward(thread)) {
-			return error;
-		}
-	}
 	if (request.forward) {
 		for (const auto &item : *request.forward) {
 			if (const auto error = item->errorTextForForward(thread)) {
@@ -145,7 +138,7 @@ Data::SendError GetErrorForSending(
 		}
 		if (request.text && request.text->text.size() > messageLengthLimit) {
 			return tr::lng_slowmode_too_long(tr::now);
-		} else if ((hasText || request.story) && count > 1) {
+		} else if (hasText && count > 1) {
 			return tr::lng_slowmode_no_many(tr::now);
 		} else if (count > 1) {
 			const auto albumForward = [&] {

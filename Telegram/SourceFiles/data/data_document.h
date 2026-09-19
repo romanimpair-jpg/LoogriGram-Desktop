@@ -269,8 +269,6 @@ public:
 
 	[[nodiscard]] Storage::Cache::Key bigFileBaseCacheKey() const;
 
-	void setStoryMedia(bool value);
-	[[nodiscard]] bool storyMedia() const;
 
 	void setRemoteLocation(
 		int32 dc,
@@ -338,7 +336,6 @@ private:
 		PremiumSticker = 0x0200,
 		PossibleCoverThumbnail = 0x0400,
 		UseTextColor = 0x0800,
-		StoryDocument = 0x1000,
 		SilentVideo = 0x2000,
 		FileSaveForbidden = 0x4000,
 	};

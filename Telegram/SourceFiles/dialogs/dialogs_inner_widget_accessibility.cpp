@@ -17,7 +17,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_peer_values.h"
 #include "data/data_saved_sublist.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
 #include "data/data_user.h"
 #include "dialogs/dialogs_entry.h"
 #include "dialogs/dialogs_row.h"

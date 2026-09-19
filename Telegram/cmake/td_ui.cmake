@@ -481,8 +481,6 @@ PRIVATE
     ui/effects/loading_element.h
     ui/effects/ministar_particles.cpp
     ui/effects/ministar_particles.h
-    ui/effects/outline_segments.cpp
-    ui/effects/outline_segments.h
     ui/effects/premium_bubble.cpp
     ui/effects/premium_bubble.h
     ui/effects/premium_graphics.cpp

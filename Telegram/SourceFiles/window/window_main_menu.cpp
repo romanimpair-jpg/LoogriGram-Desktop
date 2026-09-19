@@ -25,7 +25,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_folder.h"
 #include "data/data_group_call.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
 #include "data/data_user.h"
 #include "info/info_memento.h"
 #include "settings/settings_common.h"
@@ -621,15 +620,10 @@ void MainMenu::setupArchive() {
 		return Badge::UnreadBadge{ state.unreadCounter, true };
 	}));
 
-	rpl::merge(
-		controller->session().data().chatsListChanges(
-		) | rpl::filter([](Data::Folder *folder) {
-			return folder && (folder->id() == Data::Folder::kId);
-		}) | rpl::to_empty,
-		controller->session().data().stories().sourcesChanged(
-			Data::StorySourcesList::Hidden
-		)
-	) | rpl::on_next([=] {
+	controller->session().data().chatsListChanges(
+	) | rpl::filter([](Data::Folder *folder) {
+		return folder && (folder->id() == Data::Folder::kId);
+	}) | rpl::on_next([=] {
 		const auto isArchiveVisible = checkArchive();
 		wrap->toggle(isArchiveVisible, anim::type::normal);
 		if (!isArchiveVisible) {

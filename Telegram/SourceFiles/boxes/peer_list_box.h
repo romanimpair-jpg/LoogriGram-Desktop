@@ -35,7 +35,6 @@ class SlideWrap;
 class FlatLabel;
 struct ScrollToRequest;
 class PopupMenu;
-struct OutlineSegment;
 } // namespace Ui
 
 class PeerListSectionHeaders;

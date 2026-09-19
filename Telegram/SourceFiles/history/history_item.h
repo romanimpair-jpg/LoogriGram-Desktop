@@ -56,7 +56,6 @@ struct MessageReaction;
 class MessageReactions;
 class ForumTopic;
 class Thread;
-class Story;
 class SavedSublist;
 struct SendError;
 } // namespace Data
@@ -124,11 +123,6 @@ public:
 		MsgId id,
 		const MTPDmessageEmpty &data,
 		MessageFlags localFlags);
-
-	HistoryItem( // Story wrap.
-		not_null<History*> history,
-		MsgId id,
-		not_null<Data::Story*> story);
 
 	HistoryItem( // Local message.
 		not_null<History*> history,
@@ -238,9 +232,6 @@ public:
 	[[nodiscard]] bool invertMedia() const {
 		return _flags & MessageFlag::InvertMedia;
 	}
-	[[nodiscard]] bool storyInProfile() const {
-		return _flags & MessageFlag::StoryInProfile;
-	}
 	[[nodiscard]] bool unread(not_null<Data::Thread*> thread) const;
 	[[nodiscard]] bool showNotification() const;
 	void markClientSideAsRead();
@@ -261,7 +252,6 @@ public:
 	void markMediaAndMentionRead();
 	bool markContentsRead(bool fromThisClient = false);
 	void setIsPinned(bool isPinned);
-	void setStoryInProfile(bool inProfile);
 
 	// For edit media in history_message.
 	void returnSavedMedia();
@@ -370,7 +360,6 @@ public:
 
 	[[nodiscard]] bool isService() const;
 	void applyEdition(HistoryMessageEdition &&edition);
-	void applyChanges(not_null<Data::Story*> story);
 
 	void applyEdition(const MTPDmessageService &message);
 	void updateForwardedInfo(const MTPMessageFwdHeader *fwd);
@@ -672,7 +661,6 @@ private:
 	void updateServiceDependent(bool force = false);
 	void setServiceText(PreparedServiceText &&prepared);
 
-	void setStoryFields(not_null<Data::Story*> story);
 	void finishEdition(int oldKeyboardTop);
 	void finishEditionToEmpty();
 

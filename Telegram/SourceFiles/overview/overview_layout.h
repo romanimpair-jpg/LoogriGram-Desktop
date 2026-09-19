@@ -80,8 +80,6 @@ public:
 
 	void invalidateCache();
 
-	virtual void itemDataChanged() {
-	}
 	virtual void clearHeavyPart() {
 	}
 
@@ -203,11 +201,6 @@ struct Info : RuntimeComponent<Info, AbstractLayoutItem> {
 
 struct MediaOptions {
 	bool spoiler = false;
-	bool story = false;
-	bool storyPinned = false;
-	bool storyShowPinned = false;
-	bool storyHidden = false;
-	bool storyShowHidden = false;
 };
 
 class Photo final : public ItemBase {
@@ -227,7 +220,6 @@ public:
 		QPoint point,
 		StateRequest request) const override;
 
-	void itemDataChanged() override;
 	void clearHeavyPart() override;
 
 	void maybeClearSensitiveSpoiler() override;
@@ -246,15 +238,9 @@ private:
 
 	uint32 _goodRequestId = 0;
 	QImage _pix;
-	QImage _hiddenBgCache;
 	bool _goodLoaded : 1 = false;
 	bool _goodRequested : 1 = false;
 	bool _sensitiveSpoiler : 1 = false;
-	bool _story : 1 = false;
-	bool _storyPinned : 1 = false;
-	bool _storyShowPinned : 1 = false;
-	bool _storyHidden : 1 = false;
-	bool _storyShowHidden : 1 = false;
 
 	ClickHandlerPtr _link;
 
@@ -342,7 +328,6 @@ public:
 		QPoint point,
 		StateRequest request) const override;
 
-	void itemDataChanged() override;
 	void clearHeavyPart() override;
 	void clearSpoiler() override;
 
@@ -372,15 +357,9 @@ private:
 
 	uint32 _goodRequestId = 0;
 	QImage _pix;
-	QImage _hiddenBgCache;
 	bool _pixBlurred : 1 = true;
 	bool _goodRequested : 1 = false;
 	bool _sensitiveSpoiler : 1 = false;
-	bool _story : 1 = false;
-	bool _storyPinned : 1 = false;
-	bool _storyShowPinned : 1 = false;
-	bool _storyHidden : 1 = false;
-	bool _storyShowHidden : 1 = false;
 
 };
 

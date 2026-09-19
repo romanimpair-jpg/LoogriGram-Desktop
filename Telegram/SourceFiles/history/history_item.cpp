@@ -68,7 +68,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_document.h"
 #include "data/data_document_media.h"
 #include "data/data_photo.h"
-#include "data/data_stories.h"
 #include "data/data_web_page.h"
 #include "platform/platform_notifications_manager.h"
 #include "spellcheck/spellcheck_highlight_syntax.h"
@@ -844,23 +843,6 @@ HistoryItem::HistoryItem(
 	if (isGuestChatBotMessage()) {
 		_history->setHasGuestChatBotMessages();
 	}
-}
-
-HistoryItem::HistoryItem(
-	not_null<History*> history,
-	MsgId id,
-	not_null<Data::Story*> story)
-: HistoryItem(history, {
-	.id = id,
-	.flags = (MessageFlag::Local
-		| MessageFlag::Outgoing
-		| MessageFlag::HasFromId
-		| MessageFlag::FakeHistoryItem
-		| MessageFlag::StoryItem),
-	.from = history->peer->id,
-	.date = story->date(),
-}) {
-	setStoryFields(story);
 }
 
 HistoryItem::~HistoryItem() {
@@ -1711,9 +1693,6 @@ void HistoryItem::setIsPinned(bool pinned) {
 	});
 	if (pinned) {
 		_flags |= MessageFlag::Pinned;
-		if (_flags & MessageFlag::StoryItem) {
-			return;
-		}
 
 		auto &storage = _history->session().storage();
 		storage.add(Storage::SharedMediaAddExisting(
@@ -1746,9 +1725,6 @@ void HistoryItem::setIsPinned(bool pinned) {
 		}
 	} else {
 		_flags &= ~MessageFlag::Pinned;
-		if (_flags & MessageFlag::StoryItem) {
-			return;
-		}
 
 		_history->session().storage().remove(Storage::SharedMediaRemoveOne(
 			_history->peer->id,
@@ -1757,17 +1733,6 @@ void HistoryItem::setIsPinned(bool pinned) {
 			Storage::SharedMediaType::Pinned,
 			id));
 	}
-}
-
-void HistoryItem::setStoryInProfile(bool inProfile) {
-	if (storyInProfile() == inProfile) {
-		return;
-	} else if (inProfile) {
-		_flags |= MessageFlag::StoryInProfile;
-	} else {
-		_flags &= ~MessageFlag::StoryInProfile;
-	}
-	_history->owner().notifyItemDataChange(this);
 }
 
 void HistoryItem::returnSavedMedia() {
@@ -2255,39 +2220,6 @@ void HistoryItem::applyEdition(HistoryMessageEdition &&edition) {
 	}
 
 	finishEdition(keyboardTop);
-}
-
-void HistoryItem::applyChanges(not_null<Data::Story*> story) {
-	Expects(_flags & MessageFlag::StoryItem);
-	Expects(StoryIdFromMsgId(id) == story->id());
-
-	_media = nullptr;
-	setStoryFields(story);
-
-	finishEdition(-1);
-}
-
-void HistoryItem::setStoryFields(not_null<Data::Story*> story) {
-	if (const auto photo = story->photo()) {
-		_media = std::make_unique<Data::MediaPhoto>(
-			this,
-			photo,
-			Data::MediaPhoto::Args());
-	} else if (const auto document = story->document()) {
-		using Args = Data::MediaFile::Args;
-		_media = std::make_unique<Data::MediaFile>(this, document, Args{});
-	}
-	setText(story->caption());
-	if (story->pinnedToTop()) {
-		_flags |= MessageFlag::Pinned;
-	} else {
-		_flags &= ~MessageFlag::Pinned;
-	}
-	if (story->inProfile()) {
-		_flags |= MessageFlag::StoryInProfile;
-	} else {
-		_flags &= ~MessageFlag::StoryInProfile;
-	}
 }
 
 void HistoryItem::applyEdition(const MTPDmessageService &message) {
@@ -3013,8 +2945,6 @@ bool HistoryItem::allowsMediaDownloadControls() const {
 
 bool HistoryItem::canDelete() const {
 	if (isEphemeral()) {
-		return false;
-	} else if (IsStoryMsgId(id)) {
 		return false;
 	} else if (isService() && !isRegular()) {
 		return false;

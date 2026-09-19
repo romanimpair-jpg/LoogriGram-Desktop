@@ -16,7 +16,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unique_qptr.h"
 #include "base/unixtime.h"
 #include "boxes/send_files_box.h"
-#include "boxes/sticker_set_box.h"
 #include "chat_helpers/message_field.h"
 #include "config.h"
 #include "core/application.h"
@@ -68,7 +67,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "styles/style_boxes.h"
 #include "styles/style_chat_helpers.h"
-#include "styles/style_credits.h"
 #include "styles/style_info.h"
 #include "styles/style_layers.h"
 #include "styles/style_menu_icons.h"
@@ -242,7 +240,6 @@ private:
 		not_null<const Overview::Layout::ItemBase*> item) override;
 	bool itemVisible(
 		not_null<const Overview::Layout::ItemBase*> item) override;
-	[[nodiscard]] not_null<StickerPremiumMark*> hiddenMark() override;
 	void openPhoto(not_null<PhotoData*> photo, FullMsgId id) override;
 	void openDocument(
 		not_null<DocumentData*> document,
@@ -289,7 +286,6 @@ private:
 	std::vector<Row> _rows;
 	std::map<QString, std::unique_ptr<CacheEntry>> _cache;
 	std::vector<const Overview::Layout::ItemBase*> _heavyLayouts;
-	std::unique_ptr<StickerPremiumMark> _hiddenMark;
 	base::unique_qptr<Ui::PopupMenu> _contextMenu;
 	UserData *_bot = nullptr;
 	QString _query;
@@ -528,10 +524,7 @@ GlobalMusicSearchSection::GlobalMusicSearchSection(
 	u"music_search_username"_q,
 	QString()))
 , _api(&controller->session().mtp())
-, _titleWrap(this)
-, _hiddenMark(std::make_unique<StickerPremiumMark>(
-		st::giftBoxHiddenMark,
-		RectPart::Center)) {
+, _titleWrap(this) {
 	setMouseTracking(true);
 	_titleWrap->show();
 	Ui::AddSubsectionTitle(
@@ -558,7 +551,6 @@ GlobalMusicSearchSection::GlobalMusicSearchSection(
 		if (index < 0) {
 			return;
 		}
-		_rows[index].owned->layout->itemDataChanged();
 		rtlupdate(QRect(0, _rows[index].top, width(), _rows[index].height));
 	}, lifetime());
 }
@@ -800,10 +792,6 @@ bool GlobalMusicSearchSection::itemVisible(
 	const auto &row = _rows[index];
 	return (row.top < _visibleBottom)
 		&& (row.top + row.height > _visibleTop);
-}
-
-not_null<StickerPremiumMark*> GlobalMusicSearchSection::hiddenMark() {
-	return _hiddenMark.get();
 }
 
 void GlobalMusicSearchSection::openPhoto(

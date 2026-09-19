@@ -17,7 +17,6 @@ class Session;
 
 namespace Data {
 class CloudImage;
-class Story;
 class Session;
 struct FileOrigin;
 } // namespace Data
@@ -32,8 +31,6 @@ class DynamicImage;
 [[nodiscard]] std::shared_ptr<DynamicImage> MakeSavedMessagesThumbnail();
 [[nodiscard]] std::shared_ptr<DynamicImage> MakeRepliesThumbnail();
 [[nodiscard]] std::shared_ptr<DynamicImage> MakeHiddenAuthorThumbnail();
-[[nodiscard]] std::shared_ptr<DynamicImage> MakeStoryThumbnail(
-	not_null<Data::Story*> story);
 [[nodiscard]] std::shared_ptr<DynamicImage> MakeIconThumbnail(
 	const style::icon &icon);
 [[nodiscard]] std::shared_ptr<DynamicImage> MakeEmojiThumbnail(

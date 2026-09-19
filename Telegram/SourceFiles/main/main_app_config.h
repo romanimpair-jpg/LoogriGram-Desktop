@@ -65,7 +65,6 @@ public:
 	[[nodiscard]] int ageVerifyMinAge() const;
 	[[nodiscard]] QString ageVerifyBotUsername() const;
 
-	[[nodiscard]] int storiesAlbumLimit() const;
 
 	[[nodiscard]] int groupCallMessageLengthLimit() const;
 	[[nodiscard]] TimeId groupCallMessageTTL() const;

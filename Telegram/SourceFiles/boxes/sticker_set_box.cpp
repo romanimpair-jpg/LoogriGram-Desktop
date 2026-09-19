@@ -77,7 +77,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtWidgets/QApplication>
 #include <QtGui/QClipboard>
-#include <QtSvg/QSvgRenderer>
 
 namespace {
 
@@ -85,125 +84,12 @@ constexpr auto kStickersPerRow = 5;
 constexpr auto kEmojiPerRow = 8;
 constexpr auto kMinRepaintDelay = crl::time(33);
 constexpr auto kMinAfterScrollDelay = crl::time(33);
-constexpr auto kGrayLockOpacity = 0.3;
 constexpr auto kStickerMoveDuration = crl::time(200);
 
 using Data::StickersSet;
 using Data::StickersPack;
 using SetFlag = Data::StickersSetFlag;
 using TLStickerSet = MTPmessages_StickerSet;
-
-[[nodiscard]] std::optional<QColor> ComputeImageColor(
-		const style::icon &lockIcon,
-		const QImage &frame,
-		RectPart part) {
-	if (frame.isNull()
-		|| frame.format() != QImage::Format_ARGB32_Premultiplied) {
-		return {};
-	}
-	auto sr = int64();
-	auto sg = int64();
-	auto sb = int64();
-	auto sa = int64();
-	const auto factor = style::DevicePixelRatio();
-	const auto size = lockIcon.size() * factor;
-	const auto width = std::min(frame.width(), size.width());
-	const auto height = std::min(frame.height(), size.height());
-	const auto radius = st::roundRadiusSmall;
-	const auto skipx = (part == RectPart::TopLeft
-		|| part == RectPart::Left
-		|| part == RectPart::BottomLeft)
-		? 0
-		: (part == RectPart::Top
-			|| part == RectPart::Center
-			|| part == RectPart::Bottom)
-		? (frame.width() - width) / 2
-		: std::max(frame.width() - width - radius, 0);
-	const auto skipy = (part == RectPart::TopLeft
-		|| part == RectPart::Top
-		|| part == RectPart::TopRight)
-		? 0
-		: (part == RectPart::Left
-			|| part == RectPart::Center
-			|| part == RectPart::Right)
-		? (frame.height() - height) / 2
-		: std::max(frame.height() - height - radius, 0);
-	const auto perline = frame.bytesPerLine();
-	const auto addperline = perline - (width * 4);
-	auto bits = static_cast<const uchar*>(frame.bits())
-		+ perline * skipy
-		+ sizeof(uint32) * skipx;
-	for (auto y = 0; y != height; ++y) {
-		for (auto x = 0; x != width; ++x) {
-			sb += int(*bits++);
-			sg += int(*bits++);
-			sr += int(*bits++);
-			sa += int(*bits++);
-		}
-		bits += addperline;
-	}
-	if (!sa) {
-		return {};
-	}
-	return QColor(sr * 255 / sa, sg * 255 / sa, sb * 255 / sa, 255);
-
-}
-
-[[nodiscard]] QColor ComputeLockColor(
-		const style::icon &lockIcon,
-		const QImage &frame,
-		RectPart part) {
-	return ComputeImageColor(
-		lockIcon,
-		frame,
-		part
-	).value_or(st::windowSubTextFg->c);
-}
-
-void ValidatePremiumLockBg(
-		const style::icon &lockIcon,
-		QImage &image,
-		const QImage &frame,
-		RectPart part) {
-	if (!image.isNull()) {
-		return;
-	}
-	const auto factor = style::DevicePixelRatio();
-	const auto size = lockIcon.size();
-	image = QImage(
-		size * factor,
-		QImage::Format_ARGB32_Premultiplied);
-	image.setDevicePixelRatio(factor);
-	auto p = QPainter(&image);
-	const auto color = ComputeLockColor(lockIcon, frame, part);
-	p.fillRect(
-		QRect(QPoint(), size),
-		anim::color(color, st::windowSubTextFg, kGrayLockOpacity));
-	p.end();
-
-	image = Images::Circle(std::move(image));
-}
-
-void ValidatePremiumStarFg(const style::icon &lockIcon, QImage &image) {
-	if (!image.isNull()) {
-		return;
-	}
-	const auto factor = style::DevicePixelRatio();
-	const auto size = lockIcon.size();
-	image = QImage(
-		size * factor,
-		QImage::Format_ARGB32_Premultiplied);
-	image.setDevicePixelRatio(factor);
-	image.fill(Qt::transparent);
-	auto p = QPainter(&image);
-	auto star = QSvgRenderer(u":/gui/icons/settings/star.svg"_q);
-	const auto skip = size.width() / 5.;
-	const auto outer = QRectF(QPointF(), size).marginsRemoved(
-		{ skip, skip, skip, skip });
-	p.setBrush(st::premiumButtonFg);
-	p.setPen(Qt::NoPen);
-	star.render(&p, outer);
-}
 
 [[nodiscard]] TextForMimeData PrepareTextFromEmoji(
 		not_null<DocumentData*> document) {
@@ -225,46 +111,6 @@ void ValidatePremiumStarFg(const style::icon &lockIcon, QImage &image) {
 }
 
 } // namespace
-
-StickerPremiumMark::StickerPremiumMark(
-	const style::icon &lockIcon,
-	RectPart part)
-: _lockIcon(lockIcon)
-, _part(part) {
-	style::PaletteChanged(
-	) | rpl::on_next([=] {
-		_lockGray = QImage();
-	}, _lifetime);
-}
-
-void StickerPremiumMark::paint(
-		QPainter &p,
-		const QImage &frame,
-		QImage &backCache,
-		QPoint position,
-		QSize singleSize,
-		int outerWidth) {
-	validateLock(frame, backCache);
-	const auto &bg = frame.isNull() ? _lockGray : backCache;
-	const auto factor = style::DevicePixelRatio();
-	const auto radius = st::roundRadiusSmall;
-	const auto shiftx = (_part == RectPart::Center)
-		? (singleSize.width() - (bg.width() / factor)) / 2
-		: (singleSize.width() - (bg.width() / factor) - radius);
-	const auto shifty = (_part == RectPart::Center)
-		? (singleSize.height() - (bg.height() / factor)) / 2
-		: (singleSize.height() - (bg.height() / factor) - radius);
-	const auto point = position + QPoint(shiftx, shifty);
-	p.drawImage(point, bg);
-	_lockIcon.paint(p, point, outerWidth);
-}
-
-void StickerPremiumMark::validateLock(
-		const QImage &frame,
-		QImage &backCache) {
-	auto &image = frame.isNull() ? _lockGray : backCache;
-	ValidatePremiumLockBg(_lockIcon, image, frame, _part);
-}
 
 class StickerSetBox::Inner final : public Ui::RpWidget {
 public:

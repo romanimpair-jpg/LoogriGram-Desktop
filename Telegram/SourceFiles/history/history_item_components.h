@@ -44,7 +44,6 @@ struct GeometryDescriptor;
 
 namespace Data {
 class Session;
-class Story;
 class SavedSublist;
 struct UnavailableReason;
 } // namespace Data

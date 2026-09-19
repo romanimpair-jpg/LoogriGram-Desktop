@@ -451,8 +451,9 @@ One master toggle, **default on**, in the main menu beside Night Mode
 (`Core::Settings::ghostMode`), not the binary stream — upstream's `AGENTS.md`
 recommends this for simple flags and it avoids the append-only ordering trap.
 
-Suppressed: typing/activity broadcasts (group-call *speaking* is exempt), online
-presence and story views. Deleted outright, not tied to the toggle: reading
+Suppressed: typing/activity broadcasts (group-call *speaking* is exempt) and
+online presence. Story views went with stories. Deleted outright, not tied to
+the toggle: reading
 telemetry (per-message dwell time and scroll depth) and post view-count
 contributions — `ReadMetrics`, `ViewsManager` and the list-side tracker are
 gone.
@@ -478,19 +479,12 @@ without the other. Suppressing it made everything read on desktop reappear as
 unread on the phone. Hiding the read *date* is the part that can be had at no
 sync cost. **Do not re-attempt this** — it is architectural, not a bug.
 
-Story views have the same coupling at lower stakes (stories expire in 24h); they
-are still suppressed, so story rings may reappear as unread on other devices.
-
 ### Traps in the ghost-mode code
 
 - `Updates::updateOnline` also drives `checkAutoLock`, `saveCurrentDraftToCloud`
   and, when quitting, `quitPreventFinished()`. Early-returning breaks passcode
   auto-lock and cloud drafts and **hangs shutdown**. Only the reported value is
   changed.
-- Story pending sets feed `checkQuitPreventFinished()`. Queueing work that never
-  sends hangs exit; the guard is at queue time.
-- `Stories::markAsRead`'s `bumpReadTill` is local state — guarding before it would
-  leave every story permanently unread locally.
 - Do **not** intercept at the MTProto layer. Request ids are returned to callers
   before the send, so dropping there strands callbacks and deadlocks
   `Histories::sendReadRequest`'s queue.
@@ -791,8 +785,8 @@ Still sitting at the "forced getter" stage:
   emoji still came from installed sets with it forced off.
 - **Ghost-mode suppression sites.** Telemetry and view counts are deleted.
   Typing (`SendProgressManager::skipRequest`), online status
-  (`Updates::updateOnline`) and story views stay: they follow the ghost-mode
-  switch, so they are settings, not dead code. `updateOnline` also drives
+  (`Updates::updateOnline`) stay: they follow the ghost-mode switch, so they
+  are settings, not dead code. `updateOnline` also drives
   `checkAutoLock`, `saveCurrentDraftToCloud` and `quitPreventFinished()` -
   only the reported value changes. `Histories::reportPendingDeliveries` and
   `RepliesList::sendReadTillRequest` were listed here by mistake: neither was
@@ -812,23 +806,25 @@ Still sitting at the "forced getter" stage:
   is not an admin option and removing it would only take a working feature
   away.
 
-### Stories: scoped down deliberately, not forgotten
+### Stories: removed
 
-Full removal was measured and rejected as too large for now: **50 files are
-purely stories and ~160 reference them**, with `dialogs_widget.cpp` alone
-carrying 157 references. What was done instead is the part that actually
-annoyed - stories no longer open from a profile, a chat list row, a peer list
-row or the info top bar, and the rings are gone.
+Removed in full (2026-09-19), in stages: the chat list strip, the
+`info/stories` section and profile tab, the viewer (`media/stories/`, its
+mode in the media viewer and the renderers' story paths), story state on
+peers and lists, the story parts of statistics, and the data layer
+(`data_stories`, `data_story`, `data_stories_ids`). `updateStory` and
+`updateReadStories` are ignored.
 
-The viewer, the chat list strip and story deep links still exist. If the rest
-is ever taken, the boundary to hold is the one gifts already set: `MediaStory`
-and `FullStoryId` are inbound message content and must keep rendering, exactly
-like a received gift. Four stages in rough order: chat list strip, the
-`info/stories` section and profile tab, `media/stories/` and its hooks in
-`media_view_overlay_widget.cpp`, then the data layer.
-
-Doing so also removes part of ghost mode - the story-view suppression and its
-two traps - and the known limit about story rings reappearing unread.
+- **Messages carrying a story are hidden like gifts** - a forwarded story or
+  a story mention is `ContentHidden` from its TL type, before parsing
+  (`LoogriGram::StoryMedia`). A reply to a story keeps its text and loses
+  the quote. Story links open the peer; previews of them are plain articles.
+- **Server state is round-tripped, not changed:** admin story rights are not
+  shown but kept on save; `stories_muted` and the story reaction notify
+  setting are read and sent back unchanged.
+- The story message-id range in `data_msg_id.h` is kept so the special ids
+  after it keep their values.
+- Still to go: the stories part of "Export Telegram data".
 
 ## Gifts, giveaways and paid posts are hidden, not refused
 

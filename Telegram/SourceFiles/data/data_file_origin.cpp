@@ -58,8 +58,9 @@ struct FileReferenceAccumulator {
 		push(data.data().vdocument());
 	}
 	void push(const MTPWebPageAttribute &data) {
-		data.match([&](const MTPDwebPageAttributeStory &data) {
-			push(data.vstory());
+		// LoogriGram: stories are removed, so a story link's preview carries
+		// no story to take references from.
+		data.match([](const MTPDwebPageAttributeStory &) {
 		}, [&](const MTPDwebPageAttributeTheme &data) {
 			push(data.vdocuments());
 		}, [&](const MTPDwebPageAttributeStickerSet &data) {
@@ -150,13 +151,6 @@ struct FileReferenceAccumulator {
 			});
 			push(data.vreply_to());
 		}, [](const MTPDmessageEmpty &data) {
-		});
-	}
-	void push(const MTPStoryItem &data) {
-		data.match([&](const MTPDstoryItem &data) {
-			push(data.vmedia());
-		}, [](const MTPDstoryItemDeleted &) {
-		}, [](const MTPDstoryItemSkipped &) {
 		});
 	}
 	void push(const MTPmessages_Messages &data) {
@@ -253,9 +247,6 @@ struct FileReferenceAccumulator {
 	void push(const MTPmessages_WebPage &data) {
 		push(data.data().vwebpage());
 	}
-	void push(const MTPstories_Stories &data) {
-		push(data.data().vstories());
-	}
 	void push(const MTPusers_SavedMusic &data) {
 		data.match([&](const MTPDusers_savedMusic &data) {
 			push(data.vdocuments());
@@ -340,10 +331,6 @@ UpdatedFileReferences GetFileReferences(const MTPhelp_PremiumPromo &data) {
 }
 
 UpdatedFileReferences GetFileReferences(const MTPmessages_WebPage &data) {
-	return GetFileReferencesHelper(data);
-}
-
-UpdatedFileReferences GetFileReferences(const MTPstories_Stories &data) {
 	return GetFileReferencesHelper(data);
 }
 

@@ -63,7 +63,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "media/player/media_player_instance.h"
 #include "boxes/delete_messages_box.h"
 #include "boxes/peer_list_controllers.h"
-#include "boxes/sticker_set_box.h" // StickerPremiumMark
 #include "core/click_handler_types.h"
 #include "core/file_utilities.h"
 #include "core/application.h"
@@ -72,7 +71,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_layers.h"
 #include "styles/style_menu_icons.h"
 #include "styles/style_chat.h"
-#include "styles/style_credits.h" // giftBoxHiddenMark
 #include "styles/style_chat_helpers.h"
 
 #include <QtCore/QMimeData>
@@ -165,10 +163,7 @@ ListWidget::ListWidget(
 	_provider->type(),
 	[=] { scrollDateCheck(); },
 	[=] { scrollDateHide(); }))
-, _selectedLimit(MaxSelectedItems)
-, _hiddenMark(std::make_unique<StickerPremiumMark>(
-		st::giftBoxHiddenMark,
-		RectPart::Center)) {
+, _selectedLimit(MaxSelectedItems) {
 	_zoom = std::make_unique<ListZoom>(this);
 	start();
 }
@@ -275,13 +270,6 @@ void ListWidget::subscribeToSession(
 	session->data().itemRepaintRequest(
 	) | rpl::on_next([this](auto item) {
 		repaintItem(item);
-	}, lifetime);
-
-	session->data().itemDataChanges(
-	) | rpl::on_next([=](not_null<HistoryItem*> item) {
-		if (const auto found = findItemByItem(item)) {
-			found->layout->itemDataChanged();
-		}
 	}, lifetime);
 }
 
@@ -678,10 +666,6 @@ bool ListWidget::itemVisible(not_null<const BaseLayout*> item) {
 			&& (geometry.top() + geometry.height() > _visibleTop);
 	}
 	return true;
-}
-
-not_null<StickerPremiumMark*> ListWidget::hiddenMark() {
-	return _hiddenMark.get();
 }
 
 QString ListWidget::tooltipText() const {

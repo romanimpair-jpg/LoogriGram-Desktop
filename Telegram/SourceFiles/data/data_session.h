@@ -68,7 +68,6 @@ class Stickers;
 class GroupCall;
 class NotifySettings;
 class CustomEmojiManager;
-class Stories;
 class SavedMusic;
 class SavedMessages;
 class BusinessInfo;
@@ -182,9 +181,6 @@ public:
 	}
 	[[nodiscard]] CustomEmojiManager &customEmojiManager() const {
 		return *_customEmojiManager;
-	}
-	[[nodiscard]] Stories &stories() const {
-		return *_stories;
 	}
 	[[nodiscard]] SavedMusic &savedMusic() const {
 		return *_savedMusic;
@@ -826,9 +822,6 @@ public:
 		not_null<HistoryItem*> item);
 	void registerCallItem(not_null<HistoryItem*> item);
 	void unregisterCallItem(not_null<HistoryItem*> item);
-	void registerStoryItem(FullStoryId id, not_null<HistoryItem*> item);
-	void unregisterStoryItem(FullStoryId id, not_null<HistoryItem*> item);
-	void refreshStoryItemViews(FullStoryId id);
 
 	void documentMessageRemoved(not_null<DocumentData*> document);
 
@@ -1244,9 +1237,6 @@ private:
 		UserId,
 		base::flat_set<not_null<ViewElement*>>> _contactViews;
 	std::unordered_set<not_null<HistoryItem*>> _callItems;
-	std::unordered_map<
-		FullStoryId,
-		base::flat_set<not_null<HistoryItem*>>> _storyItems;
 	base::flat_map<uint64, not_null<HistoryItem*>> _highlightings;
 	base::flat_map<QString, not_null<DocumentData*>> _venueIcons;
 
@@ -1339,7 +1329,6 @@ private:
 	const std::unique_ptr<ForumIcons> _forumIcons;
 	const std::unique_ptr<NotifySettings> _notifySettings;
 	const std::unique_ptr<CustomEmojiManager> _customEmojiManager;
-	const std::unique_ptr<Stories> _stories;
 	const std::unique_ptr<SavedMusic> _savedMusic;
 	const std::unique_ptr<SavedMessages> _savedMessages;
 	const std::unique_ptr<BusinessInfo> _businessInfo;

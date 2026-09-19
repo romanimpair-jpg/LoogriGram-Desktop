@@ -80,7 +80,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_poll.h"
 #include "data/data_forum_topic.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
 #include "data/data_groups.h"
 #include "data/data_channel.h"
 #include "data/data_chat.h"

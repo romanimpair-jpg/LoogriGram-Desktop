@@ -50,7 +50,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_web_page.h"
 #include "data/data_file_click_handler.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
 #include "data/data_todo_list.h"
 #include "main/main_session.h"
 #include "window/window_session_controller.h"

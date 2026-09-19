@@ -14,7 +14,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "mainwidget.h"
 #include "ui/effects/loading_element.h"
-#include "ui/effects/outline_segments.h"
 #include "ui/effects/round_checkbox.h"
 #include "ui/effects/ripple_animation.h"
 #include "ui/widgets/multi_select.h"

@@ -45,7 +45,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_forum.h"
 #include "data/data_forum_topic.h"
 #include "data/data_send_action.h"
-#include "data/data_stories.h"
 #include "data/data_message_reactions.h"
 #include "inline_bots/bot_attach_web_view.h"
 #include "chat_helpers/emoji_interactions.h"
@@ -2814,16 +2813,10 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 		_session->api().transcribes().apply(data);
 	} break;
 
-	case mtpc_updateStory: {
-		_session->data().stories().apply(update.c_updateStory());
-	} break;
-
-	case mtpc_updateReadStories: {
-		_session->data().stories().apply(update.c_updateReadStories());
-	} break;
-
-	// LoogriGram: viewing stories anonymously is premium-only, so the state
-	// of that mode is never ours to track.
+	// LoogriGram: stories are removed, so their updates are ignored. So is
+	// anonymous viewing, which is premium-only anyway.
+	case mtpc_updateStory:
+	case mtpc_updateReadStories:
 	case mtpc_updateStoriesStealthMode: break;
 
 	// LoogriGram: our star balance changed. Nothing here spends or earns

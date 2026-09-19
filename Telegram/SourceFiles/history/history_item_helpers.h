@@ -26,7 +26,6 @@ class Show;
 } // namespace ChatHelpers
 
 namespace Data {
-class Story;
 class Thread;
 struct SendError;
 struct SendErrorWithThread;
@@ -160,7 +159,6 @@ void ConfirmDeleteSelectedEphemeral(
 struct SendingErrorRequest {
 	MsgId topicRootId = 0;
 	const HistoryItemsList *forward = nullptr;
-	const Data::Story *story = nullptr;
 	const TextWithTags *text = nullptr;
 	int messagesCount = 0;
 	bool ignoreSlowmodeCountdown = false;

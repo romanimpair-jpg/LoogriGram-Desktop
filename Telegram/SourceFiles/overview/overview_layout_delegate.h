@@ -7,8 +7,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
-class StickerPremiumMark;
-
 namespace Overview::Layout {
 
 class ItemBase;
@@ -22,8 +20,6 @@ public:
 	[[nodiscard]] virtual bool keepPhotoMediaLoaded() {
 		return false;
 	}
-
-	[[nodiscard]] virtual not_null<StickerPremiumMark*> hiddenMark() = 0;
 
 	virtual void openPhoto(not_null<PhotoData*> photo, FullMsgId id) = 0;
 	virtual void openDocument(

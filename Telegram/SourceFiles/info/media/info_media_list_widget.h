@@ -136,7 +136,6 @@ public:
 	void repaintItem(not_null<const BaseLayout*> item) override;
 	bool itemVisible(not_null<const BaseLayout*> item) override;
 	bool keepPhotoMediaLoaded() override;
-	not_null<StickerPremiumMark*> hiddenMark() override;
 
 	// AbstractTooltipShower interface
 	QString tooltipText() const override;
@@ -421,7 +420,6 @@ private:
 	int _externalViewportHeight = 0;
 
 	int _selectedLimit = 0;
-	std::unique_ptr<StickerPremiumMark> _hiddenMark;
 
 	base::unique_qptr<Ui::PopupMenu> _contextMenu;
 	rpl::event_stream<> _checkForHide;

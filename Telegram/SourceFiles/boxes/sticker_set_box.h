@@ -29,31 +29,6 @@ struct FileChosen;
 class Show;
 } // namespace ChatHelpers
 
-class StickerPremiumMark final {
-public:
-	StickerPremiumMark(
-		const style::icon &lockIcon,
-		RectPart part = RectPart::Bottom);
-
-	void paint(
-		QPainter &p,
-		const QImage &frame,
-		QImage &backCache,
-		QPoint position,
-		QSize singleSize,
-		int outerWidth);
-
-private:
-	void validateLock(const QImage &frame, QImage &backCache);
-
-	const style::icon &_lockIcon;
-	QImage _lockGray;
-	RectPart _part = RectPart::Bottom;
-
-	rpl::lifetime _lifetime;
-
-};
-
 class StickerSetBox final : public Ui::BoxContent {
 public:
 	StickerSetBox(

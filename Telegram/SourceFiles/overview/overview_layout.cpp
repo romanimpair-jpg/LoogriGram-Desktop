@@ -69,7 +69,6 @@ TextParseOptions _documentNameOptions = {
 };
 
 constexpr auto kMaxInlineArea = 1280 * 720;
-constexpr auto kStoryRatio = 1.46;
 
 using ::Media::ValidFrameSize;
 
@@ -395,11 +394,6 @@ Photo::Photo(
 	})
 	: nullptr)
 , _sensitiveSpoiler(parent->isMediaSensitive() ? 1 : 0)
-, _story(options.story)
-, _storyPinned(options.storyPinned)
-, _storyShowPinned(options.storyShowPinned)
-, _storyHidden(options.storyHidden)
-, _storyShowHidden(options.storyShowHidden)
 , _link(_sensitiveSpoiler
 	? HistoryView::MakeSensitiveMediaLink(
 		std::make_shared<LambdaClickHandler>(crl::guard(this, [=] {
@@ -433,14 +427,14 @@ ClickHandlerPtr Photo::makeOpenPhotoHandler() {
 
 void Photo::initDimensions() {
 	_maxw = 2 * st::overviewPhotoMinSize;
-	_minh = _story ? qRound(_maxw * kStoryRatio) : _maxw;
+	_minh = _maxw;
 }
 
 int32 Photo::resizeGetHeight(int32 width) {
 	width = qMin(width, _maxw);
 	if (_width != width) {
 		_width = width;
-		_height = _story ? qRound(_width * kStoryRatio) : _width;
+		_height = _width;
 	}
 	return _height;
 }
@@ -495,25 +489,8 @@ void Photo::paint(Painter &p, const QRect &clip, TextSelection selection, const 
 		}
 	}
 
-	if (_storyHidden) {
-		delegate()->hiddenMark()->paint(
-			p,
-			_pix,
-			_hiddenBgCache,
-			QPoint(),
-			QSize(_width, _height),
-			_width);
-	}
-
 	if (selected) {
 		p.fillRect(0, 0, _width, _height, st::overviewPhotoSelectOverlay);
-	}
-
-	if (_storyPinned) {
-		const auto &icon = selected
-			? st::storyPinnedIconSelected
-			: st::storyPinnedIcon;
-		icon.paint(p, _width - icon.width(), 0, _width);
 	}
 
 	const auto checkDelta = st::overviewCheckSkip + st::overviewCheck.size;
@@ -622,16 +599,6 @@ void Photo::maybeClearSensitiveSpoiler() {
 	}
 }
 
-void Photo::itemDataChanged() {
-	const auto pinned = _storyShowPinned && parent()->isPinned();
-	const auto hidden = _storyShowHidden && !parent()->storyInProfile();
-	if (_storyPinned != pinned || _storyHidden != hidden) {
-		_storyPinned = pinned;
-		_storyHidden = hidden;
-		delegate()->repaintItem(this);
-	}
-}
-
 void Photo::clearHeavyPart() {
 	_dataMedia = nullptr;
 }
@@ -660,12 +627,7 @@ Video::Video(
 		delegate->repaintItem(this);
 	})
 	: nullptr)
-, _sensitiveSpoiler(parent->isMediaSensitive() ? 1 : 0)
-, _story(options.story)
-, _storyPinned(options.storyPinned)
-, _storyShowPinned(options.storyShowPinned)
-, _storyHidden(options.storyHidden)
-, _storyShowHidden(options.storyShowHidden) {
+, _sensitiveSpoiler(parent->isMediaSensitive() ? 1 : 0) {
 	setDocumentLinks(_data);
 	if (_sensitiveSpoiler) {
 		_openl = HistoryView::MakeSensitiveMediaLink(
@@ -693,14 +655,14 @@ Video::~Video() = default;
 
 void Video::initDimensions() {
 	_maxw = 2 * st::overviewPhotoMinSize;
-	_minh = _story ? qRound(_maxw * kStoryRatio) : _maxw;
+	_minh = _maxw;
 }
 
 int32 Video::resizeGetHeight(int32 width) {
 	width = qMin(width, _maxw);
 	if (_width != width) {
 		_width = width;
-		_height = _story ? qRound(_width * kStoryRatio) : _width;
+		_height = _width;
 	}
 	return _height;
 }
@@ -778,25 +740,8 @@ void Video::paint(
 		}
 	}
 
-	if (_storyHidden) {
-		delegate()->hiddenMark()->paint(
-			p,
-			_pix,
-			_hiddenBgCache,
-			QPoint(),
-			QSize(_width, _height),
-			_width);
-	}
-
 	if (selected) {
 		p.fillRect(QRect(0, 0, _width, _height), st::overviewPhotoSelectOverlay);
-	}
-
-	if (_storyPinned) {
-		const auto &icon = selected
-			? st::storyPinnedIconSelected
-			: st::storyPinnedIcon;
-		icon.paint(p, _width - icon.width(), 0, _width);
 	}
 
 	if (!selected && !context->selecting && radialOpacity < 1.) {
@@ -925,16 +870,6 @@ void Video::maybeClearSensitiveSpoiler() {
 	if (_sensitiveSpoiler) {
 		clearSpoiler();
 		setDocumentLinks(_data);
-	}
-}
-
-void Video::itemDataChanged() {
-	const auto pinned = _storyShowPinned && parent()->isPinned();
-	const auto hidden = _storyShowHidden && !parent()->storyInProfile();
-	if (_storyPinned != pinned || _storyHidden != hidden) {
-		_storyPinned = pinned;
-		_storyHidden = hidden;
-		delegate()->repaintItem(this);
 	}
 }
 

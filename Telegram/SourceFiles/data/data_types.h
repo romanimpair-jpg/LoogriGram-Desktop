@@ -325,7 +325,8 @@ enum class MessageFlag : uint64 {
 	// Fake message with some info, like bot cover and information.
 	FakeAboutView         = (1ULL << 37),
 
-	StoryItem             = (1ULL << 38),
+	// LoogriGram: bit 38 marked a story wrapped as a message. Stories are
+	// removed.
 
 	InHighlightProcess    = (1ULL << 39),
 
@@ -351,7 +352,7 @@ enum class MessageFlag : uint64 {
 	// and 53 were the paid suggested post markers.
 	ContentHidden         = (1ULL << 52),
 
-	StoryInProfile        = (1ULL << 54),
+	// LoogriGram: bit 54 was a story's "shown in profile" state.
 	SavedMusicItem        = (1ULL << 55),
 
 	HasHiddenLinks        = (1ULL << 56),

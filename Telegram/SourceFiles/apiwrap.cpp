@@ -2673,19 +2673,7 @@ void ApiWrap::refreshFileReference(
 						std::move(handler));
 				}
 			}
-			const auto storyId = FullStoryId{
-				(IsStoryMsgId(item->id)
-					? item->history()->peer->id
-					: PeerId()),
-				(IsStoryMsgId(item->id)
-					? StoryIdFromMsgId(item->id)
-					: StoryId())
-			};
-			if (storyId) {
-				request(MTPstories_GetStoriesByID(
-					_session->data().peer(storyId.peer)->input(),
-					MTP_vector<MTPint>(1, MTP_int(storyId.story))));
-			} else if (item->isScheduled()) {
+			if (item->isScheduled()) {
 				const auto realId = _session->scheduledMessages().lookupId(
 					item);
 				request(MTPmessages_GetScheduledMessages(
@@ -2804,10 +2792,6 @@ void ApiWrap::refreshFileReference(
 		request(MTPmessages_GetWebPage(
 			MTP_string(data.url),
 			MTP_int(0)));
-	}, [&](Data::FileOriginStory data) {
-		request(MTPstories_GetStoriesByID(
-			_session->data().peer(data.peer)->input(),
-			MTP_vector<MTPint>(1, MTP_int(data.story))));
 	}, [&](v::null_t) {
 		fail();
 	});

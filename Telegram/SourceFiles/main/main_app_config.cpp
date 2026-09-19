@@ -118,10 +118,6 @@ QString AppConfig::ageVerifyBotUsername() const {
 	return get<QString>(u"verify_age_bot_username"_q, QString());
 }
 
-int AppConfig::storiesAlbumLimit() const {
-	return get<int>(u"stories_album_stories_limit"_q, 1000);
-}
-
 int AppConfig::groupCallMessageLengthLimit() const {
 	return get<int>(u"group_call_message_length_limit"_q, 128);
 }

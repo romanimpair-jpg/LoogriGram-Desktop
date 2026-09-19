@@ -74,7 +74,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_saved_messages.h"
 #include "data/data_saved_music.h"
 #include "data/data_saved_sublist.h"
-#include "data/data_stories.h"
 #include "data/data_streaming.h"
 #include "data/data_media_rotation.h"
 #include "data/data_histories.h"
@@ -329,7 +328,6 @@ Session::Session(not_null<Main::Session*> session)
 , _forumIcons(std::make_unique<ForumIcons>(this))
 , _notifySettings(std::make_unique<NotifySettings>(this))
 , _customEmojiManager(std::make_unique<CustomEmojiManager>(this))
-, _stories(std::make_unique<Stories>(this))
 , _savedMusic(std::make_unique<SavedMusic>(this))
 , _savedMessages(std::make_unique<SavedMessages>(this))
 , _businessInfo(std::make_unique<BusinessInfo>(this)) {
@@ -377,10 +375,6 @@ Session::Session(not_null<Main::Session*> session)
 	}, _lifetime);
 
 	subscribeForTopicRepliesLists();
-
-	crl::on_main(_session, [=] {
-		_stories->loadMore(Data::StorySourcesList::NotHidden);
-	});
 
 	session->appConfig().ignoredRestrictionReasonsChanges(
 	) | rpl::on_next([=](std::vector<QString> &&changed) {
@@ -493,15 +487,6 @@ void Session::clear() {
 	_session->scheduledMessages().clear();
 	_session->welcomeMessages().clear();
 	_session->ephemeralMessages().clear();
-
-	// Items are gone now, so HistoryMessageReply::resolvedStory raw
-	// pointers no longer linger. Tear stories down here so their
-	// shared_ptr<GroupCall> drops while Main::Session::_data still
-	// holds a live pointer to us; otherwise the GroupCall destructor
-	// would run inside ~Data::Session and find data() returning a
-	// null reference (the parent unique_ptr resets its stored pointer
-	// before invoking the deleter).
-	_stories->clear();
 
 	_dependentMessages.clear();
 	base::take(_messages);
@@ -5045,38 +5030,6 @@ void Session::unregisterCallItem(not_null<HistoryItem*> item) {
 void Session::destroyAllCallItems() {
 	while (!_callItems.empty()) {
 		(*_callItems.begin())->destroy();
-	}
-}
-
-void Session::registerStoryItem(
-		FullStoryId id,
-		not_null<HistoryItem*> item) {
-	_storyItems[id].emplace(item);
-}
-
-void Session::unregisterStoryItem(
-		FullStoryId id,
-		not_null<HistoryItem*> item) {
-	const auto i = _storyItems.find(id);
-	if (i != _storyItems.end()) {
-		auto &items = i->second;
-		if (items.remove(item) && items.empty()) {
-			_storyItems.erase(i);
-		}
-	}
-}
-
-void Session::refreshStoryItemViews(FullStoryId id) {
-	const auto i = _storyItems.find(id);
-	if (i != _storyItems.end()) {
-		for (const auto &item : i->second) {
-			if (const auto media = item->media()) {
-				if (media->storyMention()) {
-					item->updateStoryMentionText();
-				}
-			}
-			requestItemViewRefresh(item);
-		}
 	}
 }
 

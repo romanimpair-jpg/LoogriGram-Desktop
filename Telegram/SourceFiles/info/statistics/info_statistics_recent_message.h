@@ -14,7 +14,6 @@ class HistoryItem;
 namespace Data {
 class DocumentMedia;
 class PhotoMedia;
-class Story;
 } // namespace Data
 
 namespace Ui {

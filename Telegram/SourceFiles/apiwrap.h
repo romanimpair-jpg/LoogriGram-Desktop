@@ -39,7 +39,6 @@ enum class StickersType : uchar;
 class Forum;
 class ForumTopic;
 class Thread;
-class Story;
 class SavedMessages;
 } // namespace Data
 
