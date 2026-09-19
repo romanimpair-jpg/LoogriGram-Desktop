@@ -18,6 +18,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_element.h"
 #include "history/history.h"
 #include "history/history_item.h"
+#include "lang/lang_keys.h"
 #include "main/main_app_config.h"
 #include "main/main_session.h"
 #include "ui/text/format_values.h"
@@ -72,28 +73,31 @@ void Premium::requestPremiumRequiredSlice() {
 
 		auto index = 0;
 		for (const auto &user : base::take(_resolveMessageMoneyRequestedUsers)) {
-			const auto set = [&](bool requirePremium) {
+			const auto set = [&](bool requirePremium, bool requirePayment) {
 				using Flag = UserDataFlag;
 				constexpr auto me = Flag::RequiresPremiumToWrite;
 				constexpr auto known = Flag::MessageMoneyRestrictionsKnown;
 				constexpr auto hasPrem = Flag::HasRequirePremiumToWrite;
-				user->setFlags((user->flags() & ~me)
+				constexpr auto pay = Flag::RequiresPaymentToWrite;
+				constexpr auto hasPay = Flag::HasRequirePaymentToWrite;
+				user->setFlags((user->flags() & ~me & ~pay)
 					| known
-					| (requirePremium ? (me | hasPrem) : Flag()));
+					| (requirePremium ? (me | hasPrem) : Flag())
+					| (requirePayment ? (pay | hasPay) : Flag()));
 			};
 			if (index >= list.size()) {
-				set(false);
+				set(false, false);
 				continue;
 			}
-			// LoogriGram: a third requirement, paying stars per message,
-			// used to be answered by remembering the price. Nothing here
-			// pays, so it reads the same as no requirement at all.
+			// LoogriGram: paying Stars per message used to be answered by
+			// remembering the price. Nothing here pays, so the user is
+			// locked instead, like one who only accepts Premium senders.
 			list[index++].match([&](const MTPDrequirementToContactEmpty &) {
-				set(false);
+				set(false, false);
 			}, [&](const MTPDrequirementToContactPremium &) {
-				set(true);
+				set(true, false);
 			}, [&](const MTPDrequirementToContactPaidMessages &data) {
-				set(false);
+				set(false, true);
 			});
 		}
 		if (!_messageMoneyRequestScheduled
@@ -114,6 +118,17 @@ void Premium::requestPremiumRequiredSlice() {
 	}).send();
 }
 
+QString LockPaymentRequired(not_null<PeerData*> peer) {
+	if (const auto user = peer->asUser()) {
+		using Flag = UserDataFlag;
+		user->setFlags(user->flags()
+			| Flag::MessageMoneyRestrictionsKnown
+			| Flag::HasRequirePaymentToWrite
+			| Flag::RequiresPaymentToWrite);
+	}
+	return tr::lng_send_paid_locked(tr::now, lt_user, peer->shortName());
+}
+
 MessageMoneyRestriction ResolveMessageMoneyRestrictions(
 		not_null<PeerData*> peer,
 		History *maybeHistory) {
@@ -126,8 +141,12 @@ MessageMoneyRestriction ResolveMessageMoneyRestrictions(
 	} else if (user->messageMoneyRestrictionsKnown()) {
 		return {
 			.premiumRequired = user->requiresPremiumToWrite(),
+			.paymentRequired = user->requiresPaymentToWrite(),
 			.known = true,
 		};
+	} else if (user->hasRequirePaymentToWrite()) {
+		// Messages they sent us say nothing about what they charge us.
+		return {};
 	} else if (!user->hasRequirePremiumToWrite()) {
 		return { .known = true };
 	} else if (user->flags() & UserDataFlag::MutualContact) {

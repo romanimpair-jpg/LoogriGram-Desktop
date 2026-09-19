@@ -659,6 +659,15 @@ std::unique_ptr<PeerListRow> ContactsBoxController::createRow(
 // why they no longer need a click filter at all.
 RecipientMoneyRestrictionError WriteMoneyRestrictionError(
 		not_null<UserData*> user) {
+	if (user->requiresPaymentToWrite()) {
+		return {
+			.text = tr::lng_send_paid_locked(
+				tr::now,
+				lt_user,
+				tr::bold(user->shortName()),
+				tr::marked),
+		};
+	}
 	return {
 		.text = tr::lng_send_non_premium_message_toast(
 			tr::now,
@@ -852,7 +861,7 @@ bool RecipientRow::ShowLockedError(
 		not_null<PeerListRow*> row,
 		Fn<RecipientMoneyRestrictionError(not_null<UserData*>)> error) {
 	const auto recipient = static_cast<RecipientRow*>(row.get());
-	if (!recipient->restriction().premiumRequired) {
+	if (!recipient->restriction()) {
 		return false;
 	}
 	controller->delegate()->peerListUiShow()->showToast({

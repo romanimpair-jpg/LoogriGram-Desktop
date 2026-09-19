@@ -123,8 +123,14 @@ enum class UserDataFlag : uint32 {
 	// LoogriGram: bits 18-20, 26 and 28 were story state.
 	RequiresPremiumToWrite = (1 << 21),
 	HasRequirePremiumToWrite = (1 << 22),
+	// LoogriGram: the user charges Stars per message. Nothing here pays, so
+	// such a user is locked like one who only accepts Premium senders. The
+	// "Has" bit is the hint in their user object; the other one is the
+	// answer for us, from their full info or the contact requirements.
+	HasRequirePaymentToWrite = (1 << 23),
 	MessageMoneyRestrictionsKnown = (1 << 24),
 	ReadDatesPrivate = (1 << 25),
+	RequiresPaymentToWrite = (1 << 26),
 	Forum = (1 << 27),
 	NoForwardsMyEnabled = (1 << 29),
 	NoForwardsPeerEnabled = (1 << 30),
@@ -189,6 +195,8 @@ public:
 	[[nodiscard]] bool hasPersonalPhoto() const;
 	[[nodiscard]] bool hasRequirePremiumToWrite() const;
 	[[nodiscard]] bool requiresPremiumToWrite() const;
+	[[nodiscard]] bool hasRequirePaymentToWrite() const;
+	[[nodiscard]] bool requiresPaymentToWrite() const;
 	[[nodiscard]] bool messageMoneyRestrictionsKnown() const;
 	[[nodiscard]] bool canSendIgnoreMoneyRestrictions() const;
 	[[nodiscard]] bool readDatesPrivate() const;

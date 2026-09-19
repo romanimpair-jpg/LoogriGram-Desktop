@@ -5678,7 +5678,9 @@ void HistoryInner::refreshAboutView(bool force) {
 			&& !user->phoneCountryCode().isEmpty()) {
 			refresh();
 		} else if (!historyHeight()) {
-			if (user->requiresPremiumToWrite() || user->isFullLoaded()) {
+			if (user->requiresPremiumToWrite()
+				|| user->requiresPaymentToWrite()
+				|| user->isFullLoaded()) {
 				refresh();
 			} else {
 				session().api().requestFullPeer(user);

@@ -50,6 +50,7 @@ private:
 		DocumentData *document = nullptr,
 		PhotoData *photo = nullptr);
 	[[nodiscard]] AdminLog::OwnedItem makePremiumRequired();
+	[[nodiscard]] AdminLog::OwnedItem makePaymentRequired();
 	[[nodiscard]] AdminLog::OwnedItem makeDirectMessagesFree();
 	[[nodiscard]] AdminLog::OwnedItem makeNewPeerInfo(
 		not_null<UserData*> user);

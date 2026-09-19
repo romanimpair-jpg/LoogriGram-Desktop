@@ -243,7 +243,8 @@ bool CanSendAnyOf(
 			|| user->isRepliesChat()
 			|| user->isVerifyCodes()) {
 			return false;
-		} else if (user->requiresPremiumToWrite()) {
+		} else if (user->requiresPremiumToWrite()
+			|| user->requiresPaymentToWrite()) {
 			return false;
 		} else if (rights
 			& ~(ChatRestriction::SendVoiceMessages
@@ -310,6 +311,11 @@ SendError RestrictionError(
 						user->shortName()),
 					.premiumToLift = true,
 				});
+			} else if (user->requiresPaymentToWrite()) {
+				return SendError(tr::lng_send_paid_locked(
+					tr::now,
+					lt_user,
+					user->shortName()));
 			}
 			const auto result = (restriction == Flag::SendVoiceMessages)
 				? tr::lng_restricted_send_voice_messages(

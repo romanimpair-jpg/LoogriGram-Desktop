@@ -228,7 +228,8 @@ inline auto DefaultRestrictionValue(
 		const auto other = rights & ~(ChatRestriction::SendVoiceMessages
 			| ChatRestriction::SendVideoMessages);
 		const auto blocking = UserDataFlag::Deleted
-			| UserDataFlag::RequiresPremiumToWrite;
+			| UserDataFlag::RequiresPremiumToWrite
+			| UserDataFlag::RequiresPaymentToWrite;
 		auto allowedAny = PeerFlagsValue(
 			user,
 			blocking

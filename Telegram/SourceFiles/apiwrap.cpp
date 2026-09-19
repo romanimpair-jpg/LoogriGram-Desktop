@@ -535,11 +535,10 @@ void ApiWrap::sendMessageFail(
 		}
 	} else if (error.startsWith(paidStarsPrefix)) {
 		// LoogriGram: the server wants stars to deliver this message and we
-		// will not pay. The price it names is no longer remembered; the
-		// send simply failed.
+		// will not pay, so the peer is locked like the full info would.
+		const auto text = Api::LockPaymentRequired(peer);
 		if (show) {
-			show->showToast(
-				u"Payment requirements changed. Please, try again."_q);
+			show->showToast(text);
 		}
 		peer->updateFull();
 	// LoogriGram: a dice staked with TON that the balance could not cover

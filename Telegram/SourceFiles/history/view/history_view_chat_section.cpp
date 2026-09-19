@@ -5391,7 +5391,9 @@ void ChatWidget::refreshAboutView(bool force) {
 			&& !user->phoneCountryCode().isEmpty()) {
 			refresh();
 		} else if (_inner->isEmpty()) {
-			if (user->requiresPremiumToWrite() || user->isFullLoaded()) {
+			if (user->requiresPremiumToWrite()
+				|| user->requiresPaymentToWrite()
+				|| user->isFullLoaded()) {
 				refresh();
 			} else {
 				session().api().requestFullPeer(user);

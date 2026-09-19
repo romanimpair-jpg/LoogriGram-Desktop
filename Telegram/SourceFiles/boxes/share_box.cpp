@@ -804,7 +804,7 @@ void ShareBox::Inner::invalidateCache() {
 }
 
 bool ShareBox::Inner::showLockedError(not_null<Chat*> chat) {
-	if (!chat->restriction.premiumRequired) {
+	if (!chat->restriction) {
 		return false;
 	}
 	_show->showToast({
@@ -1767,6 +1767,7 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 				? nullptr
 				: thread->maybeSublistPeer();
 			const auto fromPeer = history->peer;
+			const auto target = effectiveThread->peer();
 			const auto requestDone = [=](
 					const MTPUpdates &updates,
 					mtpRequestId requestKey) {
@@ -1790,9 +1791,8 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 				const auto type = error.type();
 				if (type.startsWith(
 						u"ALLOW_PAYMENT_REQUIRED_"_q)) {
-					show->showToast(
-						u"Payment requirements changed. "
-						"Please, try again."_q);
+					// LoogriGram: nothing here pays, so the peer is locked.
+					show->showToast(Api::LockPaymentRequired(target));
 				} else if (type
 					== u"VOICE_MESSAGES_FORBIDDEN"_q) {
 					show->showToast(

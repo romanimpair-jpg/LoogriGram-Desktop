@@ -42,10 +42,11 @@ private:
 
 struct MessageMoneyRestriction {
 	bool premiumRequired = false;
+	bool paymentRequired = false;
 	bool known = false;
 
 	explicit operator bool() const {
-		return premiumRequired;
+		return premiumRequired || paymentRequired;
 	}
 
 	friend inline bool operator==(
@@ -55,5 +56,9 @@ struct MessageMoneyRestriction {
 [[nodiscard]] MessageMoneyRestriction ResolveMessageMoneyRestrictions(
 	not_null<PeerData*> peer,
 	History *maybeHistory);
+
+// LoogriGram: the server refused a send because the peer charges for it.
+// Locks a user from now on and returns the text to show.
+[[nodiscard]] QString LockPaymentRequired(not_null<PeerData*> peer);
 
 } // namespace Api

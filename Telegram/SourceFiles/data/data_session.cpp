@@ -617,6 +617,8 @@ not_null<UserData*> Session::processUser(const MTPUser &data) {
 
 		const auto hasRequirePremiumToWrite
 			= data.is_contact_require_premium();
+		const auto hasRequirePaymentToWrite
+			= data.vsend_paid_messages_stars().has_value();
 		result->setBotInfoVersion(data.vbot_info_version().value_or(-1));
 
 		if (!minimal) {
@@ -657,9 +659,13 @@ not_null<UserData*> Session::processUser(const MTPUser &data) {
 			| Flag::Premium
 			| Flag::Support
 			| Flag::HasRequirePremiumToWrite
+			| Flag::HasRequirePaymentToWrite
 			| Flag::MessageMoneyRestrictionsKnown
 			| (!hasRequirePremiumToWrite
 				? Flag::RequiresPremiumToWrite
+				: Flag())
+			| (!hasRequirePaymentToWrite
+				? Flag::RequiresPaymentToWrite
 				: Flag())
 			| (!minimal
 				? Flag::Contact
@@ -682,7 +688,15 @@ not_null<UserData*> Session::processUser(const MTPUser &data) {
 							: Flag())
 						: Flag()))
 				: Flag())
-			| (!hasRequirePremiumToWrite
+			| (hasRequirePaymentToWrite
+				? (Flag::HasRequirePaymentToWrite
+					| (result->hasRequirePaymentToWrite()
+						? (result->messageMoneyRestrictionsKnown()
+							? Flag::MessageMoneyRestrictionsKnown
+							: Flag())
+						: Flag()))
+				: Flag())
+			| ((!hasRequirePremiumToWrite && !hasRequirePaymentToWrite)
 				? Flag::MessageMoneyRestrictionsKnown
 				: Flag())
 			| (!minimal

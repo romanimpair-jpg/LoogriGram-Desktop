@@ -1515,7 +1515,8 @@ Data::RestrictionCheckResult PeerData::amRestricted(
 		}
 	};
 	if (const auto user = asUser()) {
-		if (user->requiresPremiumToWrite()) {
+		if (user->requiresPremiumToWrite()
+			|| user->requiresPaymentToWrite()) {
 			return Result::Explicit();
 		}
 		return (right == ChatRestriction::SendVoiceMessages

@@ -65,6 +65,7 @@ class EmptyChatLockedBox final
 public:
 	enum class Type {
 		PremiumRequired,
+		PaymentRequired,
 		FreeDirect,
 	};
 
@@ -508,9 +509,9 @@ EmptyChatLockedBox::EmptyChatLockedBox(not_null<Element*> parent, Type type)
 EmptyChatLockedBox::~EmptyChatLockedBox() = default;
 
 int EmptyChatLockedBox::width() {
-	return (_type == Type::PremiumRequired)
-		? st::premiumRequiredWidth
-		: st::directMessagesFreeWidth;
+	return (_type == Type::FreeDirect)
+		? st::directMessagesFreeWidth
+		: st::premiumRequiredWidth;
 }
 
 int EmptyChatLockedBox::top() {
@@ -559,9 +560,9 @@ void EmptyChatLockedBox::draw(
 	p.setBrush(context.st->msgServiceBg()); // ?
 	p.setPen(Qt::NoPen);
 	p.drawEllipse(geometry);
-	(_type == Type::PremiumRequired
-		? st::premiumRequiredIcon
-		: st::directMessagesIcon).paintInCenter(p, geometry);
+	(_type == Type::FreeDirect
+		? st::directMessagesIcon
+		: st::premiumRequiredIcon).paintInCenter(p, geometry);
 }
 
 void EmptyChatLockedBox::stickerClearLoopPlayed() {
@@ -733,6 +734,8 @@ bool AboutView::refresh() {
 				return false;
 			} else if (user->requiresPremiumToWrite()) {
 				setItem(makePremiumRequired(), nullptr);
+			} else if (user->requiresPaymentToWrite()) {
+				setItem(makePaymentRequired(), nullptr);
 			} else if (const auto &intro = user->businessDetails().intro;
 					intro && !user->isBlocked()) {
 				make(intro);
@@ -1021,6 +1024,30 @@ AdminLog::OwnedItem AboutView::makePremiumRequired() {
 		std::make_unique<EmptyChatLockedBox>(
 			result.get(),
 			EmptyChatLockedBox::Type::PremiumRequired)));
+	return result;
+}
+
+// LoogriGram: in place of the "N Stars per message" box with its top-up
+// button. Nothing here pays, so the chat is locked.
+AdminLog::OwnedItem AboutView::makePaymentRequired() {
+	const auto item = _history->makeMessage({
+		.id = _history->nextNonHistoryEntryId(),
+		.flags = (MessageFlag::FakeAboutView
+			| MessageFlag::FakeHistoryItem
+			| MessageFlag::Local),
+		.from = _history->peer->id,
+	}, PreparedServiceText{ tr::lng_send_paid_locked(
+		tr::now,
+		lt_user,
+		tr::bold(_history->peer->shortName()),
+		tr::marked),
+	});
+	auto result = AdminLog::OwnedItem(_delegate, item);
+	result->overrideMedia(std::make_unique<ServiceBox>(
+		result.get(),
+		std::make_unique<EmptyChatLockedBox>(
+			result.get(),
+			EmptyChatLockedBox::Type::PaymentRequired)));
 	return result;
 }
 

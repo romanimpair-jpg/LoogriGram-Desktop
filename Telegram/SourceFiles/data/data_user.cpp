@@ -573,6 +573,14 @@ bool UserData::requiresPremiumToWrite() const {
 	return !isSelf() && (flags() & UserDataFlag::RequiresPremiumToWrite);
 }
 
+bool UserData::hasRequirePaymentToWrite() const {
+	return (flags() & UserDataFlag::HasRequirePaymentToWrite);
+}
+
+bool UserData::requiresPaymentToWrite() const {
+	return !isSelf() && (flags() & UserDataFlag::RequiresPaymentToWrite);
+}
+
 bool UserData::messageMoneyRestrictionsKnown() const {
 	return (flags() & UserDataFlag::MessageMoneyRestrictionsKnown);
 }
@@ -784,6 +792,8 @@ void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update) {
 			: Flag())
 		| Flag::MessageMoneyRestrictionsKnown
 		| Flag::RequiresPremiumToWrite
+		| Flag::HasRequirePaymentToWrite
+		| Flag::RequiresPaymentToWrite
 		| Flag::UnofficialSecurityRisk;
 	user->setFlags((user->flags() & ~mask)
 		| (update.is_phone_calls_private()
@@ -799,6 +809,9 @@ void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update) {
 		| Flag::MessageMoneyRestrictionsKnown
 		| (update.is_contact_require_premium()
 			? (Flag::RequiresPremiumToWrite | Flag::HasRequirePremiumToWrite)
+			: Flag())
+		| ((update.vsend_paid_messages_stars().value_or_empty() > 0)
+			? (Flag::RequiresPaymentToWrite | Flag::HasRequirePaymentToWrite)
 			: Flag())
 		| (update.is_unofficial_security_risk()
 			? Flag::UnofficialSecurityRisk
