@@ -100,12 +100,6 @@ int PremiumLimits::contactNoteLengthCurrent() const {
 	return appConfigLimit("contact_note_length_limit", 128);
 }
 
-int PremiumLimits::maxBoostLevel() const {
-	return appConfigLimit(
-		u"boosts_channel_level_max"_q,
-		_session->isTestMode() ? 9 : 99);
-}
-
 int PremiumLimits::botsCreateCurrent() const {
 	return appConfigLimit("bots_create_limit_default", 20);
 }

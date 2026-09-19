@@ -52,7 +52,6 @@ public:
 	[[nodiscard]] int aboutLengthCurrent() const;
 	[[nodiscard]] int contactNoteLengthCurrent() const;
 
-	[[nodiscard]] int maxBoostLevel() const;
 
 	[[nodiscard]] int botsCreateCurrent() const;
 
