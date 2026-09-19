@@ -13,18 +13,13 @@ namespace Info::Statistics {
 
 struct Tag final {
 	explicit Tag() = default;
-	explicit Tag(
-		PeerData *peer,
-		FullMsgId contextId,
-		FullStoryId storyId)
+	explicit Tag(PeerData *peer, FullMsgId contextId)
 	: peer(peer)
-	, contextId(contextId)
-	, storyId(storyId) {
+	, contextId(contextId) {
 	}
 
 	PeerData *peer = nullptr;
 	FullMsgId contextId;
-	FullStoryId storyId;
 
 };
 

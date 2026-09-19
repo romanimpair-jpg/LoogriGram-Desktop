@@ -109,18 +109,6 @@ void AddCounter(
 			result,
 			tr::lng_stats_overview_mean_reactions_count(tr::now),
 			s.meanReactionCount);
-		AddValue(
-			result,
-			tr::lng_stats_overview_mean_story_view_count(tr::now),
-			s.meanStoryViewCount);
-		AddValue(
-			result,
-			tr::lng_stats_overview_mean_story_share_count(tr::now),
-			s.meanStoryShareCount);
-		AddValue(
-			result,
-			tr::lng_stats_overview_mean_story_reactions_count(tr::now),
-			s.meanStoryReactionCount);
 		AddCounter(
 			result,
 			tr::lng_stats_overview_enabled_notifications(tr::now),
@@ -143,7 +131,7 @@ void AddCounter(
 			tr::lng_stats_overview_group_mean_post_count(tr::now),
 			s.senderCount);
 	} else {
-		const auto &post = stats.message ? stats.message : stats.story;
+		const auto &post = stats.message;
 		AddCounter(
 			result,
 			tr::lng_stats_overview_message_views(tr::now),
@@ -209,14 +197,6 @@ std::vector<Xlsx::Sheet> Sheets(
 			result,
 			tr::lng_chart_title_reactions_by_emotion(tr::now),
 			s.reactionsByEmotionGraph);
-		AddChart(
-			result,
-			tr::lng_chart_title_story_interactions(tr::now),
-			s.storyInteractionsGraph);
-		AddChart(
-			result,
-			tr::lng_chart_title_story_reactions_by_emotion(tr::now),
-			s.storyReactionsByEmotionGraph);
 	} else if (const auto &s = stats.supergroup) {
 		AddChart(
 			result,
@@ -245,7 +225,7 @@ std::vector<Xlsx::Sheet> Sheets(
 		AddChart(result, tr::lng_chart_title_group_day(tr::now), s.dayGraph);
 		AddChart(result, tr::lng_chart_title_group_week(tr::now), s.weekGraph);
 	} else {
-		const auto &post = stats.message ? stats.message : stats.story;
+		const auto &post = stats.message;
 		AddChart(
 			result,
 			tr::lng_chart_title_message_interaction(tr::now),

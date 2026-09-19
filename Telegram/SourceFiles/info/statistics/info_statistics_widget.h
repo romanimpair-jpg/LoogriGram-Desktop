@@ -18,7 +18,6 @@ class Memento final : public ContentMemento {
 public:
 	Memento(not_null<Controller*> controller);
 	Memento(not_null<PeerData*> peer, FullMsgId contextId);
-	Memento(not_null<PeerData*> peer, FullStoryId storyId);
 	~Memento();
 
 	object_ptr<ContentWidget> createWidget(
@@ -63,7 +62,6 @@ private:
 
 [[nodiscard]] std::shared_ptr<Info::Memento> Make(
 	not_null<PeerData*> peer,
-	FullMsgId contextId,
-	FullStoryId storyId);
+	FullMsgId contextId);
 
 } // namespace Info::Statistics

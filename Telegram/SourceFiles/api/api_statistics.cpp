@@ -12,8 +12,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "data/data_channel.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
-#include "data/data_story.h"
 #include "data/data_user.h"
 #include "history/history.h"
 #include "main/main_session.h"
@@ -53,13 +51,6 @@ namespace {
 		.meanReactionCount = StatisticalValueFromTL(
 			data.vreactions_per_post()),
 
-		.meanStoryViewCount = StatisticalValueFromTL(
-			data.vviews_per_story()),
-		.meanStoryShareCount = StatisticalValueFromTL(
-			data.vshares_per_story()),
-		.meanStoryReactionCount = StatisticalValueFromTL(
-			data.vreactions_per_story()),
-
 		.enabledNotificationsPercentage = unmuted,
 
 		.memberCountGraph = StatisticalGraphFromTL(
@@ -91,12 +82,6 @@ namespace {
 
 		.reactionsByEmotionGraph = StatisticalGraphFromTL(
 			data.vreactions_by_emotion_graph()),
-
-		.storyInteractionsGraph = StatisticalGraphFromTL(
-			data.vstory_interactions_graph()),
-
-		.storyReactionsByEmotionGraph = StatisticalGraphFromTL(
-			data.vstory_reactions_by_emotion_graph()),
 	};
 }
 
@@ -107,14 +92,12 @@ namespace {
 	return {
 		.recentMessageInteractions = ranges::views::all(
 			data.vrecent_posts_interactions().v
-		) | ranges::views::transform([&](const Recent &tl) {
-			return tl.match([&](const MTPDpostInteractionCountersStory &data) {
-				return Data::StatisticsMessageInteractionInfo{
-					.storyId = data.vstory_id().v,
-					.viewsCount = data.vviews().v,
-					.forwardsCount = data.vforwards().v,
-					.reactionsCount = data.vreactions().v,
-				};
+		) | ranges::views::filter([](const Recent &tl) {
+			// LoogriGram: recent stories were listed among the posts.
+			return (tl.type() == mtpc_postInteractionCountersMessage);
+		}) | ranges::views::transform([&](const Recent &tl) {
+			return tl.match([&](const MTPDpostInteractionCountersStory &) {
+				return Data::StatisticsMessageInteractionInfo();
 			}, [&](const MTPDpostInteractionCountersMessage &data) {
 				return Data::StatisticsMessageInteractionInfo{
 					.messageId = data.vmsg_id().v,
@@ -335,13 +318,8 @@ void PublicForwards::request(
 						NewMessageType::Existing);
 					recentList.push_back({ .messageId = { peerId, msgId } });
 				}
-			}, [&](const MTPDpublicForwardStory &data) {
-				const auto story = owner.stories().applySingle(
-					peerFromMTP(data.vpeer()),
-					data.vstory());
-				if (story) {
-					recentList.push_back({ .storyId = story->fullId() });
-				}
+			}, [](const MTPDpublicForwardStory &) {
+				// LoogriGram: a repost of the post as a story.
 			});
 		}
 
@@ -367,13 +345,6 @@ void PublicForwards::request(
 			MTP_string(token),
 			kLimit
 		)).done(processResult).fail(processFail).send();
-	} else if (_fullId.storyId) {
-		_requestId = makeRequest(MTPstats_GetStoryPublicForwards(
-			channel->input(),
-			MTP_int(_fullId.storyId.story),
-			MTP_string(token),
-			kLimit
-		)).done(processResult).fail(processFail).send();
 	}
 }
 
@@ -385,20 +356,12 @@ MessageStatistics::MessageStatistics(
 , _fullId(fullId) {
 }
 
-MessageStatistics::MessageStatistics(
-	not_null<ChannelData*> channel,
-	FullStoryId storyId)
-: StatisticsRequestSender(channel)
-, _publicForwards(channel, { .storyId = storyId })
-, _storyId(storyId) {
-}
-
 Data::PublicForwardsSlice MessageStatistics::firstSlice() const {
 	return _firstSlice;
 }
 
 void MessageStatistics::request(Fn<void(Data::MessageStatistics)> done) {
-	if (channel()->isMegagroup() && !_storyId) {
+	if (channel()->isMegagroup()) {
 		return;
 	}
 	const auto requestFirstPublicForwards = [=](
@@ -475,65 +438,18 @@ void MessageStatistics::request(Fn<void(Data::MessageStatistics)> done) {
 		}).send();
 	};
 
-	const auto requestStoryPrivateForwards = [=](
-			const Data::StatisticalGraph &messageGraph,
-			const Data::StatisticalGraph &reactionsGraph) {
-		api().request(MTPstories_GetStoriesByID(
-			channel()->input(),
-			MTP_vector<MTPint>(1, MTP_int(_storyId.story)))
-		).done([=](const MTPstories_Stories &result) {
-			const auto &storyItem = result.data().vstories().v.front();
-			auto info = storyItem.match([&](const MTPDstoryItem &data) {
-				if (!data.vviews()) {
-					return Data::StatisticsMessageInteractionInfo();
-				}
-				const auto &tlViews = data.vviews()->data();
-				return Data::StatisticsMessageInteractionInfo{
-					.storyId = data.vid().v,
-					.viewsCount = tlViews.vviews_count().v,
-					.forwardsCount = tlViews.vforwards_count().value_or(0),
-					.reactionsCount = tlViews.vreactions_count().value_or(0),
-				};
-			}, [](const auto &) {
-				return Data::StatisticsMessageInteractionInfo();
-			});
-
-			requestFirstPublicForwards(
-				messageGraph,
-				reactionsGraph,
-				std::move(info));
-		}).fail([=](const MTP::Error &error) {
-			requestFirstPublicForwards(messageGraph, reactionsGraph, {});
-		}).send();
-	};
-
-	if (_storyId) {
-		makeRequest(MTPstats_GetStoryStats(
-			MTP_flags(MTPstats_GetStoryStats::Flags(0)),
-			channel()->input(),
-			MTP_int(_storyId.story)
-		)).done([=](const MTPstats_StoryStats &result) {
-			const auto &data = result.data();
-			requestStoryPrivateForwards(
-				StatisticalGraphFromTL(data.vviews_graph()),
-				StatisticalGraphFromTL(data.vreactions_by_emotion_graph()));
-		}).fail([=](const MTP::Error &error) {
-			requestStoryPrivateForwards({}, {});
-		}).send();
-	} else {
-		makeRequest(MTPstats_GetMessageStats(
-			MTP_flags(MTPstats_GetMessageStats::Flags(0)),
-			channel()->inputChannel(),
-			MTP_int(_fullId.msg.bare)
-		)).done([=](const MTPstats_MessageStats &result) {
-			const auto &data = result.data();
-			requestPrivateForwards(
-				StatisticalGraphFromTL(data.vviews_graph()),
-				StatisticalGraphFromTL(data.vreactions_by_emotion_graph()));
-		}).fail([=](const MTP::Error &error) {
-			requestPrivateForwards({}, {});
-		}).send();
-	}
+	makeRequest(MTPstats_GetMessageStats(
+		MTP_flags(MTPstats_GetMessageStats::Flags(0)),
+		channel()->inputChannel(),
+		MTP_int(_fullId.msg.bare)
+	)).done([=](const MTPstats_MessageStats &result) {
+		const auto &data = result.data();
+		requestPrivateForwards(
+			StatisticalGraphFromTL(data.vviews_graph()),
+			StatisticalGraphFromTL(data.vreactions_by_emotion_graph()));
+	}).fail([=](const MTP::Error &error) {
+		requestPrivateForwards({}, {});
+	}).send();
 }
 
 } // namespace Api

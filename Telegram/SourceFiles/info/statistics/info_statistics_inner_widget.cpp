@@ -15,8 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_peer.h"
 #include "data/data_poll.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
-#include "data/data_story.h"
 #include "history/history_item.h"
 #include "info/info_controller.h"
 #include "info/info_memento.h"
@@ -235,14 +233,6 @@ void FillStatistic(
 			stats.channel.reactionsByEmotionGraph,
 			tr::lng_chart_title_reactions_by_emotion(),
 			Type::Bar);
-		addChart(
-			stats.channel.storyInteractionsGraph,
-			tr::lng_chart_title_story_interactions(),
-			Type::DoubleLinear);
-		addChart(
-			stats.channel.storyReactionsByEmotionGraph,
-			tr::lng_chart_title_story_reactions_by_emotion(),
-			Type::Bar);
 	} else if (stats.supergroup) {
 		addChart(
 			stats.supergroup.memberCountGraph,
@@ -277,16 +267,13 @@ void FillStatistic(
 			tr::lng_chart_title_group_week(),
 			Type::StackLinear);
 	} else {
-		auto &messageOrStory = stats.message
-			? stats.message
-			: stats.story;
-		if (messageOrStory) {
+		if (const auto &message = stats.message) {
 			addChart(
-				messageOrStory.messageInteractionGraph,
+				message.messageInteractionGraph,
 				tr::lng_chart_title_message_interaction(),
 				Type::DoubleLinear);
 			addChart(
-				messageOrStory.reactionsByEmotionGraph,
+				message.reactionsByEmotionGraph,
 				tr::lng_chart_title_reactions_by_emotion(),
 				Type::Bar);
 		}
@@ -327,13 +314,23 @@ void AddHeader(
 void FillOverview(
 		not_null<Ui::VerticalLayout*> content,
 		const Data::AnyStatistics &stats,
-		bool isChannelStoryStats) {
+		bool isChannelSecondary) {
 	using Value = Data::StatisticalValue;
 
 	const auto &channel = stats.channel;
 	const auto &supergroup = stats.supergroup;
 
-	if (!isChannelStoryStats) {
+	// LoogriGram: the second channel grid held mean shares and reactions
+	// for posts and for stories. Mean shares moved to the first grid, and
+	// the second one is left with post reactions, when there are any.
+	const auto hasPostReactions = channel
+		&& (channel.meanReactionCount.value
+			|| channel.meanReactionCount.previousValue);
+	if (isChannelSecondary && !hasPostReactions) {
+		return;
+	}
+
+	if (!isChannelSecondary) {
 		Ui::AddSkip(content, st::statisticsLayerOverviewMargins.top());
 		AddHeader(content, tr::lng_stats_overview_title, stats);
 		Ui::AddSkip(content);
@@ -416,22 +413,20 @@ void FillOverview(
 	};
 
 	const auto isChannel = (!!channel);
-	const auto &messageOrStory = stats.message ? stats.message : stats.story;
-	const auto isMessage = (!!messageOrStory);
+	const auto &message = stats.message;
+	const auto isMessage = (!!message);
+	const auto secondary = (isChannelSecondary && isChannel);
+	const auto none = Value{ .value = -1 };
 
-	const auto hasPostReactions = isChannel
-		&& (channel.meanReactionCount.value
-			|| channel.meanReactionCount.previousValue);
-
-	const auto topLeftLabel = (isChannelStoryStats && isChannel)
-		? addPrimary(channel.meanShareCount)
+	const auto topLeftLabel = secondary
+		? addPrimary(channel.meanReactionCount)
 		: isChannel
 		? addPrimary(channel.memberCount)
 		: isMessage
-		? addPrimary({ .value = float64(messageOrStory.views) })
+		? addPrimary({ .value = float64(message.views) })
 		: addPrimary(supergroup.memberCount);
-	const auto topRightLabel = (isChannelStoryStats && isChannel)
-		? addPrimary(channel.meanStoryShareCount)
+	const auto topRightLabel = secondary
+		? addPrimary(none)
 		: isChannel
 		? Ui::CreateChild<Ui::FlatLabel>(
 			container,
@@ -439,49 +434,27 @@ void FillOverview(
 				* std::round(channel.enabledNotificationsPercentage * 100.)),
 			st::statisticsOverviewValue)
 		: isMessage
-		? addPrimary({ .value = float64(messageOrStory.publicForwards) })
+		? addPrimary({ .value = float64(message.publicForwards) })
 		: addPrimary(supergroup.messageCount);
-	const auto bottomLeftLabel = (isChannelStoryStats && isChannel)
-		? addPrimary(hasPostReactions
-			? channel.meanReactionCount
-			: channel.meanStoryReactionCount)
+	const auto bottomLeftLabel = secondary
+		? addPrimary(none)
 		: isChannel
 		? addPrimary(channel.meanViewCount)
 		: isMessage
-		? addPrimary({ .value = float64(messageOrStory.reactions) })
+		? addPrimary({ .value = float64(message.reactions) })
 		: addPrimary(supergroup.viewerCount);
-	const auto bottomRightLabel = (isChannelStoryStats && isChannel)
-		? addPrimary(!hasPostReactions
-			? Value{ .value = -1 }
-			: channel.meanStoryReactionCount)
+	const auto bottomRightLabel = secondary
+		? addPrimary(none)
 		: isChannel
-		? addPrimary(channel.meanStoryViewCount)
+		? addPrimary(channel.meanShareCount)
 		: isMessage
-		? addPrimary({ .value = float64(messageOrStory.privateForwards) })
+		? addPrimary({ .value = float64(message.privateForwards) })
 		: addPrimary(supergroup.senderCount);
-	if (isChannelStoryStats && isChannel) {
+	if (secondary) {
 		addSub(
 			topLeftLabel,
-			channel.meanShareCount,
-			tr::lng_stats_overview_mean_share_count);
-		addSub(
-			topRightLabel,
-			channel.meanStoryShareCount,
-			tr::lng_stats_overview_mean_story_share_count);
-		addSub(
-			bottomLeftLabel,
-			hasPostReactions
-				? channel.meanReactionCount
-				: channel.meanStoryReactionCount,
-			hasPostReactions
-				? tr::lng_stats_overview_mean_reactions_count
-				: tr::lng_stats_overview_mean_story_reactions_count);
-		if (hasPostReactions) {
-			addSub(
-				bottomRightLabel,
-				channel.meanStoryReactionCount,
-				tr::lng_stats_overview_mean_story_reactions_count);
-		}
+			channel.meanReactionCount,
+			tr::lng_stats_overview_mean_reactions_count);
 	} else if (const auto &s = channel) {
 		addSub(
 			topLeftLabel,
@@ -497,8 +470,8 @@ void FillOverview(
 			tr::lng_stats_overview_mean_view_count);
 		addSub(
 			bottomRightLabel,
-			s.meanStoryViewCount,
-			tr::lng_stats_overview_mean_story_view_count);
+			s.meanShareCount,
+			tr::lng_stats_overview_mean_share_count);
 	} else if (const auto &s = supergroup) {
 		addSub(
 			topLeftLabel,
@@ -516,7 +489,7 @@ void FillOverview(
 			bottomRightLabel,
 			s.senderCount,
 			tr::lng_stats_overview_group_mean_post_count);
-	} else if (const auto &s = messageOrStory) {
+	} else if (const auto &s = message) {
 		if (s.views >= 0) {
 			addSub(
 				topLeftLabel,
@@ -612,13 +585,11 @@ InnerWidget::InnerWidget(
 	QWidget *parent,
 	not_null<Controller*> controller,
 	not_null<PeerData*> peer,
-	FullMsgId contextId,
-	FullStoryId storyId)
+	FullMsgId contextId)
 : VerticalLayout(parent)
 , _controller(controller)
 , _peer(peer)
-, _contextId(contextId)
-, _storyId(storyId) {
+, _contextId(contextId) {
 }
 
 void InnerWidget::load() {
@@ -637,7 +608,7 @@ void InnerWidget::load() {
 
 	_showFinished.events(
 	) | rpl::take(1) | rpl::on_next([=] {
-		if (!_contextId && !_storyId) {
+		if (!_contextId) {
 			descriptor.api->request(
 			) | rpl::on_done([=] {
 				_state.stats = Data::AnyStatistics{
@@ -650,22 +621,13 @@ void InnerWidget::load() {
 			}, lifetime());
 		} else {
 			const auto lifetimeApi = lifetime().make_state<rpl::lifetime>();
-			const auto api = _storyId
-				? lifetimeApi->make_state<Api::MessageStatistics>(
-					descriptor.peer->asChannel(),
-					_storyId)
-				: lifetimeApi->make_state<Api::MessageStatistics>(
-					descriptor.peer->asChannel(),
-					_contextId);
+			const auto api = lifetimeApi->make_state<Api::MessageStatistics>(
+				descriptor.peer->asChannel(),
+				_contextId);
 
-			api->request([=](const Data::StoryStatistics &data) {
-				_state.stats = Data::AnyStatistics{
-					.message = _contextId ? data : Data::StoryStatistics(),
-					.story = _storyId ? data : Data::StoryStatistics(),
-				};
-				if (_contextId || _storyId) {
-					_state.publicForwardsFirstSlice = api->firstSlice();
-				}
+			api->request([=](const Data::MessageStatistics &data) {
+				_state.stats = Data::AnyStatistics{ .message = data };
+				_state.publicForwardsFirstSlice = api->firstSlice();
 				fill();
 
 				lifetimeApi->destroy();
@@ -698,15 +660,6 @@ void InnerWidget::fill() {
 			const auto preview = inner->add(
 				object_ptr<MessagePreview>(inner, i, QImage()));
 			AddContextMenu(preview, _controller, i);
-			Ui::AddSkip(inner);
-			Ui::AddDivider(inner);
-		}
-	} else if (_state.stats.story) {
-		if (const auto story = _peer->owner().stories().lookup(_storyId)) {
-			Ui::AddSkip(inner);
-			const auto preview = inner->add(
-				object_ptr<MessagePreview>(inner, *story, QImage()));
-			preview->setAttribute(Qt::WA_TransparentForMouseEvents);
 			Ui::AddSkip(inner);
 			Ui::AddDivider(inner);
 		}
@@ -760,22 +713,19 @@ void InnerWidget::fill() {
 				descriptor.peer,
 				tr::lng_stats_inviters_title());
 		}
-	} else if (_state.stats.message || _state.stats.story) {
+	} else if (_state.stats.message) {
 		using namespace Data;
 		AddPublicForwards(
 			_state.publicForwardsFirstSlice,
 			inner,
 			[=](RecentPostId id) {
 				_showRequests.fire({
-					.info = (!id.messageId && !id.storyId)
-						? id.messageId.peer
-						: PeerId(0),
+					.info = !id.messageId ? id.messageId.peer : PeerId(0),
 					.history = id.messageId,
-					.story = id.storyId,
 				});
 			},
 			descriptor.peer,
-			RecentPostId{ .messageId = _contextId, .storyId = _storyId });
+			RecentPostId{ .messageId = _contextId });
 	}
 }
 
@@ -830,8 +780,7 @@ void InnerWidget::fillRecentPosts(not_null<Ui::VerticalLayout*> container) {
 
 	const auto addMessage = [=](
 			not_null<Ui::VerticalLayout*> messageWrap,
-			HistoryItem *maybeItem,
-			Data::Story *maybeStory,
+			not_null<HistoryItem*> item,
 			const Data::StatisticsMessageInteractionInfo &info) {
 		const auto button = messageWrap->add(
 			object_ptr<Ui::SettingsButton>(
@@ -839,30 +788,22 @@ void InnerWidget::fillRecentPosts(not_null<Ui::VerticalLayout*> container) {
 				rpl::never<QString>(),
 				st::statisticsRecentPostButton));
 		const auto fullRecentId = Data::RecentPostId{
-			.messageId = maybeItem ? maybeItem->fullId() : FullMsgId(),
-			.storyId = maybeStory ? maybeStory->fullId() : FullStoryId(),
+			.messageId = item->fullId(),
 		};
 		auto it = _state.recentPostPreviews.find(fullRecentId);
 		auto cachedPreview = (it != end(_state.recentPostPreviews))
 			? base::take(it->second)
 			: QImage();
-		const auto raw = maybeItem
-			? Ui::CreateChild<MessagePreview>(
-				button,
-				maybeItem,
-				std::move(cachedPreview))
-			: Ui::CreateChild<MessagePreview>(
-				button,
-				maybeStory,
-				std::move(cachedPreview));
+		const auto raw = Ui::CreateChild<MessagePreview>(
+			button,
+			item,
+			std::move(cachedPreview));
 		raw->setInfo(
 			info.viewsCount,
 			info.forwardsCount,
 			info.reactionsCount);
 
-		if (maybeItem) {
-			AddContextMenu(button, _controller, maybeItem);
-		}
+		AddContextMenu(button, _controller, item);
 
 		_messagePreviews.push_back(raw);
 		raw->show();
@@ -876,7 +817,6 @@ void InnerWidget::fillRecentPosts(not_null<Ui::VerticalLayout*> container) {
 		button->setClickedCallback([=] {
 			_showRequests.fire({
 				.messageStatistic = fullRecentId.messageId,
-				.storyStatistic = fullRecentId.storyId,
 			});
 		});
 		Ui::AddSkip(messageWrap);
@@ -918,12 +858,12 @@ void InnerWidget::fillRecentPosts(not_null<Ui::VerticalLayout*> container) {
 			if (recent.messageId) {
 				const auto fullId = FullMsgId(_peer->id, recent.messageId);
 				if (const auto item = data.message(fullId)) {
-					addMessage(messageWrap, item, nullptr, recent);
+					addMessage(messageWrap, item, recent);
 					continue;
 				}
 				const auto callback = crl::guard(content, [=] {
 					if (const auto item = _peer->owner().message(fullId)) {
-						addMessage(messageWrap, item, nullptr, recent);
+						addMessage(messageWrap, item, recent);
 						content->resizeToWidth(content->width());
 					}
 				});
@@ -931,12 +871,6 @@ void InnerWidget::fillRecentPosts(not_null<Ui::VerticalLayout*> container) {
 					_peer,
 					fullId.msg,
 					callback);
-			} else if (recent.storyId) {
-				const auto fullId = FullStoryId{ _peer->id, recent.storyId };
-				if (const auto story = data.stories().lookup(fullId)) {
-					addMessage(messageWrap, nullptr, *story, recent);
-					continue;
-				}
 			}
 		}
 		container->resizeToWidth(container->width());
@@ -970,8 +904,7 @@ void InnerWidget::fillMenu(const Ui::Menu::MenuCallback &addAction) {
 			_peer,
 			_state.stats,
 			_state.pollVotesGraph,
-			_contextId,
-			_storyId);
+			_contextId);
 	}), &st::menuIconExport);
 }
 
@@ -986,8 +919,7 @@ void InnerWidget::restoreState(not_null<Memento*> memento) {
 	_state = memento->state();
 	if (_state.stats.channel
 		|| _state.stats.supergroup
-		|| _state.stats.message
-		|| _state.stats.story) {
+		|| _state.stats.message) {
 		fill();
 	} else {
 		load();

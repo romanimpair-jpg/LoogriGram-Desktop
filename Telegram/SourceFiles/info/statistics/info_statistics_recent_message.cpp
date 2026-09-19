@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_photo.h"
 #include "data/data_photo_media.h"
 #include "data/data_session.h"
-#include "data/data_story.h"
 #include "history/history.h"
 #include "history/history_item.h"
 #include "history/history_item_helpers.h"
@@ -24,7 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "ui/controls/userpic_button.h"
-#include "ui/effects/outline_segments.h" // UnreadStoryOutlineGradient
 #include "ui/effects/ripple_animation.h"
 #include "ui/effects/spoiler_mess.h"
 #include "ui/painter.h"
@@ -117,36 +115,6 @@ MessagePreview::MessagePreview(
 	}
 }
 
-MessagePreview::MessagePreview(
-	not_null<Ui::RpWidget*> parent,
-	not_null<Data::Story*> story,
-	QImage cachedPreview)
-: Ui::RpWidget(parent)
-, _storyId(story->fullId())
-, _date(
-	st::statisticsHeaderTitleTextStyle,
-	Ui::FormatDateTime(base::unixtime::parse(story->date())))
-, _preview(std::move(cachedPreview)) {
-	_text.setMarkedText(
-		st::defaultPeerListItem.nameStyle,
-		{ tr::lng_in_dlg_story(tr::now) },
-		Ui::DialogTextOptions(),
-		Core::TextContext({
-			.session = &story->peer()->session(),
-			.repaint = [=] { update(); },
-		}));
-	if (_preview.isNull()) {
-		if (const auto photo = story->photo()) {
-			_photoMedia = photo->createMediaView();
-			_photoMedia->wanted(Data::PhotoSize::Large, story->fullId());
-		} else if (const auto document = story->document()) {
-			_documentMedia = document->createMediaView();
-			_documentMedia->thumbnailWanted(story->fullId());
-		}
-		processPreview();
-	}
-}
-
 void MessagePreview::setInfo(int views, int shares, int reactions) {
 	_views = Ui::Text::String(
 		st::defaultPeerListItem.nameStyle,
@@ -211,41 +179,11 @@ void MessagePreview::processPreview() {
 		} else if (computed.loaded) {
 			_lifetimeDownload.destroy();
 		}
-		if (_storyId) {
-			const auto line = st::dialogsStoriesFull.lineTwice;
-			const auto rect = Rect(Size(st::peerListBoxItem.photoSize));
-			const auto penWidth = line / 2.;
-			const auto offset = 1.5 * penWidth * 2;
-			const auto preview = PreparePreviewImage(
-				computed.image->original(),
-				ImageRoundRadius::Ellipse,
-				st::peerListBoxItem.photoSize - offset * 2,
-				!!_spoiler);
-			auto image = QImage(
-				rect.size() * style::DevicePixelRatio(),
-				QImage::Format_ARGB32_Premultiplied);
-			image.setDevicePixelRatio(style::DevicePixelRatio());
-			image.fill(Qt::transparent);
-			{
-				auto p = QPainter(&image);
-				p.drawImage(offset, offset, preview);
-				auto hq = PainterHighQualityEnabler(p);
-				auto gradient = Ui::UnreadStoryOutlineGradient();
-				gradient.setStart(rect.topRight());
-				gradient.setFinalStop(rect.bottomLeft());
-
-				p.setPen(QPen(gradient, penWidth));
-				p.setBrush(Qt::NoBrush);
-				p.drawEllipse(rect - Margins(penWidth));
-			}
-			_preview = std::move(image);
-		} else {
-			_preview = PreparePreviewImage(
-				computed.image->original(),
-				ImageRoundRadius::Large,
-				st::peerListBoxItem.photoSize,
-				!!_spoiler);
-		}
+		_preview = PreparePreviewImage(
+			computed.image->original(),
+			ImageRoundRadius::Large,
+			st::peerListBoxItem.photoSize,
+			!!_spoiler);
 	}, _lifetimeDownload);
 }
 
@@ -350,7 +288,7 @@ void MessagePreview::paintEvent(QPaintEvent *e) {
 
 void MessagePreview::saveState(SavedState &state) const {
 	if (!_lifetimeDownload) {
-		const auto fullId = Data::RecentPostId{ _messageId, _storyId };
+		const auto fullId = Data::RecentPostId{ _messageId };
 		state.recentPostPreviews[fullId] = _preview;
 	}
 }

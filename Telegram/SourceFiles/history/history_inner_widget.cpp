@@ -2919,7 +2919,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 			const auto channel = _peer->asChannel();
 			auto callback = crl::guard(controller, [=] {
 				controller->showSection(
-					Info::Statistics::Make(channel, itemId, {}));
+					Info::Statistics::Make(channel, itemId));
 			});
 			_menu->addAction(
 				tr::lng_stats_title(tr::now),

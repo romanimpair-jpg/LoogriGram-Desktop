@@ -1325,7 +1325,7 @@ bool AddViewStatisticsAction(
 	const auto controller = list->controller();
 	const auto itemId = item->fullId();
 	menu->addAction(tr::lng_stats_title(tr::now), crl::guard(controller, [=] {
-		controller->showSection(Info::Statistics::Make(channel, itemId, {}));
+		controller->showSection(Info::Statistics::Make(channel, itemId));
 	}), &st::menuIconStats);
 	return true;
 }

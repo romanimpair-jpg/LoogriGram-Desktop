@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/statistics/info_statistics_widget.h"
 
 #include "data/data_session.h"
-#include "data/data_stories.h"
 #include "info/info_controller.h"
 #include "info/info_memento.h"
 #include "info/statistics/info_statistics_inner_widget.h"
@@ -23,11 +22,7 @@ Memento::Memento(not_null<Controller*> controller)
 }
 
 Memento::Memento(not_null<PeerData*> peer, FullMsgId contextId)
-: ContentMemento(Tag{ peer, contextId, {} }) {
-}
-
-Memento::Memento(not_null<PeerData*> peer, FullStoryId storyId)
-: ContentMemento(Tag{ peer, {}, storyId }) {
+: ContentMemento(Tag{ peer, contextId }) {
 }
 
 Memento::~Memento() = default;
@@ -62,8 +57,7 @@ Widget::Widget(
 		this,
 		controller,
 		controller->statisticsTag().peer,
-		controller->statisticsTag().contextId,
-		controller->statisticsTag().storyId))) {
+		controller->statisticsTag().contextId))) {
 	_inner->showRequests(
 	) | rpl::on_next([=](InnerWidget::ShowRequest request) {
 		if (request.history) {
@@ -73,11 +67,10 @@ Widget::Widget(
 				request.history.msg);
 		} else if (request.info) {
 			controller->showPeerInfo(request.info);
-		} else if (request.messageStatistic || request.storyStatistic) {
+		} else if (request.messageStatistic) {
 			controller->showSection(Make(
 				controller->statisticsTag().peer,
-				request.messageStatistic,
-				request.storyStatistic));
+				request.messageStatistic));
 		}
 	}, _inner->lifetime());
 	_inner->scrollToRequests(
@@ -93,8 +86,6 @@ bool Widget::showInternal(not_null<ContentMemento*> memento) {
 rpl::producer<QString> Widget::title() {
 	return controller()->statisticsTag().contextId
 		? tr::lng_stats_message_title()
-		: controller()->statisticsTag().storyId
-		? tr::lng_stats_story_title()
 		: tr::lng_stats_title();
 }
 
@@ -140,11 +131,8 @@ void Widget::restoreState(not_null<Memento*> memento) {
 
 std::shared_ptr<Info::Memento> Make(
 		not_null<PeerData*> peer,
-		FullMsgId contextId,
-		FullStoryId storyId) {
-	const auto memento = storyId
-		? std::make_shared<Memento>(peer, storyId)
-		: std::make_shared<Memento>(peer, contextId);
+		FullMsgId contextId) {
+	const auto memento = std::make_shared<Memento>(peer, contextId);
 	return std::make_shared<Info::Memento>(
 		std::vector<std::shared_ptr<ContentMemento>>(1, std::move(memento)));
 }

@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/ui_integration.h" // TextContext
 #include "data/data_channel.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
 #include "data/data_user.h"
 #include "data/stickers/data_custom_emoji.h"
 #include "history/history_item.h"
@@ -22,7 +21,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/session/session_show.h"
 #include "ui/dynamic_image.h"
 #include "ui/dynamic_thumbnails.h"
-#include "ui/effects/outline_segments.h" // Ui::UnreadStoryOutlineGradient.
 #include "ui/effects/toggle_arrow.h"
 #include "ui/painter.h"
 #include "ui/rect.h"
@@ -37,7 +35,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_boxes.h"
 #include "styles/style_color_indices.h"
 #include "styles/style_credits.h"
-#include "styles/style_dialogs.h" // dialogsStoriesFull.
+#include "styles/style_dialogs.h"
 #include "styles/style_layers.h" // boxRowPadding.
 #include "styles/style_menu_icons.h"
 #include "styles/style_settings.h"
@@ -111,9 +109,6 @@ public:
 		not_null<PeerData*> peer,
 		Data::RecentPostId contextId);
 
-	[[nodiscard]] PaintRoundImageCallback generatePaintUserpicCallback(
-		bool) override;
-
 	[[nodiscard]] Data::RecentPostId contextId() const;
 
 private:
@@ -126,37 +121,6 @@ PeerListRowWithFullId::PeerListRowWithFullId(
 	Data::RecentPostId contextId)
 : PeerListRow(peer)
 , _contextId(contextId) {
-}
-
-PaintRoundImageCallback PeerListRowWithFullId::generatePaintUserpicCallback(
-		bool forceRound) {
-	if (!_contextId.storyId) {
-		return PeerListRow::generatePaintUserpicCallback(forceRound);
-	}
-	const auto peer = PeerListRow::peer();
-	auto userpic = PeerListRow::ensureUserpicView();
-
-	const auto line = st::dialogsStoriesFull.lineTwice;
-	const auto penWidth = line / 2.;
-	const auto offset = 1.5 * penWidth * 2;
-	return [=](Painter &p, int x, int y, int outerWidth, int size) mutable {
-		const auto rect = QRect(QPoint(x, y), Size(size));
-		peer->paintUserpicLeft(
-			p,
-			userpic,
-			x + offset,
-			y + offset,
-			outerWidth,
-			size - offset * 2);
-		auto hq = PainterHighQualityEnabler(p);
-		auto gradient = Ui::UnreadStoryOutlineGradient();
-		gradient.setStart(rect.topRight());
-		gradient.setFinalStop(rect.bottomLeft());
-
-		p.setPen(QPen(gradient, penWidth));
-		p.setBrush(Qt::NoBrush);
-		p.drawEllipse(rect - Margins(penWidth));
-	};
 }
 
 Data::RecentPostId PeerListRowWithFullId::contextId() const {
@@ -322,10 +286,6 @@ void PublicForwardsController::applySlice(
 			if (const auto peer = session().data().peerLoaded(full.peer)) {
 				appendRow(peer, item);
 			}
-		} else if (const auto &full = item.storyId) {
-			if (const auto story = session().data().stories().lookup(full)) {
-				appendRow((*story)->peer(), item);
-			}
 		}
 	}
 	delegate()->peerListRefreshRows();
@@ -375,9 +335,6 @@ void PublicForwardsController::appendRow(
 		if (contextId.messageId) {
 			const auto message = peer->owner().message(contextId.messageId);
 			return message ? std::max(message->viewsCount(), 0) : 0;
-		} else if (const auto &id = contextId.storyId) {
-			const auto story = peer->owner().stories().lookup(id);
-			return story ? (*story)->views() : 0;
 		}
 		return 0;
 	}();

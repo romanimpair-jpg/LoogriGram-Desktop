@@ -26,8 +26,7 @@ using namespace ::Statistic;
 
 [[nodiscard]] QString SuggestedName(
 		not_null<PeerData*> peer,
-		FullMsgId contextId,
-		FullStoryId storyId) {
+		FullMsgId contextId) {
 	constexpr auto kMaxTitleLength = 48;
 
 	auto name = base::FileNameFromUserString(peer->name().simplified());
@@ -36,8 +35,6 @@ using namespace ::Statistic;
 	}
 	if (contextId) {
 		name += u"_%1"_q.arg(contextId.msg.bare);
-	} else if (storyId) {
-		name += u"_story_%1"_q.arg(storyId.story);
 	}
 	return name
 		+ '_'
@@ -50,8 +47,7 @@ using namespace ::Statistic;
 bool ExportAvailable(const Data::AnyStatistics &stats) {
 	return stats.channel
 		|| stats.supergroup
-		|| stats.message
-		|| stats.story;
+		|| stats.message;
 }
 
 void ExportToFile(
@@ -60,8 +56,7 @@ void ExportToFile(
 		not_null<PeerData*> peer,
 		const Data::AnyStatistics &stats,
 		const Data::StatisticalGraph &pollVotes,
-		FullMsgId contextId,
-		FullStoryId storyId) {
+		FullMsgId contextId) {
 	if (!ExportAvailable(stats)) {
 		return;
 	}
@@ -69,7 +64,7 @@ void ExportToFile(
 		parent.get(),
 		tr::lng_stats_export(tr::now),
 		u"Spreadsheets (*.xlsx)"_q,
-		SuggestedName(peer, contextId, storyId),
+		SuggestedName(peer, contextId),
 		[=, stats = stats, pollVotes = pollVotes](const QString &path) {
 			const auto fail = [&] {
 				show->showToast(tr::lng_stats_export_error(tr::now));

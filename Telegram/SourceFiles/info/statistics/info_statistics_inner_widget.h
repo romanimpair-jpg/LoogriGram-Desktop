@@ -31,16 +31,13 @@ public:
 		PeerId info = PeerId(0);
 		FullMsgId history;
 		FullMsgId messageStatistic;
-		FullStoryId storyStatistic;
-		FullStoryId story;
 	};
 
 	InnerWidget(
 		QWidget *parent,
 		not_null<Controller*> controller,
 		not_null<PeerData*> peer,
-		FullMsgId contextId,
-		FullStoryId storyId);
+		FullMsgId contextId);
 
 	[[nodiscard]] rpl::producer<Ui::ScrollToRequest> scrollToRequests() const;
 	[[nodiscard]] rpl::producer<ShowRequest> showRequests() const;
@@ -62,7 +59,6 @@ private:
 	not_null<Controller*> _controller;
 	not_null<PeerData*> _peer;
 	FullMsgId _contextId;
-	FullStoryId _storyId;
 
 	std::vector<not_null<MessagePreview*>> _messagePreviews;
 

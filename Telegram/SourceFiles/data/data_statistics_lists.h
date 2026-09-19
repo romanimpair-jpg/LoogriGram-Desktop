@@ -11,7 +11,6 @@ namespace Data {
 
 struct StatisticsMessageInteractionInfo final {
 	MsgId messageId;
-	StoryId storyId = StoryId(0);
 	int viewsCount = 0;
 	int forwardsCount = 0;
 	int reactionsCount = 0;
@@ -44,10 +43,9 @@ struct StatisticsLists final {
 
 struct RecentPostId final {
 	FullMsgId messageId;
-	FullStoryId storyId;
 
 	[[nodiscard]] bool valid() const {
-		return messageId || storyId;
+		return bool(messageId);
 	}
 	explicit operator bool() const {
 		return valid();

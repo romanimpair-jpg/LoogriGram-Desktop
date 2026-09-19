@@ -31,10 +31,6 @@ public:
 		not_null<Ui::RpWidget*> parent,
 		not_null<HistoryItem*> item,
 		QImage cachedPreview);
-	MessagePreview(
-		not_null<Ui::RpWidget*> parent,
-		not_null<Data::Story*> story,
-		QImage cachedPreview);
 
 	void setInfo(int views, int shares, int reactions);
 	void saveState(SavedState &state) const;
@@ -48,7 +44,6 @@ private:
 	void processPreview();
 
 	FullMsgId _messageId;
-	FullStoryId _storyId;
 	Ui::Text::String _text;
 	Ui::Text::String _date;
 	Ui::Text::String _views;

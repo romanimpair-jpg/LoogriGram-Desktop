@@ -32,9 +32,6 @@ struct ChannelStatistics final {
 	StatisticalValue meanViewCount;
 	StatisticalValue meanShareCount;
 	StatisticalValue meanReactionCount;
-	StatisticalValue meanStoryViewCount;
-	StatisticalValue meanStoryShareCount;
-	StatisticalValue meanStoryReactionCount;
 
 	float64 enabledNotificationsPercentage = 0.;
 
@@ -48,8 +45,6 @@ struct ChannelStatistics final {
 	StatisticalGraph messageInteractionGraph;
 	StatisticalGraph instantViewInteractionGraph;
 	StatisticalGraph reactionsByEmotionGraph;
-	StatisticalGraph storyInteractionsGraph;
-	StatisticalGraph storyReactionsByEmotionGraph;
 
 };
 
@@ -91,14 +86,11 @@ struct MessageStatistics final {
 	int views = 0;
 	int reactions = 0;
 };
-// At the moment, the structures are identical.
-using StoryStatistics = MessageStatistics;
 
 struct AnyStatistics final {
 	Data::ChannelStatistics channel;
 	Data::SupergroupStatistics supergroup;
 	Data::MessageStatistics message;
-	Data::StoryStatistics story;
 };
 
 } // namespace Data

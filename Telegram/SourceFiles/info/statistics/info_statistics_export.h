@@ -29,7 +29,6 @@ void ExportToFile(
 	not_null<PeerData*> peer,
 	const Data::AnyStatistics &stats,
 	const Data::StatisticalGraph &pollVotes,
-	FullMsgId contextId,
-	FullStoryId storyId);
+	FullMsgId contextId);
 
 } // namespace Info::Statistics
