@@ -258,8 +258,6 @@ void EnumerateWebPagePhotos(
 	case WebPageType::Bot:
 	case WebPageType::Profile:
 	case WebPageType::BotApp:
-	case WebPageType::Story:
-	case WebPageType::StoryAlbum:
 	case WebPageType::NewBot:
 	case WebPageType::VoiceChat:
 	case WebPageType::Livestream:
@@ -4153,7 +4151,6 @@ not_null<WebPageData*> Session::processWebpage(
 		QString(),
 		QString(),
 		TextWithEntities(),
-		FullStoryId(),
 		nullptr,
 		nullptr,
 		WebPageCollage(),
@@ -4223,7 +4220,6 @@ not_null<WebPageData*> Session::webpage(
 		siteName,
 		title,
 		description,
-		FullStoryId(),
 		photo,
 		document,
 		std::move(collage),
@@ -4332,46 +4328,7 @@ void Session::webpageApplyFields(
 		return 0;
 	};
 
-	auto story = (Data::Story*)nullptr;
-	auto storyId = FullStoryId();
-	if (const auto attributes = data.vattributes()) {
-		for (const auto &attribute : attributes->v) {
-			attribute.match([&](const MTPDwebPageAttributeStory &data) {
-				storyId = FullStoryId{
-					peerFromMTP(data.vpeer()),
-					data.vid().v,
-				};
-				if (const auto embed = data.vstory()) {
-					story = stories().applySingle(
-						peerFromMTP(data.vpeer()),
-						*embed);
-				} else if (const auto maybe = stories().lookup(storyId)) {
-					story = *maybe;
-				} else if (maybe.error() == Data::NoStory::Unknown) {
-					stories().resolve(storyId, [=] {
-						if (const auto maybe = stories().lookup(storyId)) {
-							const auto story = *maybe;
-							const auto updatePhotoItems
-								= _webpageItems.contains(page)
-								&& (page->photo != story->photo());
-							const auto previous = updatePhotoItems
-								? CollectWebPagePhotos(page)
-								: base::flat_set<PhotoData*>();
-							page->document = story->document();
-							page->photo = story->photo();
-							page->description = story->caption();
-							page->type = WebPageType::Story;
-							if (updatePhotoItems) {
-								updateWebPagePhotoItems(page, previous);
-							}
-							notifyWebPageUpdateDelayed(page);
-						}
-					});
-				}
-			}, [](const auto &) {});
-		}
-	}
-	const auto type = story ? WebPageType::Story : ParseWebPageType(data);
+	const auto type = ParseWebPageType(data);
 	const auto cachedPage = data.vcached_page();
 	const auto ivPhoto = photo ? processPhoto(*photo).get() : nullptr;
 	const auto ivDocument = document ? processDocument(*document).get() : nullptr;
@@ -4381,14 +4338,8 @@ void Session::webpageApplyFields(
 	auto iv = richPage
 		? std::make_unique<Iv::Data>(data, richPage)
 		: nullptr;
-	const auto resolvedPhoto = story
-		? story->photo()
-		: photo
-		? ivPhoto
-		: nullptr;
-	const auto resolvedDocument = story
-		? story->document()
-		: document
+	const auto resolvedPhoto = photo ? ivPhoto : nullptr;
+	const auto resolvedDocument = document
 		? ivDocument
 		: lookupThemeDocument();
 	const auto photoIsVideoCover = data.is_video_cover_photo()
@@ -4403,8 +4354,7 @@ void Session::webpageApplyFields(
 		qs(data.vdisplay_url()),
 		siteName,
 		qs(data.vtitle().value_or_empty()),
-		(story ? story->caption() : description),
-		storyId,
+		description,
 		resolvedPhoto,
 		resolvedDocument,
 		WebPageCollage(this, data),
@@ -4426,7 +4376,6 @@ void Session::webpageApplyFields(
 		const QString &siteName,
 		const QString &title,
 		const TextWithEntities &description,
-		FullStoryId storyId,
 		PhotoData *photo,
 		DocumentData *document,
 		WebPageCollage &&collage,
@@ -4451,7 +4400,6 @@ void Session::webpageApplyFields(
 		siteName,
 		title,
 		description,
-		storyId,
 		photo,
 		document,
 		std::move(collage),

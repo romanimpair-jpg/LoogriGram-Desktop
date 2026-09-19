@@ -2673,18 +2673,14 @@ void ApiWrap::refreshFileReference(
 						std::move(handler));
 				}
 			}
-			const auto media = item->media();
-			const auto mediaStory = media ? media->storyId() : FullStoryId();
-			const auto storyId = mediaStory
-				? mediaStory
-				: FullStoryId{
-					(IsStoryMsgId(item->id)
-						? item->history()->peer->id
-						: PeerId()),
-					(IsStoryMsgId(item->id)
-						? StoryIdFromMsgId(item->id)
-						: StoryId())
-				};
+			const auto storyId = FullStoryId{
+				(IsStoryMsgId(item->id)
+					? item->history()->peer->id
+					: PeerId()),
+				(IsStoryMsgId(item->id)
+					? StoryIdFromMsgId(item->id)
+					: StoryId())
+			};
 			if (storyId) {
 				request(MTPstories_GetStoriesByID(
 					_session->data().peer(storyId.peer)->input(),

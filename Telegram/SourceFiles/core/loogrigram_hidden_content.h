@@ -24,12 +24,20 @@ namespace LoogriGram {
 //
 // So the TL type is checked before anything inside the message is looked at.
 // A money message becomes a bare service item: its id, date, sender and the
-// MoneyHidden flag. No media, no text, no price, no stickers, no images, and
+// ContentHidden flag. No media, no text, no price, no stickers, no images, and
 // no view is built for it. Element::isHidden() collapses it to nothing, the
 // chat list preview skips it, and no notification is raised.
 [[nodiscard]] bool MoneyMedia(const MTPMessageMedia &media);
 [[nodiscard]] bool MoneyAction(const MTPMessageAction &action);
 [[nodiscard]] bool MoneyMessage(const MTPDmessage &data);
+
+// LoogriGram: stories are removed, and a message that carries one - a
+// forwarded story or "X mentioned you in a story" - is hidden the same way.
+// A reply to a story is not: it keeps its text and loses the quoted story.
+[[nodiscard]] bool StoryMedia(const MTPMessageMedia &media);
+
+[[nodiscard]] bool HiddenMedia(const MTPMessageMedia &media);
+[[nodiscard]] bool HiddenMessage(const MTPDmessage &data);
 
 [[nodiscard]] bool HiddenContent(not_null<const HistoryItem*> item);
 

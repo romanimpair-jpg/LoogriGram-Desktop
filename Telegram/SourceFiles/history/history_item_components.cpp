@@ -58,7 +58,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "support/support_helper.h"
 #include "styles/style_chat.h"
 #include "styles/style_credits.h"
-#include "styles/style_dialogs.h" // dialogsMiniReplyStory.
+#include "styles/style_dialogs.h"
 #include "styles/style_widgets.h"
 
 #include <QtGui/QGuiApplication>
@@ -322,13 +322,7 @@ void HistoryMessageForwarded::create(
 	} else {
 		phrase.append(name);
 	}
-	if (story) {
-		phrase = tr::lng_forwarded_story(
-			tr::now,
-			lt_user,
-			Ui::Text::Wrapped(phrase, EntityType::CustomUrl, QString()), // Link 1.
-			tr::marked);
-	} else if (via && psaType.isEmpty()) {
+	if (via && psaType.isEmpty()) {
 		const auto linkData = tr::link(
 			QString(),
 			1).entities.front().data(); // Link 1.
@@ -407,7 +401,6 @@ ReplyFields ReplyFields::clone(not_null<HistoryItem*> parent) const {
 		.externalPeerId = externalPeerId,
 		.messageId = messageId,
 		.topMessageId = topMessageId,
-		.storyId = storyId,
 		.todoItemId = todoItemId,
 		.pollOption = pollOption,
 		.quoteOffset = quoteOffset,
@@ -460,10 +453,9 @@ ReplyFields ReplyFieldsFromMTP(
 		result.manualQuote = data.is_quote() ? 1 : 0;
 		return result;
 	}, [&](const MTPDmessageReplyStoryHeader &data) {
-		return ReplyFields{
-			.externalPeerId = peerFromMTP(data.vpeer()),
-			.storyId = data.vstory_id().v,
-		};
+		// LoogriGram: a reply to a story keeps its text and loses the
+		// quoted story. Empty fields add no reply component at all.
+		return ReplyFields();
 	});
 }
 
@@ -495,13 +487,6 @@ FullReplyTo ReplyToFromMTP(
 		result.pollOption = data.vpoll_option().value_or_empty();
 		return result;
 	}, [&](const MTPDinputReplyToStory &data) {
-		if (const auto parsed = Data::PeerFromInputMTP(
-				&history->owner(),
-				data.vpeer())) {
-			return FullReplyTo{
-				.storyId = { parsed->id, data.vstory_id().v },
-			};
-		}
 		return FullReplyTo();
 	}, [&](const MTPDinputReplyToMonoForum &data) {
 		const auto parsed = Data::PeerFromInputMTP(
@@ -531,7 +516,7 @@ void HistoryMessageReply::updateData(
 		bool force) {
 	const auto guard = gsl::finally([&] { refreshReplyToMedia(); });
 	if (!force) {
-		if (resolvedMessage || resolvedStory || _unavailable) {
+		if (resolvedMessage || _unavailable) {
 			_pendingResolve = 0;
 			return;
 		}
@@ -555,46 +540,28 @@ void HistoryMessageReply::updateData(
 			}
 		}
 	}
-	if (!resolvedStory && _fields.storyId) {
-		const auto maybe = holder->history()->owner().stories().lookup({
-			peerId,
-			_fields.storyId,
-		});
-		if (maybe) {
-			resolvedStory = *maybe;
-			holder->history()->owner().stories().registerDependentMessage(
-				holder,
-				resolvedStory.get());
-		} else if (maybe.error() == Data::NoStory::Deleted) {
-			force = true;
-		}
-	}
-
 	const auto asExternal = displayAsExternal(holder);
 	const auto nonEmptyQuote = !_fields.quote.empty()
 		&& (asExternal || _fields.manualQuote);
-	_multiline = !_fields.storyId && (asExternal || nonEmptyQuote);
+	_multiline = (asExternal || nonEmptyQuote);
 
 	const auto displaying = resolvedMessage
-		|| resolvedStory
 		|| ((nonEmptyQuote || _fields.externalMedia)
 			&& (!_fields.messageId || force));
 	_displaying = displaying ? 1 : 0;
 
 	const auto unavailable = !resolvedMessage
-		&& !resolvedStory
-		&& ((!_fields.storyId && !_fields.messageId) || force);
+		&& (!_fields.messageId || force);
 	_unavailable = unavailable ? 1 : 0;
 
 	if (force) {
-		if (!_displaying && (_fields.messageId || _fields.storyId)) {
+		if (!_displaying && _fields.messageId) {
 			_unavailable = 1;
 		}
 		holder->history()->owner().requestItemResize(holder);
 	}
 	if (resolvedMessage
-		|| resolvedStory
-		|| (!_fields.messageId && !_fields.storyId && external())
+		|| (!_fields.messageId && external())
 		|| _unavailable) {
 		_pendingResolve = 0;
 	} else if (!force) {
@@ -660,12 +627,6 @@ void HistoryMessageReply::clearData(not_null<HistoryItem*> holder) {
 			resolvedMessage.get());
 		resolvedMessage = nullptr;
 	}
-	if (resolvedStory) {
-		holder->history()->owner().stories().unregisterDependentMessage(
-			holder,
-			resolvedStory.get());
-		resolvedStory = nullptr;
-	}
 	_unavailable = 1;
 	_displaying = 0;
 	if (_multiline) {
@@ -694,15 +655,6 @@ void HistoryMessageReply::itemRemoved(
 		not_null<HistoryItem*> holder,
 		not_null<HistoryItem*> removed) {
 	if (resolvedMessage.get() == removed) {
-		clearData(holder);
-		holder->history()->owner().requestItemResize(holder);
-	}
-}
-
-void HistoryMessageReply::storyRemoved(
-		not_null<HistoryItem*> holder,
-		not_null<Data::Story*> removed) {
-	if (resolvedStory.get() == removed) {
 		clearData(holder);
 		holder->history()->owner().requestItemResize(holder);
 	}

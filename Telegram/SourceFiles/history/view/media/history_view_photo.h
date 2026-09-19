@@ -155,10 +155,7 @@ private:
 	[[nodiscard]] QSize photoSize() const;
 	[[nodiscard]] QRect enlargeRect() const;
 
-	void togglePollingStory(bool enabled) const;
-
 	const not_null<PhotoData*> _data;
-	const FullStoryId _storyId;
 	mutable std::shared_ptr<Data::PhotoMedia> _dataMedia;
 	mutable std::unique_ptr<Streamed> _streamed;
 	const std::unique_ptr<MediaSpoiler> _spoiler;
@@ -170,7 +167,6 @@ private:
 	const uint32 _ttlCover : 1 = 0;
 	mutable uint32 _imageCacheForum : 1 = 0;
 	mutable uint32 _imageCacheBlurred : 1 = 0;
-	mutable uint32 _pollingStory : 1 = 0;
 	mutable uint32 _showEnlarge : 1 = 0;
 
 };

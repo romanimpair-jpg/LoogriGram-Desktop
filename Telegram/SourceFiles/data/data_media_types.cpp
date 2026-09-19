@@ -31,7 +31,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/media/history_view_slot_machine.h"
 #include "history/view/media/history_view_dice.h"
 #include "history/view/media/history_view_service_box.h"
-#include "history/view/media/history_view_story_mention.h"
 #include "history/view/media/history_view_userpic_suggestion.h"
 #include "dialogs/ui/dialogs_message_view.h"
 #include "ui/image/image.h"
@@ -59,8 +58,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_poll.h"
 #include "data/data_channel.h"
 #include "data/data_file_origin.h"
-#include "data/data_stories.h"
-#include "data/data_story.h"
 #include "data/data_todo_list.h"
 #include "data/data_user.h"
 #include "main/main_session.h"
@@ -80,7 +77,6 @@ namespace {
 
 constexpr auto kFastRevokeRestriction = 24 * 60 * TimeId(60);
 constexpr auto kMaxPreviewImages = 3;
-constexpr auto kLoadingStoryPhotoId = PhotoId(0x7FFF'DEAD'FFFF'FFFFULL);
 
 using ItemPreview = HistoryView::ItemPreview;
 using ItemPreviewImage = HistoryView::ItemPreviewImage;
@@ -465,22 +461,6 @@ const WallPaper *Media::paper() const {
 }
 
 bool Media::paperForBoth() const {
-	return false;
-}
-
-FullStoryId Media::storyId() const {
-	return {};
-}
-
-bool Media::storyExpired(bool revalidate) {
-	return false;
-}
-
-bool Media::storyUnsupported() const {
-	return false;
-}
-
-bool Media::storyMention() const {
 	return false;
 }
 
@@ -2352,181 +2332,6 @@ std::unique_ptr<HistoryView::Media> MediaWallPaper::createView(
 	return std::make_unique<HistoryView::ServiceBox>(
 		message,
 		std::make_unique<HistoryView::ThemeDocumentBox>(message, _paper));
-}
-
-MediaStory::MediaStory(
-	not_null<HistoryItem*> parent,
-	FullStoryId storyId,
-	bool mention)
-: Media(parent)
-, _storyId(storyId)
-, _mention(mention) {
-	const auto owner = &parent->history()->owner();
-	owner->registerStoryItem(storyId, parent);
-
-	const auto stories = &owner->stories();
-	const auto maybeStory = stories->lookup(storyId);
-	if (!maybeStory && maybeStory.error() == NoStory::Unknown) {
-		stories->resolve(storyId, crl::guard(this, [=] {
-			if (const auto maybeStory = stories->lookup(storyId)) {
-				if ((*maybeStory)->unsupported() || (*maybeStory)->call()) {
-					_unsupported = true;
-				} else if (!_mention && _viewMayExist) {
-					parent->setText((*maybeStory)->caption());
-				}
-			} else {
-				_expired = true;
-			}
-			if (_mention) {
-				parent->updateStoryMentionText();
-			}
-			parent->history()->owner().requestItemViewRefresh(parent);
-		}));
-	} else if (!maybeStory) {
-		_expired = true;
-	}
-}
-
-MediaStory::~MediaStory() {
-	const auto owner = &parent()->history()->owner();
-	owner->unregisterStoryItem(_storyId, parent());
-}
-
-std::unique_ptr<Media> MediaStory::clone(not_null<HistoryItem*> parent) {
-	return std::make_unique<MediaStory>(parent, _storyId, false);
-}
-
-FullStoryId MediaStory::storyId() const {
-	return _storyId;
-}
-
-bool MediaStory::storyExpired(bool revalidate) {
-	if (revalidate) {
-		const auto stories = &parent()->history()->owner().stories();
-		if (const auto maybeStory = stories->lookup(_storyId)) {
-			if ((*maybeStory)->unsupported() || (*maybeStory)->call()) {
-				_unsupported = true;
-			}
-			_expired = false;
-		} else if (maybeStory.error() == Data::NoStory::Deleted) {
-			_expired = true;
-		}
-	}
-	return _expired;
-}
-
-bool MediaStory::storyUnsupported() const {
-	return _unsupported;
-}
-
-bool MediaStory::storyMention() const {
-	return _mention;
-}
-
-ItemPreview MediaStory::toPreview(ToPreviewOptions options) const {
-	return {
-		.text = Ui::Text::Colorized(
-			Ui::Text::IconEmoji(&st::dialogsMiniStoryIcon)
-		).append(notificationText()),
-	};
-}
-
-TextWithEntities MediaStory::notificationText() const {
-	const auto stories = &parent()->history()->owner().stories();
-	const auto maybeStory = stories->lookup(_storyId);
-	return WithCaptionNotificationText(
-		((_expired
-			|| (!maybeStory
-				&& maybeStory.error() == Data::NoStory::Deleted))
-			? tr::lng_in_dlg_story_expired
-			: tr::lng_in_dlg_story)(tr::now),
-		(maybeStory
-			? (*maybeStory)->caption()
-			: TextWithEntities()));
-}
-
-QString MediaStory::pinnedTextSubstring() const {
-	return tr::lng_action_pinned_media_story(tr::now);
-}
-
-TextForMimeData MediaStory::clipboardText() const {
-	return WithCaptionClipboardText(
-		(_expired
-			? tr::lng_in_dlg_story_expired
-			: tr::lng_in_dlg_story)(tr::now),
-		parent()->clipboardText());
-}
-
-bool MediaStory::dropForwardedInfo() const {
-	return true;
-}
-
-bool MediaStory::updateInlineResultMedia(const MTPMessageMedia &media) {
-	return false;
-}
-
-bool MediaStory::updateSentMedia(const MTPMessageMedia &media) {
-	return false;
-}
-
-not_null<PhotoData*> MediaStory::LoadingStoryPhoto(
-		not_null<Session*> owner) {
-	return owner->photo(kLoadingStoryPhotoId);
-}
-
-std::unique_ptr<HistoryView::Media> MediaStory::createView(
-		not_null<HistoryView::Element*> message,
-		not_null<HistoryItem*> realParent,
-		HistoryView::Element *replacing) {
-	const auto spoiler = false;
-	const auto stories = &parent()->history()->owner().stories();
-	const auto maybeStory = stories->lookup(_storyId);
-	if (!maybeStory) {
-		if (!_mention) {
-			realParent->setText(TextWithEntities());
-		}
-		if (maybeStory.error() == Data::NoStory::Deleted) {
-			_expired = true;
-			return nullptr;
-		}
-		_expired = false;
-		if (_mention) {
-			return nullptr;
-		}
-		_viewMayExist = true;
-		return std::make_unique<HistoryView::Photo>(
-			message,
-			realParent,
-			LoadingStoryPhoto(&realParent->history()->owner()),
-			spoiler);
-	}
-	_expired = false;
-	_viewMayExist = true;
-	const auto story = *maybeStory;
-	if (story->unsupported() || story->call()) {
-		_unsupported = true;
-		return nullptr;
-	} else if (_mention) {
-		return std::make_unique<HistoryView::ServiceBox>(
-			message,
-			std::make_unique<HistoryView::StoryMention>(message, story));
-	} else {
-		realParent->setText(story->caption());
-		if (const auto photo = story->photo()) {
-			return std::make_unique<HistoryView::Photo>(
-				message,
-				realParent,
-				photo,
-				spoiler);
-		} else if (const auto document = story->document()) {
-			return std::make_unique<HistoryView::Gif>(
-				message,
-				realParent,
-				document,
-				spoiler);
-		}
-		return nullptr;
-	}
 }
 
 } // namespace Data

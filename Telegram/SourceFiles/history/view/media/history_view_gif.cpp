@@ -55,7 +55,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_photo.h"
 #include "data/data_photo_media.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
 #include "data/data_streaming.h"
 #include "data/data_document.h"
 #include "data/data_file_click_handler.h"
@@ -191,9 +190,6 @@ Gif::Gif(
 : File(parent, realParent)
 , _data(document)
 , _videoCover(LookupVideoCover(document, realParent))
-, _storyId(realParent->media()
-	? realParent->media()->storyId()
-	: FullStoryId())
 , _spoiler((spoiler
 	|| IsHiddenRoundMessage(_parent)
 	|| realParent->isMediaSensitive())
@@ -285,7 +281,6 @@ Gif::~Gif() {
 			_parent->checkHeavyPart();
 		}
 	}
-	togglePollingStory(false);
 }
 
 DocumentData *Gif::ChooseInlineQuality(
@@ -2048,21 +2043,6 @@ void Gif::dataMediaCreated() const {
 		}
 	}
 	history()->owner().registerHeavyViewPart(_parent);
-	togglePollingStory(true);
-}
-
-void Gif::togglePollingStory(bool enabled) const {
-	if (!_storyId || _pollingStory == enabled) {
-		return;
-	}
-	const auto polling = Data::Stories::Polling::Chat;
-	if (!enabled) {
-		_data->owner().stories().unregisterPolling(_storyId, polling);
-	} else if (
-			!_data->owner().stories().registerPolling(_storyId, polling)) {
-		return;
-	}
-	_pollingStory = enabled;
 }
 
 bool Gif::uploading() const {
@@ -2076,9 +2056,7 @@ void Gif::hideSpoilers() {
 }
 
 bool Gif::needsBubble() const {
-	if (_storyId) {
-		return true;
-	} else if (_data->isVideoMessage()) {
+	if (_data->isVideoMessage()) {
 		return false;
 	}
 	const auto item = _parent->data();
@@ -2337,7 +2315,6 @@ void Gif::unloadHeavyPart() {
 		_roundSeek->unloadHeavyPart();
 	}
 	_videoThumbnailFrame = nullptr;
-	togglePollingStory(false);
 }
 
 bool Gif::enforceBubbleWidth() const {
@@ -2580,7 +2557,6 @@ void Gif::setStreamed(std::unique_ptr<Streamed> value) {
 	_streamed = std::move(value);
 	if (set) {
 		history()->owner().registerHeavyViewPart(_parent);
-		togglePollingStory(true);
 	} else if (removed) {
 		_videoPosition = 0;
 		_parent->checkHeavyPart();

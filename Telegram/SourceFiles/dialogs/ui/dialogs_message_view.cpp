@@ -186,8 +186,6 @@ void MessageView::prepare(
 	auto preview = item->toPreview(options);
 	_leftIcon = (preview.icon == ItemPreview::Icon::ForwardedMessage)
 		? &st::dialogsMiniForward
-		: (preview.icon == ItemPreview::Icon::ReplyToStory)
-		? &st::dialogsMiniReplyStory
 		: nullptr;
 	const auto hasImages = !preview.images.empty();
 	const auto history = item->history();

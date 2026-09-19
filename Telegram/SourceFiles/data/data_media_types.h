@@ -121,10 +121,6 @@ public:
 	virtual TodoListData *todolist() const;
 	virtual const WallPaper *paper() const;
 	virtual bool paperForBoth() const;
-	virtual FullStoryId storyId() const;
-	virtual bool storyExpired(bool revalidate = false);
-	virtual bool storyUnsupported() const;
-	virtual bool storyMention() const;
 	virtual bool uploading() const;
 	virtual Storage::SharedMediaTypesMask sharedMediaTypes() const;
 	virtual bool canBeGrouped() const;
@@ -600,46 +596,6 @@ public:
 private:
 	const WallPaper _paper;
 	const bool _paperForBoth = false;
-
-};
-
-class MediaStory final : public Media, public base::has_weak_ptr {
-public:
-	MediaStory(
-		not_null<HistoryItem*> parent,
-		FullStoryId storyId,
-		bool mention);
-	~MediaStory();
-
-	std::unique_ptr<Media> clone(not_null<HistoryItem*> parent) override;
-
-	FullStoryId storyId() const override;
-	bool storyExpired(bool revalidate = false) override;
-	bool storyUnsupported() const override;
-	bool storyMention() const override;
-
-	ItemPreview toPreview(ToPreviewOptions options) const override;
-	TextWithEntities notificationText() const override;
-	QString pinnedTextSubstring() const override;
-	TextForMimeData clipboardText() const override;
-	bool dropForwardedInfo() const override;
-
-	bool updateInlineResultMedia(const MTPMessageMedia &media) override;
-	bool updateSentMedia(const MTPMessageMedia &media) override;
-	std::unique_ptr<HistoryView::Media> createView(
-		not_null<HistoryView::Element*> message,
-		not_null<HistoryItem*> realParent,
-		HistoryView::Element *replacing = nullptr) override;
-
-	[[nodiscard]] static not_null<PhotoData*> LoadingStoryPhoto(
-		not_null<Session*> owner);
-
-private:
-	const FullStoryId _storyId;
-	const bool _mention = false;
-	bool _viewMayExist = false;
-	bool _unsupported = false;
-	bool _expired = false;
 
 };
 

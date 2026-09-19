@@ -233,23 +233,6 @@ void RequestDependentMessageItem(
 		done);
 }
 
-void RequestDependentMessageStory(
-		not_null<HistoryItem*> item,
-		PeerId peerId,
-		StoryId storyId) {
-	const auto fullId = item->fullId();
-	const auto history = item->history();
-	const auto session = &history->session();
-	const auto done = [=] {
-		if (const auto item = session->data().message(fullId)) {
-			item->updateDependencyItem();
-		}
-	};
-	history->owner().stories().resolve(
-		{ peerId ? peerId : history->peer->id, storyId },
-		done);
-}
-
 MessageFlags NewMessageFlags(not_null<PeerData*> peer) {
 	return MessageFlag::BeingSent
 		| (peer->isSelf() ? MessageFlag() : MessageFlag::Outgoing);
@@ -597,11 +580,6 @@ MessageFlags FlagsFromMTP(
 
 MTPMessageReplyHeader NewMessageReplyHeader(const Api::SendAction &action) {
 	if (const auto replyTo = action.replyTo) {
-		if (replyTo.storyId) {
-			return MTP_messageReplyStoryHeader(
-				peerToMTP(replyTo.storyId.peer),
-				MTP_int(replyTo.storyId.story));
-		}
 		using Flag = MTPDmessageReplyHeader::Flag;
 		const auto historyPeer = action.history->peer->id;
 		const auto externalPeerId = (replyTo.messageId.peer == historyPeer)
@@ -719,10 +697,9 @@ MediaCheckResult CheckMessageMedia(const MTPMessageMedia &media) {
 		return Result::Good;
 	}, [](const MTPDmessageMediaDice &) {
 		return Result::Good;
-	}, [](const MTPDmessageMediaStory &data) {
-		return data.is_via_mention()
-			? Result::HasStoryMention
-			: Result::Good;
+	}, [](const MTPDmessageMediaStory &) {
+		// LoogriGram: hidden before this runs, see StoryMedia().
+		return Result::Good;
 	}, [](const MTPDmessageMediaGiveaway &) {
 		return Result::Good;
 	}, [](const MTPDmessageMediaGiveawayResults &) {

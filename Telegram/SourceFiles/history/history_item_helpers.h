@@ -66,7 +66,6 @@ enum class MediaCheckResult {
 	Unsupported,
 	Empty,
 	HasExpiredMediaTimeToLive,
-	HasStoryMention,
 };
 [[nodiscard]] MediaCheckResult CheckMessageMedia(
 	const MTPMessageMedia &media);
@@ -116,10 +115,6 @@ void RequestDependentMessageItem(
 	not_null<HistoryItem*> item,
 	PeerId peerId,
 	MsgId msgId);
-void RequestDependentMessageStory(
-	not_null<HistoryItem*> item,
-	PeerId peerId,
-	StoryId storyId);
 [[nodiscard]] MessageFlags NewMessageFlags(not_null<PeerData*> peer);
 [[nodiscard]] TimeId NewMessageDate(TimeId scheduled);
 [[nodiscard]] TimeId NewMessageDate(const Api::SendOptions &options);

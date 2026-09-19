@@ -2259,7 +2259,7 @@ void AddWhenEditedForwardedAuthorActionHelper(
 		not_null<Window::SessionController*> controller,
 		bool insertSeparator) {
 	if (const auto forwarded = item->Get<HistoryMessageForwarded>()) {
-		if (!forwarded->story && forwarded->psaType.isEmpty()) {
+		if (forwarded->psaType.isEmpty()) {
 			if (insertSeparator && !menu->empty()) {
 				menu->addSeparator(&st::expandedMenuSeparator);
 			}

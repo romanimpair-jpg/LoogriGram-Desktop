@@ -346,10 +346,10 @@ enum class MessageFlag : uint64 {
 
 	HideDisplayDate       = (1ULL << 51),
 
-	// LoogriGram: a money message, known from its TL type before anything in
-	// it is parsed. See core/loogrigram_hidden_content.h. Bits 52 and 53 were
-	// the paid suggested post markers.
-	MoneyHidden           = (1ULL << 52),
+	// LoogriGram: a money or story message, known from its TL type before
+	// anything in it is parsed. See core/loogrigram_hidden_content.h. Bits 52
+	// and 53 were the paid suggested post markers.
+	ContentHidden         = (1ULL << 52),
 
 	StoryInProfile        = (1ULL << 54),
 	SavedMusicItem        = (1ULL << 55),

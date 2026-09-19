@@ -1053,7 +1053,6 @@ private:
 		const QString &siteName,
 		const QString &title,
 		const TextWithEntities &description,
-		FullStoryId storyId,
 		PhotoData *photo,
 		DocumentData *document,
 		WebPageCollage &&collage,

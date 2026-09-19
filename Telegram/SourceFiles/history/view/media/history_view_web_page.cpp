@@ -160,8 +160,6 @@ constexpr auto kLogEntryPreviewLines = 2;
 		? tr::lng_view_button_iv(tr::now)
 		: (type == WebPageType::Theme)
 		? tr::lng_view_button_theme(tr::now)
-		: (type == WebPageType::Story)
-		? tr::lng_view_button_story(tr::now)
 		: (type == WebPageType::Message)
 		? tr::lng_view_button_message(tr::now)
 		: (type == WebPageType::Group)
@@ -191,8 +189,6 @@ constexpr auto kLogEntryPreviewLines = 2;
 		? tr::lng_view_button_stickerset(tr::now)
 		: (type == WebPageType::ComposeAiTone)
 		? tr::lng_view_button_style(tr::now)
-		: (type == WebPageType::StoryAlbum)
-		? tr::lng_view_button_storyalbum(tr::now)
 		: (type == WebPageType::NewBot)
 		? tr::lng_view_button_newbot(tr::now)
 		: QString());
@@ -219,13 +215,10 @@ constexpr auto kLogEntryPreviewLines = 2;
 		|| ((type == WebPageType::Theme)
 			&& webpage->document
 			&& webpage->document->isTheme())
-		|| ((type == WebPageType::Story)
-			&& (webpage->photo || webpage->document))
 		|| ((type == WebPageType::WallPaper)
 			&& webpage->document
 			&& webpage->document->isWallPaper())
 		|| (type == WebPageType::StickerSet)
-		|| (type == WebPageType::StoryAlbum)
 		|| (type == WebPageType::ComposeAiTone)
 		|| (type == WebPageType::NewBot);
 }

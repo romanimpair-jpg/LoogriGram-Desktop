@@ -257,13 +257,10 @@ private:
 	[[nodiscard]] Action currentAction(bool fullFeatured) const;
 	[[nodiscard]] ClickHandlerPtr currentVideoLink(bool fullFeatured) const;
 
-	void togglePollingStory(bool enabled) const;
-
 	TtlRoundPaintCallback _drawTtl;
 
 	const not_null<DocumentData*> _data;
 	PhotoData *_videoCover = nullptr;
-	const FullStoryId _storyId;
 	std::unique_ptr<Streamed> _streamed;
 	const std::unique_ptr<MediaSpoiler> _spoiler;
 	mutable std::unique_ptr<MediaSpoilerTag> _spoilerTag;
@@ -290,7 +287,6 @@ private:
 	mutable std::optional<Ui::BubbleRounding> _thumbCacheRounding;
 	mutable bool _thumbCacheBlurred : 1 = false;
 	mutable bool _thumbIsEllipse : 1 = false;
-	mutable bool _pollingStory : 1 = false;
 	mutable bool _seeking : 1 = false;
 	mutable bool _smallGroupPart : 1 = false;
 	bool _inlineOverCap : 1 = false;

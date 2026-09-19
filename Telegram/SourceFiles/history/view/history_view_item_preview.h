@@ -29,7 +29,6 @@ struct ItemPreview {
 	enum class Icon {
 		None,
 		ForwardedMessage,
-		ReplyToStory,
 	};
 	TextWithEntities text;
 	std::vector<ItemPreviewImage> images;

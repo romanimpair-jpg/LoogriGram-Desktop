@@ -249,9 +249,7 @@ QString ReplySenderNameForSelectedCopy(
 		not_null<HistoryMessageReply*> reply) {
 	const auto &fields = reply->fields();
 	const auto message = reply->resolvedMessage.get();
-	if (const auto story = reply->resolvedStory.get()) {
-		return story->peer()->name();
-	} else if (!message) {
+	if (!message) {
 		auto &owner = item->history()->owner();
 		if (fields.externalSenderId) {
 			const auto name = owner.peer(fields.externalSenderId)->name();
@@ -319,8 +317,6 @@ TextWithEntities ReplyPreviewTextForSelectedCopy(
 		return message->inReplyText();
 	} else if (!fields.quote.empty()) {
 		return fields.quote;
-	} else if (const auto story = reply->resolvedStory.get()) {
-		return story->inReplyText();
 	} else if (const auto externalMedia = fields.externalMedia.get()) {
 		return externalMedia->toPreview({
 			.hideSender = true,

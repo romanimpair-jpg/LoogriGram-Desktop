@@ -43,9 +43,7 @@ enum class WebPageType : uint8 {
 
 	WallPaper,
 	Theme,
-	Story,
 	StickerSet,
-	StoryAlbum,
 	NewBot,
 
 	ComposeAiTone,
@@ -97,7 +95,6 @@ struct WebPageData {
 		const QString &newSiteName,
 		const QString &newTitle,
 		const TextWithEntities &newDescription,
-		FullStoryId newStoryId,
 		PhotoData *newPhoto,
 		DocumentData *newDocument,
 		WebPageCollage &&newCollage,
@@ -127,7 +124,6 @@ struct WebPageData {
 	QString siteName;
 	QString title;
 	TextWithEntities description;
-	FullStoryId storyId;
 	QString author;
 	PhotoData *photo = nullptr;
 	DocumentData *document = nullptr;

@@ -533,9 +533,6 @@ QString SubItemValue(
 		if (chatItem->Get<HistoryMessageForwarded>()) {
 			return tr::lng_sr_chat_forwarded(tr::now);
 		}
-		if (chatItem->replyToStory().valid()) {
-			return tr::lng_sr_chat_story_reply(tr::now);
-		}
 		return {};
 	}
 	case SubItem::Folders: {

@@ -703,7 +703,7 @@ QString DateTooltipText(not_null<Element*> view) {
 			locale.toString(base::unixtime::parse(editedDate), format));
 	}
 	if (const auto forwarded = item->Get<HistoryMessageForwarded>()) {
-		if (!forwarded->story && forwarded->psaType.isEmpty()) {
+		if (forwarded->psaType.isEmpty()) {
 			dateText += '\n' + tr::lng_forwarded_date(
 				tr::now,
 				lt_date,
@@ -2022,23 +2022,6 @@ void Element::validateText() {
 		invalidateTextSizeCache();
 	};
 	const auto item = data();
-	const auto media = item->media();
-	const auto storyMention = media && media->storyMention();
-	const auto storyExpired = media && media->storyExpired();
-	const auto storyUnsupported = media && media->storyUnsupported();
-	if (storyExpired || storyUnsupported) {
-		_media = nullptr;
-		_textItem = item;
-		clearRichPage();
-		if (!storyMention) {
-			if (_text.isEmpty()) {
-				setTextWithLinks(tr::italic(storyUnsupported
-					? tr::lng_stories_unsupported(tr::now)
-					: tr::lng_forwarded_story_expired(tr::now)));
-			}
-			return;
-		}
-	}
 
 	// Albums may show text of a different item than the parent one.
 	// Media::itemForText may initialize data within the object.

@@ -67,8 +67,25 @@ bool MoneyMessage(const MTPDmessage &data) {
 	return false;
 }
 
+bool StoryMedia(const MTPMessageMedia &media) {
+	return (media.type() == mtpc_messageMediaStory);
+}
+
+bool HiddenMedia(const MTPMessageMedia &media) {
+	return MoneyMedia(media) || StoryMedia(media);
+}
+
+bool HiddenMessage(const MTPDmessage &data) {
+	if (MoneyMessage(data)) {
+		return true;
+	} else if (const auto media = data.vmedia()) {
+		return StoryMedia(*media);
+	}
+	return false;
+}
+
 bool HiddenContent(not_null<const HistoryItem*> item) {
-	return item->moneyHidden();
+	return item->contentHidden();
 }
 
 } // namespace LoogriGram

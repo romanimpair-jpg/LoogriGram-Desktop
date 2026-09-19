@@ -5442,9 +5442,7 @@ bool Message::displayFromName() const {
 bool Message::displayForwardedFrom() const {
 	const auto item = data();
 	if (const auto forwarded = item->Get<HistoryMessageForwarded>()) {
-		if (forwarded->story) {
-			return true;
-		} else if (item->showForwardsFromSender(forwarded)) {
+		if (item->showForwardsFromSender(forwarded)) {
 			return forwarded->savedFromHiddenSenderInfo
 				|| (forwarded->savedFromSender
 					&& (forwarded->savedFromSender
@@ -6756,9 +6754,6 @@ bool Message::hasVisibleText() const {
 	if (hasRichPage()) {
 		return !media || !media->hideMessageText();
 	} else if (textItem->emptyText()) {
-		if (const auto media = textItem->media()) {
-			return media->storyExpired() || media->storyUnsupported();
-		}
 		return false;
 	}
 	return !media || !media->hideMessageText();
@@ -6785,9 +6780,6 @@ void Message::refreshInfoSkipBlock(HistoryItem *textItem) {
 	const auto media = this->media();
 	const auto hasTextSkipBlock = [&] {
 		if (!textItem || textItem->_text.empty()) {
-			if (const auto media = data()->media()) {
-				return media->storyExpired() || media->storyUnsupported();
-			}
 			return false;
 		} else if (factcheckBlock()
 			|| data()->Has<HistoryMessageLogEntryOriginal>()) {

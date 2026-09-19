@@ -424,20 +424,10 @@ std::unique_ptr<Data::Media> HistoryItem::CreateMedia(
 			item,
 			qs(media.vemoticon()),
 			media.vvalue().v);
-	}, [&](const MTPDmessageMediaStory &media) -> Result {
-		const auto storyId = FullStoryId{
-			peerFromMTP(media.vpeer()),
-			media.vid().v,
-		};
-		if (const auto embed = media.vstory()) {
-			item->history()->owner().stories().applySingle(
-				storyId.peer,
-				*embed);
-		}
-		return std::make_unique<Data::MediaStory>(
-			item,
-			storyId,
-			media.is_via_mention());
+	}, [](const MTPDmessageMediaStory &) -> Result {
+		// LoogriGram: a forwarded story or a story mention. Hidden before it
+		// is parsed, see LoogriGram::StoryMedia().
+		return nullptr;
 	}, [](const MTPDmessageMediaGiveaway &) -> Result {
 		return nullptr;
 	}, [](const MTPDmessageMediaGiveawayResults &) -> Result {
@@ -467,8 +457,8 @@ HistoryItem::HistoryItem(
 	.scheduleRepeatPeriod = data.vschedule_repeat_period().value_or_empty(),
 	.effectId = data.veffect().value_or_empty(),
 }) {
-	if (LoogriGram::MoneyMessage(data)) {
-		setupMoneyHidden();
+	if (LoogriGram::HiddenMessage(data)) {
+		setupContentHidden();
 		return;
 	}
 	// Called only for server-received messages, not locally created ones.
@@ -498,11 +488,6 @@ HistoryItem::HistoryItem(
 			|| (checked == MediaCheckResult::Good
 				&& media
 				&& ShowTtlMediaAsExpired(this, *media))) {
-		createServiceFromMtp(data);
-		setReactions(data.vreactions());
-		applyTTL(data);
-	} else if (checked == MediaCheckResult::HasStoryMention) {
-		setMedia(*data.vmedia());
 		createServiceFromMtp(data);
 		setReactions(data.vreactions());
 		applyTTL(data);
@@ -937,17 +922,6 @@ void HistoryItem::dependencyItemRemoved(not_null<HistoryItem*> dependency) {
 	}
 }
 
-void HistoryItem::dependencyStoryRemoved(
-		not_null<Data::Story*> dependency) {
-	if (const auto reply = Get<HistoryMessageReply>()) {
-		const auto documentId = reply->replyToDocumentId;
-		reply->storyRemoved(this, dependency);
-		if (documentId != reply->replyToDocumentId
-			&& generateLocalEntitiesByReply()) {
-			_history->owner().requestItemTextRefresh(this);
-		}
-	}
-}
 
 void HistoryItem::updateDependencyItem() {
 	if (const auto reply = Get<HistoryMessageReply>()) {
@@ -1094,11 +1068,6 @@ void HistoryItem::resolveDependent(not_null<HistoryMessageReply*> reply) {
 			this,
 			reply->externalPeerId(),
 			messageId);
-	} else if (reply->storyId()) {
-		RequestDependentMessageStory(
-			this,
-			reply->externalPeerId(),
-			reply->storyId());
 	}
 }
 
@@ -1322,10 +1291,6 @@ void HistoryItem::updateServiceText(PreparedServiceText &&text) {
 	_history->owner().requestItemResize(this);
 	invalidateChatListEntry();
 	_history->owner().updateDependentMessages(this);
-}
-
-void HistoryItem::updateStoryMentionText() {
-	setServiceText(prepareStoryMentionText());
 }
 
 HistoryMessageReplyMarkup *HistoryItem::inlineReplyMarkup() {
@@ -2189,10 +2154,11 @@ void HistoryItem::applyEdition(HistoryMessageEdition &&edition) {
 	if (!edition.useSameForwards) {
 		setForwardsCount(edition.forwards);
 	}
-	if (edition.mtpMedia && LoogriGram::MoneyMedia(*edition.mtpMedia)) {
-		// LoogriGram: edited into a money message. Nothing of it is kept.
+	if (edition.mtpMedia && LoogriGram::HiddenMedia(*edition.mtpMedia)) {
+		// LoogriGram: edited into a money or story message. Nothing of it
+		// is kept.
 		removeFromSharedMediaIndex();
-		setupMoneyHidden();
+		setupContentHidden();
 		finishEdition(keyboardTop);
 		return;
 	}
@@ -3535,8 +3501,7 @@ const HiddenSenderInfo *HistoryItem::displayHiddenSenderInfo() const {
 bool HistoryItem::showForwardsFromSender(
 		not_null<const HistoryMessageForwarded*> forwarded) const {
 	const auto peer = history()->peer;
-	return !forwarded->story
-		&& (peer->isSelf()
+	return (peer->isSelf()
 			|| peer->isRepliesChat()
 			|| peer->isVerifyCodes()
 			|| forwarded->imported);
@@ -4051,18 +4016,6 @@ MsgId HistoryItem::topicRootId() const {
 	return Data::ForumTopic::kGeneralId;
 }
 
-FullStoryId HistoryItem::replyToStory() const {
-	if (const auto reply = Get<HistoryMessageReply>()) {
-		if (reply->storyId()) {
-			const auto peerId = reply->externalPeerId()
-				? reply->externalPeerId()
-				: _history->peer->id;
-			return { .peer = peerId, .story = reply->storyId() };
-		}
-	}
-	return {};
-}
-
 void HistoryItem::resolveAdminLogReplyTo(not_null<HistoryItem*> replyTo) {
 	if (const auto reply = Get<HistoryMessageReply>()) {
 		reply->setInLogReplyTo(this, replyTo);
@@ -4085,9 +4038,6 @@ FullReplyTo HistoryItem::replyTo() const {
 			result.messageId = { replyToPeer, id };
 			result.quote = fields.quote;
 			result.quoteOffset = fields.quoteOffset;
-		}
-		if (const auto id = fields.storyId) {
-			result.storyId = { replyToPeer, id };
 		}
 	}
 	return result;
@@ -4407,8 +4357,6 @@ ItemPreview HistoryItem::toPreview(ToPreviewOptions options) const {
 	result.icon = (forwarded
 		&& (!forwardFromSender || forwarded->forwardOfForward()))
 		? ItemPreview::Icon::ForwardedMessage
-		: replyToStory().valid()
-		? ItemPreview::Icon::ReplyToStory
 		: ItemPreview::Icon::None;
 	const auto fromForwarded = [&]() -> std::optional<QString> {
 		if (forwarded) {
@@ -4476,8 +4424,7 @@ void HistoryItem::createComponents(CreateConfig &&config) {
 	uint64 mask = 0;
 	if (config.reply.messageId
 		|| config.reply.externalSenderId
-		|| !config.reply.externalSenderName.isEmpty()
-		|| config.reply.storyId) {
+		|| !config.reply.externalSenderName.isEmpty()) {
 		mask |= HistoryMessageReply::Bit();
 	}
 	if (config.viaBotId) {
@@ -4777,11 +4724,8 @@ void HistoryItem::createComponentsHelper(HistoryItemCommonFields &&fields) {
 	config.scheduleRepeatPeriod = fields.scheduleRepeatPeriod;
 	if (fields.flags & MessageFlag::HasReplyInfo) {
 		config.reply.messageId = replyTo.messageId.msg;
-		config.reply.storyId = replyTo.storyId.story;
-		config.reply.externalPeerId = replyTo.storyId
-			? replyTo.storyId.peer
-			: (replyTo.messageId && replyTo.messageId.peer
-				!= history()->peer->id)
+		config.reply.externalPeerId = (replyTo.messageId
+			&& replyTo.messageId.peer != history()->peer->id)
 			? replyTo.messageId.peer
 			: PeerId();
 		const auto to = LookupReplyTo(_history, replyTo.messageId);
@@ -4978,9 +4922,7 @@ void HistoryItem::refreshSentMedia(const MTPMessageMedia *media) {
 PreparedServiceText HistoryItem::prepareServiceTextForMessage(
 		const MTPMessageMedia &media,
 		bool unread) {
-	return media.match([&](const MTPDmessageMediaStory &data) {
-		return prepareStoryMentionText();
-	}, [&](const MTPDmessageMediaPhoto &data) -> PreparedServiceText {
+	return media.match([&](const MTPDmessageMediaPhoto &data) -> PreparedServiceText {
 		if (unread) {
 			const auto ttl = data.vttl_seconds();
 			Assert(ttl != nullptr);
@@ -5087,7 +5029,7 @@ void HistoryItem::createServiceFromMtp(const MTPDmessageService &message) {
 
 	const auto &action = message.vaction();
 	if (LoogriGram::MoneyAction(action)) {
-		setupMoneyHidden();
+		setupContentHidden();
 		return;
 	}
 	const auto type = action.type();
@@ -5354,26 +5296,6 @@ void HistoryItem::createServiceFromMtp(const MTPDmessageService &message) {
 
 void HistoryItem::setMedia(const MTPMessageMedia &media) {
 	_media = CreateMedia(this, media);
-	checkStoryForwardInfo();
-}
-
-void HistoryItem::checkStoryForwardInfo() {
-	if (const auto storyId = _media ? _media->storyId() : FullStoryId()) {
-		const auto adding = !Has<HistoryMessageForwarded>();
-		if (adding) {
-			AddComponents(HistoryMessageForwarded::Bit());
-		}
-		const auto forwarded = Get<HistoryMessageForwarded>();
-		if (forwarded->story || adding) {
-			const auto peer = history()->owner().peer(storyId.peer);
-			forwarded->story = true;
-			forwarded->originalSender = peer;
-		}
-	} else if (const auto forwarded = Get<HistoryMessageForwarded>()) {
-		if (forwarded->story) {
-			RemoveComponents(HistoryMessageForwarded::Bit());
-		}
-	}
 }
 
 void HistoryItem::applyServiceDateEdition(const MTPDmessageService &data) {
@@ -6819,28 +6741,6 @@ PreparedServiceText HistoryItem::prepareGameScoreText() {
 	return result;
 }
 
-PreparedServiceText HistoryItem::prepareStoryMentionText() {
-	auto result = PreparedServiceText();
-	const auto peer = history()->peer;
-	result.links.push_back(peer->createOpenLink());
-	const auto phrase = (this->media() && this->media()->storyExpired(true))
-		? (out()
-			? tr::lng_action_story_mention_me_unavailable
-			: tr::lng_action_story_mention_unavailable)
-		: (out()
-			? tr::lng_action_story_mention_me
-			: tr::lng_action_story_mention);
-	result.text = phrase(
-		tr::now,
-		lt_user,
-		Ui::Text::Wrapped(
-			tr::bold(peer->shortName()),
-			EntityType::CustomUrl,
-			u"internal:index"_q + QChar(1)),
-		tr::marked);
-	return result;
-}
-
 PreparedServiceText HistoryItem::prepareCallScheduledText(
 		TimeId scheduleDate) {
 	const auto call = Get<HistoryServiceOngoingCall>();
@@ -7070,8 +6970,8 @@ bool HistoryItem::isOnlyEmojiAndSpaces() const {
 	return (_flags & MessageFlag::OnlyEmojiAndSpaces);
 }
 
-void HistoryItem::setupMoneyHidden() {
-	_flags |= MessageFlag::MoneyHidden;
+void HistoryItem::setupContentHidden() {
+	_flags |= MessageFlag::ContentHidden;
 	_media = nullptr;
 	setServiceText({});
 }

@@ -906,8 +906,6 @@ PRIVATE
     history/view/media/history_view_sticker_player.cpp
     history/view/media/history_view_sticker_player.h
     history/view/media/history_view_sticker_player_abstract.h
-    history/view/media/history_view_story_mention.cpp
-    history/view/media/history_view_story_mention.h
     history/view/media/history_view_theme_document.cpp
     history/view/media/history_view_theme_document.h
     history/view/media/history_view_todo_list.cpp

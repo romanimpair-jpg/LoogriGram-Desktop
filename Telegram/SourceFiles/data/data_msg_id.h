@@ -193,7 +193,6 @@ struct MessageHighlightId {
 struct FullReplyTo {
 	FullMsgId messageId;
 	TextWithEntities quote;
-	FullStoryId storyId;
 	MsgId topicRootId = 0;
 	PeerId monoforumPeerId = 0;
 	int quoteOffset = 0;
@@ -204,7 +203,7 @@ struct FullReplyTo {
 		return { quote, quoteOffset, todoItemId, pollOption };
 	}
 	[[nodiscard]] bool replying() const {
-		return messageId || (storyId && storyId.peer);
+		return bool(messageId);
 	}
 	explicit operator bool() const {
 		return replying() || monoforumPeerId;

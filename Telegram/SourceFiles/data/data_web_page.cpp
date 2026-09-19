@@ -138,8 +138,6 @@ WebPageType ParseWebPageType(
 		return WebPageType::WallPaper;
 	} else if (type == u"telegram_theme"_q) {
 		return WebPageType::Theme;
-	} else if (type == u"telegram_story"_q) {
-		return WebPageType::Story;
 	} else if (type == u"telegram_channel"_q) {
 		return WebPageType::Channel;
 	} else if (type == u"telegram_channel_request"_q) {
@@ -174,13 +172,14 @@ WebPageType ParseWebPageType(
 		return WebPageType::Group;
 	} else if (type == u"telegram_stickerset"_q) {
 		return WebPageType::StickerSet;
-	} else if (type == u"telegram_story_album"_q) {
-		return WebPageType::StoryAlbum;
 	} else if (type == u"telegram_newbot"_q) {
 		return WebPageType::NewBot;
 	} else if (type == u"telegram_aicomposetone"_q) {
 		return WebPageType::ComposeAiTone;
 	} else if (hasIV) {
+		// LoogriGram: telegram_story and telegram_story_album previewed a
+		// story with a "View story" button. Stories are removed, so such a
+		// link previews as the plain article the server describes.
 		return WebPageType::ArticleWithIV;
 	} else {
 		return WebPageType::Article;
@@ -270,7 +269,6 @@ bool WebPageData::applyChanges(
 		const QString &newSiteName,
 		const QString &newTitle,
 		const TextWithEntities &newDescription,
-		FullStoryId newStoryId,
 		PhotoData *newPhoto,
 		DocumentData *newDocument,
 		WebPageCollage &&newCollage,
@@ -331,7 +329,6 @@ bool WebPageData::applyChanges(
 		&& siteName == resultSiteName
 		&& title == resultTitle
 		&& description.text == newDescription.text
-		&& storyId == newStoryId
 		&& photo == newPhoto
 		&& document == newDocument
 		&& collage.items == newCollage.items
@@ -358,7 +355,6 @@ bool WebPageData::applyChanges(
 	siteName = resultSiteName;
 	title = resultTitle;
 	description = newDescription;
-	storyId = newStoryId;
 	photo = newPhoto;
 	document = newDocument;
 	collage = std::move(newCollage);
@@ -470,7 +466,6 @@ bool WebPageData::computeDefaultSmallMedia() const {
 		&& photo
 		&& type != WebPageType::Photo
 		&& type != WebPageType::Document
-		&& type != WebPageType::Story
 		&& type != WebPageType::Video) {
 		if (type == WebPageType::Profile) {
 			return true;

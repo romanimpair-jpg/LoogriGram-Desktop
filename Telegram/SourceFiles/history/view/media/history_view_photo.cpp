@@ -32,7 +32,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/power_saving.h"
 #include "ui/ui_utility.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
 #include "data/data_streaming.h"
 #include "data/data_photo.h"
 #include "data/data_photo_media.h"
@@ -47,8 +46,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace HistoryView {
 namespace {
 
-constexpr auto kStoryWidth = 720;
-constexpr auto kStoryHeight = 1280;
 
 using Data::PhotoSize;
 
@@ -110,9 +107,6 @@ Photo::Photo(
 	bool spoiler)
 : File(parent, realParent)
 , _data(photo)
-, _storyId(realParent->media()
-	? realParent->media()->storyId()
-	: FullStoryId())
 , _spoiler((spoiler || realParent->isMediaSensitive())
 	? std::make_unique<MediaSpoiler>()
 	: nullptr)
@@ -143,7 +137,6 @@ Photo::~Photo() {
 			_parent->checkHeavyPart();
 		}
 	}
-	togglePollingStory(false);
 }
 
 void Photo::create(FullMsgId contextId, PeerData *chat) {
@@ -188,7 +181,6 @@ void Photo::dataMediaCreated() const {
 		_dataMedia->wanted(PhotoSize::Small, _realParent->fullId());
 	}
 	history()->owner().registerHeavyViewPart(_parent);
-	togglePollingStory(true);
 }
 
 bool Photo::hasHeavyPart() const {
@@ -203,26 +195,10 @@ void Photo::unloadHeavyPart() {
 		_spoiler->animation = nullptr;
 	}
 	_imageCache = QImage();
-	togglePollingStory(false);
 }
 
 bool Photo::enforceBubbleWidth() const {
 	return true;
-}
-
-void Photo::togglePollingStory(bool enabled) const {
-	const auto pollingStory = (enabled ? 1 : 0);
-	if (!_storyId || _pollingStory == pollingStory) {
-		return;
-	}
-	const auto polling = Data::Stories::Polling::Chat;
-	if (!enabled) {
-		_data->owner().stories().unregisterPolling(_storyId, polling);
-	} else if (
-			!_data->owner().stories().registerPolling(_storyId, polling)) {
-		return;
-	}
-	_pollingStory = pollingStory;
 }
 
 QSize Photo::countOptimalSize() {
@@ -331,8 +307,6 @@ int Photo::adjustHeightForLessCrop(QSize dimensions, QSize current) const {
 
 void Photo::draw(Painter &p, const PaintContext &context) const {
 	if (width() < st::msgPadding.left() + st::msgPadding.right() + 1) {
-		return;
-	} else if (_storyId && _data->isNull()) {
 		return;
 	}
 
@@ -698,9 +672,7 @@ void Photo::paintUserpicFrame(
 }
 
 QSize Photo::photoSize() const {
-	if (_storyId) {
-		return { kStoryWidth, kStoryHeight };
-	} else if (_parent->data()->isFakeAboutView()
+	if (_parent->data()->isFakeAboutView()
 		&& !_parent->Get<FakeBotAboutTop>()) {
 		return { st::managedBotImageWidth, st::managedBotImageHeight };
 	}
@@ -731,8 +703,6 @@ TextState Photo::textState(QPoint point, StateRequest request) const {
 	auto result = TextState(_parent);
 
 	if (width() < st::msgPadding.left() + st::msgPadding.right() + 1) {
-		return result;
-	} else if (_storyId && _data->isNull()) {
 		return result;
 	}
 	auto paintx = 0, painty = 0, paintw = width(), painth = height();
@@ -1070,7 +1040,6 @@ void Photo::setStreamed(std::unique_ptr<Streamed> value) {
 	_streamed = std::move(value);
 	if (set) {
 		history()->owner().registerHeavyViewPart(_parent);
-		togglePollingStory(true);
 	} else if (removed) {
 		_parent->checkHeavyPart();
 	}
@@ -1174,9 +1143,6 @@ void Photo::hideSpoilers() {
 }
 
 bool Photo::needsBubble() const {
-	if (_storyId) {
-		return true;
-	}
 	const auto item = _parent->data();
 	return !item->isService()
 		&& (item->repliesAreComments()

@@ -165,18 +165,15 @@ public:
 	};
 
 	void dependencyItemRemoved(not_null<HistoryItem*> dependency);
-	void dependencyStoryRemoved(not_null<Data::Story*> dependency);
 	void updateDependencyItem();
 	[[nodiscard]] MsgId dependencyMsgId() const;
 	[[nodiscard]] bool notificationReady() const;
 	[[nodiscard]] PeerData *specialNotificationPeer() const;
-	void checkStoryForwardInfo();
 	void checkBuyButton();
 
 	void resolveDependent();
 
 	void updateServiceText(PreparedServiceText &&text);
-	void updateStoryMentionText();
 
 	[[nodiscard]] UserData *viaBot() const;
 	[[nodiscard]] bool isGuestChatBotMessage() const;
@@ -229,8 +226,8 @@ public:
 	void invalidateChatListEntry();
 
 	void destroy();
-	[[nodiscard]] bool moneyHidden() const {
-		return _flags & MessageFlag::MoneyHidden;
+	[[nodiscard]] bool contentHidden() const {
+		return _flags & MessageFlag::ContentHidden;
 	}
 	[[nodiscard]] bool out() const {
 		return _flags & MessageFlag::Outgoing;
@@ -539,7 +536,6 @@ public:
 	[[nodiscard]] FullMsgId replyToFullId() const;
 	[[nodiscard]] MsgId replyToTop() const;
 	[[nodiscard]] MsgId topicRootId() const;
-	[[nodiscard]] FullStoryId replyToStory() const;
 	[[nodiscard]] FullReplyTo replyTo() const;
 	[[nodiscard]] bool inThread(MsgId rootId) const;
 
@@ -681,7 +677,7 @@ private:
 	void finishEditionToEmpty();
 
 	void clearDependencyMessage();
-	void setupMoneyHidden();
+	void setupContentHidden();
 	void setupChatThemeChange();
 	void setupTTLChange();
 
@@ -729,7 +725,6 @@ private:
 	[[nodiscard]] PreparedServiceText preparePinnedText();
 	[[nodiscard]] PreparedServiceText prepareGameScoreText();
 	[[nodiscard]] PreparedServiceText preparePaymentSentText();
-	[[nodiscard]] PreparedServiceText prepareStoryMentionText();
 	[[nodiscard]] PreparedServiceText prepareInvitedToCallText(
 		const std::vector<not_null<UserData*>> &users,
 		CallId linkCallId);

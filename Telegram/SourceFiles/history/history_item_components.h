@@ -224,7 +224,6 @@ struct HistoryMessageForwarded
 
 	bool savedFromOutgoing = false;
 	bool imported = false;
-	bool story = false;
 };
 
 struct HistoryMessageSavedMediaData
@@ -280,44 +279,6 @@ private:
 
 };
 
-class ReplyToStoryPointer final {
-public:
-	ReplyToStoryPointer(Data::Story *story = nullptr) : _data(story) {
-	}
-	ReplyToStoryPointer(ReplyToStoryPointer &&other)
-	: _data(base::take(other._data)) {
-	}
-	ReplyToStoryPointer &operator=(ReplyToStoryPointer &&other) {
-		_data = base::take(other._data);
-		return *this;
-	}
-	ReplyToStoryPointer &operator=(Data::Story *item) {
-		_data = item;
-		return *this;
-	}
-
-	[[nodiscard]] bool empty() const {
-		return !_data;
-	}
-	[[nodiscard]] Data::Story *get() const {
-		return _data;
-	}
-	explicit operator bool() const {
-		return !empty();
-	}
-
-	[[nodiscard]] Data::Story *operator->() const {
-		return _data;
-	}
-	[[nodiscard]] Data::Story &operator*() const {
-		return *_data;
-	}
-
-private:
-	Data::Story *_data = nullptr;
-
-};
-
 struct ReplyFields {
 	[[nodiscard]] ReplyFields clone(not_null<HistoryItem*> parent) const;
 
@@ -330,7 +291,6 @@ struct ReplyFields {
 	PeerId monoforumPeerId = 0;
 	MsgId messageId = 0;
 	MsgId topMessageId = 0;
-	StoryId storyId = 0;
 	int todoItemId = 0;
 	QByteArray pollOption;
 	uint32 quoteOffset : 30 = 0;
@@ -378,9 +338,6 @@ struct HistoryMessageReply
 	void itemRemoved(
 		not_null<HistoryItem*> holder,
 		not_null<HistoryItem*> removed);
-	void storyRemoved(
-		not_null<HistoryItem*> holder,
-		not_null<Data::Story*> removed);
 
 	[[nodiscard]] const ReplyFields &fields() const {
 		return _fields;
@@ -390,9 +347,6 @@ struct HistoryMessageReply
 	}
 	[[nodiscard]] MsgId messageId() const {
 		return _fields.messageId;
-	}
-	[[nodiscard]] StoryId storyId() const {
-		return _fields.storyId;
 	}
 	[[nodiscard]] MsgId topMessageId() const {
 		return _fields.topMessageId;
@@ -422,7 +376,6 @@ struct HistoryMessageReply
 	DocumentId replyToDocumentId = 0;
 	WebPageId replyToWebPageId = 0;
 	ReplyToMessagePointer resolvedMessage;
-	ReplyToStoryPointer resolvedStory;
 
 private:
 	ReplyFields _fields;

@@ -45,13 +45,7 @@ MTPInputReplyTo ReplyToForMTP(
 		not_null<History*> history,
 		FullReplyTo replyTo) {
 	const auto owner = &history->owner();
-	if (replyTo.storyId) {
-		if (const auto peer = owner->peerLoaded(replyTo.storyId.peer)) {
-			return MTP_inputReplyToStory(
-				peer->input(),
-				MTP_int(replyTo.storyId.story));
-		}
-	} else if (replyTo.messageId || replyTo.topicRootId) {
+	if (replyTo.messageId || replyTo.topicRootId) {
 		const auto to = LookupReplyTo(history, replyTo.messageId);
 		const auto replyingToTopic = replyTo.topicRootId
 			? history->peer->forumTopicFor(replyTo.topicRootId)

@@ -16,7 +16,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_photo.h"
 #include "data/data_poll.h"
 #include "data/data_session.h"
-#include "data/data_story.h"
 #include "data/data_todo_list.h"
 #include "data/data_user.h"
 #include "history/view/history_view_item_preview.h"
@@ -335,7 +334,6 @@ void Reply::update(
 	const auto pollAnswer = (messagePoll && !fields.pollOption.isEmpty())
 		? messagePoll->answerByOption(fields.pollOption)
 		: nullptr;
-	const auto story = data->resolvedStory.get();
 	const auto externalMedia = fields.externalMedia.get();
 	if (!_externalSender) {
 		if (const auto id = fields.externalSenderId) {
@@ -344,8 +342,6 @@ void Reply::update(
 	}
 	_colorPeer = message
 		? message->contentColorsFrom()
-		: story
-		? story->peer().get()
 		: _externalSender
 		? _externalSender
 		: nullptr;
@@ -357,8 +353,7 @@ void Reply::update(
 		: (messagePoll && fields.pollOption.isEmpty())
 		? &messagePoll->attachedMedia
 		: nullptr;
-	const auto hasPreview = (story && story->hasReplyPreview())
-		|| (message
+	const auto hasPreview = (message
 			&& message->media()
 			&& message->media()->hasReplyPreview())
 		|| (externalMedia && externalMedia->hasReplyPreview())
@@ -402,10 +397,6 @@ void Reply::update(
 		? message->inReplyText()
 		: !fields.quote.empty()
 		? fields.quote
-		: story
-		? Ui::Text::Colorized(
-			Ui::Text::IconEmoji(&st::historyReplyStoryIcon)
-		).append(story->inReplyText())
 		: externalMedia
 		? externalMedia->toPreview({
 			.hideSender = true,
@@ -502,7 +493,6 @@ void Reply::setLinkFrom(
 		}
 	};
 	const auto message = data->resolvedMessage.get();
-	// LoogriGram: a reply to a story opened that story. Stories are removed.
 	_link = isAdminLogEntry
 		? std::make_shared<LambdaClickHandler>(externalLink)
 		: message
@@ -518,9 +508,7 @@ PeerData *Reply::sender(
 		not_null<const Element*> view,
 		not_null<HistoryMessageReply*> data) const {
 	const auto message = data->resolvedMessage.get();
-	if (const auto story = data->resolvedStory.get()) {
-		return story->peer();
-	} else if (!message) {
+	if (!message) {
 		return _externalSender;
 	} else if (view->data()->Has<HistoryMessageForwarded>()) {
 		// Forward of a reply. Show reply-to original sender.
@@ -619,7 +607,7 @@ void Reply::updateName(
 			- st::historyReplyPadding.left())
 		: 0;
 	auto nameFull = TextWithEntities();
-	if (displayAsExternal && !groupNameAdded && !fields.storyId) {
+	if (displayAsExternal && !groupNameAdded) {
 		nameFull.append(PeerEmoji(sender));
 	}
 	nameFull.append(name);
@@ -663,10 +651,8 @@ void Reply::updateName(
 	_maxWidth = std::max(nameMaxWidth, optimalTextSize.width());
 	if (!data->displaying()) {
 		const auto unavailable = data->unavailable();
-		_stateText = ((fields.messageId || fields.storyId) && !unavailable)
+		_stateText = (fields.messageId && !unavailable)
 			? tr::lng_profile_loading(tr::now)
-			: fields.storyId
-			? tr::lng_deleted_story(tr::now)
 			: tr::lng_deleted_message(tr::now);
 		const auto phraseWidth = st::msgDateFont->width(_stateText);
 		_maxWidth = unavailable
@@ -891,9 +877,6 @@ void Reply::paint(
 					}
 					if (!data) {
 						return nullptr;
-					}
-					if (data->resolvedStory) {
-						return data->resolvedStory->replyPreview();
 					}
 					if (data->fields().externalMedia) {
 						return data->fields().externalMedia
