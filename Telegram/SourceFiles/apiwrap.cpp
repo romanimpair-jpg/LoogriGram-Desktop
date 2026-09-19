@@ -781,33 +781,6 @@ QString ApiWrap::exportDirectMessageLink(
 	return current + addedTimestamp;
 }
 
-QString ApiWrap::exportDirectStoryLink(not_null<Data::Story*> story) {
-	const auto storyId = story->fullId();
-	const auto peer = story->peer();
-	const auto fallback = [&] {
-		const auto base = peer->username();
-		const auto id = story->call()
-			? u"live"_q
-			: QString::number(storyId.story);
-		const auto query = base + "/s/" + id;
-		return session().createInternalLinkFull(query);
-	};
-	const auto i = _unlikelyStoryLinks.find(storyId);
-	const auto current = (i != end(_unlikelyStoryLinks))
-		? i->second
-		: fallback();
-	request(MTPstories_ExportStoryLink(
-		peer->input(),
-		MTP_int(story->id())
-	)).done([=](const MTPExportedStoryLink &result) {
-		const auto link = qs(result.data().vlink());
-		if (current != link) {
-			_unlikelyStoryLinks.emplace_or_assign(storyId, link);
-		}
-	}).send();
-	return current;
-}
-
 void ApiWrap::requestContacts() {
 	if (_session->data().contactsLoaded().current() || _contactsRequestId) {
 		return;

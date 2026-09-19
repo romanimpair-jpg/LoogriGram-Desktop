@@ -653,22 +653,6 @@ void SessionNavigation::showPeerByLinkResolved(
 		showPeerInfo(peer, params);
 	} else if (resolveType == ResolveType::HashtagSearch) {
 		searchMessages(info.text, peer->owner().history(peer));
-	} else if (info.storyParam == u"live"_q) {
-		parentController()->openPeerStories(peer->id, std::nullopt, true);
-	} else if (const auto storyId = info.storyParam.toInt()) {
-		const auto id = FullStoryId{ peer->id, storyId };
-		const auto context = (info.storyAlbumId > 0)
-			? Data::StoriesContext{ Data::StoriesContextAlbum{
-				info.storyAlbumId,
-			} }
-			: Data::StoriesContext{ Data::StoriesContextSingle() };
-		peer->owner().stories().resolve(id, crl::guard(this, [=] {
-			if (peer->owner().stories().lookup(id)) {
-				parentController()->openPeerStory(peer, id.story, context);
-			} else {
-				showToast(tr::lng_stories_link_invalid(tr::now));
-			}
-		}));
 	} else if (bot && resolveType == ResolveType::BotApp) {
 		const auto itemId = info.clickFromMessageId;
 		const auto item = _session->data().message(itemId);
@@ -3072,12 +3056,8 @@ bool SessionController::openPhotoExternal(
 
 void SessionController::openPhoto(
 		not_null<PhotoData*> photo,
-		MessageContext message,
-		const Data::StoriesContext *stories) {
+		MessageContext message) {
 	const auto item = session().data().message(message.id);
-	if (openSharedStory(item) || openFakeItemStory(message.id, stories)) {
-		return;
-	}
 	const auto origin = item
 		? Data::FileOrigin(item->fullId())
 		: Data::FileOrigin();
@@ -3111,12 +3091,9 @@ void SessionController::openDocument(
 		not_null<DocumentData*> document,
 		bool showInMediaView,
 		MessageContext message,
-		const Data::StoriesContext *stories,
 		std::optional<TimeId> videoTimestampOverride) {
 	const auto item = session().data().message(message.id);
-	if (openSharedStory(item) || openFakeItemStory(message.id, stories)) {
-		return;
-	} else if (showInMediaView) {
+	if (showInMediaView) {
 		if (OptionExternalMediaViewer.value()
 			&& !document->isTheme()
 			&& !HasSavingRestriction(item)) {
@@ -3163,45 +3140,6 @@ void SessionController::openDocument(
 		message.topicRootId,
 		message.monoforumPeerId,
 		message.showDrawButton);
-}
-
-bool SessionController::openSharedStory(HistoryItem *item) {
-	if (const auto media = item ? item->media() : nullptr) {
-		if (const auto storyId = media->storyId()) {
-			const auto story = session().data().stories().lookup(storyId);
-			if (story) {
-				_window->openInMediaView(::Media::View::OpenRequest(
-					this,
-					*story,
-					Data::StoriesContext{ Data::StoriesContextSingle() }));
-			}
-			return true;
-		}
-	}
-	return false;
-}
-
-bool SessionController::openFakeItemStory(
-		FullMsgId fakeItemId,
-		const Data::StoriesContext *stories) {
-	if (peerIsChat(fakeItemId.peer)
-		|| !IsStoryMsgId(fakeItemId.msg)) {
-		return false;
-	}
-	const auto maybeStory = session().data().stories().lookup({
-		fakeItemId.peer,
-		StoryIdFromMsgId(fakeItemId.msg),
-	});
-	if (maybeStory) {
-		using namespace Data;
-		const auto story = *maybeStory;
-		const auto context = stories
-			? *stories
-			: StoriesContext{ StoriesContextSingle() };
-		_window->openInMediaView(
-			::Media::View::OpenRequest(this, story, context));
-	}
-	return true;
 }
 
 auto SessionController::cachedChatThemeValue(
@@ -3509,63 +3447,6 @@ Ui::ChatThemeBackgroundData SessionController::backgroundData(
 		.generateGradient = generateGradient,
 		.gradientRotation = gradientRotation,
 	};
-}
-
-void SessionController::openPeerStory(
-		not_null<PeerData*> peer,
-		StoryId storyId,
-		Data::StoriesContext context) {
-	using namespace Media::View;
-	using namespace Data;
-
-	invalidate_weak_ptrs(&_storyOpenGuard);
-	auto &stories = session().data().stories();
-	const auto from = stories.lookup({ peer->id, storyId });
-	if (from) {
-		window().openInMediaView(OpenRequest(this, *from, context));
-	} else if (from.error() == Data::NoStory::Unknown) {
-		const auto done = crl::guard(&_storyOpenGuard, [=] {
-			openPeerStory(peer, storyId, context);
-		});
-		stories.resolve({ peer->id, storyId }, done);
-	}
-}
-
-void SessionController::openPeerStories(
-		PeerId peerId,
-		std::optional<Data::StorySourcesList> list,
-		bool onlyLive,
-		bool afterReload) {
-	using namespace Media::View;
-	using namespace Data;
-
-	invalidate_weak_ptrs(&_storyOpenGuard);
-	auto &stories = session().data().stories();
-	if (const auto source = stories.source(peerId)) {
-		if (const auto idDates = source->toOpen()) {
-			if (onlyLive && !idDates.videoStream) {
-				showToast(tr::lng_stories_live_finished(tr::now));
-				return;
-			}
-			openPeerStory(
-				source->peer,
-				idDates.id,
-				(list
-					? StoriesContext{ *list }
-					: StoriesContext{ StoriesContextPeer() }));
-		} else if (onlyLive) {
-			showToast(tr::lng_stories_live_finished(tr::now));
-		}
-	} else if (afterReload) {
-		if (onlyLive) {
-			showToast(tr::lng_stories_live_finished(tr::now));
-		}
-	} else if (const auto peer = session().data().peerLoaded(peerId)) {
-		const auto done = crl::guard(&_storyOpenGuard, [=] {
-			openPeerStories(peerId, list, onlyLive, true);
-		});
-		stories.requestPeerStories(peer, done);
-	}
 }
 
 HistoryView::PaintContext SessionController::preparePaintContext(

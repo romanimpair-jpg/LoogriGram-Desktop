@@ -13,7 +13,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/painter.h"
 #include "data/data_peer_values.h"
 #include "media/streaming/media_streaming_common.h"
-#include "media/view/media_view_video_stream.h"
 #include "platform/platform_overlay_widget.h"
 #include "base/debug_log.h"
 #include "styles/style_media_view.h"
@@ -68,34 +67,6 @@ struct RoundedCornersUniforms {
 };
 static_assert(sizeof(RoundedCornersUniforms) == 48);
 
-[[nodiscard]] QRectF StoryCropTextureRect(
-		QSizeF imageSize,
-		QSizeF targetSize) {
-	if (imageSize.isEmpty() || targetSize.isEmpty()) {
-		return QRectF(0., 0., 1., 1.);
-	}
-	const auto targetAspect = targetSize.width() / targetSize.height();
-	const auto imageAspect = imageSize.width() / imageSize.height();
-	if (imageAspect > targetAspect) {
-		const auto cropW = imageSize.height() * targetAspect;
-		const auto offset = (imageSize.width() - cropW) / 2.;
-		return QRectF(
-			offset / imageSize.width(),
-			0.,
-			cropW / imageSize.width(),
-			1.);
-	} else if (imageAspect < targetAspect) {
-		const auto cropH = imageSize.width() / targetAspect;
-		const auto offset = (imageSize.height() - cropH) / 2.;
-		return QRectF(
-			0.,
-			offset / imageSize.height(),
-			1.,
-			cropH / imageSize.height());
-	}
-	return QRectF(0., 0., 1., 1.);
-}
-
 [[nodiscard]] QShader LoadShader(const QString &name) {
 	return Ui::Rhi::ShaderFromFile(
 		u":/shaders/"_q + name + u".qsb"_q);
@@ -121,17 +92,9 @@ OverlayWidget::RendererRhi::RendererRhi(not_null<OverlayWidget*> owner)
 : _owner(owner) {
 	style::PaletteChanged(
 	) | rpl::on_next([=] {
-		ranges::fill(_cacheKeys, quint64(0));
+		_cacheKey = 0;
 		invalidateControls();
 	}, _lifetime);
-
-	crl::on_main(this, [=] {
-		_owner->_storiesChanged.events(
-		) | rpl::on_next([=] {
-			ranges::fill(_cacheKeys, quint64(0));
-			invalidateControls();
-		}, _lifetime);
-	});
 }
 
 void OverlayWidget::RendererRhi::initialize(
@@ -507,7 +470,7 @@ void OverlayWidget::RendererRhi::render(
 	if (_factor != factor) {
 		_factor = factor;
 		_ifactor = int(std::ceil(factor));
-		ranges::fill(_cacheKeys, quint64(0));
+		_cacheKey = 0;
 		invalidateControls();
 		delete _controlsFadeTexture;
 		_controlsFadeTexture = nullptr;
@@ -517,13 +480,8 @@ void OverlayWidget::RendererRhi::render(
 		int(size.height() / _factor));
 
 	_rub = rhi->nextResourceUpdateBatch();
-	_pendingVideoStream = nullptr;
 
 	_owner->paint(this);
-
-	if (_pendingVideoStream) {
-		_pendingVideoStream->borrowedPaintOffscreen(_rhi, _rt, _cb);
-	}
 
 	if (const auto notch = _owner->topNotchSkip()) {
 		auto blackImage = QImage(1, 1, QImage::Format_ARGB32_Premultiplied);
@@ -568,11 +526,6 @@ void OverlayWidget::RendererRhi::render(
 		cb->draw(4);
 	}
 	_drawCommands.clear();
-
-	if (_pendingVideoStream) {
-		_pendingVideoStream->borrowedPaintOnscreen(_rhi, _rt, _cb);
-		_pendingVideoStream = nullptr;
-	}
 
 	cb->endPass();
 }
@@ -625,13 +578,6 @@ void OverlayWidget::RendererRhi::releaseResources() {
 	delete _nv12BlendPipeline;
 	_nv12BlendPipeline = nullptr;
 
-	for (auto &tex : _storiesSiblingTextures) {
-		delete tex;
-		tex = nullptr;
-	}
-	ranges::fill(_storiesSiblingSizes, QSize());
-	ranges::fill(_storiesSiblingCacheKeys, quint64(0));
-
 	delete _controlsAtlasTexture;
 	_controlsAtlasTexture = nullptr;
 	_controlsAtlasSize = QSize();
@@ -646,12 +592,10 @@ void OverlayWidget::RendererRhi::releaseResources() {
 	}
 	_perDrawSrbs.clear();
 
-	for (auto &tex : _rgbaTextures) {
-		delete tex;
-		tex = nullptr;
-	}
-	ranges::fill(_rgbaSizes, QSize());
-	ranges::fill(_cacheKeys, quint64(0));
+	delete _rgbaTexture;
+	_rgbaTexture = nullptr;
+	_rgbaSize = QSize();
+	_cacheKey = 0;
 
 	delete _yTexture;
 	_yTexture = nullptr;
@@ -800,21 +744,13 @@ void OverlayWidget::RendererRhi::paintUsingRaster(
 }
 
 void OverlayWidget::RendererRhi::validateControlsFade() {
-	const auto forStories = (_owner->_stories != nullptr);
-	const auto flip = !forStories && !_owner->topShadowOnTheRight();
-	if (_controlsFadeTexture
-		&& _shadowTopFlip == flip
-		&& _shadowsForStories == forStories) {
+	const auto flip = !_owner->topShadowOnTheRight();
+	if (_controlsFadeTexture && _shadowTopFlip == flip) {
 		return;
 	}
 	_shadowTopFlip = flip;
-	_shadowsForStories = forStories;
-	const auto &top = _shadowsForStories
-		? st::storiesShadowTop
-		: st::mediaviewShadowTop;
-	const auto &bottom = _shadowsForStories
-		? st::storiesShadowBottom
-		: st::mediaviewShadowBottom;
+	const auto &top = st::mediaviewShadowTop;
+	const auto &bottom = st::mediaviewShadowBottom;
 	const auto width = top.width();
 	const auto bottomTop = top.height();
 	const auto height = bottomTop + bottom.height();
@@ -853,31 +789,16 @@ void OverlayWidget::RendererRhi::fillShadowUniforms(
 		float *shadowTopRect,
 		float *shadowBottomSkipOpacityFullFade,
 		ContentGeometry geometry) const {
-	if (_owner->_stories) {
-		const auto &top = st::storiesShadowTop.size();
-		const auto shadowTop = geometry.topShadowShown
-			? geometry.rect.y()
-			: geometry.rect.y() - top.height();
-		const auto tRect = transformRect(
-			QRect(QPoint(geometry.rect.x(), shadowTop), top));
-		shadowTopRect[0] = tRect.x();
-		shadowTopRect[1] = tRect.y();
-		shadowTopRect[2] = tRect.width();
-		shadowTopRect[3] = tRect.height();
-	} else {
-		const auto &top = st::mediaviewShadowTop.size();
-		const auto point = QPoint(
-			_shadowTopFlip ? 0 : (_viewport.width() - top.width()),
-			0);
-		const auto tRect = transformRect(QRect(point, top));
-		shadowTopRect[0] = tRect.x();
-		shadowTopRect[1] = tRect.y();
-		shadowTopRect[2] = tRect.width();
-		shadowTopRect[3] = tRect.height();
-	}
-	const auto &bottom = _owner->_stories
-		? st::storiesShadowBottom
-		: st::mediaviewShadowBottom;
+	const auto &top = st::mediaviewShadowTop.size();
+	const auto point = QPoint(
+		_shadowTopFlip ? 0 : (_viewport.width() - top.width()),
+		0);
+	const auto tRect = transformRect(QRect(point, top));
+	shadowTopRect[0] = tRect.x();
+	shadowTopRect[1] = tRect.y();
+	shadowTopRect[2] = tRect.width();
+	shadowTopRect[3] = tRect.height();
+	const auto &bottom = st::mediaviewShadowBottom;
 	shadowBottomSkipOpacityFullFade[0] = bottom.height() * _factor;
 	shadowBottomSkipOpacityFullFade[1] =
 		geometry.bottomShadowSkip * _factor;
@@ -1031,10 +952,6 @@ void OverlayWidget::RendererRhi::paintBackground() {
 	drawTexturedQuad(_imagePipeline, tex, coords);
 }
 
-void OverlayWidget::RendererRhi::paintVideoStream() {
-	_pendingVideoStream = _owner->_videoStream.get();
-}
-
 void OverlayWidget::RendererRhi::paintTransformedVideoFrame(
 		ContentGeometry geometry) {
 	const auto data = _owner->videoFrameWithInfo();
@@ -1156,15 +1073,10 @@ void OverlayWidget::RendererRhi::paintTransformedVideoFrame(
 		return;
 	}
 
-	const auto textureRect = _owner->_stories
-		? StoryCropTextureRect(
-			QSizeF(nativeTexture ? _lumaSize : yuv->size),
-			geometry.rect.size())
-		: QRectF(0., 0., 1., 1.);
-	const auto texLeft = float(textureRect.x());
-	const auto texRight = float(textureRect.x() + textureRect.width());
-	const auto texTop = float(textureRect.y());
-	const auto texBottom = float(textureRect.y() + textureRect.height());
+	const auto texLeft = 0.f;
+	const auto texRight = 1.f;
+	const auto texTop = 0.f;
+	const auto texBottom = 1.f;
 
 	const auto rRect = scaleRect(
 		transformRect(geometry.rect),
@@ -1396,43 +1308,34 @@ void OverlayWidget::RendererRhi::paintTransformedStaticContent(
 		const QImage &image,
 		ContentGeometry geometry,
 		bool semiTransparent,
-		bool fillTransparentBackground,
-		int index) {
-	Expects(index >= 0 && index < 3);
-
+		bool fillTransparentBackground) {
 	if (image.isNull() || geometry.rect.isEmpty() || !_imagePipeline) {
 		return;
 	}
 
 	const auto cacheKey = image.cacheKey();
-	const auto upload = (_cacheKeys[index] != cacheKey);
+	const auto upload = (_cacheKey != cacheKey);
 	if (upload) {
-		_cacheKeys[index] = cacheKey;
-		if (!_rgbaTextures[index]
-			|| _rgbaSizes[index] != image.size()) {
-			delete _rgbaTextures[index];
-			_rgbaTextures[index] = _rhi->newTexture(
+		_cacheKey = cacheKey;
+		if (!_rgbaTexture || _rgbaSize != image.size()) {
+			delete _rgbaTexture;
+			_rgbaTexture = _rhi->newTexture(
 				QRhiTexture::BGRA8,
 				image.size());
-			_rgbaTextures[index]->create();
-			_rgbaSizes[index] = image.size();
+			_rgbaTexture->create();
+			_rgbaSize = image.size();
 		}
 		_rub->uploadTexture(
-			_rgbaTextures[index],
+			_rgbaTexture,
 			QRhiTextureUploadDescription(
 				QRhiTextureUploadEntry(0, 0,
 					QRhiTextureSubresourceUploadDescription(image))));
 	}
 
-	const auto textureRect = _owner->_stories
-		? StoryCropTextureRect(
-			QSizeF(image.size()),
-			geometry.rect.size())
-		: QRectF(0., 0., 1., 1.);
-	const auto texLeft = float(textureRect.x());
-	const auto texRight = float(textureRect.x() + textureRect.width());
-	const auto texTop = float(textureRect.y());
-	const auto texBottom = float(textureRect.y() + textureRect.height());
+	const auto texLeft = 0.f;
+	const auto texRight = 1.f;
+	const auto texTop = 0.f;
+	const auto texBottom = 1.f;
 
 	const auto rRect = scaleRect(
 		transformRect(geometry.rect),
@@ -1461,7 +1364,7 @@ void OverlayWidget::RendererRhi::paintTransformedStaticContent(
 	const auto blend = (geometry.roundRadius > 0.)
 		|| (semiTransparent && !fillTransparentBackground);
 	drawContentQuad(
-		_rgbaTextures[index],
+		_rgbaTexture,
 		coords,
 		geometry,
 		fillTransparentBackground,
@@ -1519,29 +1422,16 @@ void OverlayWidget::RendererRhi::paintSpeedBoost(QRect outer) {
 
 auto OverlayWidget::RendererRhi::controlMeta(Over control) const
 -> Control {
-	const auto stories = [&] {
-		return (_owner->_stories != nullptr);
-	};
+	// LoogriGram: stories drew their own arrows and a locked save icon, and
+	// had a Share control at index 3; the rest moved up.
 	switch (control) {
-	case Over::Left: return {
-		0,
-		stories() ? &st::storiesLeft : &st::mediaviewLeft
-	};
-	case Over::Right: return {
-		1,
-		stories() ? &st::storiesRight : &st::mediaviewRight
-	};
-	case Over::Save: return {
-		2,
-		(_owner->saveControlLocked()
-			? &st::mediaviewSaveLocked
-			: &st::mediaviewSave)
-	};
-	case Over::Share: return { 3, &st::mediaviewShare };
-	case Over::Rotate: return { 4, &st::mediaviewRotate };
-	case Over::More: return { 5, &st::mediaviewMore };
-	case Over::Draw: return { 6, &st::mediaviewDraw };
-	case Over::Recognize: return { 7, &st::mediaviewRecognize };
+	case Over::Left: return { 0, &st::mediaviewLeft };
+	case Over::Right: return { 1, &st::mediaviewRight };
+	case Over::Save: return { 2, &st::mediaviewSave };
+	case Over::Rotate: return { 3, &st::mediaviewRotate };
+	case Over::More: return { 4, &st::mediaviewMore };
+	case Over::Draw: return { 5, &st::mediaviewDraw };
+	case Over::Recognize: return { 6, &st::mediaviewRecognize };
 	}
 	Unexpected("Control value in OverlayWidget::RendererRhi::controlMeta.");
 }
@@ -1554,7 +1444,6 @@ void OverlayWidget::RendererRhi::validateControls() {
 		controlMeta(Over::Left),
 		controlMeta(Over::Right),
 		controlMeta(Over::Save),
-		controlMeta(Over::Share),
 		controlMeta(Over::Rotate),
 		controlMeta(Over::More),
 		controlMeta(Over::Draw),
@@ -1802,50 +1691,6 @@ void OverlayWidget::RendererRhi::paintRoundedCorners(int radius) {
 		});
 		++cornerIndex;
 	}
-}
-
-void OverlayWidget::RendererRhi::paintStoriesSiblingPart(
-		int index,
-		const QImage &image,
-		QRect rect,
-		float64 opacity) {
-	Expects(index >= 0 && index < kStoriesSiblingPartsCount);
-
-	if (image.isNull() || rect.isEmpty()) {
-		return;
-	}
-
-	const auto cacheKey = image.cacheKey();
-	if (_storiesSiblingCacheKeys[index] != cacheKey
-		|| !_storiesSiblingTextures[index]
-		|| _storiesSiblingSizes[index] != image.size()) {
-		_storiesSiblingCacheKeys[index] = cacheKey;
-		delete _storiesSiblingTextures[index];
-		_storiesSiblingTextures[index] = _rhi->newTexture(
-			QRhiTexture::BGRA8,
-			image.size());
-		_storiesSiblingTextures[index]->create();
-		_storiesSiblingSizes[index] = image.size();
-		_rub->uploadTexture(
-			_storiesSiblingTextures[index],
-			QRhiTextureUploadDescription(
-				QRhiTextureUploadEntry(0, 0,
-					QRhiTextureSubresourceUploadDescription(image))));
-	}
-
-	const auto rRect = transformRect(rect);
-	const float coords[] = {
-		rRect.left(), rRect.bottom(), 0.f, 0.f,
-		rRect.right(), rRect.bottom(), 1.f, 0.f,
-		rRect.left(), rRect.top(), 0.f, 1.f,
-		rRect.right(), rRect.top(), 1.f, 1.f,
-	};
-	drawTexturedQuad(
-		_imagePipeline,
-		_storiesSiblingTextures[index],
-		coords,
-		float(opacity),
-		true);
 }
 
 Rect OverlayWidget::RendererRhi::transformRect(const Rect &raster) const {

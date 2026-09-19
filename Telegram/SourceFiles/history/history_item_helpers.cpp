@@ -537,27 +537,6 @@ ClickHandlerPtr JumpToMessageClickHandler(
 	});
 }
 
-ClickHandlerPtr JumpToStoryClickHandler(not_null<Data::Story*> story) {
-	return JumpToStoryClickHandler(story->peer(), story->id());
-}
-
-ClickHandlerPtr JumpToStoryClickHandler(
-		not_null<PeerData*> peer,
-		StoryId storyId) {
-	return std::make_shared<LambdaClickHandler>([=] {
-		const auto separate = Core::App().separateWindowFor(peer);
-		const auto controller = separate
-			? separate->sessionController()
-			: peer->session().tryResolveWindow();
-		if (controller) {
-			controller->openPeerStory(
-				peer,
-				storyId,
-				{ Data::StoriesContextSingle() });
-		}
-	});
-}
-
 
 MessageFlags FlagsFromMTP(
 		MsgId id,

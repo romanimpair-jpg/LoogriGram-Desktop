@@ -7134,7 +7134,6 @@ void HistoryWidget::updateHistoryGeometry(
 					document,
 					true,
 					{ .id = item->fullId(), .showDrawButton = draw },
-					nullptr,
 					timestamp);
 			}
 		}

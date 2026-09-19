@@ -16,7 +16,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_user_photos.h"
 #include "data/data_web_page.h"
 #include "data/data_cloud_themes.h" // Data::CloudTheme.
-#include "media/stories/media_stories_delegate.h"
 #include "media/view/media_view_playback_controls.h"
 #include "media/view/media_view_open_common.h"
 #include "media/view/media_view_recognition_selection.h"
@@ -31,15 +30,13 @@ namespace anim {
 enum class activation : uchar;
 } // namespace anim
 
-namespace Calls {
-class GroupCall;
-} // namespace Calls
+namespace ChatHelpers {
+class Show;
+} // namespace ChatHelpers
 
 namespace Data {
-class GroupCall;
 class PhotoMedia;
 class DocumentMedia;
-struct StoriesContext;
 } // namespace Data
 
 namespace Ui {
@@ -81,21 +78,14 @@ struct FrameWithInfo;
 enum class Error;
 } // namespace Media::Streaming
 
-namespace Media::Stories {
-class View;
-struct ContentLayout;
-} // namespace Media::Stories
-
 namespace Media::View {
 
-class VideoStream;
 class GroupThumbs;
 class Pip;
 
 class OverlayWidget final
 	: public ClickHandlerHost
 	, private PlaybackControls::Delegate
-	, private Stories::Delegate
 	, private Media::SystemMediaControlsVideoDelegate {
 public:
 	OverlayWidget();
@@ -137,7 +127,6 @@ private:
 	struct Streamed;
 	struct PipWrap;
 	struct ItemContext;
-	struct StoriesContext;
 	struct InstantViewMedia;
 	class Renderer;
 	class RendererSW;
@@ -149,13 +138,10 @@ private:
 		None,
 		Left,
 		Right,
-		LeftStories,
-		RightStories,
 		Header,
 		Name,
 		Date,
 		Save,
-		Share,
 		Rotate,
 		More,
 		Draw,
@@ -185,12 +171,14 @@ private:
 		qreal rotation = 0.;
 		qreal controlsOpacity = 0.;
 
-		// Stories.
+		// LoogriGram: these were set only by stories. They stay because the
+		// renderers pass them to shader uniforms (the Rhi ones are laid out
+		// to match precompiled .qsb shaders); their defaults are the plain
+		// viewer's values.
 		qreal fade = 0.;
 		qreal scale = 1.;
 		int bottomShadowSkip = 0;
 		int roundRadius = 0;
-		bool topShadowShown = false;
 	};
 	struct StartStreaming {
 		StartStreaming() : continueStreaming(false), startTime(0) {
@@ -269,26 +257,6 @@ private:
 	[[nodiscard]] int topNotchSkip() const;
 	[[nodiscard]] std::shared_ptr<ChatHelpers::Show> uiShow();
 
-	not_null<Ui::RpWidget*> storiesWrap() override;
-	std::shared_ptr<ChatHelpers::Show> storiesShow() override;
-	auto storiesStickerOrEmojiChosen()
-		-> rpl::producer<ChatHelpers::FileChosen> override;
-	void storiesRedisplay(not_null<Data::Story*> story) override;
-	void storiesJumpTo(
-		not_null<Main::Session*> session,
-		FullStoryId id,
-		Data::StoriesContext context) override;
-	void storiesClose() override;
-	bool storiesPaused() override;
-	rpl::producer<bool> storiesLayerShown() override;
-	void storiesTogglePaused(bool paused) override;
-	float64 storiesSiblingOver(Stories::SiblingType type) override;
-	void storiesRepaint() override;
-	void storiesVolumeToggle() override;
-	void storiesVolumeChanged(float64 volume) override;
-	void storiesVolumeChangeFinished() override;
-	int storiesTopNotchSkip() override;
-
 	void hideControls(bool force = false);
 	void subscribeToScreenGeometry();
 
@@ -332,7 +300,6 @@ private:
 
 	void assignMediaPointer(DocumentData *document);
 	void assignMediaPointer(not_null<PhotoData*> photo);
-	void assignMediaPointer(std::shared_ptr<Data::GroupCall> call);
 
 	void updateOver(QPoint mpos);
 	void initFullScreen();
@@ -361,9 +328,7 @@ private:
 	void setContext(std::variant<
 		v::null_t,
 		ItemContext,
-		not_null<PeerData*>,
-		StoriesContext> context);
-	void setStoriesPeer(PeerData *peer);
+		not_null<PeerData*>> context);
 
 	void refreshLang();
 	void showSaveMsgFile();
@@ -430,9 +395,6 @@ private:
 		anim::activation activation = anim::activation::normal,
 		const Data::CloudTheme &cloud = Data::CloudTheme(),
 		const StartStreaming &startStreaming = StartStreaming());
-	void displayVideoStream(
-		const std::shared_ptr<Data::GroupCall> &call,
-		anim::activation activation = anim::activation::normal);
 	void displayFinished(anim::activation activation);
 	void redisplayContent();
 	void findCurrent();
@@ -482,9 +444,6 @@ private:
 	[[nodiscard]] int finalContentRotation() const;
 	[[nodiscard]] QRect finalContentRect() const;
 	[[nodiscard]] ContentGeometry contentGeometry() const;
-	[[nodiscard]] ContentGeometry storiesContentGeometry(
-		const Stories::ContentLayout &layout,
-		float64 scale = 1.) const;
 	void updateContentRect();
 	void contentSizeChanged();
 
@@ -544,9 +503,7 @@ private:
 		QRect clip,
 		float64 opacity);
 
-	[[nodiscard]] float64 controlOpacity(
-		float64 progress,
-		bool nonbright = false) const;
+	[[nodiscard]] float64 controlOpacity(float64 progress) const;
 	[[nodiscard]] bool isSaveMsgShown() const;
 
 	void showChapterIndicator(const QString &name, int direction);
@@ -572,10 +529,8 @@ private:
 	void validatePhotoCurrentImage();
 	void tryStartTextRecognition();
 
-	[[nodiscard]] bool hasCopyMediaRestriction(
-		bool skipPremiumCheck = false) const;
-	[[nodiscard]] bool showCopyMediaRestriction(
-		bool skipPRemiumCheck = false);
+	[[nodiscard]] bool hasCopyMediaRestriction() const;
+	[[nodiscard]] bool showCopyMediaRestriction();
 
 	[[nodiscard]] QSize flipSizeByRotation(QSize size) const;
 
@@ -598,12 +553,10 @@ private:
 	[[nodiscard]] bool opaqueContentShown() const;
 	void clearStreaming(bool savePosition = true);
 	[[nodiscard]] bool canInitStreaming() const;
-	[[nodiscard]] bool saveControlLocked() const;
 	void applyVideoQuality(VideoQuality value);
 
 	[[nodiscard]] bool topShadowOnTheRight() const;
 	void applyHideWindowWorkaround();
-	[[nodiscard]] ClickHandlerPtr ensureCaptionExpandLink();
 
 	Window::SessionController *findWindow(bool switchTo = true) const;
 
@@ -634,7 +587,6 @@ private:
 	DocumentData *_chosenQuality = nullptr;
 	PhotoData *_videoCover = nullptr;
 	Media::VideoQuality _quality;
-	QString _documentLoadingTo;
 	std::shared_ptr<Data::PhotoMedia> _photoMedia;
 	std::shared_ptr<Data::DocumentMedia> _documentMedia;
 	std::shared_ptr<Data::PhotoMedia> _videoCoverMedia;
@@ -655,7 +607,6 @@ private:
 	QRect _rightNav, _rightNavOver, _rightNavIcon;
 	QRect _headerNav, _nameNav, _dateNav, _separatorNav;
 	QRect _rotateNav, _rotateNavOver, _rotateNavIcon;
-	QRect _shareNav, _shareNavOver, _shareNavIcon;
 	QRect _drawNav, _drawNavOver, _drawNavIcon;
 	QRect _recognizeNav, _recognizeNavOver, _recognizeNavIcon;
 	QRect _saveNav, _saveNavOver, _saveNavIcon;
@@ -663,7 +614,6 @@ private:
 	bool _leftNavVisible = false;
 	bool _rightNavVisible = false;
 	bool _saveVisible = false;
-	bool _shareVisible = false;
 	bool _rotateVisible = false;
 	bool _drawButtonEnabled = true;
 	bool _drawVisible = false;
@@ -686,9 +636,6 @@ private:
 	Ui::Text::QuotePaintCache _captionPreCache;
 	Ui::Text::QuotePaintCache _captionBlockquoteCache;
 	QRect _captionRect;
-	ClickHandlerPtr _captionExpandLink;
-	int _captionShowMoreWidth = 0;
-	int _captionSkipBlockWidth = 0;
 
 	int _topNotchSize = 0;
 	int _width = 0;
@@ -730,16 +677,8 @@ private:
 
 	Qt::Orientations _flip;
 
-	std::unique_ptr<Stories::View> _stories;
 	std::shared_ptr<Show> _cachedShow;
-	rpl::event_stream<> _storiesChanged;
-	Main::Session *_storiesSession = nullptr;
-	rpl::event_stream<ChatHelpers::FileChosen> _storiesStickerOrEmojiChosen;
 	std::unique_ptr<Ui::LayerManager> _layerBg;
-
-	std::unique_ptr<VideoStream> _videoStream;
-	QString _callLinkSlug;
-	MsgId _callJoinMessageId;
 
 	const style::icon *_docIcon = nullptr;
 	style::color _docIconColor;

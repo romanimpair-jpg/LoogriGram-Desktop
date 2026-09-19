@@ -1919,24 +1919,6 @@ void CopyPostLink(
 	}
 }
 
-void CopyStoryLink(
-		std::shared_ptr<Main::SessionShow> show,
-		FullStoryId storyId) {
-	const auto session = &show->session();
-	const auto maybeStory = session->data().stories().lookup(storyId);
-	if (!maybeStory) {
-		return;
-	}
-	const auto story = *maybeStory;
-	QGuiApplication::clipboard()->setText(
-		session->api().exportDirectStoryLink(story));
-	show->showToast({
-		.text = { tr::lng_channel_public_link_copied(tr::now) },
-		.iconLottie = u"toast/voip_invite"_q,
-		.iconLottieSize = st::toastLottieIconSize,
-	});
-}
-
 void FillPollOptionPage(
 		not_null<Ui::PopupMenu*> menu,
 		not_null<Data::Session*> owner,

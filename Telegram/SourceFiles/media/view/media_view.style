@@ -119,8 +119,6 @@ mediaviewRight: icon {
 	{ "mediaview/next", mediaviewControlFg }
 };
 mediaviewSave: icon {{ "mediaview/download", mediaviewControlFg }};
-mediaviewSaveLocked: icon {{ "mediaview/download_locked", mediaviewControlFg }};
-mediaviewShare: icon {{ "mediaview/viewer_share", mediaviewControlFg }};
 mediaviewRotate: icon {{ "mediaview/rotate", mediaviewControlFg }};
 mediaviewMore: icon {{ "title_menu_dots", mediaviewControlFg }};
 mediaviewRecognize: icon {{ "mediaview/recognize", mediaviewControlFg }};
@@ -260,7 +258,6 @@ mediaviewFont: normalFont;
 mediaviewTextStyle: defaultTextStyle;
 
 mediaviewTextLeft: 14px;
-mediaviewTextSkip: 10px;
 mediaviewTextSkipHalf: 5px;
 mediaviewHeaderTop: 47px;
 mediaviewTextTop: 26px;
@@ -459,51 +456,7 @@ pipVolumeIcon1Over: icon {{ "player/player_volume_small", mediaviewPipControlsFg
 pipVolumeIcon2: icon {{ "player/player_volume_on", mediaviewPipControlsFg }};
 pipVolumeIcon2Over: icon {{ "player/player_volume_on", mediaviewPipControlsFgOver }};
 
-storiesMaxSize: size(540px, 960px);
-storiesSiblingWidthMin: 200px; // Try making sibling not less than this.
-storiesMaxNameFontSize: 17px;
 storiesRadius: 8px;
-storiesControlSize: 64px;
-storiesLeft: icon {{ "stories/next-flip_horizontal", mediaviewControlFg }};
-storiesRight: icon {{ "stories/next", mediaviewControlFg }};
-storiesSliderWidth: 2px;
-storiesSliderMargin: margins(8px, 7px, 8px, 6px);
-storiesSliderSkip: 4px;
-storiesSliderOutsideSkip: 4px;
-storiesHeaderMargin: margins(12px, 4px, 12px, 8px);
-storiesHeaderPhoto: UserpicButton(defaultUserpicButton) {
-	size: size(28px, 28px);
-	photoSize: 28px;
-}
-storiesHeaderName: FlatLabel(defaultFlatLabel) {
-	textFg: mediaviewControlFg;
-	style: semiboldTextStyle;
-	minWidth: 10px;
-	maxHeight: 20px;
-}
-storiesHeaderNamePosition: point(50px, 0px);
-storiesHeaderDate: FlatLabel(defaultFlatLabel) {
-	textFg: mediaviewControlFg;
-	palette: TextPalette(defaultTextPalette) {
-		linkFg: mediaviewControlFg;
-	}
-	minWidth: 10px;
-	maxHeight: 20px;
-}
-storiesHeaderDatePosition: point(50px, 17px);
-storiesHeaderRepostWidthMin: 40px;
-storiesShadowTop: icon{{ "mediaview/shadow_bottom-flip_vertical", windowShadowFg }};
-storiesShadowBottom: mediaviewShadowBottom;
-storiesControlsMinWidth: 280px;
-storiesControlsExtend: 4px;
-storiesFieldMargin: margins(0px, 18px, 0px, 12px);
-storiesSideSkip: 145px;
-storiesCaptionFull: FlatLabel(defaultFlatLabel) {
-	style: mediaviewCaptionStyle;
-	textFg: mediaviewCaptionFg;
-	palette: mediaviewTextPalette;
-	minWidth: 36px;
-}
 storiesComposeBg: groupCallMembersBg;
 storiesComposeBgOver: groupCallMembersBgOver;
 storiesComposeBgRipple: groupCallMembersBgRipple;
@@ -892,25 +845,6 @@ storiesComposeControls: ComposeControls(defaultComposeControls) {
 	}
 	chooseSendAs: storiesChooseSendAs;
 }
-storiesViewsMenu: PopupMenu(storiesPopupMenuWithIcons) {
-	scrollPadding: margins(0px, 6px, 0px, 4px);
-	maxHeight: 320px;
-	menu: Menu(storiesMenuWithIcons) {
-		itemPadding: margins(54px, 8px, 17px, 8px);
-		widthMin: 240px;
-		widthMax: 240px;
-	}
-	radius: 7px;
-}
-storiesRecentViewsSkip: 8px;
-storiesWhoViewed: WhoRead(defaultWhoRead) {
-	userpics: GroupCallUserpics {
-		size: 24px;
-		shift: 9px;
-		stroke: 4px;
-		align: align(left);
-	}
-}
 mediaviewEmojiPan: EmojiPan(storiesEmojiPan) {
 	showAnimation: PanelAnimation(emojiPanAnimation) {
 		fadeBg: groupCallMenuBg;
@@ -947,23 +881,6 @@ storiesReactionsPan: EmojiPan(storiesEmojiPan) {
 storiesReactionsWidth: 210px;
 storiesReactionsBottomSkip: 29px;
 storiesReactionsAddedTop: 200px;
-storiesLikeReactionsPosition: point(85px, 30px);
-
-storiesUnsupportedLabel: FlatLabel(defaultFlatLabel) {
-	textFg: mediaviewControlFg;
-	style: TextStyle(defaultTextStyle) {
-		font: font(14px);
-		lineHeight: 21px;
-	}
-	align: align(top);
-}
-storiesUnsupportedUpdate: RoundButton(defaultActiveButton) {
-	width: -102px;
-	height: 42px;
-	textTop: 12px;
-}
-storiesUnsupportedTop: 24px;
-storiesUnsupportedSkip: 18px;
 storiesShortInfoBox: ShortInfoBox(shortInfoBox) {
 	label: FlatLabel(infoLabel) {
 		textFg: storiesComposeGrayText;
@@ -982,91 +899,6 @@ storiesShortInfoBox: ShortInfoBox(shortInfoBox) {
 		palette: mediaviewTextPalette;
 	}
 }
-storiesReportBox: ReportBox(defaultReportBox) {
-	button: SettingsButton(reportReasonButton) {
-		textFg: storiesComposeWhiteText;
-		textFgOver: storiesComposeWhiteText;
-		textBg: storiesComposeBg;
-		textBgOver: storiesComposeBgOver;
-		ripple: storiesComposeRipple;
-	}
-	noIconButton: SettingsButton(reportReasonButton) {
-		textFg: storiesComposeWhiteText;
-		textFgOver: storiesComposeWhiteText;
-		textBg: storiesComposeBg;
-		textBgOver: storiesComposeBgOver;
-		padding: margins(22px, 7px, 8px, 7px);
-		ripple: storiesComposeRipple;
-	}
-	label: storiesBoxLabel;
-	field: InputField(storiesBoxInputField) {
-		textMargins: margins(1px, 26px, 1px, 4px);
-		heightMax: 116px;
-	}
-	divider: groupCallDividerLabel;
-	spam: icon {{ "menu/delete", storiesComposeWhiteText }};
-	fake: icon {{ "menu/fake", storiesComposeWhiteText }};
-	violence: icon {{ "menu/violence", storiesComposeWhiteText }};
-	children: icon {{ "menu/block", storiesComposeWhiteText }};
-	pornography: icon {{ "menu/porn", storiesComposeWhiteText }};
-	copyright: icon {{ "menu/copyright", storiesComposeWhiteText }};
-	drugs: icon {{ "menu/drugs", storiesComposeWhiteText }};
-	personal: icon {{ "menu/personal", storiesComposeWhiteText }};
-	other: icon {{ "menu/report", storiesComposeWhiteText }};
-}
-storiesActionToast: Toast(defaultToast) {
-	maxWidth: 320px;
-}
-
-storiesBadgeCloseFriends: icon{{ "mediaview/mini_close_friends", historyPeerUserpicFg }};
-storiesBadgeContacts: icon{{ "mediaview/mini_contacts", historyPeerUserpicFg }};
-storiesBadgeSelectedContacts: icon{{ "mediaview/mini_selected_contacts", historyPeerUserpicFg }};
-storiesBadgePadding: margins(1px, 1px, 1px, 1px);
-storiesBadgeOutline: 2px;
-storiesBadgeShift: point(5px, 4px);
-
-storiesPlayIcon: icon{{ "player/player_play", mediaviewPlaybackIconFgOver }};
-storiesPauseIcon: icon{{ "player/player_pause", mediaviewPlaybackIconFgOver }};
-storiesPlayButton: IconButton(defaultIconButton) {
-	width: 40px;
-	height: 40px;
-	icon: storiesPlayIcon;
-	iconOver: storiesPlayIcon;
-	iconPosition: point(8px, 8px);
-	rippleAreaPosition: point(4px, 4px);
-	rippleAreaSize: 32px;
-	ripple: RippleAnimation(defaultRippleAnimation) {
-		color: mediaviewPlaybackIconRipple;
-	}
-}
-storiesPlayButtonPosition: point(54px, 0px);
-storiesVolumeButton: IconButton(storiesPlayButton) {
-	icon: mediaviewVolumeIcon0Over;
-	iconOver: mediaviewVolumeIcon0Over;
-	ripple: emptyRippleAnimation;
-}
-storiesVolumeButtonPosition: point(10px, 0px);
-storiesVolumeSize: 75px;
-storiesVolumeBottom: 20px;
-storiesVolumeSlider: MediaSlider {
-	width: 3px;
-	activeFg: mediaviewPlaybackActiveOver;
-	inactiveFg: mediaviewPlaybackActive;
-	activeFgOver: mediaviewPlaybackActiveOver;
-	inactiveFgOver: mediaviewPlaybackActive;
-	activeFgDisabled: mediaviewPlaybackActiveOver;
-	inactiveFgDisabled: mediaviewPlaybackActive;
-	receivedTillFg: mediaviewPlaybackActive;
-	seekSize: size(12px, 12px);
-	duration: mediaviewOverDuration;
-}
-storiesInfoTooltipLabel: defaultImportantTooltipLabel;
-storiesInfoTooltip: defaultImportantTooltip;
-storiesInfoTooltipMaxWidth: 360px;
-storiesCaptionPullThreshold: 50px;
-storiesShowMorePadding: margins(6px, 4px, 6px, 4px);
-storiesShowMoreFont: semiboldFont;
-
 storiesStealthBoxClose: IconButton(defaultIconButton) {
 	width: boxTitleHeight;
 	height: boxTitleHeight;
@@ -1078,38 +910,3 @@ storiesStealthBoxClose: IconButton(defaultIconButton) {
 	rippleAreaSize: 40px;
 	ripple: storiesComposeRippleLight;
 }
-storiesViewsPosition: point(4px, 29px);
-storiesViewsIcon: icon{{ "mediaview/views", storiesComposeGrayText }};
-storiesViewsIconTop: 11px;
-storiesViewsText: FlatLabel(defaultFlatLabel) {
-	textFg: storiesComposeGrayText;
-}
-storiesViewsTextPosition: point(26px, 14px);
-storiesChannelReactionsTextTop: 16px;
-
-storiesLikesPosition: point(0px, 29px);
-storiesLikesIcon: icon {{ "chat/input_like", storiesComposeWhiteText }};
-storiesLikesText: FlatLabel(defaultFlatLabel) {
-	textFg: storiesComposeWhiteText;
-	style: semiboldTextStyle;
-}
-storiesLikesTextPosition: point(41px, 14px);
-storiesLikesTextRightSkip: 8px;
-storiesLikesEmptyRightSkip: 2px;
-
-storiesLikeCountStyle: TextStyle(defaultTextStyle) {
-	font: font(32px semibold);
-}
-storiesChangelogFooterWidthMin: 240px;
-
-storiesRepostSimpleStyle: QuoteStyle(defaultQuoteStyle) {
-	padding: margins(8px, 2px, 8px, 2px);
-	verticalSkip: 4px;
-	outline: 0px;
-	radius: 10px;
-}
-storiesRepostIcon: IconEmoji{
-	icon: icon {{ "mediaview/mini_repost", windowFg }};
-	padding: margins(0px, 4px, 2px, 0px);
-}
-storiesRepostUserpicPadding: margins(0px, 1px, 4px, 0px);

@@ -23,8 +23,6 @@ class QRhiResourceUpdateBatch;
 
 namespace Media::View {
 
-class VideoStream;
-
 class OverlayWidget::RendererRhi final
 	: public OverlayWidget::Renderer
 	, public Ui::Rhi::Renderer
@@ -48,14 +46,12 @@ public:
 
 private:
 	void paintBackground() override;
-	void paintVideoStream() override;
 	void paintTransformedVideoFrame(ContentGeometry geometry) override;
 	void paintTransformedStaticContent(
 		const QImage &image,
 		ContentGeometry geometry,
 		bool semiTransparent,
-		bool fillTransparentBackground,
-		int index = 0) override;
+		bool fillTransparentBackground) override;
 	void paintRadialLoading(
 		QRect inner,
 		bool radial,
@@ -77,11 +73,6 @@ private:
 	void paintCaption(QRect outer, float64 opacity) override;
 	void paintGroupThumbs(QRect outer, float64 opacity) override;
 	void paintRoundedCorners(int radius) override;
-	void paintStoriesSiblingPart(
-		int index,
-		const QImage &image,
-		QRect rect,
-		float64 opacity = 1.) override;
 
 	void paintRecognitionOverlay(
 		const QImage &image,
@@ -171,9 +162,10 @@ private:
 	std::vector<QRhiShaderResourceBindings*> _perDrawSrbs;
 	int _nextVertexSlot = 0;
 
-	QRhiTexture *_rgbaTextures[3] = {};
-	QSize _rgbaSizes[3];
-	quint64 _cacheKeys[3] = {};
+	// LoogriGram: two more image textures held the story siblings.
+	QRhiTexture *_rgbaTexture = nullptr;
+	QSize _rgbaSize;
+	quint64 _cacheKey = 0;
 
 	QRhiTexture *_yTexture = nullptr;
 	QRhiTexture *_uTexture = nullptr;
@@ -194,23 +186,16 @@ private:
 	int _nextPoolIndex = 0;
 	[[nodiscard]] QRhiTexture *acquirePoolTexture(QSize size);
 
-	static constexpr auto kControlsCount = 8;
+	static constexpr auto kControlsCount = 7;
 	QRhiTexture *_controlsAtlasTexture = nullptr;
 	QSize _controlsAtlasSize;
 	std::array<QRect, kControlsCount + 1> _controlsTextures;
 
-	static constexpr auto kStoriesSiblingPartsCount = 4;
-	QRhiTexture *_storiesSiblingTextures[kStoriesSiblingPartsCount] = {};
-	QSize _storiesSiblingSizes[kStoriesSiblingPartsCount];
-	quint64 _storiesSiblingCacheKeys[kStoriesSiblingPartsCount] = {};
 
 	QRhiTexture *_controlsFadeTexture = nullptr;
 	QSize _controlsFadeSize;
 	bool _shadowTopFlip = false;
-	bool _shadowsForStories = false;
 
-
-	VideoStream *_pendingVideoStream = nullptr;
 	bool _initialized = false;
 
 	rpl::lifetime _lifetime;

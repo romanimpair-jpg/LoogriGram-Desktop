@@ -22,19 +22,16 @@ public:
 
 private:
 	void paintBackground() override;
-	void paintVideoStream() override;
 	void paintTransformedVideoFrame(ContentGeometry geometry) override;
 	void paintTransformedStaticContent(
 		const QImage &image,
 		ContentGeometry geometry,
 		bool semiTransparent,
-		bool fillTransparentBackground,
-		int index = 0) override;
+		bool fillTransparentBackground) override;
 	void paintTransformedImage(
 		const QImage &image,
 		QRect rect,
-		int rotation,
-		const QRectF &sourceRect = QRectF());
+		int rotation);
 	void paintControlsFade(QRect content, const ContentGeometry &geometry);
 	void paintRadialLoading(
 		QRect inner,
@@ -57,11 +54,6 @@ private:
 	void paintCaption(QRect outer, float64 opacity) override;
 	void paintGroupThumbs(QRect outer, float64 opacity) override;
 	void paintRoundedCorners(int radius) override;
-	void paintStoriesSiblingPart(
-		int index,
-		const QImage &image,
-		QRect rect,
-		float64 opacity = 1.) override;
 
 	bool handleHideWorkaround();
 	void validateOverControlImage();

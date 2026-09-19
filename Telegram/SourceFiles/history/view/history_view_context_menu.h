@@ -75,9 +75,6 @@ void CopyPostLink(
 	FullMsgId itemId,
 	Context context,
 	std::optional<TimeId> videoTimestamp = {});
-void CopyStoryLink(
-	std::shared_ptr<Main::SessionShow> show,
-	FullStoryId storyId);
 void FillPollOptionPage(
 	not_null<Ui::PopupMenu*> menu,
 	not_null<Data::Session*> owner,

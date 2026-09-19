@@ -78,13 +78,6 @@ Widget::Widget(
 				controller->statisticsTag().peer,
 				request.messageStatistic,
 				request.storyStatistic));
-		} else if (const auto &s = request.story) {
-			if (const auto peer = controller->session().data().peer(s.peer)) {
-				controller->parentController()->openPeerStory(
-					peer,
-					s.story,
-					{ Data::StoriesContextSingle() });
-			}
 		}
 	}, _inner->lifetime());
 	_inner->scrollToRequests(

@@ -17,12 +17,11 @@ namespace Ui {
 class BoxContent;
 } // namespace Ui
 
-namespace Media::Stories {
+// LoogriGram: these lived in media/stories/media_stories_share, beside the
+// story share box. Sharing a video at a timestamp is not a story feature, so
+// they moved here when stories were removed.
 
-[[nodiscard]] object_ptr<Ui::BoxContent> PrepareShareBox(
-	std::shared_ptr<ChatHelpers::Show> show,
-	FullStoryId id,
-	bool viewerStyle = false);
+namespace Media::View {
 
 [[nodiscard]] QString FormatShareAtTime(TimeId seconds);
 
@@ -31,4 +30,4 @@ namespace Media::Stories {
 	not_null<HistoryItem*> item,
 	TimeId videoTimestamp);
 
-} // namespace Media::Stories
+} // namespace Media::View

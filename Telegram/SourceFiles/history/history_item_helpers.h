@@ -211,11 +211,6 @@ struct SendingErrorRequest {
 	not_null<HistoryItem*> item,
 	FullMsgId returnToId = FullMsgId(),
 	MessageHighlightId highlight = {});
-[[nodiscard]] ClickHandlerPtr JumpToStoryClickHandler(
-	not_null<Data::Story*> story);
-ClickHandlerPtr JumpToStoryClickHandler(
-	not_null<PeerData*> peer,
-	StoryId storyId);
 
 [[nodiscard]] not_null<HistoryItem*> GenerateJoinedMessage(
 	not_null<History*> history,

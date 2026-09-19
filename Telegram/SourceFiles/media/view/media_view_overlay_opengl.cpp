@@ -9,9 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "ui/gl/gl_shader.h"
 #include "ui/painter.h"
-#include "media/stories/media_stories_view.h"
 #include "media/streaming/media_streaming_common.h"
-#include "media/view/media_view_video_stream.h"
 #include "platform/platform_overlay_widget.h"
 #include "base/platform/base_platform_info.h"
 #include "core/crash_reports.h"
@@ -106,34 +104,6 @@ float roundedCorner() {
 	};
 }
 
-[[nodiscard]] QRectF StoryCropTextureRect(
-		QSizeF imageSize,
-		QSizeF targetSize) {
-	if (imageSize.isEmpty() || targetSize.isEmpty()) {
-		return QRectF(0., 0., 1., 1.);
-	}
-	const auto targetAspect = targetSize.width() / targetSize.height();
-	const auto imageAspect = imageSize.width() / imageSize.height();
-	if (imageAspect > targetAspect) {
-		const auto cropW = imageSize.height() * targetAspect;
-		const auto offset = (imageSize.width() - cropW) / 2.;
-		return QRectF(
-			offset / imageSize.width(),
-			0.,
-			cropW / imageSize.width(),
-			1.);
-	} else if (imageAspect < targetAspect) {
-		const auto cropH = imageSize.width() / targetAspect;
-		const auto offset = (imageSize.height() - cropH) / 2.;
-		return QRectF(
-			0.,
-			offset / imageSize.height(),
-			1.,
-			cropH / imageSize.height());
-	}
-	return QRectF(0., 0., 1., 1.);
-}
-
 } // namespace
 
 OverlayWidget::RendererGL::RendererGL(not_null<OverlayWidget*> owner)
@@ -149,13 +119,6 @@ OverlayWidget::RendererGL::RendererGL(not_null<OverlayWidget*> owner)
 		_captionImage.invalidate();
 		invalidateControls();
 	}, _lifetime);
-
-	crl::on_main(this, [=] {
-		_owner->_storiesChanged.events(
-		) | rpl::on_next([=] {
-			invalidateControls();
-		}, _lifetime);
-	});
 }
 
 void OverlayWidget::RendererGL::init(QOpenGLFunctions &f) {
@@ -166,11 +129,9 @@ void OverlayWidget::RendererGL::init(QOpenGLFunctions &f) {
 	constexpr auto kRoundingQuads = 4;
 	constexpr auto kRoundingVertices = kRoundingQuads * 6;
 	constexpr auto kRoundingValues = kRoundingVertices * 2;
-	constexpr auto kStoriesSiblingValues = kStoriesSiblingPartsCount * 16;
 	constexpr auto kValues = kQuadValues
 		+ kControlsValues
-		+ kRoundingValues
-		+ kStoriesSiblingValues;
+		+ kRoundingValues;
 
 	_contentBuffer.emplace();
 	_contentBuffer->setUsagePattern(QOpenGLBuffer::DynamicDraw);
@@ -264,10 +225,8 @@ void OverlayWidget::RendererGL::init(QOpenGLFunctions &f) {
 
 void OverlayWidget::RendererGL::deinit(QOpenGLFunctions *f) {
 	_textures.destroy(f);
-	for (auto i = 0; i != 3; ++i) {
-		_rgbaSize[i] = QSize();
-		_cacheKeys[i] = 0;
-	}
+	_rgbaSize = QSize();
+	_cacheKey = 0;
 	_lumaSize = QSize();
 	_chromaSize = QSize();
 	_chromaSizeV = QSize();
@@ -291,9 +250,6 @@ void OverlayWidget::RendererGL::deinit(QOpenGLFunctions *f) {
 	_captionImage.destroy(f);
 	_groupThumbsImage.destroy(f);
 	_controlsImage.destroy(f);
-	for (auto &part : _storiesSiblingParts) {
-		part.destroy(f);
-	}
 }
 
 void OverlayWidget::RendererGL::paint(
@@ -301,9 +257,6 @@ void OverlayWidget::RendererGL::paint(
 		QOpenGLFunctions &f) {
 	if (handleHideWorkaround(f)) {
 		return;
-	}
-	if (const auto stream = _owner->_videoStream.get()) {
-		stream->ensureBorrowedRenderer(f);
 	}
 	const auto factor = widget->devicePixelRatioF();
 	if (_factor != factor) {
@@ -369,10 +322,6 @@ void OverlayWidget::RendererGL::paintBackground() {
 	}
 }
 
-void OverlayWidget::RendererGL::paintVideoStream() {
-	_owner->_videoStream->borrowedPaint(*_f);
-}
-
 void OverlayWidget::RendererGL::paintTransformedVideoFrame(
 		ContentGeometry geometry) {
 	const auto data = _owner->videoFrameWithInfo();
@@ -412,7 +361,7 @@ void OverlayWidget::RendererGL::paintTransformedVideoFrame(
 	_streamedIndex = _owner->streamedIndex();
 
 	_f->glActiveTexture(GL_TEXTURE0);
-	_textures.bind(*_f, 3);
+	_textures.bind(*_f, 1);
 	if (upload) {
 		_f->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		uploadTexture(
@@ -425,7 +374,7 @@ void OverlayWidget::RendererGL::paintTransformedVideoFrame(
 		_lumaSize = yuv->size;
 	}
 	_f->glActiveTexture(GL_TEXTURE1);
-	_textures.bind(*_f, 4);
+	_textures.bind(*_f, 2);
 	if (upload) {
 		uploadTexture(
 			nv12 ? GL_RG : GL_ALPHA,
@@ -447,7 +396,7 @@ void OverlayWidget::RendererGL::paintTransformedVideoFrame(
 		_controlsFadeImage.bind(*_f);
 	} else {
 		_f->glActiveTexture(GL_TEXTURE2);
-		_textures.bind(*_f, 5);
+		_textures.bind(*_f, 3);
 		if (upload) {
 			uploadTexture(
 				GL_ALPHA,
@@ -473,10 +422,7 @@ void OverlayWidget::RendererGL::paintTransformedVideoFrame(
 	program->setUniformValue("f_texture", GLint(nv12 ? 2 : 3));
 
 	toggleBlending(geometry.roundRadius > 0.);
-	const auto textureRect = _owner->_stories
-		? StoryCropTextureRect(QSizeF(yuv->size), geometry.rect.size())
-		: QRectF(0., 0., 1., 1.);
-	paintTransformedContent(program, geometry, false, textureRect);
+	paintTransformedContent(program, geometry, false);
 
 	if (_owner->_recognitionResult.success
 		&& !_owner->_recognitionResult.items.empty()) {
@@ -492,9 +438,7 @@ void OverlayWidget::RendererGL::paintTransformedStaticContent(
 		const QImage &image,
 		ContentGeometry geometry,
 		bool semiTransparent,
-		bool fillTransparentBackground,
-		int index) {
-	Expects(index >= 0 && index < 3);
+		bool fillTransparentBackground) {
 	Expects(image.isNull()
 		|| image.format() == QImage::Format_RGB32
 		|| image.format() == QImage::Format_ARGB32_Premultiplied);
@@ -520,11 +464,11 @@ void OverlayWidget::RendererGL::paintTransformedStaticContent(
 	}
 
 	_f->glActiveTexture(GL_TEXTURE0);
-	_textures.bind(*_f, index);
+	_textures.bind(*_f, 0);
 	const auto cacheKey = image.isNull() ? qint64(-1) : image.cacheKey();
-	const auto upload = (_cacheKeys[index] != cacheKey);
+	const auto upload = (_cacheKey != cacheKey);
 	if (upload) {
-		_cacheKeys[index] = cacheKey;
+		_cacheKey = cacheKey;
 		if (image.isNull()) {
 			// Upload transparent 2x2 texture.
 			const auto stride = 2;
@@ -533,10 +477,10 @@ void OverlayWidget::RendererGL::paintTransformedStaticContent(
 				Ui::GL::kFormatRGBA,
 				Ui::GL::kFormatRGBA,
 				QSize(2, 2),
-				_rgbaSize[index],
+				_rgbaSize,
 				stride,
 				data);
-			_rgbaSize[index] = QSize(2, 2);
+			_rgbaSize = QSize(2, 2);
 		} else {
 			const auto stride = image.bytesPerLine() / 4;
 			const auto data = image.constBits();
@@ -544,10 +488,10 @@ void OverlayWidget::RendererGL::paintTransformedStaticContent(
 				Ui::GL::kFormatRGBA,
 				Ui::GL::kFormatRGBA,
 				image.size(),
-				_rgbaSize[index],
+				_rgbaSize,
 				stride,
 				data);
-			_rgbaSize[index] = image.size();
+			_rgbaSize = image.size();
 		}
 	}
 
@@ -560,14 +504,10 @@ void OverlayWidget::RendererGL::paintTransformedStaticContent(
 
 	toggleBlending((geometry.roundRadius > 0.)
 		|| (semiTransparent && !fillTransparentBackground));
-	const auto textureRect = _owner->_stories
-		? StoryCropTextureRect(QSizeF(image.size()), geometry.rect.size())
-		: QRectF(0., 0., 1., 1.);
 	paintTransformedContent(
 		&*program,
 		geometry,
-		fillTransparentBackground,
-		textureRect);
+		fillTransparentBackground);
 
 	if (_owner->_recognitionResult.success
 		&& !_owner->_recognitionResult.items.empty()
@@ -583,8 +523,7 @@ void OverlayWidget::RendererGL::paintTransformedStaticContent(
 void OverlayWidget::RendererGL::paintTransformedContent(
 		not_null<QOpenGLShaderProgram*> program,
 		ContentGeometry geometry,
-		bool fillTransparentBackground,
-		QRectF textureRect) {
+		bool fillTransparentBackground) {
 	const auto rect = scaleRect(
 		transformRect(geometry.rect),
 		geometry.scale);
@@ -604,10 +543,10 @@ void OverlayWidget::RendererGL::paintTransformedContent(
 	const auto topright = rotated(rect.right(), rect.top());
 	const auto bottomright = rotated(rect.right(), rect.bottom());
 	const auto bottomleft = rotated(rect.left(), rect.bottom());
-	const auto texLeft = float(textureRect.x());
-	const auto texRight = float(textureRect.x() + textureRect.width());
-	const auto texTop = 1.f - float(textureRect.y());
-	const auto texBottom = 1.f - float(textureRect.y() + textureRect.height());
+	const auto texLeft = 0.f;
+	const auto texRight = 1.f;
+	const auto texTop = 1.f;
+	const auto texBottom = 0.f;
 	const GLfloat coords[] = {
 		topleft[0], topleft[1],
 		texLeft, texTop,
@@ -626,16 +565,7 @@ void OverlayWidget::RendererGL::paintTransformedContent(
 	_contentBuffer->write(0, coords, sizeof(coords));
 
 	program->setUniformValue("viewport", _uniformViewport);
-	if (_owner->_stories) {
-		const auto &top = st::storiesShadowTop.size();
-		const auto shadowTop = geometry.topShadowShown
-			? geometry.rect.y()
-			: geometry.rect.y() - top.height();
-		program->setUniformValue(
-			"shadowTopRect",
-			Uniform(transformRect(
-				QRect(QPoint(geometry.rect.x(), shadowTop), top))));
-	} else {
+	{
 		const auto &top = st::mediaviewShadowTop.size();
 		const auto point = QPoint(
 			_shadowTopFlip ? 0 : (_viewport.width() - top.width()),
@@ -644,9 +574,7 @@ void OverlayWidget::RendererGL::paintTransformedContent(
 			"shadowTopRect",
 			Uniform(transformRect(QRect(point, top))));
 	}
-	const auto &bottom = _owner->_stories
-		? st::storiesShadowBottom
-		: st::mediaviewShadowBottom;
+	const auto &bottom = st::mediaviewShadowBottom;
 	program->setUniformValue("shadowBottomSkipOpacityFullFade", QVector4D(
 		bottom.height() * _factor,
 		geometry.bottomShadowSkip * _factor,
@@ -824,29 +752,16 @@ void OverlayWidget::RendererGL::paintControl(
 }
 
 auto OverlayWidget::RendererGL::controlMeta(Over control) const -> Control {
-	const auto stories = [&] {
-		return (_owner->_stories != nullptr);
-	};
+	// LoogriGram: stories drew their own arrows and a locked save icon, and
+	// had a Share control at index 3; the rest moved up.
 	switch (control) {
-	case Over::Left: return {
-		0,
-		stories() ? &st::storiesLeft : &st::mediaviewLeft
-	};
-	case Over::Right: return {
-		1,
-		stories() ? &st::storiesRight : &st::mediaviewRight
-	};
-	case Over::Save: return {
-		2,
-		(_owner->saveControlLocked()
-			? &st::mediaviewSaveLocked
-			: &st::mediaviewSave)
-	};
-	case Over::Share: return { 3, &st::mediaviewShare };
-	case Over::Rotate: return { 4, &st::mediaviewRotate };
-	case Over::More: return { 5, &st::mediaviewMore };
-	case Over::Draw: return { 6, &st::mediaviewDraw };
-	case Over::Recognize: return { 7, &st::mediaviewRecognize };
+	case Over::Left: return { 0, &st::mediaviewLeft };
+	case Over::Right: return { 1, &st::mediaviewRight };
+	case Over::Save: return { 2, &st::mediaviewSave };
+	case Over::Rotate: return { 3, &st::mediaviewRotate };
+	case Over::More: return { 4, &st::mediaviewMore };
+	case Over::Draw: return { 5, &st::mediaviewDraw };
+	case Over::Recognize: return { 6, &st::mediaviewRecognize };
 	}
 	Unexpected("Control value in OverlayWidget::RendererGL::ControlIndex.");
 }
@@ -859,7 +774,6 @@ void OverlayWidget::RendererGL::validateControls() {
 		controlMeta(Over::Left),
 		controlMeta(Over::Right),
 		controlMeta(Over::Save),
-		controlMeta(Over::Share),
 		controlMeta(Over::Rotate),
 		controlMeta(Over::More),
 		controlMeta(Over::Draw),
@@ -908,21 +822,13 @@ void OverlayWidget::RendererGL::invalidateControls() {
 }
 
 void OverlayWidget::RendererGL::validateControlsFade() {
-	const auto forStories = (_owner->_stories != nullptr);
-	const auto flip = !forStories && !_owner->topShadowOnTheRight();
-	if (!_controlsFadeImage.image().isNull()
-		&& _shadowTopFlip == flip
-		&& _shadowsForStories == forStories) {
+	const auto flip = !_owner->topShadowOnTheRight();
+	if (!_controlsFadeImage.image().isNull() && _shadowTopFlip == flip) {
 		return;
 	}
 	_shadowTopFlip = flip;
-	_shadowsForStories = forStories;
-	const auto &top = _shadowsForStories
-		? st::storiesShadowTop
-		: st::mediaviewShadowTop;
-	const auto &bottom = _shadowsForStories
-		? st::storiesShadowBottom
-		: st::mediaviewShadowBottom;
+	const auto &top = st::mediaviewShadowTop;
+	const auto &bottom = st::mediaviewShadowBottom;
 	const auto width = top.width();
 	const auto bottomTop = top.height();
 	const auto height = bottomTop + bottom.height();
@@ -1039,58 +945,6 @@ void OverlayWidget::RendererGL::paintRoundedCorners(int radius) {
 	_f->glDrawArrays(GL_TRIANGLES, 0, base::array_size(coords) / 2);
 
 	_f->glDisableVertexAttribArray(position);
-}
-
-void OverlayWidget::RendererGL::paintStoriesSiblingPart(
-		int index,
-		const QImage &image,
-		QRect rect,
-		float64 opacity) {
-	Expects(index >= 0 && index < kStoriesSiblingPartsCount);
-
-	if (image.isNull() || rect.isEmpty()) {
-		return;
-	}
-
-	_f->glActiveTexture(GL_TEXTURE0);
-
-	auto &part = _storiesSiblingParts[index];
-	part.setImage(image);
-	part.bind(*_f);
-
-	const auto textured = part.texturedRect(
-		rect,
-		QRect(QPoint(), image.size()));
-	const auto geometry = transformRect(textured.geometry);
-	const GLfloat coords[] = {
-		geometry.left(), geometry.top(),
-		textured.texture.left(), textured.texture.bottom(),
-
-		geometry.right(), geometry.top(),
-		textured.texture.right(), textured.texture.bottom(),
-
-		geometry.right(), geometry.bottom(),
-		textured.texture.right(), textured.texture.top(),
-
-		geometry.left(), geometry.bottom(),
-		textured.texture.left(), textured.texture.top(),
-	};
-	const auto offset = kControlsOffset
-		+ (kControlsCount * kControlValues) / 4
-		+ (6 * 2 * 4) / 4 // rounding
-		+ (index * 4);
-	const auto byteOffset = offset * 4 * sizeof(GLfloat);
-	_contentBuffer->bind();
-	_contentBuffer->write(byteOffset, coords, sizeof(coords));
-
-	_controlsProgram->bind();
-	_controlsProgram->setUniformValue("viewport", _uniformViewport);
-	_contentBuffer->write(
-		offset * 4 * sizeof(GLfloat),
-		coords,
-		sizeof(coords));
-	_controlsProgram->setUniformValue("g_opacity", GLfloat(opacity));
-	FillTexturedRectangle(*_f, &*_controlsProgram, offset);
 }
 
 //

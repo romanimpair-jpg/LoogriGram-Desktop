@@ -502,13 +502,11 @@ void Reply::setLinkFrom(
 		}
 	};
 	const auto message = data->resolvedMessage.get();
-	const auto story = data->resolvedStory.get();
+	// LoogriGram: a reply to a story opened that story. Stories are removed.
 	_link = isAdminLogEntry
 		? std::make_shared<LambdaClickHandler>(externalLink)
 		: message
 		? JumpToMessageClickHandler(message, returnToId, highlight)
-		: story
-		? JumpToStoryClickHandler(story)
 		: (data->external()
 			&& (!fields.messageId
 				|| (data->unavailable() && externalChannelId)))

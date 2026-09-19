@@ -28,10 +28,8 @@ enum class WindowLayout;
 } // namespace Adaptive
 
 namespace Data {
-struct StoriesContext;
 struct DrawToReplyRequest;
 class SavedMessages;
-enum class StorySourcesList : uchar;
 } // namespace Data
 
 namespace Dialogs {
@@ -569,19 +567,13 @@ public:
 	};
 	void openPhoto(
 		not_null<PhotoData*> photo,
-		MessageContext message,
-		const Data::StoriesContext *stories = nullptr);
+		MessageContext message);
 	void openPhoto(not_null<PhotoData*> photo, not_null<PeerData*> peer);
 	void openDocument(
 		not_null<DocumentData*> document,
 		bool showInMediaView,
 		MessageContext message,
-		const Data::StoriesContext *stories = nullptr,
 		std::optional<TimeId> videoTimestampOverride = {});
-	bool openSharedStory(HistoryItem *item);
-	bool openFakeItemStory(
-		FullMsgId fakeItemId,
-		const Data::StoriesContext *stories = nullptr);
 
 	void showChooseReportMessages(
 		not_null<PeerData*> peer,
@@ -662,16 +654,6 @@ public:
 		-> rpl::producer<PeerThemeOverride> {
 		return _peerThemeOverride.value();
 	}
-
-	void openPeerStory(
-		not_null<PeerData*> peer,
-		StoryId storyId,
-		Data::StoriesContext context);
-	void openPeerStories(
-		PeerId peerId,
-		std::optional<Data::StorySourcesList> list = std::nullopt,
-		bool onlyLive = false,
-		bool afterReload = false);
 
 	[[nodiscard]] Ui::ChatPaintContext preparePaintContext(
 		Ui::ChatPaintContextArgs &&args);
@@ -862,7 +844,6 @@ private:
 		QString filepath;
 	} _pendingOpenPhoto;
 
-	base::has_weak_ptr _storyOpenGuard;
 
 	QString _premiumRef;
 	std::unique_ptr<HistoryView::SubsectionTabs> _savedSubsectionTabs;
