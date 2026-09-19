@@ -12,6 +12,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_forum.h"
 #include "data/data_message_reactions.h"
 #include "data/data_session.h"
+#include "data/data_stories.h"
 #include "data/data_download_manager.h"
 #include "base/battery_saving.h"
 #include "base/event_filter.h"
