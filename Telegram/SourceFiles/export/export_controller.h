@@ -38,7 +38,6 @@ struct ProcessingState {
 		DialogsList,
 		PersonalInfo,
 		Userpics,
-		Stories,
 		ProfileMusic,
 		Contacts,
 		Sessions,

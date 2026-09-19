@@ -1213,7 +1213,7 @@ void AddReportAction(
 				}) | ranges::to_vector)
 				: std::vector<MsgId>{ 1, itemId.msg };
 			const auto peer = item->history()->peer;
-			ShowReportMessageBox(controller->uiShow(), peer, ids, {});
+			ShowReportMessageBox(controller->uiShow(), peer, ids);
 		}
 	});
 	menu->addAction(

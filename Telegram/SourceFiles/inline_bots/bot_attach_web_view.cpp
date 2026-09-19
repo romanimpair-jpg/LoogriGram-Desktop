@@ -1549,7 +1549,6 @@ void WebViewInstance::botHandleMenuButton(
 			uiShow(),
 			bot,
 			{},
-			{},
 			nullptr,
 			std::move(resolveController));
 	} break;

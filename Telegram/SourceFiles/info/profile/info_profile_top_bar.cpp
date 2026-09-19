@@ -1003,7 +1003,7 @@ void TopBar::setupActions(not_null<Window::SessionController*> controller) {
 			tr::lng_profile_action_short_report(tr::now),
 			st::infoProfileTopBarActionReport);
 		reportButton->setClickedCallback([=] {
-			ShowReportMessageBox(show, peer, {}, {});
+			ShowReportMessageBox(show, peer, {});
 		});
 		reportButton->setAccessibleName(tr::lng_profile_action_short_report(tr::now));
 		_actions->add(reportButton);

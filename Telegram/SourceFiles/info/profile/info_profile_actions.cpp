@@ -2753,7 +2753,7 @@ void ActionsFiller::addReportAction() {
 	const auto peer = _peer;
 	const auto controller = _controller->parentController();
 	const auto report = [=] {
-		ShowReportMessageBox(controller->uiShow(), peer, {}, {});
+		ShowReportMessageBox(controller->uiShow(), peer, {});
 	};
 	AddActionButton(
 		_wrap,

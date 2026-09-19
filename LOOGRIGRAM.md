@@ -824,7 +824,9 @@ peers and lists, the story parts of statistics, and the data layer
   setting are read and sent back unchanged.
 - The story message-id range in `data_msg_id.h` is kept so the special ids
   after it keep their values.
-- Still to go: the stories part of "Export Telegram data".
+- "Export Telegram data" has no story archive step. Saved export settings
+  lose the old Stories bit (0x800) when read, or `validate()` would reset
+  them. Reporting sends only message ids.
 
 ## Gifts, giveaways and paid posts are hidden, not refused
 

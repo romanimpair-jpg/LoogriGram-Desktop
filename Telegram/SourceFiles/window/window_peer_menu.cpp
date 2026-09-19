@@ -1056,7 +1056,7 @@ void Filler::addReport() {
 	const auto peer = _peer;
 	const auto navigation = _controller;
 	_addAction(tr::lng_profile_report(tr::now), [=] {
-		ShowReportMessageBox(navigation->uiShow(), peer, {}, {});
+		ShowReportMessageBox(navigation->uiShow(), peer, {});
 	}, &st::menuIconReport);
 }
 

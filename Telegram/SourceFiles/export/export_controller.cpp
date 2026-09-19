@@ -82,7 +82,6 @@ private:
 	void collectDialogsList();
 	void exportPersonalInfo();
 	void exportUserpics();
-	void exportStories();
 	void exportProfileMusic();
 	void exportContacts();
 	void exportSessions();
@@ -99,7 +98,6 @@ private:
 	ProcessingState stateDialogsList(int processed) const;
 	ProcessingState statePersonalInfo() const;
 	ProcessingState stateUserpics(const DownloadProgress &progress) const;
-	ProcessingState stateStories(const DownloadProgress &progress) const;
 	ProcessingState stateProfileMusic(const DownloadProgress &progress) const;
 	ProcessingState stateContacts() const;
 	ProcessingState stateSessions() const;
@@ -126,9 +124,6 @@ private:
 
 	int _userpicsWritten = 0;
 	int _userpicsCount = 0;
-
-	int _storiesWritten = 0;
-	int _storiesCount = 0;
 
 	int _profileMusicWritten = 0;
 	int _profileMusicCount = 0;
@@ -332,9 +327,6 @@ void ControllerObject::fillExportSteps() {
 	if (_settings.types & Type::Userpics) {
 		_steps.push_back(Step::Userpics);
 	}
-	if (_settings.types & Type::Stories) {
-		_steps.push_back(Step::Stories);
-	}
 	if (_settings.types & Type::ProfileMusic) {
 		_steps.push_back(Step::ProfileMusic);
 	}
@@ -370,9 +362,6 @@ void ControllerObject::fillSubstepsInSteps(const ApiWrap::StartInfo &info) {
 	}
 	if (_settings.types & Settings::Type::Userpics) {
 		push(Step::Userpics, 1);
-	}
-	if (_settings.types & Settings::Type::Stories) {
-		push(Step::Stories, 1);
 	}
 	if (_settings.types & Settings::Type::ProfileMusic) {
 		push(Step::ProfileMusic, 1);
@@ -418,7 +407,6 @@ void ControllerObject::exportNext() {
 	case Step::DialogsList: return collectDialogsList();
 	case Step::PersonalInfo: return exportPersonalInfo();
 	case Step::Userpics: return exportUserpics();
-	case Step::Stories: return exportStories();
 	case Step::ProfileMusic: return exportProfileMusic();
 	case Step::Contacts: return exportContacts();
 	case Step::Sessions: return exportSessions();
@@ -487,32 +475,6 @@ void ControllerObject::exportUserpics() {
 		return true;
 	}, [=] {
 		if (ioCatchError(_writer->writeUserpicsEnd())) {
-			return;
-		}
-		exportNext();
-	});
-}
-
-void ControllerObject::exportStories() {
-	_api.requestStories([=](Data::StoriesInfo &&start) {
-		if (ioCatchError(_writer->writeStoriesStart(start))) {
-			return false;
-		}
-		_storiesWritten = 0;
-		_storiesCount = start.count;
-		return true;
-	}, [=](DownloadProgress progress) {
-		setState(stateStories(progress));
-		return true;
-	}, [=](Data::StoriesSlice &&slice) {
-		if (ioCatchError(_writer->writeStoriesSlice(slice))) {
-			return false;
-		}
-		_storiesWritten += slice.list.size();
-		setState(stateStories(DownloadProgress()));
-		return true;
-	}, [=] {
-		if (ioCatchError(_writer->writeStoriesEnd())) {
 			return;
 		}
 		exportNext();
@@ -662,21 +624,6 @@ ProcessingState ControllerObject::stateUserpics(
 	return prepareState(Step::Userpics, [&](ProcessingState &result) {
 		result.entityIndex = _userpicsWritten + progress.itemIndex;
 		result.entityCount = std::max(_userpicsCount, result.entityIndex);
-		result.bytesRandomId = progress.randomId;
-		if (!progress.path.isEmpty()) {
-			const auto last = progress.path.lastIndexOf('/');
-			result.bytesName = progress.path.mid(last + 1);
-		}
-		result.bytesLoaded = progress.ready;
-		result.bytesCount = progress.total;
-	});
-}
-
-ProcessingState ControllerObject::stateStories(
-		const DownloadProgress &progress) const {
-	return prepareState(Step::Stories, [&](ProcessingState &result) {
-		result.entityIndex = _storiesWritten + progress.itemIndex;
-		result.entityCount = std::max(_storiesCount, result.entityIndex);
 		result.bytesRandomId = progress.randomId;
 		if (!progress.path.isEmpty()) {
 			const auto last = progress.path.lastIndexOf('/');

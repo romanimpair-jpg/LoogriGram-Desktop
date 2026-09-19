@@ -3012,7 +3012,9 @@ Export::Settings Account::readExportSettings() {
 		file.stream >> singlePeerFrom >> singlePeerTill;
 	}
 	auto result = Export::Settings();
-	result.types = Export::Settings::Types::from_raw(types);
+	// LoogriGram: 0x800 was the Stories export type. Without it dropped
+	// here, validate() would reset every saved export setting.
+	result.types = Export::Settings::Types::from_raw(types & ~quint32(0x800));
 	result.fullChats = Export::Settings::Types::from_raw(fullChats);
 	result.media.types = Export::MediaSettings::Types::from_raw(mediaTypes);
 	result.media.sizeLimit = mediaSizeLimit;

@@ -14,7 +14,6 @@ struct ReportInput final {
 	QString optionText;
 	QString comment;
 	std::vector<MsgId> ids;
-	std::vector<StoryId> stories;
 
 	inline bool operator==(const ReportInput &other) const {
 		return optionId == other.optionId && comment == other.comment;

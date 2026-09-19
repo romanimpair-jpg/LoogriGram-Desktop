@@ -48,7 +48,7 @@ void SendPhotoReport(
 	const QString &comment,
 	not_null<PhotoData*> photo);
 
-[[nodiscard]] auto CreateReportMessagesOrStoriesCallback(
+[[nodiscard]] auto CreateReportMessagesCallback(
 	std::shared_ptr<Ui::Show> show,
 	not_null<PeerData*> peer)
 -> Fn<void(Data::ReportInput, Fn<void(ReportResult)>)>;

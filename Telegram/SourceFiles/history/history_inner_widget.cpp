@@ -6025,7 +6025,7 @@ void HistoryInner::deleteAsGroup(FullMsgId itemId) {
 }
 
 void HistoryInner::reportItem(FullMsgId itemId) {
-	ShowReportMessageBox(_controller->uiShow(), _peer, { itemId.msg }, {});
+	ShowReportMessageBox(_controller->uiShow(), _peer, { itemId.msg });
 }
 
 void HistoryInner::reportAsGroup(FullMsgId itemId) {
@@ -6038,7 +6038,7 @@ void HistoryInner::reportAsGroup(FullMsgId itemId) {
 				return i->fullId().msg;
 			}) | ranges::to_vector)
 			: std::vector<MsgId>{ 1, itemId.msg };
-		ShowReportMessageBox(_controller->uiShow(), _peer, ids, {});
+		ShowReportMessageBox(_controller->uiShow(), _peer, ids);
 	}
 }
 

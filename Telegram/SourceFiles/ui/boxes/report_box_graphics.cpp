@@ -56,8 +56,6 @@ void ReportReasonBox(
 			return tr::lng_report_channel_photo_title();
 		case Source::ChannelVideo:
 			return tr::lng_report_channel_video_title();
-		case Source::Story:
-			return tr::lng_report_story();
 		}
 		Unexpected("'source' in ReportReasonBox.");
 	}());
@@ -107,7 +105,7 @@ void ReportReasonBox(
 		Reason::Copyright,
 		tr::lng_report_reason_copyright,
 		st.copyright);
-	if (source == Source::Message || source == Source::Story) {
+	if (source == Source::Message) {
 		add(
 			Reason::IllegalDrugs,
 			tr::lng_report_reason_illegal_drugs,

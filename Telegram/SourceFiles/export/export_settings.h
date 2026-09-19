@@ -57,7 +57,8 @@ struct Settings {
 		PublicGroups        = 0x100,
 		PrivateChannels     = 0x200,
 		PublicChannels      = 0x400,
-		Stories             = 0x800,
+		// LoogriGram: 0x800 was Stories. Stories are removed; the bit is
+		// dropped from saved settings when they are read back.
 		ProfileMusic        = 0x1000,
 
 		GroupsMask          = PrivateGroups | PublicGroups,
@@ -68,7 +69,6 @@ struct Settings {
 		NonChatsMask        = (PersonalInfo
 			| Userpics
 			| Contacts
-			| Stories
 			| ProfileMusic
 			| Sessions),
 		AllMask             = NonChatsMask | OtherData | AnyChatsMask,
@@ -106,7 +106,6 @@ struct Settings {
 		return Type::PersonalInfo
 			| Type::Userpics
 			| Type::Contacts
-			| Type::Stories
 			| Type::ProfileMusic
 			| Type::PersonalChats
 			| Type::PrivateGroups;

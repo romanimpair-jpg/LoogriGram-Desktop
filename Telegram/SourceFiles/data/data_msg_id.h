@@ -57,8 +57,6 @@ Q_DECLARE_METATYPE(MsgId);
 	return MsgId(a.bare - b.bare);
 }
 
-using StoryId = int32;
-
 constexpr auto StartClientMsgId = MsgId(0x01 - (1LL << 58));
 constexpr auto ClientMsgIds = (1LL << 31);
 constexpr auto EndClientMsgId = MsgId(StartClientMsgId.bare + ClientMsgIds);

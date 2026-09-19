@@ -2447,7 +2447,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_report_group_video_title" = "Report group photo";
 "lng_report_channel_photo_title" = "Report channel photo";
 "lng_report_channel_video_title" = "Report channel photo";
-"lng_report_story" = "Report story";
 "lng_report_please_select_messages" = "Please select messages to report.";
 "lng_report_select_messages" = "Select messages";
 "lng_report_messages_none" = "Select Messages";
@@ -7406,8 +7405,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_export_option_info_about" = "Your chosen display name, username, phone number and profile photos.";
 "lng_export_option_contacts" = "Contacts list";
 "lng_export_option_contacts_about" = "If you allow access, contacts are continuously synced with Telegram. You can adjust this in Settings > Privacy & Security on mobile devices.";
-"lng_export_option_stories" = "Story archive";
-"lng_export_option_stories_about" = "All stories you posted from Telegram mobile apps.";
 "lng_export_option_profile_music" = "Music on Profiles";
 "lng_export_option_profile_music_about" = "All tracks you saved to your playlist.";
 "lng_export_option_sessions" = "Active sessions";

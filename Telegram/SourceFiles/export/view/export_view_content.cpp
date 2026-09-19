@@ -89,13 +89,6 @@ Content ContentFromState(
 	case Step::Contacts:
 		pushMain(tr::lng_export_option_contacts(tr::now));
 		break;
-	case Step::Stories:
-		pushMain(tr::lng_export_option_stories(tr::now));
-		pushBytes(
-			"story" + QString::number(state.entityIndex),
-			state.bytesName,
-			state.bytesRandomId);
-		break;
 	case Step::ProfileMusic:
 		pushMain(tr::lng_export_option_profile_music(tr::now));
 		pushBytes(

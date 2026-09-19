@@ -55,24 +55,6 @@ Result HtmlAndJsonWriter::writeUserpicsEnd() {
 	});
 }
 
-Result HtmlAndJsonWriter::writeStoriesStart(const Data::StoriesInfo &data) {
-	return invoke([&](WriterPtr w) {
-		return w->writeStoriesStart(data);
-	});
-}
-
-Result HtmlAndJsonWriter::writeStoriesSlice(const Data::StoriesSlice &data) {
-	return invoke([&](WriterPtr w) {
-		return w->writeStoriesSlice(data);
-	});
-}
-
-Result HtmlAndJsonWriter::writeStoriesEnd() {
-	return invoke([&](WriterPtr w) {
-		return w->writeStoriesEnd();
-	});
-}
-
 Result HtmlAndJsonWriter::writeProfileMusicStart(const Data::ProfileMusicInfo &data) {
 	return invoke([&](WriterPtr w) {
 		return w->writeProfileMusicStart(data);

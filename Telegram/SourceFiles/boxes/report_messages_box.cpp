@@ -215,14 +215,13 @@ void ShowReportMessageBox(
 		std::shared_ptr<Ui::Show> show,
 		not_null<PeerData*> peer,
 		const std::vector<MsgId> &ids,
-		const std::vector<StoryId> &stories,
 		const style::ReportBox *stOverride,
 		Fn<Window::SessionController*()> resolveController) {
 	ShowReportFlowBox(
 		show,
 		peer,
-		Api::CreateReportMessagesOrStoriesCallback(show, peer),
-		{ .ids = ids, .stories = stories },
+		Api::CreateReportMessagesCallback(show, peer),
+		{ .ids = ids },
 		stOverride,
 		std::move(resolveController));
 }

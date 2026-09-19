@@ -113,11 +113,6 @@ pre {
     border-radius: 50%;
     overflow: hidden;
 }
-.story {
-    display: block;
-    border-radius: 4px;
-    overflow: hidden;
-}
 .userpic .initials {
     display: block;
     color: #fff;
@@ -439,9 +434,6 @@ div.toast_shown {
 .section.sessions {
     background-image: url(../images/section_sessions.png);
 }
-.section.stories {
-    background-image: url(../images/section_stories.png);
-}
 .section.music {
     background-image: url(../images/section_music.png);
 }
@@ -515,9 +507,6 @@ div.toast_shown {
 }
 .section.sessions {
     background-image: url(../images/section_sessions@2x.png);
-}
-.section.stories {
-    background-image: url(../images/section_stories@2x.png);
 }
 .section.music {
     background-image: url(../images/section_music@2x.png);

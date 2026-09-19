@@ -12,7 +12,6 @@ namespace Data {
 struct ColorProfileSet {
 	std::vector<QColor> palette;
 	std::vector<QColor> bg;
-	std::vector<QColor> story;
 };
 
 struct ColorProfileData {

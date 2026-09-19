@@ -19,8 +19,6 @@ struct FileLocation;
 struct PersonalInfo;
 struct UserpicsInfo;
 struct UserpicsSlice;
-struct StoriesInfo;
-struct StoriesSlice;
 struct ProfileMusicInfo;
 struct ProfileMusicSlice;
 struct ContactsList;
@@ -29,7 +27,6 @@ struct DialogsInfo;
 struct DialogInfo;
 struct MessagesSlice;
 struct Message;
-struct Story;
 struct FileOrigin;
 } // namespace Data
 
@@ -51,7 +48,6 @@ public:
 
 	struct StartInfo {
 		int userpicsCount = 0;
-		int storiesCount = 0;
 		int profileMusicCount = 0;
 		int dialogsCount = 0;
 	};
@@ -81,12 +77,6 @@ public:
 		FnMut<bool(Data::UserpicsInfo&&)> start,
 		Fn<bool(DownloadProgress)> progress,
 		Fn<bool(Data::UserpicsSlice&&)> slice,
-		FnMut<void()> finish);
-
-	void requestStories(
-		FnMut<bool(Data::StoriesInfo&&)> start,
-		Fn<bool(DownloadProgress)> progress,
-		Fn<bool(Data::StoriesSlice&&)> slice,
 		FnMut<void()> finish);
 
 	void requestProfileMusic(
@@ -126,7 +116,6 @@ private:
 	struct StartProcess;
 	struct ContactsProcess;
 	struct UserpicsProcess;
-	struct StoriesProcess;
 	struct ProfileMusicProcess;
 	struct OtherDataProcess;
 	struct FileProcess;
@@ -143,7 +132,6 @@ private:
 	void startMainSession(FnMut<void()> done);
 	void sendNextStartRequest();
 	void requestUserpicsCount();
-	void requestStoriesCount();
 	void requestProfileMusicCount();
 	void requestSplitRanges();
 	void requestDialogsCount();
@@ -159,16 +147,6 @@ private:
 	void loadUserpicDone(const QString &relativePath);
 	void finishUserpicsSlice();
 	void finishUserpics();
-
-	void handleStoriesSlice(const MTPstories_Stories &result);
-	void loadStoriesFiles(Data::StoriesSlice &&slice);
-	void loadNextStory();
-	bool loadStoryProgress(FileProgress value);
-	void loadStoryDone(const QString &relativePath);
-	bool loadStoryThumbProgress(FileProgress value);
-	void loadStoryThumbDone(const QString &relativePath);
-	void finishStoriesSlice();
-	void finishStories();
 
 	void handleProfileMusicSlice(const MTPusers_SavedMusic &result);
 	void loadProfileMusicFiles(Data::ProfileMusicSlice &&slice);
@@ -275,8 +253,7 @@ private:
 		const Data::FileOrigin &origin,
 		Fn<bool(FileProgress)> progress,
 		FnMut<void(QString)> done,
-		Data::Message *message = nullptr,
-		Data::Story *story = nullptr);
+		Data::Message *message = nullptr);
 	std::unique_ptr<FileProcess> prepareFileProcess(
 		const Data::File &file,
 		const Data::FileOrigin &origin) const;
@@ -309,9 +286,6 @@ private:
 	void filePartExtractReference(
 		int64 offset,
 		const MTPmessages_Messages &result);
-	void filePartExtractReference(
-		int64 offset,
-		const MTPstories_Stories &result);
 
 	template <typename Request>
 	class RequestBuilder;
@@ -342,7 +316,6 @@ private:
 	std::unique_ptr<LoadedFileCache> _fileCache;
 	std::unique_ptr<ContactsProcess> _contactsProcess;
 	std::unique_ptr<UserpicsProcess> _userpicsProcess;
-	std::unique_ptr<StoriesProcess> _storiesProcess;
 	std::unique_ptr<ProfileMusicProcess> _profileMusicProcess;
 	std::unique_ptr<OtherDataProcess> _otherDataProcess;
 	std::unique_ptr<FileProcess> _fileProcess;

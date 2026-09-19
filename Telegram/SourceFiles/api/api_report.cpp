@@ -84,14 +84,14 @@ void SendPhotoReport(
 	}).send();
 }
 
-auto CreateReportMessagesOrStoriesCallback(
+auto CreateReportMessagesCallback(
 	std::shared_ptr<Ui::Show> show,
 	not_null<PeerData*> peer)
 -> Fn<void(Data::ReportInput, Fn<void(ReportResult)>)> {
 	struct State final {
 #ifdef _DEBUG
 		~State() {
-			qDebug() << "Messages or Stories Report ~State().";
+			qDebug() << "Messages Report ~State().";
 		}
 #endif
 		mtpRequestId requestId = 0;
@@ -102,12 +102,9 @@ auto CreateReportMessagesOrStoriesCallback(
 			Data::ReportInput reportInput,
 			Fn<void(ReportResult)> done) {
 		auto apiIds = QVector<MTPint>();
-		apiIds.reserve(reportInput.ids.size() + reportInput.stories.size());
+		apiIds.reserve(reportInput.ids.size());
 		for (const auto &id : reportInput.ids) {
 			apiIds.push_back(MTP_int(id));
-		}
-		for (const auto &story : reportInput.stories) {
-			apiIds.push_back(MTP_int(story));
 		}
 
 		const auto received = [=](
@@ -125,23 +122,13 @@ auto CreateReportMessagesOrStoriesCallback(
 			done({ .error = error.type() });
 		};
 
-		if (!reportInput.stories.empty()) {
-			state->requestId = peer->session().api().request(
-				MTPstories_Report(
-					peer->input(),
-					MTP_vector<MTPint>(apiIds),
-					MTP_bytes(reportInput.optionId),
-					MTP_string(reportInput.comment))
-			).done(received).fail(fail).send();
-		} else {
-			state->requestId = peer->session().api().request(
-				MTPmessages_Report(
-					peer->input(),
-					MTP_vector<MTPint>(apiIds),
-					MTP_bytes(reportInput.optionId),
-					MTP_string(reportInput.comment))
-			).done(received).fail(fail).send();
-		}
+		state->requestId = peer->session().api().request(
+			MTPmessages_Report(
+				peer->input(),
+				MTP_vector<MTPint>(apiIds),
+				MTP_bytes(reportInput.optionId),
+				MTP_string(reportInput.comment))
+		).done(received).fail(fail).send();
 	};
 }
 

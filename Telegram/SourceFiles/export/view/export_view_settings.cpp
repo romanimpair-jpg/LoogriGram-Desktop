@@ -189,11 +189,6 @@ void SettingsWidget::setupFullExportOptions(
 		tr::lng_export_option_contacts_about(tr::now));
 	addOptionWithAbout(
 		container,
-		tr::lng_export_option_stories(tr::now),
-		Type::Stories,
-		tr::lng_export_option_stories_about(tr::now));
-	addOptionWithAbout(
-		container,
 		tr::lng_export_option_profile_music(tr::now),
 		Type::ProfileMusic,
 		tr::lng_export_option_profile_music_about(tr::now));

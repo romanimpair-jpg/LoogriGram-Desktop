@@ -14,8 +14,6 @@ namespace Data {
 struct PersonalInfo;
 struct UserpicsInfo;
 struct UserpicsSlice;
-struct StoriesInfo;
-struct StoriesSlice;
 struct ProfileMusicInfo;
 struct ProfileMusicSlice;
 struct ContactsList;
@@ -59,12 +57,6 @@ public:
 	[[nodiscard]] virtual Result writeUserpicsSlice(
 		const Data::UserpicsSlice &data) = 0;
 	[[nodiscard]] virtual Result writeUserpicsEnd() = 0;
-
-	[[nodiscard]] virtual Result writeStoriesStart(
-		const Data::StoriesInfo &data) = 0;
-	[[nodiscard]] virtual Result writeStoriesSlice(
-		const Data::StoriesSlice &data) = 0;
-	[[nodiscard]] virtual Result writeStoriesEnd() = 0;
 
 	[[nodiscard]] virtual Result writeProfileMusicStart(
 		const Data::ProfileMusicInfo &data) = 0;

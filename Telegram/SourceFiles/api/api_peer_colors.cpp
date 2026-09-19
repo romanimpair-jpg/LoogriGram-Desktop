@@ -152,15 +152,11 @@ void PeerColors::applyProfile(const MTPDhelp_peerColors &data) {
 			auto set = Data::ColorProfileSet();
 			set.palette.reserve(data.vpalette_colors().v.size());
 			set.bg.reserve(data.vbg_colors().v.size());
-			set.story.reserve(data.vstory_colors().v.size());
 			for (const auto &c : data.vpalette_colors().v) {
 				set.palette.push_back(Ui::ColorFromSerialized(toUint(c)));
 			}
 			for (const auto &c : data.vbg_colors().v) {
 				set.bg.push_back(Ui::ColorFromSerialized(toUint(c)));
-			}
-			for (const auto &c : data.vstory_colors().v) {
-				set.story.push_back(Ui::ColorFromSerialized(toUint(c)));
 			}
 			return set;
 		});

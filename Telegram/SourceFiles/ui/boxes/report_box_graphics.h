@@ -28,7 +28,6 @@ enum class ReportSource {
 	GroupVideo,
 	ChannelPhoto,
 	ChannelVideo,
-	Story,
 };
 
 enum class ReportReason {
