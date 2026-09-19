@@ -559,7 +559,7 @@ void MainMenu::setupArchive() {
 	const auto checkArchive = [=] {
 		const auto f = folder();
 		return f
-			&& (!f->chatsList()->empty() || f->storiesCount() > 0)
+			&& !f->chatsList()->empty()
 			&& controller->session().settings().archiveInMainMenu();
 	};
 

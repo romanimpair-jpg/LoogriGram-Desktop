@@ -42,20 +42,8 @@ class SessionController;
 
 [[nodiscard]] object_ptr<Ui::BoxContent> PrepareContactsBox(
 	not_null<Window::SessionController*> sessionController);
-[[nodiscard]] QBrush PeerListStoriesGradient(const style::PeerList &st);
-
-struct PeerListStoriesCounts {
-	int count = 0;
-	int unread = 0;
-	bool videoStream = false;
-
-	friend inline bool operator==(
-		const PeerListStoriesCounts &a,
-		const PeerListStoriesCounts &b) = default;
-};
-[[nodiscard]] std::vector<Ui::OutlineSegment> PeerListStoriesSegments(
-	PeerListStoriesCounts counts,
-	const QBrush &unreadBrush);
+// LoogriGram: PeerListStories drew story rings on user rows here, and on
+// the members lists in ParticipantsBoxController. Stories are removed.
 
 class PeerListRowWithLink : public PeerListRow {
 public:
@@ -207,37 +195,6 @@ private:
 
 };
 
-class PeerListStories final {
-public:
-	PeerListStories(
-		not_null<PeerListController*> controller,
-		not_null<Main::Session*> session);
-
-	void prepare(not_null<PeerListDelegate*> delegate);
-
-	void process(not_null<PeerListRow*> row);
-	bool handleClick(not_null<PeerData*> peer);
-
-private:
-	using Counts = PeerListStoriesCounts;
-
-	void updateColors();
-	void updateFor(uint64 id, Counts counts);
-	void applyForRow(
-		not_null<PeerListRow*> row,
-		Counts counts,
-		bool force = false);
-
-	const not_null<PeerListController*> _controller;
-	const not_null<Main::Session*> _session;
-	PeerListDelegate *_delegate = nullptr;
-
-	QBrush _unreadBrush;
-	base::flat_map<uint64, Counts> _counts;
-	rpl::lifetime _lifetime;
-
-};
-
 class ContactsBoxController : public PeerListController {
 public:
 	explicit ContactsBoxController(not_null<Main::Session*> session);
@@ -250,9 +207,6 @@ public:
 	[[nodiscard]] std::unique_ptr<PeerListRow> createSearchRow(
 		not_null<PeerData*> peer) override final;
 	void rowClicked(not_null<PeerListRow*> row) override;
-	bool trackSelectedList() override {
-		return !_stories;
-	}
 
 	enum class SortMode {
 		Alphabet,
@@ -260,7 +214,6 @@ public:
 	};
 	void setSortMode(SortMode mode);
 	void setSectionHeadersShown(bool shown);
-	void setStoriesShown(bool shown);
 
 protected:
 	virtual std::unique_ptr<PeerListRow> createRow(not_null<UserData*> user);
@@ -282,8 +235,6 @@ private:
 	bool _sectionHeadersShown = false;
 	base::Timer _sortByOnlineTimer;
 	rpl::lifetime _sortByOnlineLifetime;
-
-	std::unique_ptr<PeerListStories> _stories;
 
 };
 

@@ -75,9 +75,6 @@ public:
 		return _listEntryCache;
 	}
 
-	void updateStoriesCount(int count, int unread);
-	[[nodiscard]] int storiesCount() const;
-	[[nodiscard]] int storiesUnreadCount() const;
 
 private:
 	void indexNameParts();
@@ -106,8 +103,6 @@ private:
 	int _chatListViewVersion = 0;
 	//rpl::variable<MessagePosition> _unreadPosition;
 
-	uint16_t _storiesCount = 0;
-	uint16_t _storiesUnreadCount = 0;
 
 	rpl::lifetime _lifetime;
 

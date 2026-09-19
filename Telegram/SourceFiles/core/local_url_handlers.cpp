@@ -610,9 +610,8 @@ bool ResolveUsernameOrPhone(
 	if (const auto postId = postParam.toInt()) {
 		post = postId;
 	}
-	const auto storyParam = params.value(u"story"_q);
-	const auto storyAlbumParam = params.value(u"album"_q);
-	const auto storyAlbumId = storyAlbumParam.toInt();
+	// LoogriGram: ?story= and ?album= opened a story or a story album, which
+	// are removed; such a link opens the peer.
 	// LoogriGram: a ?collection= parameter opened a collection of a peer's
 	// gifts. Gifts are not browsed from this client.
 	const auto appname = webChannelPreviewLink ? QString() : appnameParam;
@@ -645,8 +644,6 @@ bool ResolveUsernameOrPhone(
 		.phone = phone,
 		.messageId = post,
 		.pollOption = pollOption,
-		.storyParam = storyParam,
-		.storyAlbumId = storyAlbumId,
 		.videoTimestamp = (!videot.isEmpty()
 			? ParseVideoTimestamp(videot)
 			: std::optional<TimeId>()),
@@ -1710,10 +1707,9 @@ QString TryConvertUrlToLocal(QString url) {
 				added = u"&topic=%1&post=%2"_q.arg(threadPostMatch->captured(1), threadPostMatch->captured(2));
 			} else if (const auto postMatch = regex_match(u"^/(\\d+)(/?\\?|/?$)"_q, usernameMatch->captured(2))) {
 				added = u"&post="_q + postMatch->captured(1);
-			} else if (const auto storyMatch = regex_match(u"^/s/(\\d+|live)(/?\\?|/?$)"_q, usernameMatch->captured(2))) {
-				added = u"&story="_q + storyMatch->captured(1);
-			} else if (const auto albumMatch = regex_match(u"^/a/(\\d+)(/?\\?|/?$)"_q, usernameMatch->captured(2))) {
-				added = u"&album="_q + albumMatch->captured(1);
+
+				// LoogriGram: /s/<id> and /a/<id> became story and album
+				// parameters. Stories are removed; the link resolves the peer.
 			} else if (const auto collectionMatch = regex_match(u"^/c/(\\d+)(/?\\?|/?$)"_q, usernameMatch->captured(2))) {
 				added = u"&collection="_q + collectionMatch->captured(1);
 			} else if (const auto appNameMatch = regex_match(u"^/([a-zA-Z0-9\\.\\_\\-]+)(/?\\?|/?$)"_q, usernameMatch->captured(2))) {

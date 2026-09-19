@@ -51,7 +51,6 @@ Members::Members(
 , _skipHeader(skipHeader)
 , _peer(_controller->key().peer())
 , _listController(CreateMembersController(controller, _peer)) {
-	_listController->setStoriesShown(true);
 	setupHeader();
 	setupList();
 	setContent(_list.data());
@@ -254,7 +253,6 @@ void Members::setupButtons() {
 void Members::setupList() {
 	auto topSkip = _header ? _header->height() : 0;
 	_listController->setStyleOverrides(&st::infoMembersList);
-	_listController->setStoriesShown(true);
 	_list = object_ptr<ListWidget>(
 		this,
 		_listController.get());

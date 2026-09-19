@@ -686,27 +686,6 @@ bool PeerData::canManageTopics() const {
 	return false;
 }
 
-bool PeerData::canPostStories() const {
-	if (const auto channel = asChannel()) {
-		return channel->canPostStories();
-	}
-	return isSelf();
-}
-
-bool PeerData::canEditStories() const {
-	if (const auto channel = asChannel()) {
-		return channel->canEditStories();
-	}
-	return isSelf();
-}
-
-bool PeerData::canDeleteStories() const {
-	if (const auto channel = asChannel()) {
-		return channel->canDeleteStories();
-	}
-	return isSelf();
-}
-
 bool PeerData::canEditMessagesIndefinitely() const {
 	if (const auto user = asUser()) {
 		return user->isSelf();
@@ -1425,29 +1404,6 @@ bool PeerData::savedSublistsInfo() const {
 	return isSelf() && owner().savedMessages().supported();
 }
 
-bool PeerData::hasStoriesHidden() const {
-	if (const auto user = asUser()) {
-		return user->hasStoriesHidden();
-	} else if (const auto channel = asChannel()) {
-		return channel->hasStoriesHidden();
-	}
-	return false;
-}
-
-void PeerData::setStoriesHidden(bool hidden) {
-	if (const auto user = asUser()) {
-		user->setFlags(hidden
-			? (user->flags() | UserDataFlag::StoriesHidden)
-			: (user->flags() & ~UserDataFlag::StoriesHidden));
-	} else if (const auto channel = asChannel()) {
-		channel->setFlags(hidden
-			? (channel->flags() | ChannelDataFlag::StoriesHidden)
-			: (channel->flags() & ~ChannelDataFlag::StoriesHidden));
-	} else {
-		Unexpected("PeerData::setStoriesHidden for non-user/non-channel.");
-	}
-}
-
 Ui::BotVerifyDetails *PeerData::botVerifyDetails() const {
 	if (const auto user = asUser()) {
 		return user->botVerifyDetails();
@@ -1792,43 +1748,6 @@ bool PeerData::wallPaperOverriden() const {
 
 const Data::WallPaper *PeerData::wallPaper() const {
 	return _wallPaper.get();
-}
-
-bool PeerData::hasActiveStories() const {
-	if (const auto user = asUser()) {
-		return user->hasActiveStories();
-	} else if (const auto channel = asChannel()) {
-		return channel->hasActiveStories();
-	}
-	return false;
-}
-
-bool PeerData::hasUnreadStories() const {
-	if (const auto user = asUser()) {
-		return user->hasUnreadStories();
-	} else if (const auto channel = asChannel()) {
-		return channel->hasUnreadStories();
-	}
-	return false;
-}
-
-bool PeerData::hasActiveVideoStream() const {
-	if (const auto user = asUser()) {
-		return user->hasActiveVideoStream();
-	} else if (const auto channel = asChannel()) {
-		return channel->hasActiveVideoStream();
-	}
-	return false;
-}
-
-void PeerData::setStoriesState(StoriesState state) {
-	if (const auto user = asUser()) {
-		return user->setStoriesState(state);
-	} else if (const auto channel = asChannel()) {
-		return channel->setStoriesState(state);
-	} else {
-		Unexpected("PeerData::setStoriesState for non-user/non-channel.");
-	}
 }
 
 void PeerData::setMainProfileTab(Data::ProfileTab tab) {

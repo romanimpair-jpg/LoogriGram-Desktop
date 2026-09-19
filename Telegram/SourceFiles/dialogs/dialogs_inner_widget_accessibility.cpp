@@ -272,7 +272,6 @@ QString SubItemLabel(SubItem item) {
 	case SubItem::Reactions: return tr::lng_sr_chat_column_reactions(tr::now);
 	case SubItem::Time: return tr::lng_sr_chat_column_time(tr::now);
 	case SubItem::Sponsored: return tr::lng_sr_chat_column_sponsored(tr::now);
-	case SubItem::Stories: return tr::lng_sr_chat_column_stories(tr::now);
 	case SubItem::Autodelete: return tr::lng_sr_chat_column_autodelete(tr::now);
 	case SubItem::Closed: return tr::lng_sr_chat_column_closed(tr::now);
 	case SubItem::Forward: return tr::lng_sr_chat_column_forward(tr::now);
@@ -498,23 +497,6 @@ QString SubItemValue(
 			return custom.isEmpty()
 				? tr::lng_badge_psa_default(tr::now)
 				: custom;
-		}
-		return {};
-	}
-	case SubItem::Stories: {
-		if (peer->hasActiveStories()) {
-			if (peer->hasUnreadStories()) {
-				const auto source = peer->owner().stories().source(
-					peer->id);
-				const auto count = source
-					? int(source->unreadCount())
-					: 1;
-				return tr::lng_sr_chat_stories_unread(
-					tr::now,
-					lt_count,
-					count);
-			}
-			return tr::lng_sr_chat_stories_read(tr::now);
 		}
 		return {};
 	}

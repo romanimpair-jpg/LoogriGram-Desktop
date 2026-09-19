@@ -1155,11 +1155,7 @@ void ParticipantsBoxController::setupListChangeViewers() {
 		if (_groupByRole.current()) {
 			if (!delegate()->peerListFindRow(user->id.value)) {
 				if (auto row = createRow(user)) {
-					const auto raw = row.get();
 					delegate()->peerListPrependRow(std::move(row));
-					if (_stories) {
-						_stories->process(raw);
-					}
 					refreshRows();
 					resort();
 				}
@@ -1176,11 +1172,7 @@ void ParticipantsBoxController::setupListChangeViewers() {
 				return (row.peer() == user);
 			});
 		} else if (auto row = createRow(user)) {
-			const auto raw = row.get();
 			delegate()->peerListPrependRow(std::move(row));
-			if (_stories) {
-				_stories->process(raw);
-			}
 			refreshRows();
 			resort();
 		}
@@ -1444,11 +1436,6 @@ void ParticipantsBoxController::restoreState(
 		const auto now = delegate()->peerListFullRowsCount();
 		if (now > 0 || _allLoaded) {
 			refreshDescription();
-			if (_stories) {
-				for (auto i = 0; i != now; ++i) {
-					_stories->process(delegate()->peerListRowAt(i));
-				}
-			}
 			if (now != was) {
 				refreshRows();
 			}
@@ -1463,12 +1450,6 @@ rpl::producer<int> ParticipantsBoxController::onlineCountValue() const {
 
 rpl::producer<int> ParticipantsBoxController::fullCountValue() const {
 	return _fullCountValue.value();
-}
-
-void ParticipantsBoxController::setStoriesShown(bool shown) {
-	_stories = std::make_unique<PeerListStories>(
-		this,
-		&_navigation->session());
 }
 
 void ParticipantsBoxController::prepare() {
@@ -1501,10 +1482,6 @@ void ParticipantsBoxController::prepare() {
 	delegate()->peerListSetTitle(std::move(title));
 	setDescriptionText(tr::lng_contacts_loading(tr::now));
 	setSearchNoResultsText(tr::lng_blocked_list_not_found(tr::now));
-
-	if (_stories) {
-		_stories->prepare(delegate());
-	}
 
 	if (_role == Role::Profile) {
 		auto visible = _peer->isMegagroup()
@@ -1668,11 +1645,7 @@ void ParticipantsBoxController::rebuildChatParticipants(
 	for (const auto &user : participants) {
 		if (!delegate()->peerListFindRow(user->id.value)) {
 			if (auto row = createRow(user)) {
-				const auto raw = row.get();
 				delegate()->peerListAppendRow(std::move(row));
-				if (_stories) {
-					_stories->process(raw);
-				}
 			}
 		}
 	}
@@ -1727,11 +1700,7 @@ void ParticipantsBoxController::rebuildChatAdmins(
 	}
 	for (const auto &user : list) {
 		if (auto row = createRow(user)) {
-			const auto raw = row.get();
 			delegate()->peerListAppendRow(std::move(row));
-			if (_stories) {
-				_stories->process(raw);
-			}
 		}
 	}
 
@@ -1902,10 +1871,6 @@ bool ParticipantsBoxController::feedMegagroupLastParticipants() {
 void ParticipantsBoxController::rowClicked(not_null<PeerListRow*> row) {
 	const auto participant = row->peer();
 	const auto user = participant->asUser();
-
-	if (_stories && _stories->handleClick(participant)) {
-		return;
-	}
 
 	if (_role == Role::Admins) {
 		Assert(user != nullptr);
@@ -2382,11 +2347,7 @@ bool ParticipantsBoxController::appendRow(not_null<PeerData*> participant) {
 		recomputeTypeFor(participant);
 		return false;
 	} else if (auto row = createRow(participant)) {
-		const auto raw = row.get();
 		delegate()->peerListAppendRow(std::move(row));
-		if (_stories) {
-			_stories->process(raw);
-		}
 		if (_role != Role::Kicked) {
 			setDescriptionText(QString());
 		}
@@ -2402,17 +2363,10 @@ bool ParticipantsBoxController::prependRow(not_null<PeerData*> participant) {
 		if (_role == Role::Admins) {
 			// Perhaps we've added a new admin from search.
 			delegate()->peerListPrependRowFromSearchResult(row);
-			if (_stories) {
-				_stories->process(row);
-			}
 		}
 		return false;
 	} else if (auto row = createRow(participant)) {
-		const auto raw = row.get();
 		delegate()->peerListPrependRow(std::move(row));
-		if (_stories) {
-			_stories->process(raw);
-		}
 		if (_role != Role::Kicked) {
 			setDescriptionText(QString());
 		}

@@ -76,8 +76,7 @@ public:
 	bool change(
 		MuteValue muteForSeconds,
 		std::optional<bool> silentPosts,
-		std::optional<NotifySound> sound,
-		std::optional<bool> storiesMuted);
+		std::optional<NotifySound> sound);
 
 	std::optional<TimeId> muteUntil() const;
 	std::optional<bool> silentPosts() const;
@@ -96,6 +95,10 @@ private:
 	std::optional<NotifySound> _sound;
 	std::optional<bool> _silent;
 	std::optional<bool> _showPreviews;
+
+	// LoogriGram: stories are removed and nothing here sets this any more,
+	// but it is the server's setting: it is kept and sent back unchanged
+	// instead of being reset by every notification settings change.
 	std::optional<bool> _storiesMuted;
 
 };
@@ -126,8 +129,7 @@ bool NotifyPeerSettingsValue::change(const MTPDpeerNotifySettings &data) {
 bool NotifyPeerSettingsValue::change(
 		MuteValue muteForSeconds,
 		std::optional<bool> silentPosts,
-		std::optional<NotifySound> sound,
-		std::optional<bool> storiesMuted) {
+		std::optional<NotifySound> sound) {
 	const auto newMute = muteForSeconds
 		? base::make_optional(muteForSeconds.until())
 		: _mute;
@@ -137,15 +139,12 @@ bool NotifyPeerSettingsValue::change(
 	const auto newSound = sound
 		? base::make_optional(*sound)
 		: _sound;
-	const auto newStoriesMuted = storiesMuted
-		? base::make_optional(*storiesMuted)
-		: _storiesMuted;
 	return change(
 		newMute,
 		newSound,
 		_showPreviews,
 		newSilentPosts,
-		newStoriesMuted);
+		_storiesMuted);
 }
 
 bool NotifyPeerSettingsValue::change(
@@ -225,22 +224,16 @@ bool PeerNotifySettings::change(const MTPPeerNotifySettings &settings) {
 bool PeerNotifySettings::change(
 		MuteValue muteForSeconds,
 		std::optional<bool> silentPosts,
-		std::optional<NotifySound> sound,
-		std::optional<bool> storiesMuted) {
-	if (!muteForSeconds && !silentPosts && !sound && !storiesMuted) {
+		std::optional<NotifySound> sound) {
+	if (!muteForSeconds && !silentPosts && !sound) {
 		return false;
 	} else if (_value) {
-		return _value->change(
-			muteForSeconds,
-			silentPosts,
-			sound,
-			storiesMuted);
+		return _value->change(muteForSeconds, silentPosts, sound);
 	}
 	using Flag = MTPDpeerNotifySettings::Flag;
 	const auto flags = (muteForSeconds ? Flag::f_mute_until : Flag(0))
 		| (silentPosts ? Flag::f_silent : Flag(0))
-		| (sound ? Flag::f_other_sound : Flag(0))
-		| (storiesMuted ? Flag::f_stories_muted : Flag(0));
+		| (sound ? Flag::f_other_sound : Flag(0));
 	return change(MTP_peerNotifySettings(
 		MTP_flags(flags),
 		MTPBool(),
@@ -249,7 +242,7 @@ bool PeerNotifySettings::change(
 		MTPNotificationSound(),
 		MTPNotificationSound(),
 		SerializeSound(sound),
-		storiesMuted ? MTP_bool(*storiesMuted) : MTPBool(),
+		MTPBool(), // stories_muted
 		MTPBool(), // stories_hide_sender
 		MTPNotificationSound(),
 		MTPNotificationSound(),

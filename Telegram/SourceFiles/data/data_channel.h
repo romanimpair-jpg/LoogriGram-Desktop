@@ -67,9 +67,7 @@ enum class ChannelDataFlag : uint64 {
 	Forum = (1ULL << 23),
 	AntiSpam = (1ULL << 24),
 	ParticipantsHidden = (1ULL << 25),
-	StoriesHidden = (1ULL << 26),
-	HasActiveStories = (1ULL << 27),
-	HasUnreadStories = (1ULL << 28),
+	// LoogriGram: bits 26-28 and 45 were story state.
 	CanGetStatistics = (1ULL << 29),
 	ViewAsMessages = (1ULL << 30),
 	SimilarExpanded = (1ULL << 31),
@@ -82,7 +80,6 @@ enum class ChannelDataFlag : uint64 {
 	MonoforumAdmin = (1ULL << 40),
 	MonoforumDisabled = (1ULL << 41),
 	ForumTabs = (1ULL << 42),
-	HasActiveVideoStream = (1ULL << 45),
 	Community = (1ULL << 46),
 	CommunityCollapsed = (1ULL << 47),
 	HasWelcomeMessages = (1ULL << 48),
@@ -271,9 +268,6 @@ public:
 	[[nodiscard]] bool isFake() const {
 		return flags() & Flag::Fake;
 	}
-	[[nodiscard]] bool hasStoriesHidden() const {
-		return flags() & Flag::StoriesHidden;
-	}
 	[[nodiscard]] bool viewForumAsMessages() const {
 		return flags() & Flag::ViewAsMessages;
 	}
@@ -410,9 +404,6 @@ public:
 	[[nodiscard]] bool canPostMessages() const;
 	[[nodiscard]] bool canEditMessages() const;
 	[[nodiscard]] bool canDeleteMessages() const;
-	[[nodiscard]] bool canPostStories() const;
-	[[nodiscard]] bool canEditStories() const;
-	[[nodiscard]] bool canDeleteStories() const;
 	[[nodiscard]] bool canAccessMonoforum() const;
 	[[nodiscard]] bool hiddenPreHistory() const;
 	[[nodiscard]] bool canViewMembers() const;
@@ -539,10 +530,6 @@ public:
 	void setAllowedReactions(Data::AllowedReactions value);
 	[[nodiscard]] const Data::AllowedReactions &allowedReactions() const;
 
-	[[nodiscard]] bool hasActiveStories() const;
-	[[nodiscard]] bool hasUnreadStories() const;
-	[[nodiscard]] bool hasActiveVideoStream() const;
-	void setStoriesState(StoriesState state);
 
 	[[nodiscard]] Data::Forum *forum() const {
 		return mgInfo ? mgInfo->forum() : nullptr;

@@ -142,11 +142,6 @@ constexpr auto kForceDisableTooltipDuration = 3 * crl::time(1000);
 			{ Flag::ManageTopics, tr::lng_rights_group_topics(tr::now) },
 			{ Flag::PinMessages, tr::lng_rights_group_pin(tr::now) },
 		};
-		auto stories = std::vector<AdminRightLabel>{
-			{ Flag::PostStories, tr::lng_rights_channel_post_stories(tr::now) },
-			{ Flag::EditStories, tr::lng_rights_channel_edit_stories(tr::now) },
-			{ Flag::DeleteStories, tr::lng_rights_channel_delete_stories(tr::now) },
-		};
 		auto second = std::vector<AdminRightLabel>{
 			{ Flag::ManageCall, tr::lng_rights_group_manage_calls(tr::now) },
 			{ Flag::ManageRanks, tr::lng_rights_group_manage_ranks(tr::now) },
@@ -169,7 +164,7 @@ constexpr auto kForceDisableTooltipDuration = 3 * crl::time(1000);
 		}
 		return {
 			{ std::nullopt, std::move(first) },
-			{ tr::lng_rights_channel_manage_stories(), std::move(stories) },
+			// LoogriGram: a "Manage stories" group sat here.
 			{ std::nullopt, std::move(second) },
 		};
 	}
@@ -187,14 +182,6 @@ constexpr auto kForceDisableTooltipDuration = 3 * crl::time(1000);
 		{ Flag::EditMessages, tr::lng_rights_channel_edit(tr::now) },
 		{ Flag::DeleteMessages, tr::lng_rights_channel_delete(tr::now) },
 	};
-	auto stories = std::vector<AdminRightLabel>{
-		{ Flag::PostStories, tr::lng_rights_channel_post_stories(tr::now) },
-		{ Flag::EditStories, tr::lng_rights_channel_edit_stories(tr::now) },
-		{
-			Flag::DeleteStories,
-			tr::lng_rights_channel_delete_stories(tr::now),
-		},
-	};
 	auto second = std::vector<AdminRightLabel>{
 		{ Flag::InviteByLinkOrAdd, tr::lng_rights_group_invite(tr::now) },
 		{ Flag::ManageCall, tr::lng_rights_channel_manage_calls(tr::now) },
@@ -211,7 +198,6 @@ constexpr auto kForceDisableTooltipDuration = 3 * crl::time(1000);
 	return {
 		{ std::nullopt, std::move(first) },
 		{ tr::lng_rights_channel_manage(), std::move(messages) },
-		{ tr::lng_rights_channel_manage_stories(), std::move(stories) },
 		{ std::nullopt, std::move(second) },
 	};
 }

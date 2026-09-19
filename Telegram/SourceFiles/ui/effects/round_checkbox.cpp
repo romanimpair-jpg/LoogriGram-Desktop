@@ -7,13 +7,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/effects/round_checkbox.h"
 
-#include "lang/lang_keys.h"
 #include "ui/rp_widget.h"
 #include "ui/ui_utility.h"
 #include "ui/painter.h"
-#include "ui/effects/outline_segments.h"
-#include "styles/style_calls.h"
-#include "styles/style_dialogs.h"
 #include "styles/style_widgets.h"
 
 #include <QtCore/QCoreApplication>
@@ -384,33 +380,6 @@ void RoundImageCheckbox::paint(
 		int x,
 		int y,
 		int outerWidth) const {
-	if (_liveBadge) {
-		const auto ratio = style::DevicePixelRatio();
-		const auto added = _st.selectWidth;
-		const auto cacheSize = (added + _st.imageRadius) * 2;
-		const auto fullCacheSize = cacheSize * ratio;
-		if (_liveBadgeCache.width() != fullCacheSize) {
-			_liveBadgeCache = QImage(
-				QSize(fullCacheSize, fullCacheSize),
-				QImage::Format_ARGB32_Premultiplied);
-			_liveBadgeCache.setDevicePixelRatio(ratio);
-		}
-		_liveBadgeCache.fill(Qt::transparent);
-		auto q = Painter(&_liveBadgeCache);
-		paintFrame(q, added, added, cacheSize);
-		q.end();
-
-		p.drawImage(x - added, y - added, _liveBadgeCache);
-	} else {
-		paintFrame(p, x, y, outerWidth);
-	}
-}
-
-void RoundImageCheckbox::paintFrame(
-		Painter &p,
-		int x,
-		int y,
-		int outerWidth) const {
 	auto selectionLevel = _selection.value(checked() ? 1. : 0.);
 	if (_selection.animating()) {
 		auto userpicRadius = qRound(kWideScale
@@ -440,7 +409,6 @@ void RoundImageCheckbox::paintFrame(
 		PainterHighQualityEnabler hq(p);
 		p.setOpacity(std::clamp(selectionLevel, 0., 1.));
 		p.setBrush(Qt::NoBrush);
-		const auto segments = int(_segments.size());
 		const auto rect = style::rtlrect(
 			x,
 			y,
@@ -450,25 +418,16 @@ void RoundImageCheckbox::paintFrame(
 		const auto add = _st.selectExtendTwice / 2.;
 		const auto outline = QRectF(rect).marginsAdded({
 			add, add, add, add });
-		if (segments < 2) {
-			const auto radius = _roundingRadius
-				? _roundingRadius(_st.imageRadius * 2)
-				: std::optional<int>();
-			const auto pen = QPen(
-				segments ? _segments.front().brush : _st.selectFg->b,
-				segments ? _segments.front().width : _st.selectWidth);
-			p.setPen(pen);
-			if (!radius) {
-				p.drawEllipse(outline);
-			} else {
-				p.drawRoundedRect(outline, *radius, *radius);
-			}
+		const auto radius = _roundingRadius
+			? _roundingRadius(_st.imageRadius * 2)
+			: std::optional<int>();
+		p.setPen(QPen(
+			_fgOverride ? *_fgOverride : _st.selectFg->b,
+			_st.selectWidth));
+		if (!radius) {
+			p.drawEllipse(outline);
 		} else {
-			PaintOutlineSegments(p, outline, _segments);
-		}
-
-		if (_liveBadge) {
-			PaintLiveBadge(p, x, y, _st.imageRadius * 2);
+			p.drawRoundedRect(outline, *radius, *radius);
 		}
 
 		p.setOpacity(1.);
@@ -535,62 +494,9 @@ void RoundImageCheckbox::prepareWideCache() {
 }
 
 void RoundImageCheckbox::setColorOverride(std::optional<QBrush> fg) {
-	if (fg) {
-		setCustomizedSegments({
-			{ .brush = *fg, .width = float64(_st.selectWidth) }
-		}, false);
-	} else {
-		setCustomizedSegments({}, false);
-	}
-}
-
-void RoundImageCheckbox::setCustomizedSegments(
-		std::vector<Ui::OutlineSegment> segments,
-		bool liveBadge) {
-	_segments = std::move(segments);
-	_liveBadge = liveBadge;
-}
-
-void PaintLiveBadge(
-		QPainter &p,
-		int x,
-		int y,
-		int photoSize,
-		std::optional<QColor> outline) {
-	const auto &st = st::groupCallMessageBadge;
-	const auto text = tr::lng_video_stream_live(tr::now);
-	auto string = Ui::Text::String(st.style, text);
-	const auto size = QSize(string.maxWidth(), string.minHeight());
-
-	const auto full = QSize(
-		(st.width < 0) ? (size.width() - st.width) : st.width,
-		st.height);
-	const auto left = x + (photoSize - full.width()) / 2;
-	const auto top = y + photoSize - full.height();
-
-	const auto stroke = st::dialogsStories.lineTwice / 2.;
-	auto pen = QPen(outline.value_or(QColor(Qt::transparent)));
-	pen.setWidthF(stroke);
-
-	const auto half = stroke / 2.;
-	if (!outline) {
-		p.setCompositionMode(QPainter::CompositionMode_Source);
-	}
-	auto hq = PainterHighQualityEnabler(p);
-	p.setPen(pen);
-	p.setBrush(st.textBg);
-
-	const auto r = st.radius + half;
-	const auto rect = QRectF(left, top, full.width(), full.height());
-	const auto sub = QMarginsF(half, half, half, half);
-	p.drawRoundedRect(rect.marginsAdded(sub), r, r);
-
-	if (!outline) {
-		p.setCompositionMode(QPainter::CompositionMode_SourceOver);
-	}
-	const auto textLeft = (full.width() - size.width()) / 2;
-	p.setPen(st.textFg);
-	string.draw(p, { .position = { left + textLeft, top + st.textTop } });
+	// LoogriGram: story rings drew several segments and a live badge here
+	// through setCustomizedSegments(); only the single color is left.
+	_fgOverride = std::move(fg);
 }
 
 } // namespace Ui

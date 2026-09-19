@@ -736,8 +736,13 @@ void EditAdminBox::prepare() {
 				});
 			}
 		}
+		// LoogriGram: the story rights are no longer shown, but they are
+		// the server's to keep - saving passes on what the admin had (or
+		// the default for a new one) instead of silently revoking them.
+		const auto storyRights = prepareRights.flags
+			& (Flag::PostStories | Flag::EditStories | Flag::DeleteStories);
 		_finishSave = [=, value = getChecked] {
-			const auto newFlags = (value() | ChatAdminRight::Other)
+			const auto newFlags = (value() | ChatAdminRight::Other | storyRights)
 				& ((!channel || channel->amCreator())
 					? ~Flags(0)
 					: myEditableRights);

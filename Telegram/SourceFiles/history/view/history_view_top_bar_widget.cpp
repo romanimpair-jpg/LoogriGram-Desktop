@@ -892,17 +892,6 @@ void TopBarWidget::setActiveChat(
 				updateControlsVisibility();
 				updateControlsGeometry();
 			}, _activeChatLifetime);
-
-			if (const auto channel = peer->asChannel()) {
-				if (channel->canEditStories()
-					&& !channel->owner().stories().albumIdsCountKnown(
-						channel->id,
-						Data::kStoriesAlbumIdArchive)) {
-					channel->owner().stories().albumIdsLoadMore(
-						channel->id,
-						Data::kStoriesAlbumIdArchive);
-				}
-			}
 		}
 
 		if (const auto history = _activeChat.key.history()) {

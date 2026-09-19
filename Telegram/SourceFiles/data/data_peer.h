@@ -261,8 +261,6 @@ public:
 	[[nodiscard]] bool isFreezeAppealChat() const;
 	[[nodiscard]] bool sharedMediaInfo() const;
 	[[nodiscard]] bool savedSublistsInfo() const;
-	[[nodiscard]] bool hasStoriesHidden() const;
-	void setStoriesHidden(bool hidden);
 
 	[[nodiscard]] Ui::BotVerifyDetails *botVerifyDetails() const;
 
@@ -452,9 +450,6 @@ public:
 	[[nodiscard]] bool canCreatePolls(bool forbidInForums = true) const;
 	[[nodiscard]] bool canCreateTopics() const;
 	[[nodiscard]] bool canManageTopics() const;
-	[[nodiscard]] bool canPostStories() const;
-	[[nodiscard]] bool canEditStories() const;
-	[[nodiscard]] bool canDeleteStories() const;
 	[[nodiscard]] bool canExportChatHistory() const;
 	[[nodiscard]] bool autoTranslation() const;
 
@@ -549,17 +544,6 @@ public:
 	[[nodiscard]] bool wallPaperOverriden() const;
 	[[nodiscard]] const Data::WallPaper *wallPaper() const;
 
-	enum class StoriesState {
-		Unknown,
-		None,
-		HasRead,
-		HasUnread,
-		HasVideoStream,
-	};
-	[[nodiscard]] bool hasActiveStories() const;
-	[[nodiscard]] bool hasUnreadStories() const;
-	[[nodiscard]] bool hasActiveVideoStream() const;
-	void setStoriesState(StoriesState state);
 
 
 	void setMainProfileTab(Data::ProfileTab tab);

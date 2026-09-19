@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "ui/chat/chat_theme.h" // CountAverageColor.
 #include "ui/color_contrast.h"
-#include "ui/effects/outline_segments.h"
 #include "ui/effects/ripple_animation.h"
 #include "ui/effects/ttl_icon.h"
 #include "ui/effects/round_checkbox.h"
@@ -27,7 +26,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_folder.h"
 #include "data/data_forum.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
 #include "data/data_peer_values.h"
 #include "data/data_user.h"
 #include "history/history.h"
@@ -385,18 +383,6 @@ void Row::PaintCornerBadgeFrame(
 	q.translate(framePadding, framePadding);
 	auto hq = std::optional<PainterHighQualityEnabler>();
 	const auto photoSize = context.st->photoSize;
-	const auto storiesCount = data->storiesCount;
-	if (storiesCount) {
-		hq.emplace(q);
-		const auto line = st::dialogsStoriesFull.lineTwice / 2.;
-		const auto skip = line * 3 / 2.;
-		const auto scale = 1. - (2 * skip / photoSize);
-		const auto center = photoSize / 2.;
-		q.save();
-		q.translate(center, center);
-		q.scale(scale, scale);
-		q.translate(-center, -center);
-	}
 	q.translate(-context.st->padding.left(), -context.st->padding.top());
 	PaintUserpic(
 		q,
@@ -405,49 +391,9 @@ void Row::PaintCornerBadgeFrame(
 		view,
 		context);
 	q.translate(context.st->padding.left(), context.st->padding.top());
-	if (storiesCount) {
-		q.restore();
 
-		const auto outline = QRectF(0, 0, photoSize, photoSize);
-		const auto storiesUnread = st::dialogsStoriesFull.lineTwice / 2.;
-		const auto storiesLine = st::dialogsStoriesFull.lineReadTwice / 2.;
-		auto segments = std::vector<Ui::OutlineSegment>();
-		if (data->storiesHasVideoStream) {
-			const auto storiesVideoStreamBrush = st::attentionButtonFg->b;
-			segments.push_back({ storiesVideoStreamBrush, storiesUnread });
-		} else {
-			const auto storiesUnreadCount = data->storiesUnreadCount;
-			const auto storiesUnreadBrush = [&] {
-				if (context.active || !storiesUnreadCount) {
-					return st::dialogsUnreadBgMutedActive->b;
-				}
-				auto gradient = Ui::UnreadStoryOutlineGradient(outline);
-				return QBrush(gradient);
-			}();
-			const auto storiesBrush = context.active
-				? st::dialogsUnreadBgMutedActive->b
-				: st::dialogsUnreadBgMuted->b;
-			segments.reserve(storiesCount);
-			const auto storiesReadCount = storiesCount - storiesUnreadCount;
-			for (auto i = 0; i != storiesReadCount; ++i) {
-				segments.push_back({ storiesBrush, storiesLine });
-			}
-			for (auto i = 0; i != storiesUnreadCount; ++i) {
-				segments.push_back({ storiesUnreadBrush, storiesUnread });
-			}
-		}
-		if (peer && (peer->forum() || peer->monoforum())) {
-			const auto radius = context.st->photoSize
-				* Ui::ForumUserpicRadiusMultiplier();
-			Ui::PaintOutlineSegments(q, outline, radius, segments);
-		} else {
-			Ui::PaintOutlineSegments(q, outline, segments);
-		}
-
-		if (data->storiesHasVideoStream) {
-			Ui::PaintLiveBadge(q, 0, 0, photoSize);
-		}
-	}
+	// LoogriGram: a ring of story segments was drawn around the userpic
+	// here, with a live badge for a live story. Stories are removed.
 
 	// LoogriGram: a channel we paid Stars to stay in wore a star here.
 
@@ -590,14 +536,6 @@ void Row::paintUserpic(
 	const auto cornerBadgeShown = !_cornerBadgeUserpic
 		? _cornerBadgeShown
 		: !_cornerBadgeUserpic->layersManager.isDisplayedNone();
-	// LoogriGram: no story ring around chat list userpics. Stories attached to
-	// a peer are not surfaced any more - the userpic click opens the chat like
-	// the rest of the row - so a ring here would be decoration promising
-	// something that no longer happens. These stay as named constants because
-	// the corner badge frame below is cached on them.
-	const auto storiesCount = 0;
-	const auto storiesUnreadCount = 0;
-	const auto storiesHasVideoStream = 0;
 	if (!cornerBadgeShown) {
 		BasicRow::paintUserpic(p, entry, peer, context, false);
 		if (!peer || !_cornerBadgeShown) {
@@ -638,22 +576,16 @@ void Row::paintUserpic(
 		&& !(badgeChannel && Data::ChannelHasActiveCall(badgeChannel))
 		&& !(badgeUser && Data::IsUserOnline(badgeUser))
 		&& !insideCommunity;
-	// Only stories outline and online badge differ for active row.
-	const auto activeMatters = storiesCount || !communityMember;
+	// Only the online badge differs for active row.
+	const auto activeMatters = !communityMember;
 	if (keyChanged
 		|| !_cornerBadgeUserpic->layersManager.isFinished()
 		|| (activeMatters && _cornerBadgeUserpic->active != active)
-		|| _cornerBadgeUserpic->hidden != (hidden ? 1 : 0)
-		|| _cornerBadgeUserpic->storiesCount != storiesCount
-		|| _cornerBadgeUserpic->storiesUnreadCount != storiesUnreadCount
-		|| _cornerBadgeUserpic->storiesHasVideoStream != storiesHasVideoStream) {
+		|| _cornerBadgeUserpic->hidden != (hidden ? 1 : 0)) {
 		_cornerBadgeUserpic->key = key;
 		_cornerBadgeUserpic->paletteVersion = paletteVersion;
 		_cornerBadgeUserpic->active = active;
 		_cornerBadgeUserpic->hidden = hidden ? 1 : 0;
-		_cornerBadgeUserpic->storiesCount = storiesCount;
-		_cornerBadgeUserpic->storiesUnreadCount = storiesUnreadCount;
-		_cornerBadgeUserpic->storiesHasVideoStream = storiesHasVideoStream;
 		_cornerBadgeUserpic->layersManager.markFrameShown();
 		PaintCornerBadgeFrame(
 			_cornerBadgeUserpic.get(),

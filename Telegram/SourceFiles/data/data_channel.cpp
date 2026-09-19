@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_user.h"
 #include "data/data_chat.h"
 #include "data/data_session.h"
-#include "data/data_stories.h"
 #include "data/data_folder.h"
 #include "data/data_forum.h"
 #include "data/data_forum_icons.h"
@@ -725,21 +724,6 @@ bool ChannelData::canDeleteMessages() const {
 	return amCreator() || (adminRights() & AdminRight::DeleteMessages);
 }
 
-bool ChannelData::canPostStories() const {
-	return amCreator() || (adminRights() & AdminRight::PostStories);
-}
-
-bool ChannelData::canEditStories() const {
-	if (isMonoforum()) {
-		return false;
-	}
-	return amCreator() || (adminRights() & AdminRight::EditStories);
-}
-
-bool ChannelData::canDeleteStories() const {
-	return amCreator() || (adminRights() & AdminRight::DeleteStories);
-}
-
 bool ChannelData::canAccessMonoforum() const {
 	return amCreator() || (adminRights() & AdminRight::ManageDirect);
 }
@@ -1124,51 +1108,6 @@ const Data::AllowedReactions &ChannelData::allowedReactions() const {
 	return _allowedReactions;
 }
 
-bool ChannelData::hasActiveStories() const {
-	return flags() & Flag::HasActiveStories;
-}
-
-bool ChannelData::hasUnreadStories() const {
-	return flags() & Flag::HasUnreadStories;
-}
-
-bool ChannelData::hasActiveVideoStream() const {
-	return flags() & Flag::HasActiveVideoStream;
-}
-
-void ChannelData::setStoriesState(StoriesState state) {
-	Expects(state != StoriesState::Unknown);
-
-	const auto was = flags();
-	switch (state) {
-	case StoriesState::None:
-		_flags.remove(Flag::HasActiveStories
-			| Flag::HasUnreadStories
-			| Flag::HasActiveVideoStream);
-		break;
-	case StoriesState::HasRead:
-		_flags.set(Flag::HasActiveStories
-			| (was
-				& ~(Flag::HasUnreadStories | Flag::HasActiveVideoStream)));
-		break;
-	case StoriesState::HasUnread:
-		_flags.set((was & ~Flag::HasActiveVideoStream)
-			| Flag::HasActiveStories
-			| Flag::HasUnreadStories);
-		break;
-	case StoriesState::HasVideoStream:
-		_flags.set((was & ~Flag::HasUnreadStories)
-			| Flag::HasActiveStories
-			| Flag::HasActiveVideoStream);
-		break;
-	}
-	if (flags() != was) {
-		if (const auto history = owner().historyLoaded(this)) {
-			history->updateChatListEntryPostponed();
-		}
-		session().changes().peerUpdated(this, UpdateFlag::StoriesState);
-	}
-}
 
 int ChannelData::levelHint() const {
 	return _levelHint;
@@ -1408,7 +1347,6 @@ void ApplyChannelUpdate(
 	}
 	channel->setBotVerifyDetails(
 		ParseBotVerifyDetails(update.vbot_verification()));
-	channel->owner().stories().apply(channel, update.vstories());
 	channel->fullUpdated();
 	channel->setPendingRequestsCount(
 		update.vrequests_pending().value_or_empty(),

@@ -77,7 +77,7 @@ struct PeerUpdate {
 		Color               = (1ULL << 14),
 		ColorProfile        = (1ULL << 15),
 		BackgroundEmoji     = (1ULL << 16),
-		StoriesState        = (1ULL << 17),
+		// LoogriGram: bit 17 was StoriesState.
 		VerifyInfo          = (1ULL << 18),
 
 		// For users

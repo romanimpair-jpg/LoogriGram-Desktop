@@ -230,13 +230,8 @@ void NotifySettings::update(
 		not_null<Thread*> thread,
 		MuteValue muteForSeconds,
 		std::optional<bool> silentPosts,
-		std::optional<NotifySound> sound,
-		std::optional<bool> storiesMuted) {
-	if (thread->notify().change(
-			muteForSeconds,
-			silentPosts,
-			sound,
-			storiesMuted)) {
+		std::optional<NotifySound> sound) {
+	if (thread->notify().change(muteForSeconds, silentPosts, sound)) {
 		if (const auto history = thread->asHistory()) {
 			updateException(history->peer);
 		}
@@ -261,13 +256,8 @@ void NotifySettings::update(
 		not_null<PeerData*> peer,
 		MuteValue muteForSeconds,
 		std::optional<bool> silentPosts,
-		std::optional<NotifySound> sound,
-		std::optional<bool> storiesMuted) {
-	if (peer->notify().change(
-			muteForSeconds,
-			silentPosts,
-			sound,
-			storiesMuted)) {
+		std::optional<NotifySound> sound) {
+	if (peer->notify().change(muteForSeconds, silentPosts, sound)) {
 		updateException(peer);
 		updateLocal(peer);
 		peer->session().api().updateNotifySettingsDelayed(peer);
@@ -334,10 +324,9 @@ void NotifySettings::defaultUpdate(
 		DefaultNotify type,
 		MuteValue muteForSeconds,
 		std::optional<bool> silentPosts,
-		std::optional<NotifySound> sound,
-		std::optional<bool> storiesMuted) {
+		std::optional<NotifySound> sound) {
 	auto &settings = defaultValue(type).settings;
-	if (settings.change(muteForSeconds, silentPosts, sound, storiesMuted)) {
+	if (settings.change(muteForSeconds, silentPosts, sound)) {
 		updateLocal(type);
 		_owner->session().api().updateNotifySettingsDelayed(type);
 	}

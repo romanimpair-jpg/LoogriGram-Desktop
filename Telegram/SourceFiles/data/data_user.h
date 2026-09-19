@@ -120,16 +120,12 @@ enum class UserDataFlag : uint32 {
 	UnofficialSecurityRisk = (1 << 15),
 	VoiceMessagesForbidden = (1 << 16),
 	PersonalPhoto = (1 << 17),
-	StoriesHidden = (1 << 18),
-	HasActiveStories = (1 << 19),
-	HasUnreadStories = (1 << 20),
+	// LoogriGram: bits 18-20, 26 and 28 were story state.
 	RequiresPremiumToWrite = (1 << 21),
 	HasRequirePremiumToWrite = (1 << 22),
 	MessageMoneyRestrictionsKnown = (1 << 24),
 	ReadDatesPrivate = (1 << 25),
-	StoriesCorrespondent = (1 << 26),
 	Forum = (1 << 27),
-	HasActiveVideoStream = (1 << 28),
 	NoForwardsMyEnabled = (1 << 29),
 	NoForwardsPeerEnabled = (1 << 30),
 };
@@ -191,7 +187,6 @@ public:
 	[[nodiscard]] bool isInaccessible() const;
 	[[nodiscard]] bool applyMinPhoto() const;
 	[[nodiscard]] bool hasPersonalPhoto() const;
-	[[nodiscard]] bool hasStoriesHidden() const;
 	[[nodiscard]] bool hasRequirePremiumToWrite() const;
 	[[nodiscard]] bool requiresPremiumToWrite() const;
 	[[nodiscard]] bool messageMoneyRestrictionsKnown() const;
@@ -206,8 +201,6 @@ public:
 		return botInfo ? botInfo->forum() : nullptr;
 	}
 
-	void setStoriesCorrespondent(bool is);
-	[[nodiscard]] bool storiesCorrespondent() const;
 
 
 	void setStarsRating(Data::StarsRating value);
@@ -267,10 +260,6 @@ public:
 	[[nodiscard]] QString privateForwardName() const;
 	void setPrivateForwardName(const QString &name);
 
-	[[nodiscard]] bool hasActiveStories() const;
-	[[nodiscard]] bool hasUnreadStories() const;
-	[[nodiscard]] bool hasActiveVideoStream() const;
-	void setStoriesState(StoriesState state);
 
 	[[nodiscard]] const Data::BusinessDetails &businessDetails() const;
 	void setBusinessDetails(Data::BusinessDetails details);

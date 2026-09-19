@@ -26,7 +26,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_changes.h"
 #include "data/data_peer_bot_command.h"
 #include "data/data_photo.h"
-#include "data/data_stories.h"
 #include "data/data_wall_paper.h"
 #include "data/notify/data_notify_settings.h"
 #include "history/history.h"
@@ -211,52 +210,6 @@ QString UserData::privateForwardName() const {
 
 void UserData::setPrivateForwardName(const QString &name) {
 	_privateForwardName = name;
-}
-
-bool UserData::hasActiveStories() const {
-	return flags() & Flag::HasActiveStories;
-}
-
-bool UserData::hasUnreadStories() const {
-	return flags() & Flag::HasUnreadStories;
-}
-
-bool UserData::hasActiveVideoStream() const {
-	return flags() & Flag::HasActiveVideoStream;
-}
-
-void UserData::setStoriesState(StoriesState state) {
-	Expects(state != StoriesState::Unknown);
-
-	const auto was = flags();
-	switch (state) {
-	case StoriesState::None:
-		_flags.remove(Flag::HasActiveStories
-			| Flag::HasUnreadStories
-			| Flag::HasActiveVideoStream);
-		break;
-	case StoriesState::HasRead:
-		_flags.set(Flag::HasActiveStories
-			| (was
-				& ~(Flag::HasUnreadStories | Flag::HasActiveVideoStream)));
-		break;
-	case StoriesState::HasUnread:
-		_flags.set((was & ~Flag::HasActiveVideoStream)
-			| Flag::HasActiveStories
-			| Flag::HasUnreadStories);
-		break;
-	case StoriesState::HasVideoStream:
-		_flags.set((was & ~Flag::HasUnreadStories)
-			| Flag::HasActiveStories
-			| Flag::HasActiveVideoStream);
-		break;
-	}
-	if (flags() != was) {
-		if (const auto history = owner().historyLoaded(this)) {
-			history->updateChatListEntryPostponed();
-		}
-		session().changes().peerUpdated(this, UpdateFlag::StoriesState);
-	}
 }
 
 const Data::BusinessDetails &UserData::businessDetails() const {
@@ -612,10 +565,6 @@ bool UserData::hasPersonalPhoto() const {
 	return (flags() & UserDataFlag::PersonalPhoto);
 }
 
-bool UserData::hasStoriesHidden() const {
-	return (flags() & UserDataFlag::StoriesHidden);
-}
-
 bool UserData::hasRequirePremiumToWrite() const {
 	return (flags() & UserDataFlag::HasRequirePremiumToWrite);
 }
@@ -649,18 +598,6 @@ void UserData::setNoForwardsFlags(bool myEnabled, bool peerEnabled) {
 	if (!myEnabled && !peerEnabled) {
 		owner().clearSharingDisabledTime(this);
 	}
-}
-
-void UserData::setStoriesCorrespondent(bool is) {
-	if (is) {
-		_flags.add(UserDataFlag::StoriesCorrespondent);
-	} else {
-		_flags.remove(UserDataFlag::StoriesCorrespondent);
-	}
-}
-
-bool UserData::storiesCorrespondent() const {
-	return (_flags.current() & UserDataFlag::StoriesCorrespondent);
 }
 
 void UserData::setStarsRating(Data::StarsRating value) {
@@ -938,7 +875,6 @@ void ApplyUserUpdate(not_null<UserData*> user, const MTPDuserFull &update) {
 		});
 	}
 
-	user->owner().stories().apply(user, update.vstories());
 	user->owner().savedMusic().apply(user, update.vsaved_music());
 
 	if (const auto note = update.vnote()) {

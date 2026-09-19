@@ -36,7 +36,7 @@ enum class SubItem : int {
 	Reactions,
 	Time,
 	Sponsored,
-	Stories,
+	// LoogriGram: a Stories column announced the peer's unread stories.
 	Autodelete,
 	Closed,
 	Forward,

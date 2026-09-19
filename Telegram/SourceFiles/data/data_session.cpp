@@ -680,15 +680,7 @@ not_null<UserData*> Session::processUser(const MTPUser &data) {
 				? Flag::Contact
 				| Flag::MutualContact
 				| Flag::DiscardMinPhoto
-				| Flag::StoriesHidden
 				: Flag());
-		const auto storiesState = minimal
-			? std::optional<Data::Stories::PeerSourceState>()
-			: data.is_stories_unavailable()
-			? Data::Stories::PeerSourceState()
-			: !data.vstories_max_id()
-			? std::optional<Data::Stories::PeerSourceState>()
-			: stories().peerSourceState(result, *data.vstories_max_id());
 		const auto flagsSet = (data.is_deleted() ? Flag::Deleted : Flag())
 			| (data.is_verified() ? Flag::Verified : Flag())
 			| (data.is_scam() ? Flag::Scam : Flag())
@@ -714,7 +706,6 @@ not_null<UserData*> Session::processUser(const MTPUser &data) {
 				| (data.is_apply_min_photo()
 					? Flag()
 					: Flag::DiscardMinPhoto)
-				| (data.is_stories_hidden() ? Flag::StoriesHidden : Flag())
 				: Flag());
 		result->setFlags((result->flags() & ~flagsMask) | flagsSet);
 		result->setBotVerifyDetailsIcon(
@@ -722,15 +713,6 @@ not_null<UserData*> Session::processUser(const MTPUser &data) {
 		result->setLinkedCommunityId(
 			data.vlinked_community_id().value_or_empty());
 		if (!minimal) {
-			if (storiesState) {
-				result->setStoriesState(storiesState->hasVideoStream
-					? PeerData::StoriesState::HasVideoStream
-					: !storiesState->maxId
-					? PeerData::StoriesState::None
-					: (storiesState->maxId > storiesState->readTill)
-					? PeerData::StoriesState::HasUnread
-					: PeerData::StoriesState::HasRead);
-			}
 			result->setUnavailableReasons(Data::UnavailableReason::Extract(
 				data.vrestriction_reason()));
 		}
@@ -1066,18 +1048,8 @@ not_null<PeerData*> Session::processChat(const MTPChat &data) {
 			| Flag::RequestToJoin
 			| Flag::Forum
 			| Flag::ForumTabs
-			| ((!minimal && !data.is_stories_hidden_min())
-				? Flag::StoriesHidden
-				: Flag())
 			| Flag::AutoTranslation
 			| Flag::Monoforum;
-		const auto storiesState = minimal
-			? std::optional<Data::Stories::PeerSourceState>()
-			: data.is_stories_unavailable()
-			? Data::Stories::PeerSourceState()
-			: !data.vstories_max_id()
-			? std::optional<Data::Stories::PeerSourceState>()
-			: stories().peerSourceState(channel, *data.vstories_max_id());
 		const auto flagsSet = (data.is_broadcast() ? Flag::Broadcast : Flag())
 			| (data.is_verified() ? Flag::Verified : Flag())
 			| (data.is_scam() ? Flag::Scam : Flag())
@@ -1106,26 +1078,11 @@ not_null<PeerData*> Session::processChat(const MTPChat &data) {
 				? Flag::Forum
 				: Flag())
 			| (data.is_forum_tabs() ? Flag::ForumTabs : Flag())
-			| ((!minimal
-				&& !data.is_stories_hidden_min()
-				&& data.is_stories_hidden())
-				? Flag::StoriesHidden
-				: Flag())
 			| (data.is_autotranslation() ? Flag::AutoTranslation : Flag())
 			| (data.is_monoforum() ? Flag::Monoforum : Flag());
 		channel->setFlags((channel->flags() & ~flagsMask) | flagsSet);
 		channel->setBotVerifyDetailsIcon(
 			data.vbot_verification_icon().value_or_empty());
-		if (!minimal && storiesState) {
-			result->setStoriesState(storiesState->hasVideoStream
-				? PeerData::StoriesState::HasVideoStream
-				: !storiesState->maxId
-				? PeerData::StoriesState::None
-				: (storiesState->maxId > storiesState->readTill)
-				? PeerData::StoriesState::HasUnread
-				: PeerData::StoriesState::HasRead);
-		}
-
 		channel->setPhoto(data.vphoto());
 		applyMonoforumLinkedId(
 			channel,

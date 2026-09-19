@@ -39,7 +39,6 @@ not_null<PeerData*> peer)
 		navigation,
 		peer,
 		ParticipantsBoxController::Role::Profile)) {
-	_listController->setStoriesShown(true);
 	setupList();
 	setContent(_list.data());
 	_listController->setDelegate(static_cast<PeerListDelegate*>(this));
@@ -48,7 +47,6 @@ not_null<PeerData*> peer)
 void GroupMembersWidget::setupList() {
 	const auto topSkip = 0;
 	_listController->setStyleOverrides(&st::groupMembersWidgetList);
-	_listController->setStoriesShown(true);
 	_list = object_ptr<PeerListContent>(this, _listController.get());
 	widthValue() | rpl::on_next([this](int newWidth) {
 		if (newWidth > 0) {

@@ -50,8 +50,7 @@ public:
 	bool change(
 		MuteValue muteForSeconds,
 		std::optional<bool> silentPosts,
-		std::optional<NotifySound> sound,
-		std::optional<bool> storiesMuted);
+		std::optional<NotifySound> sound);
 	bool resetToDefault();
 
 	bool settingsUnknown() const;

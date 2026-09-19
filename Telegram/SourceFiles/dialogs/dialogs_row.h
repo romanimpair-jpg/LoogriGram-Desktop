@@ -183,9 +183,6 @@ private:
 		QImage cacheTTL;
 		QImage cacheHidden;
 		uint32 paletteVersion : 16 = 0;
-		uint32 storiesCount : 6 = 0;
-		uint32 storiesUnreadCount : 6 = 0;
-		uint32 storiesHasVideoStream : 1 = 0;
 		uint32 active : 1 = 0;
 		uint32 hidden : 1 = 0;
 	};
