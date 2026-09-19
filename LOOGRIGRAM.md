@@ -78,22 +78,17 @@ commit's date can precede a build that did not contain it.
 So the comparison is gone. `out/` records the commit it was last built from
 in `.loogrigram-build-base`, written only after a compile that *succeeded*,
 and "Age sources against the cached build tree" diffs the checkout against it:
-changed files are dated now, everything else 2000-01-01. A failed run still
-caches its half-rebuilt tree but keeps the older marker, so the next run is
-compared against a commit the tree was wholly consistent with. No marker means
+changed files are dated now, everything else 2000-01-01. No marker means
 dating everything now, which is the right answer for a tree we know nothing
-about.
-
-That alone threw a failed build's work away: every file changed since the
-last success was dated now again, so everything the failed run compiled
-recompiled. So a failed run also asks ninja (`-n -d explain`) which outputs
-are still out of date, deletes exactly those, and records
-`out/.loogrigram-build-attempt` - its commit and the date it gave each file.
-The next run gives a file whose content is unchanged since that attempt the
-same date back: objects the attempt compiled are newer and are reused, the
-ones it failed or never reached are gone and rebuild. The record is consumed
-before compiling, so a cancelled run can never pass a stale one on. A submodule bump no longer needs a manual salt bump either - it shows
+about. A submodule bump no longer needs a manual salt bump either - it shows
 up as that path in the diff.
+
+**Only a successful build's tree is cached** (2026-09-19). A failed run used
+to save its half-rebuilt tree plus a record of what it had compiled, so the
+next run could reuse those objects. In practice it didn't pay: our fix commits
+touch widely included headers, so the run after a failure still took 59-74
+minutes, no faster than from scratch. Meanwhile the 8-18 minute upload (once
+56) held back the log that was needed to fix the failure.
 
 **If a binary ever disagrees with the source again, suspect this before the
 code.** Searching the exe for the bytes of an asset settles the artwork half
