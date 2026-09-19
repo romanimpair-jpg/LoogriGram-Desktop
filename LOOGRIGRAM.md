@@ -40,7 +40,10 @@ revisiting any of them.
   Don't ask per surface, and don't stop at the paying half.
 - **Premium is honoured for nobody** — ours or anyone else's. Everyone looks
   the same, and Premium-locked tools are not drawn at all (no padlocks).
-  Channel boost levels are treated the same way.
+  Channel boost levels are treated the same way. Two exceptions the user
+  chose: the notice for someone who accepts messages only from Premium users
+  keeps its wording, and chat folders past the free limit stay drawn dimmed,
+  opening the plain limit box.
 - **Delete removed features; don't guard them.** No forced getters, no
   `if (true) return;`, no inert stubs. Remove the code, its call sites, its
   resources and its dependency. Rewriting upstream code deeply is in scope.
