@@ -267,7 +267,7 @@ void FillStatistic(
 			tr::lng_chart_title_group_week(),
 			Type::StackLinear);
 	} else {
-		if (const auto &message = stats.message) {
+		if (auto &message = stats.message) {
 			addChart(
 				message.messageInteractionGraph,
 				tr::lng_chart_title_message_interaction(),

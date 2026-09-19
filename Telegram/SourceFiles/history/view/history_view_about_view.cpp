@@ -35,6 +35,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item.h"
 #include "history/history_item_helpers.h"
 #include "history/history_item_reply_markup.h"
+#include "core/loogrigram_lang.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "ui/chat/chat_style.h"
@@ -1036,11 +1037,8 @@ AdminLog::OwnedItem AboutView::makePaymentRequired() {
 			| MessageFlag::FakeHistoryItem
 			| MessageFlag::Local),
 		.from = _history->peer->id,
-	}, PreparedServiceText{ tr::lng_send_paid_locked(
-		tr::now,
-		lt_user,
-		tr::bold(_history->peer->shortName()),
-		tr::marked),
+	}, PreparedServiceText{ LoogriGram::Lang::PaidMessagesLocked(
+		tr::bold(_history->peer->shortName())),
 	});
 	auto result = AdminLog::OwnedItem(_delegate, item);
 	result->overrideMedia(std::make_unique<ServiceBox>(

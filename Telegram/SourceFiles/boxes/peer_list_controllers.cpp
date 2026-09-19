@@ -40,6 +40,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "mainwidget.h"
 #include "mainwindow.h"
+#include "core/loogrigram_lang.h"
 #include "lang/lang_keys.h"
 #include "history/history.h"
 #include "history/history_item.h"
@@ -661,11 +662,8 @@ RecipientMoneyRestrictionError WriteMoneyRestrictionError(
 		not_null<UserData*> user) {
 	if (user->requiresPaymentToWrite()) {
 		return {
-			.text = tr::lng_send_paid_locked(
-				tr::now,
-				lt_user,
-				tr::bold(user->shortName()),
-				tr::marked),
+			.text = LoogriGram::Lang::PaidMessagesLocked(
+				tr::bold(user->shortName())),
 		};
 	}
 	return {

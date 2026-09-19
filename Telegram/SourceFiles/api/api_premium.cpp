@@ -18,7 +18,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_element.h"
 #include "history/history.h"
 #include "history/history_item.h"
-#include "lang/lang_keys.h"
+#include "core/loogrigram_lang.h"
 #include "main/main_app_config.h"
 #include "main/main_session.h"
 #include "ui/text/format_values.h"
@@ -126,7 +126,7 @@ QString LockPaymentRequired(not_null<PeerData*> peer) {
 			| Flag::HasRequirePaymentToWrite
 			| Flag::RequiresPaymentToWrite);
 	}
-	return tr::lng_send_paid_locked(tr::now, lt_user, peer->shortName());
+	return LoogriGram::Lang::PaidMessagesLocked({ peer->shortName() }).text;
 }
 
 MessageMoneyRestriction ResolveMessageMoneyRestrictions(

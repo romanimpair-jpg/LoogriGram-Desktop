@@ -16,6 +16,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_forum_topic.h"
 #include "data/data_peer_values.h"
 #include "data/data_user.h"
+#include "core/loogrigram_lang.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "ui/boxes/confirm_box.h"
@@ -312,10 +313,8 @@ SendError RestrictionError(
 					.premiumToLift = true,
 				});
 			} else if (user->requiresPaymentToWrite()) {
-				return SendError(tr::lng_send_paid_locked(
-					tr::now,
-					lt_user,
-					user->shortName()));
+				return SendError(LoogriGram::Lang::PaidMessagesLocked(
+					{ user->shortName() }).text);
 			}
 			const auto result = (restriction == Flag::SendVoiceMessages)
 				? tr::lng_restricted_send_voice_messages(

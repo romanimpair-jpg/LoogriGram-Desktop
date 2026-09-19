@@ -48,6 +48,10 @@ namespace LoogriGram::Lang {
 // caller decides how it is emphasised.
 [[nodiscard]] TextWithEntities TranscribeTrialsOver(TextWithEntities date);
 
+// Why a user who charges Stars per message is locked: nothing here pays.
+// The name is passed in, so the caller decides how it is emphasised.
+[[nodiscard]] TextWithEntities PaidMessagesLocked(TextWithEntities user);
+
 // Keys whose compiled text must survive the cloud language pack.
 //
 // Editing lang.strings changes only the compiled default. On startup the

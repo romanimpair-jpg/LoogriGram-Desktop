@@ -111,7 +111,11 @@ jobs:
       # match the sources they are filed under - that is the bug being fixed -
       # and they carry no build-base marker, so the new scheme cannot tell
       # which. One full build buys a tree that is trustworthy again.
-      OUT_CACHE_SALT: "4"
+      #
+      # LoogriGram: raised to 5 because the story removal deleted five keys
+      # from lang.strings, which renumbers the generated key table (see
+      # "Never add or remove keys in lang.strings" in LOOGRIGRAM.md).
+      OUT_CACHE_SALT: "5"
 
     defaults:
       run:

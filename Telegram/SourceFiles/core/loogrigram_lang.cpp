@@ -36,6 +36,9 @@ constexpr auto kTranscribeTrialsOver = Entry{
 	.en = "You have used all your free transcriptions this week. "
 		"Wait until %1 to use it again.",
 };
+constexpr auto kPaidMessagesLocked = Entry{
+	.en = "%1 only accepts paid messages, which LoogriGram doesn't send.",
+};
 
 [[nodiscard]] QString Pick(const Entry &entry, const QString &languageId) {
 	// Nothing is translated yet, so the id is unused. When a locale is added,
@@ -89,16 +92,29 @@ rpl::producer<QString> DownloadingUpdate(rpl::producer<int> percent) {
 	});
 }
 
-TextWithEntities TranscribeTrialsOver(TextWithEntities date) {
-	const auto text = Pick(
-		kTranscribeTrialsOver,
-		::Lang::GetInstance().id());
+namespace {
+
+// Puts one piece of formatted text where the entry says %1.
+[[nodiscard]] TextWithEntities Substitute(
+		const Entry &entry,
+		TextWithEntities value) {
+	const auto text = Pick(entry, ::Lang::GetInstance().id());
 	const auto position = text.indexOf(u"%1"_q);
 	Assert(position >= 0);
 
 	return TextWithEntities{ text.mid(0, position) }.append(
-		std::move(date)
+		std::move(value)
 	).append(text.mid(position + 2));
+}
+
+} // namespace
+
+TextWithEntities TranscribeTrialsOver(TextWithEntities date) {
+	return Substitute(kTranscribeTrialsOver, std::move(date));
+}
+
+TextWithEntities PaidMessagesLocked(TextWithEntities user) {
+	return Substitute(kPaidMessagesLocked, std::move(user));
 }
 
 bool KeepCompiledString(const QByteArray &key) {

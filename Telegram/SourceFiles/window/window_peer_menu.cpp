@@ -1260,7 +1260,7 @@ void Filler::addViewStatistics() {
 			_addAction(tr::lng_stats_title(tr::now), [=] {
 				if ([[maybe_unused]] const auto strong = weak.get()) {
 					using namespace Info;
-					controller->showSection(Statistics::Make(peer, {}, {}));
+					controller->showSection(Statistics::Make(peer, {}));
 				}
 			}, &st::menuIconStats);
 		}
