@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "api/api_text_entities.h"
 #include "apiwrap.h"
-#include "base/random.h"
 #include "data/data_channel.h"
 #include "data/data_document.h"
 #include "data/data_peer.h"
@@ -27,49 +26,11 @@ namespace Api {
 
 // LoogriGram: this also kept the premium sticker list (never read) and the
 // premium-only cloud sticker set, refetching both whenever the account's
-// premium status changed. The account is never premium.
+// premium status changed. The account is never premium. It also loaded the
+// greeting stickers offered in an empty chat, which are gone.
 Premium::Premium(not_null<ApiWrap*> api)
 : _session(&api->session())
 , _api(&api->instance()) {
-}
-
-auto Premium::helloStickers() const
--> const std::vector<not_null<DocumentData*>> & {
-	if (_helloStickers.empty()) {
-		const_cast<Premium*>(this)->reloadHelloStickers();
-	}
-	return _helloStickers;
-}
-
-rpl::producer<> Premium::helloStickersUpdated() const {
-	return _helloStickersUpdated.events();
-}
-
-void Premium::reloadHelloStickers() {
-	if (_helloStickersRequestId) {
-		return;
-	}
-	_helloStickersRequestId = _api.request(MTPmessages_GetStickers(
-		MTP_string("\xf0\x9f\x91\x8b\xe2\xad\x90\xef\xb8\x8f"),
-		MTP_long(_helloStickersHash)
-	)).done([=](const MTPmessages_Stickers &result) {
-		_helloStickersRequestId = 0;
-		result.match([&](const MTPDmessages_stickersNotModified &) {
-		}, [&](const MTPDmessages_stickers &data) {
-			_helloStickersHash = data.vhash().v;
-			const auto owner = &_session->data();
-			_helloStickers.clear();
-			for (const auto &sticker : data.vstickers().v) {
-				const auto document = owner->processDocument(sticker);
-				if (document->sticker()) {
-					_helloStickers.push_back(document);
-				}
-			}
-			_helloStickersUpdated.fire({});
-		});
-	}).fail([=] {
-		_helloStickersRequestId = 0;
-	}).send();
 }
 
 rpl::producer<> Premium::someMessageMoneyRestrictionsResolved() const {

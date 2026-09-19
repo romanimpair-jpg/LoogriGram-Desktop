@@ -22,25 +22,15 @@ class Premium final {
 public:
 	explicit Premium(not_null<ApiWrap*> api);
 
-	[[nodiscard]] auto helloStickers() const
-		-> const std::vector<not_null<DocumentData*>> &;
-	[[nodiscard]] rpl::producer<> helloStickersUpdated() const;
-
 	[[nodiscard]] auto someMessageMoneyRestrictionsResolved() const
 		-> rpl::producer<>;
 	void resolveMessageMoneyRestrictions(not_null<UserData*> user);
 
 private:
-	void reloadHelloStickers();
 	void requestPremiumRequiredSlice();
 
 	const not_null<Main::Session*> _session;
 	MTP::Sender _api;
-
-	mtpRequestId _helloStickersRequestId = 0;
-	uint64 _helloStickersHash = 0;
-	std::vector<not_null<DocumentData*>> _helloStickers;
-	rpl::event_stream<> _helloStickersUpdated;
 
 	rpl::event_stream<> _someMessageMoneyRestrictionsResolved;
 	base::flat_set<not_null<UserData*>> _resolveMessageMoneyRequiredUsers;

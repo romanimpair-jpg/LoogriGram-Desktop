@@ -53,13 +53,11 @@ private:
 	[[nodiscard]] AdminLog::OwnedItem makeDirectMessagesFree();
 	[[nodiscard]] AdminLog::OwnedItem makeNewPeerInfo(
 		not_null<UserData*> user);
-	[[nodiscard]] AdminLog::OwnedItem makeBlocked();
+	[[nodiscard]] AdminLog::OwnedItem makeEmpty();
 	[[nodiscard]] AdminLog::OwnedItem makeNewBotThread();
 	[[nodiscard]] AdminLog::OwnedItem makeManagedBotInfo(
 		not_null<UserData*> user);
-	void makeIntro(not_null<UserData*> user);
 	void setItem(AdminLog::OwnedItem item, DocumentData *sticker);
-	void setHelloChosen(not_null<DocumentData*> sticker);
 	void toggleStickerRegistered(bool registered);
 
 	void loadCommonGroups();
@@ -71,7 +69,6 @@ private:
 	Fn<bool()> _displayedEmptyOverride;
 	AdminLog::OwnedItem _item;
 
-	DocumentData *_helloChosen = nullptr;
 	DocumentData *_sticker = nullptr;
 	int _version = 0;
 

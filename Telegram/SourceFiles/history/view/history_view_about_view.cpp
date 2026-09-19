@@ -8,7 +8,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_about_view.h"
 
 #include "api/api_peer_colors.h"
-#include "api/api_premium.h"
 #include "api/api_sending.h"
 #include "apiwrap.h"
 #include "base/random.h"
@@ -240,7 +239,6 @@ auto GenerateChatIntro(
 	not_null<Element*> parent,
 	Element *replacing,
 	const Data::ChatIntro &data,
-	Fn<void(not_null<DocumentData*>)> helloChosen,
 	Fn<void(not_null<DocumentData*>)> sendIntroSticker)
 -> Fn<void(
 		not_null<MediaGeneric*>,
@@ -271,19 +269,15 @@ auto GenerateChatIntro(
 		pushText({ description }, title.isEmpty()
 			? st::chatIntroTitleMargin
 			: st::chatIntroMargin);
-		const auto sticker = [=] {
+		// LoogriGram: without a sticker of the peer's own, one was picked at
+		// random from the server's greeting set for us to send. That offer
+		// is gone; a chat with no intro shows the plain empty-chat line.
+		const auto sticker = data.sticker;
+		if (!sticker) {
+			return;
+		}
+		const auto part = [=] {
 			using Tag = ChatHelpers::StickerLottieSize;
-			auto sticker = data.sticker;
-			if (!sticker) {
-				const auto api = &parent->history()->session().api();
-				const auto &list = api->premium().helloStickers();
-				if (!list.empty()) {
-					sticker = list[base::RandomIndex(list.size())];
-					if (helloChosen) {
-						helloChosen(sticker);
-					}
-				}
-			}
 			const auto send = [=] {
 				sendIntroSticker(sticker);
 			};
@@ -297,7 +291,7 @@ auto GenerateChatIntro(
 		push(std::make_unique<StickerInBubblePart>(
 			parent,
 			replacing,
-			sticker,
+			part,
 			st::chatIntroStickerPadding));
 	};
 }
@@ -739,10 +733,11 @@ bool AboutView::refresh() {
 				return false;
 			} else if (user->requiresPremiumToWrite()) {
 				setItem(makePremiumRequired(), nullptr);
-			} else if (user->isBlocked()) {
-				setItem(makeBlocked(), nullptr);
+			} else if (const auto &intro = user->businessDetails().intro;
+					intro && !user->isBlocked()) {
+				make(intro);
 			} else {
-				makeIntro(user);
+				setItem(makeEmpty(), nullptr);
 			}
 			return true;
 		} else if (monoforum && displayedEmpty()) {
@@ -802,10 +797,6 @@ bool AboutView::refresh() {
 	return true;
 }
 
-void AboutView::makeIntro(not_null<UserData*> user) {
-	make(user->businessDetails().intro);
-}
-
 void AboutView::make(Data::ChatIntro data, bool preview) {
 	const auto text = data
 		? tr::lng_action_set_chat_intro(
@@ -821,16 +812,7 @@ void AboutView::make(Data::ChatIntro data, bool preview) {
 		.from = _history->peer->id,
 	}, PreparedServiceText{ { text } });
 
-	if (data.sticker) {
-		_helloChosen = nullptr;
-	} else if (_helloChosen) {
-		data.sticker = _helloChosen;
-	}
-
 	auto owned = AdminLog::OwnedItem(_delegate, item);
-	const auto helloChosen = [=](not_null<DocumentData*> sticker) {
-		setHelloChosen(sticker);
-	};
 	// LoogriGram: this service link opened the chat-intro settings for a
 	// subscriber and the pitch for it otherwise. Both are gone - the section
 	// with the rest of Business - so the greeting another person set still
@@ -844,16 +826,12 @@ void AboutView::make(Data::ChatIntro data, bool preview) {
 			owned.get(),
 			_item.get(),
 			data,
-			helloChosen,
 			sendIntroSticker),
 		HistoryView::MediaGenericDescriptor{
 			.maxWidth = st::chatIntroWidth,
 			.service = true,
 			.hideServiceText = preview || text.isEmpty(),
 		}));
-	if (!data.sticker && _helloChosen) {
-		data.sticker = _helloChosen;
-	}
 	setItem(std::move(owned), data.sticker);
 }
 
@@ -956,13 +934,6 @@ void AboutView::loadCommonGroups() {
 	_lifetime.add([=] {
 		_history->session().api().request(requestId).cancel();
 	});
-}
-
-void AboutView::setHelloChosen(not_null<DocumentData*> sticker) {
-	_helloChosen = sticker;
-	toggleStickerRegistered(false);
-	_sticker = sticker;
-	toggleStickerRegistered(true);
 }
 
 void AboutView::setItem(AdminLog::OwnedItem item, DocumentData *sticker) {
@@ -1079,7 +1050,7 @@ AdminLog::OwnedItem AboutView::makeDirectMessagesFree() {
 	return result;
 }
 
-AdminLog::OwnedItem AboutView::makeBlocked() {
+AdminLog::OwnedItem AboutView::makeEmpty() {
 	const auto item = _history->makeMessage({
 		.id = _history->nextNonHistoryEntryId(),
 		.flags = (MessageFlag::FakeAboutView
