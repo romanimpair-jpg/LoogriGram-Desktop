@@ -323,8 +323,10 @@ Four files carry the artwork, all ours:
 The `.ico` is hand-packed by a stdlib-only script (Pillow is not installed):
 16/20/24/32/48/64 as 32bpp BMP and 128/256 as PNG, downscaled by
 area-averaging on premultiplied alpha. Upstream shipped only 16/24/32/48/256,
-which is why it softened in Alt-Tab. Originals and the official portable zip
-are in `C:\LoogriProjects\LoogriGram\branding\`, outside the checkout.
+which is why it softened in Alt-Tab. Our artwork and upstream's originals are
+in `C:\LoogriProjects\LoogriGram\branding\`, outside the checkout. The
+official portable client, for comparing behaviour, is in
+`C:\LoogriProjects\TelegramOfficial\`.
 
 If the taskbar or Start Menu shows upstream's plane, it is the Windows shell
 icon cache, not the binary: the exe has exactly one icon group, byte-identical
