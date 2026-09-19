@@ -1156,14 +1156,6 @@ groupCallDividerBar: DividerBar {
 	top: icon {{ "box_divider_top", groupCallMemberNotJoinedStatus }};
 	bottom: icon {{ "box_divider_bottom", groupCallMemberNotJoinedStatus }};
 }
-groupCallDividerLabel: DividerLabel {
-	bar: groupCallDividerBar;
-	label: FlatLabel(boxDividerLabel) {
-		textFg: groupCallVideoSubTextFg;
-		palette: groupCallTextPalette;
-	}
-}
-
 groupCallLevelMeter: LevelMeter(defaultLevelMeter) {
 	height: 18px;
 	lineWidth: 3px;

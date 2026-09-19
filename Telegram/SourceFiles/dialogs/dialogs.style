@@ -520,28 +520,9 @@ dialogsMiniVideoCallIncomingIcon: IconEmoji {
 	icon: icon {{ "dialogs/dialogs_chatlist_video_call_incoming-18x18", dialogsTextFg }};
 	padding: margins(0px, 1px, 3px, 0px);
 }
-dialogsMiniStoryIcon: IconEmoji {
-	icon: icon {{ "mini_reply_story", dialogsTextFg }};
-	padding: margins(0px, 2px, 3px, 0px);
-}
 dialogsMiniFileIcon: IconEmoji {
 	icon: icon {{ "local_storage/documents-18x18", dialogsTextFg }};
 	padding: margins(0px, 1px, 3px, 0px);
-}
-
-dialogsMiniReplyStory: DialogsMiniIcon {
-	icon: ThreeStateIcon {
-		icon: icon {{ "mini_reply_story", dialogsTextFg, point(0px, 1px) }};
-		over: icon {{ "mini_reply_story", dialogsTextFgOver, point(0px, 1px) }};
-		active: icon {{ "mini_reply_story", dialogsTextFgActive, point(0px, 1px) }};
-	}
-	skipText: 4px;
-	skipMedia: 5px;
-}
-
-historyReplyStoryIcon: IconEmoji {
-	icon: icon {{ "mini_reply_story", dialogsTextFg, point(0px, 1px) }};
-	padding: margins(0px, 0px, 4px, 0px);
 }
 
 dialogsUnreadMention: ThreeStateIcon {
@@ -625,21 +606,6 @@ DialogsStories {
 	nameTop: pixels;
 	nameStyle: TextStyle;
 }
-dialogsStories: DialogsStories {
-	left: 4px;
-	height: 35px;
-	photo: 21px;
-	photoTop: 4px;
-	photoLeft: 4px;
-	shift: 16px;
-	lineTwice: 3px;
-	lineReadTwice: 0px;
-	nameLeft: 11px;
-	nameRight: 10px;
-	nameTop: 3px;
-	nameStyle: semiboldTextStyle;
-}
-
 dialogsStoriesFull: DialogsStories {
 	left: 4px;
 	height: 77px;

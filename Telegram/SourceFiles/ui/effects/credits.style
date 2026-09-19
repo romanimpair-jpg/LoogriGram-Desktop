@@ -18,16 +18,7 @@ starIconEmoji: IconEmoji {
 	icon: icon{{ "payments/premium_emoji", creditsBg1 }};
 	padding: margins(4px, 1px, 4px, 0px);
 }
-giftBoxTabsMargin: margins(20px, 4px, 20px, 4px);
-giftBoxTabPadding: margins(8px, 2px, 8px, 2px);
-giftBoxTabSkip: 2px;
-giftBoxTabStyle: semiboldTextStyle;
-giftBoxTabFg: windowSubTextFg;
-giftBoxTabFgActive: windowBoldFg;
-giftBoxTabBgActive: windowBgRipple;
-giftBoxPadding: margins(11px, 4px, 11px, 24px);
 giftBoxReleasedByMargin: margins(6px, 1px, 6px, 2px);
-giftBoxHiddenMark: icon{{ "chat/mini_gift_hidden", premiumButtonFg, margins(4px, 4px, 4px, 4px) }};
 giftListAbout: FlatLabel(defaultFlatLabel) {
 	minWidth: 240px;
 	textFg: windowSubTextFg;

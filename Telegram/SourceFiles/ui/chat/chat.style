@@ -840,11 +840,6 @@ backgroundSwitchToLight: IconButton(backgroundSwitchToDark) {
 	iconOver: icon {{ "menu/header_mode_day", boxTitleCloseFgOver }};
 }
 
-storyMentionSize: 80px;
-storyMentionUnreadSkipTwice: 8px;
-storyMentionUnreadStrokeTwice: 6px;
-storyMentionReadSkipTwice: 7px;
-storyMentionReadStrokeTwice: 3px;
 storyMentionButtonSkip: 5px;
 
 chatGiveawayWidth: 292px;
