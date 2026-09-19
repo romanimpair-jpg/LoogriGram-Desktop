@@ -147,7 +147,6 @@ bool DefaultIconEmoji::readyInDefaultState() {
 		rpl::producer<DefaultIcon> defaultIcon,
 		rpl::producer<DocumentId> iconId,
 		Fn<bool(not_null<Ui::RpWidget*>)> paintIconFrame) {
-	using namespace Info::Profile;
 	struct State {
 		std::unique_ptr<Ui::Text::CustomEmoji> icon;
 		QImage defaultIcon;
@@ -206,7 +205,6 @@ bool DefaultIconEmoji::readyInDefaultState() {
 
 [[nodiscard]] not_null<Ui::AbstractButton*> GeneralIconPreview(
 		not_null<QWidget*> parent) {
-	using namespace Info::Profile;
 	struct State {
 		QImage frame;
 	};
