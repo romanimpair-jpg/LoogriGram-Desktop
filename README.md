@@ -26,8 +26,9 @@ One switch in the main menu, next to Night Mode.
 - **Premium is shown for nobody.** Everyone looks the same: no Premium badges or emoji statuses on anyone, and no Premium-only tools in the interface. Limits that Telegram's servers enforce on free accounts still apply.
 - **Stories**, entirely: the strip, profile rings and tabs, the viewer, statistics and data export. Messages that carry a story are hidden. Replies to a story keep their text.
 - **AI compose**, **large animated emoji**, the **greeting sticker** in empty chats, and **emoji and sticker suggestion popups** above the message field.
-- **Bots can't set your emoji status.** The permission is revoked if a bot already had it.
-- **Nags and help links:** the quick-reaction strip on hover (reactions are still on right-click), the FAQ / Features / Ask a Question rows, and the "is this still your number?" prompt. The two-step verification password reminder is kept, because forgetting that password locks you out.
+- **Bots can't set your emoji status.** The permission is revoked if a bot already had it. An account verified by a bot rather than by Telegram looks unverified.
+- **Nags and Telegram's help:** the quick-reaction strip on hover (reactions are still on right-click), the FAQ / Features / Ask a Question rows and the links that opened them, and the "is this still your number?" prompt. The two-step verification password reminder is kept, because forgetting that password locks you out.
+- **Your location.** The app never asks Windows where you are, and there is no map to pick a place to send. A location someone sends you opens in Google Maps in your browser.
 - **Telegram's updater and crash-report uploads.** Updates come from this repository instead (see below).
 - **macOS and Linux builds.** This tree builds for Windows only.
 
@@ -51,7 +52,7 @@ One switch in the main menu, next to Night Mode.
 
 Your session and settings are stored in a `tdata` folder next to the executable, so **always run it from the same folder**. A copy started from somewhere else starts a fresh, logged-out profile. To update by hand, replace only the `.exe`.
 
-The app checks this repository's releases once per launch and offers new builds from the main menu. The check is an anonymous request to GitHub and carries nothing about your account. Releases are verified only by GitHub's HTTPS, not by a signature.
+The app checks this repository's releases when it starts and then every hour while it runs, and offers new builds from the main menu. The check is an anonymous request to GitHub and carries nothing about your account. Releases are verified only by GitHub's HTTPS, not by a signature.
 
 ## Building
 
