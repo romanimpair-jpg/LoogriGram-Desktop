@@ -51,6 +51,11 @@ constexpr auto kAssetName = "LoogriGram.exe.gz";
 // depends on the result, so being late costs nothing.
 constexpr auto kStartDelay = crl::time(10000);
 
+// Then again every hour for as long as the app runs, as Android does on each
+// return to the app (a1d5345d there). Checking only at launch left a client
+// that lives in the tray for days on whatever build it started with.
+constexpr auto kRecheckInterval = crl::time(60 * 60 * 1000);
+
 // A real build is a bit over 200MB. This is not a security check - we trust
 // GitHub over TLS for that - it only stops an error page or a truncated
 // download from being swapped in as if it were the program.
@@ -384,7 +389,17 @@ void StartUpdateCheck() {
 	Started = true;
 
 	const auto state = EnsureState();
-	state->timer.setCallback([=] { CheckLatestRelease(state, false); });
+	state->timer.setCallback([=] {
+		// Skipped while a manual check or a download is under way, and for
+		// good once Ready: the new build is already in place, and the one
+		// after it is looked for by that build.
+		if (state->state.current() == UpdateState::None) {
+			CheckLatestRelease(state, false);
+		}
+		if (state->state.current() != UpdateState::Ready) {
+			state->timer.callOnce(kRecheckInterval);
+		}
+	});
 	state->timer.callOnce(kStartDelay);
 }
 
