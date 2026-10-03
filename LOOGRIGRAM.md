@@ -67,6 +67,15 @@ revisiting any of them.
   counterpart (Windows packaging, the tray). Check against the other
   client's commits, not only its notes. Android's notes:
   `loogrigram-android\LOOGRIGRAM.md`.
+- **Both READMEs stay current** (2026-10-04). `README.md` is the public
+  description, and GitHub shows the copy on `dev`, the default branch. Any
+  change a user could notice - removed, added or changed behaviour, a
+  default, installing or updating - updates the README in the same stretch
+  of work, on `patches` and on `dev` alike (identical files), and a change
+  mirrored to Android updates Android's README too. Written for someone
+  deciding whether to install; maintainer detail stays here. `dev` gets the
+  commit without a checkout: build it on `origin/dev` with a temporary
+  index and `commit-tree`, then push it to `dev`.
 - **No money operations at all, in either direction.** Not paying, not being
   paid: Premium, Stars, TON, gifts, giveaways, paid media, paid posts, paid
   reactions, paid messages, boosts, Business, earnings. Delete, don't guard.
