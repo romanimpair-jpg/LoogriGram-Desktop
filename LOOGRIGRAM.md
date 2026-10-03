@@ -34,6 +34,15 @@ Open items are in "Open and known" below. None of them block anything.
 These were decided with the user and cost real discussion. Ask before
 revisiting any of them.
 
+- **Desktop and Android stay in parity, both ways** (2026-10-03): whatever
+  is removed, added or modified in one client is done in the other too —
+  in the same stretch of work, or recorded in that client's notes as owed.
+  Don't ask per change; ask only when a change looks wrong (either client
+  can be: this one's code once removed *free* suggested posts against its
+  own money rule, restored in `12f173a996`/`f7bbe51779`) or has no
+  counterpart (Windows packaging, the tray). Check against the other
+  client's commits, not only its notes. Android's notes:
+  `loogrigram-android\LOOGRIGRAM.md`.
 - **No money operations at all, in either direction.** Not paying, not being
   paid: Premium, Stars, TON, gifts, giveaways, paid media, paid posts, paid
   reactions, paid messages, boosts, Business, earnings. Delete, don't guard.
