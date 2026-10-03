@@ -45,7 +45,12 @@ jobs:
 
   windows:
     name: Windows
-    runs-on: windows-latest
+    # LoogriGram: frozen, like every dependency (LOOGRIGRAM.md, "Frozen
+    # dependencies") - the actions below are pinned to the commits the last
+    # good builds ran, never to a moving tag. windows-latest is whatever
+    # GitHub makes newest; this is the image those builds ran (20260907.229.1
+    # for g7b24c5a). A hosted image's build cannot be pinned.
+    runs-on: windows-2025-vs2026
 
     # actions: write is only for pruning old build tree caches; without it the
     # prune step cannot delete and the pool fills until the dependency caches
@@ -201,7 +206,7 @@ jobs:
           echo "REPO_NAME=tg" >> $GITHUB_ENV
 
       - name: Clone.
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           # Full history is needed to diff this checkout against the commit
@@ -212,6 +217,15 @@ jobs:
           # Must be under GITHUB_WORKSPACE; every later step uses the short
           # alias in TBUILD, which resolves to the same physical directory.
           path: ${{ env.CHECKOUT_ROOT }}\${{ env.REPO_NAME }}
+
+      # LoogriGram: the image's own Python changes with the image, and
+      # prepare.py builds its venv - and the meson every library uses - from
+      # it. 3.12.10 is what the last good builds had; the image keeps it in
+      # its tool cache, and setup-python fetches exactly it if one day not.
+      - name: Python.
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12.10'
 
       - name: First set up.
         shell: bash
@@ -251,7 +265,9 @@ jobs:
           Remove-Item $exe -Force -ErrorAction SilentlyContinue
           if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { exit $p.ExitCode }
 
-      - uses: Eden-CI/msvc-dev-cmd@master
+      # LoogriGram: master was a branch, so any push there changed our build.
+      # This is the commit every build so far has run (2026-04-01).
+      - uses: Eden-CI/msvc-dev-cmd@1bd71f95d6f3d1b2b3395b335cc63bcdc90cf223
         name: Native Tools Command Prompt.
         with:
           arch: ${{ matrix.arch }}
@@ -270,7 +286,7 @@ jobs:
       # survive a failure in anything after it.
       - name: ThirdParty cache.
         id: cache-third-party
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CACHE_ROOT }}\ThirdParty
           key: ${{ runner.OS }}-${{ runner.arch }}-third-party-${{ env.CACHE_KEY }}
@@ -278,7 +294,7 @@ jobs:
 
       - name: Libraries cache.
         id: cache-libs
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ${{ env.LibrariesPath }}\*
@@ -296,7 +312,7 @@ jobs:
 
       - name: Qt cache.
         id: cache-qt
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ${{ env.LibrariesPath }}\[qQ]t[_-]*
@@ -440,14 +456,14 @@ jobs:
 
       - name: Save ThirdParty cache.
         if: steps.libraries.outcome == 'success' && steps.cache-third-party.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CACHE_ROOT }}\ThirdParty
           key: ${{ steps.cache-third-party.outputs.cache-primary-key }}
 
       - name: Save libraries cache.
         if: steps.libraries.outcome == 'success' && steps.cache-libs.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ${{ env.LibrariesPath }}\*
@@ -459,7 +475,7 @@ jobs:
 
       - name: Save Qt cache.
         if: steps.libraries.outcome == 'success' && steps.cache-qt.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ${{ env.LibrariesPath }}\[qQ]t[_-]*
@@ -523,7 +539,7 @@ jobs:
       - name: Build tree cache.
         id: cache-out
         if: inputs.mode == 'build'
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CACHE_ROOT }}\${{ env.REPO_NAME }}\out
           key: ${{ runner.OS }}-${{ matrix.arch }}-out-${{ inputs.config }}-v${{ env.OUT_CACHE_SALT }}-${{ env.CACHE_KEY }}-${{ github.sha }}
@@ -694,6 +710,16 @@ jobs:
           rem against the workspace instead of the build tree.
           cd /d %TBUILD%\%REPO_NAME%\Telegram
 
+          rem LoogriGram: nuget.cmake looks in ThirdParty\NuGet only after
+          rem PATH, so every build until now took the runner image's nuget.exe
+          rem and would have followed the image. NUGET_EXE names prepare.py's
+          rem frozen copy instead; checked first, since a wrong path would
+          rem only fail at the package restore.
+          if not exist %CACHE_ROOT%\ThirdParty\NuGet\nuget.exe (
+            echo ::error::%CACHE_ROOT%\ThirdParty\NuGet\nuget.exe is missing.
+            exit /b 1
+          )
+
           call configure.bat ^
           %TDESKTOP_BUILD_GENERATOR% ^
           %TDESKTOP_BUILD_ARCH% ^
@@ -703,6 +729,7 @@ jobs:
           -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT= ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON ^
+          -D NUGET_EXE=%CACHE_ROOT%\ThirdParty\NuGet\nuget.exe ^
           -D CMAKE_EXE_LINKER_FLAGS=%LibrariesPath%\dav1d\builddir-${{ inputs.config == 'Debug' && 'debug' || 'release' }}\src\libdav1d.a ^
           %TDESKTOP_BUILD_DEFINE%
 
@@ -796,7 +823,7 @@ jobs:
       # it holding back the log needed to fix the failure.
       - name: Save build tree cache.
         if: ${{ !cancelled() && inputs.mode == 'build' && steps.telegram.outcome == 'success' && steps.cache-out.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CACHE_ROOT }}\${{ env.REPO_NAME }}\out
           key: ${{ steps.cache-out.outputs.cache-primary-key }}
@@ -826,7 +853,7 @@ jobs:
           set OUT=%TBUILD%\%REPO_NAME%\out\${{ inputs.config }}
           mkdir artifact
           move %OUT%\LoogriGram.exe artifact/
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         name: Upload artifact.
         if: inputs.mode == 'build'
         with:
@@ -839,7 +866,7 @@ jobs:
       # it is gigabytes. Kept for the longest retention GitHub allows, since a
       # dump is only readable against the PDB of the very build that crashed.
       # The name carries the build tag, which the executable also carries.
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         name: Upload symbols.
         if: inputs.mode == 'build'
         with:

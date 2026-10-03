@@ -493,19 +493,26 @@ win:
     bash -c "rm -rf msys2-frozen"
 """, 'ThirdParty')
 
+# LoogriGram: frozen at what the last good dependency build installed (run
+# 34206584631, 2026-09-08). Unpinned, a rebuild of this stage took whatever
+# PyPI served that day - and meson builds several libraries below.
 stage('python', """
 version: """ + (subprocess.run(['python', '-V'], capture_output=True, text=True, env=modifiedEnv).stdout.strip().split()[-1] if win else '0') + """
 win:
     python -m venv python
     python\\Scripts\\activate.bat
-    pip install pywin32 six meson
+    pip install pywin32==312 six==1.17.0 meson==1.12.0
     deactivate
 """, 'ThirdParty')
 
+# LoogriGram: frozen. "latest" was 7.9.0 when the last good dependency build
+# ran (2026-09-08), and it is the same 7.9.0.83 the runner image carries.
+# win.yml points CMake here, where it used to take the image's copy first.
 stage('NuGet', """
 win:
     mkdir NuGet
-    powershell -Command "iwr -OutFile ./NuGet/nuget.exe https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
+    powershell -Command "iwr -OutFile ./NuGet/nuget.exe https://dist.nuget.org/win-x86-commandline/v7.9.0/nuget.exe"
+    powershell -Command "if ((Get-FileHash -Algorithm SHA256 ./NuGet/nuget.exe).Hash -ne '992D70CAC5B06C38EFEC91806CABA64CDCC07E6D963A0959DBBBAF264D33B800') { Write-Output 'nuget.exe does not match its frozen SHA-256'; exit 1 }"
 """, 'ThirdParty')
 
 stage('jom', """
@@ -528,10 +535,14 @@ mac:
         git+https://chromium.googlesource.com/external/gyp@master six
 """, 'ThirdParty')
 
+# LoogriGram: frozen at the commit master was on when the last good dependency
+# build cloned it (unchanged since 2024-07-12); upstream took master as is.
 stage('lzma', """
 win:
     git clone https://github.com/desktop-app/lzma.git
-    cd lzma\\C\\Util\\LzmaLib
+    cd lzma
+    git checkout 455a368eec2ac5d94de4de71bbf7a8a0fa0d72b7
+    cd C\\Util\\LzmaLib
     SET "ToolsetProp="
 winarm:
     SET "ToolsetProp=/property:PlatformToolset=v145"
@@ -744,10 +755,13 @@ mac:
     make install
 """)
 
+# LoogriGram: frozen at the commit master was on when the last good dependency
+# build cloned it (unchanged since 2026-04-01); upstream took master as is.
 stage('gas-preprocessor', """
 win:
     git clone https://github.com/FFmpeg/gas-preprocessor
     cd gas-preprocessor
+    git checkout ac1836309c2e77023c228b7184485597286289d3
     echo @echo off > cpp.bat
     echo cl %%%%%%** >> cpp.bat
 """)
