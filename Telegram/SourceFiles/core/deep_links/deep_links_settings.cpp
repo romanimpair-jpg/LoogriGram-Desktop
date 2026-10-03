@@ -110,12 +110,6 @@ Result ShowSavedMessages(const Context &ctx) {
 	return Result::Handled;
 }
 
-Result ShowFaq(const Context &ctx) {
-	::Settings::OpenFaq(
-		ctx.controller ? base::make_weak(ctx.controller) : nullptr);
-	return Result::Handled;
-}
-
 void ShowQrBox(not_null<Window::SessionController*> controller) {
 	const auto user = controller->session().user();
 	controller->uiShow()->show(Box(
@@ -1355,31 +1349,9 @@ void RegisterSettingsHandlers(Router &router) {
 		}},
 	});
 
-	router.add(u"settings"_q, {
-		.path = u"faq"_q,
-		.action = CodeBlock{ ShowFaq },
-		.requiresAuth = false,
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"ask-question"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			::Settings::OpenAskQuestionConfirm(ctx.controller);
-			return Result::Handled;
-		}},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"features"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			UrlClickHandler::Open(tr::lng_telegram_features_url(tr::now));
-			return Result::Handled;
-		}},
-		.requiresAuth = false,
-	});
+	// LoogriGram: faq, ask-question and features opened Telegram's FAQ, its
+	// support chat and its features page. Telegram's help goes from this
+	// client completely, as on Android (4caec8fd, 46fc6ede there).
 
 	router.add(u"settings"_q, {
 		.path = u"search"_q,

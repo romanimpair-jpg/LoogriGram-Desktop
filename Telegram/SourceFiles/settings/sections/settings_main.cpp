@@ -88,8 +88,6 @@ namespace {
 
 using namespace Builder;
 
-constexpr auto kSugValidatePhone = "VALIDATE_PHONE_NUMBER"_cs;
-
 class Cover final : public Ui::FixedHeightWidget {
 public:
 	Cover(
@@ -675,131 +673,15 @@ void SetupLanguageButton(
 	});
 }
 
-void SetupValidatePhoneNumberSuggestion(
-		not_null<Window::SessionController*> controller,
-		not_null<Ui::VerticalLayout*> container,
-		Fn<void(Type)> showOther) {
-	if (!controller->session().promoSuggestions().current(
-			kSugValidatePhone.utf8())) {
-		return;
-	}
-	const auto mainWrap = container->add(
-		object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-			container,
-			object_ptr<Ui::VerticalLayout>(container)));
-	const auto content = mainWrap->entity();
-	Ui::AddSubsectionTitle(
-		content,
-		tr::lng_settings_suggestion_phone_number_title(
-			lt_phone,
-			rpl::single(
-				Ui::FormatPhone(controller->session().user()->phone()))),
-		QMargins(
-			st::boxRowPadding.left()
-				- st::defaultSubsectionTitlePadding.left(),
-			0,
-			0,
-			0));
-	const auto label = content->add(
-		object_ptr<Ui::FlatLabel>(
-			content,
-			tr::lng_settings_suggestion_phone_number_about(
-				lt_link,
-				tr::lng_collectible_learn_more(tr::url(
-					tr::lng_settings_suggestion_phone_number_about_link(
-						tr::now))),
-				tr::marked),
-			st::boxLabel),
-		st::boxRowPadding);
-	label->setClickHandlerFilter([=, weak = base::make_weak(controller)](
-			const auto &...) {
-		UrlClickHandler::Open(
-			tr::lng_settings_suggestion_phone_number_about_link(tr::now),
-			QVariant::fromValue(ClickHandlerContext{
-				.sessionWindow = weak,
-			}));
-		return false;
-	});
-
-	Ui::AddSkip(content);
-	Ui::AddSkip(content);
-
-	const auto wrap = content->add(
-		object_ptr<Ui::FixedHeightWidget>(
-			content,
-			st::inviteLinkButton.height),
-		st::inviteLinkButtonsPadding);
-	const auto yes = Ui::CreateChild<Ui::RoundButton>(
-		wrap,
-		tr::lng_box_yes(),
-		st::inviteLinkButton);
-	yes->setFullRadius(true);
-	yes->setClickedCallback([=] {
-		controller->session().promoSuggestions().dismiss(
-			kSugValidatePhone.utf8());
-		mainWrap->toggle(false, anim::type::normal);
-	});
-	const auto no = Ui::CreateChild<Ui::RoundButton>(
-		wrap,
-		tr::lng_box_no(),
-		st::inviteLinkButton);
-	no->setFullRadius(true);
-	no->setClickedCallback([=] {
-		const auto sharedLabel = std::make_shared<base::weak_qptr<Ui::FlatLabel>>();
-		const auto height = st::boxLabel.style.font->height;
-		const auto customEmojiFactory = [=](
-			QStringView data,
-			const Ui::Text::MarkedContext &context
-		) -> std::unique_ptr<Ui::Text::CustomEmoji> {
-			auto repaint = [=] {
-				if (*sharedLabel) {
-					(*sharedLabel)->update();
-				}
-			};
-			return Lottie::MakeEmoji(
-				{ .name = u"change_number"_q, .sizeOverride = Size(height) },
-				std::move(repaint));
-		};
-
-		controller->uiShow()->show(Box([=](not_null<Ui::GenericBox*> box) {
-			box->addButton(tr::lng_box_ok(), [=] { box->closeBox(); });
-			*sharedLabel = box->verticalLayout()->add(
-				object_ptr<Ui::FlatLabel>(
-					box->verticalLayout(),
-					tr::lng_settings_suggestion_phone_number_change(
-						lt_emoji,
-						rpl::single(Ui::Text::SingleCustomEmoji(u"@"_q)),
-						tr::marked),
-					st::boxLabel,
-					st::defaultPopupMenu,
-					Ui::Text::MarkedContext{
-						.customEmojiFactory = customEmojiFactory,
-					}),
-				st::boxPadding);
-		}));
-	});
-
-	wrap->widthValue() | rpl::on_next([=](int width) {
-		const auto buttonWidth = (width - st::inviteLinkButtonsSkip) / 2;
-		yes->setFullWidth(buttonWidth);
-		no->setFullWidth(buttonWidth);
-		yes->moveToLeft(0, 0, width);
-		no->moveToRight(0, 0, width);
-	}, wrap->lifetime());
-	Ui::AddSkip(content);
-	Ui::AddSkip(content);
-	Ui::AddDivider(content);
-	Ui::AddSkip(content);
-}
-
 void SetupValidatePasswordSuggestion(
 		not_null<Window::SessionController*> controller,
 		not_null<Ui::VerticalLayout*> container,
 		Fn<void(Type)> showOther) {
+	// LoogriGram: upstream held this back while the phone number suggestion
+	// was pending, to show one at a time. That one is never shown here, so
+	// the check only hid the password reminder this fork keeps on purpose.
 	if (!controller->session().promoSuggestions().current(
-			Data::PromoSuggestions::SugValidatePassword())
-		|| controller->session().promoSuggestions().current(
-			kSugValidatePhone.utf8())) {
+			Data::PromoSuggestions::SugValidatePassword())) {
 		return;
 	}
 	const auto mainWrap = container->add(
@@ -1024,47 +906,8 @@ Type MainId() {
 	return Main::Id();
 }
 
-void OpenFaq(base::weak_ptr<Window::SessionController> weak) {
-	UrlClickHandler::Open(
-		tr::lng_settings_faq_link(tr::now),
-		QVariant::fromValue(ClickHandlerContext{
-			.sessionWindow = weak,
-		}));
-}
-
-void OpenAskQuestionConfirm(not_null<Window::SessionController*> window) {
-	const auto requestId = std::make_shared<mtpRequestId>();
-	const auto sure = [=](Fn<void()> close) {
-		if (*requestId) {
-			return;
-		}
-		*requestId = window->session().api().request(
-			MTPhelp_GetSupport()
-		).done(crl::guard(window, [=](const MTPhelp_Support &result) {
-			*requestId = 0;
-			result.match([&](const MTPDhelp_support &data) {
-				auto &owner = window->session().data();
-				if (const auto user = owner.processUser(data.vuser())) {
-					window->showPeerHistory(user);
-				}
-			});
-			close();
-		})).fail([=] {
-			*requestId = 0;
-			close();
-		}).send();
-	};
-	window->show(Ui::MakeConfirmBox({
-		.text = tr::lng_settings_ask_sure(),
-		.confirmed = sure,
-		.cancelled = [=](Fn<void()> close) {
-			OpenFaq(window);
-			close();
-		},
-		.confirmText = tr::lng_settings_ask_ok(),
-		.cancelText = tr::lng_settings_faq_button(),
-		.strictCancel = true,
-	}));
-}
+// LoogriGram: OpenFaq and OpenAskQuestionConfirm opened Telegram's FAQ and
+// its support chat. Their last ways in - the pre-login settings' FAQ row and
+// the tg://settings/faq and /ask-question links - are gone.
 
 } // namespace Settings

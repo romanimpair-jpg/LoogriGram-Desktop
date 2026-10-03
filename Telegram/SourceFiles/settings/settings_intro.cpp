@@ -102,16 +102,8 @@ object_ptr<Ui::RpWidget> CreateIntroSettings(
 		Ui::AddSkip(result);
 	}
 
-	Ui::AddDivider(result);
-	Ui::AddSkip(result);
-
-	AddButtonWithIcon(
-		result,
-		tr::lng_settings_faq(),
-		st::settingsButtonNoIcon
-	)->addClickHandler([] {
-		OpenFaq(nullptr);
-	});
+	// LoogriGram: a Telegram FAQ row closed this list. Telegram's help goes
+	// from Settings completely, as on Android (46fc6ede there).
 
 	return result;
 }
