@@ -41,7 +41,6 @@ bool MoneyAction(const MTPMessageAction &action) {
 	case mtpc_messageActionStarGiftPurchaseOfferDeclined:
 	case mtpc_messageActionPaidMessagesPrice:
 	case mtpc_messageActionPaidMessagesRefunded:
-	case mtpc_messageActionSuggestedPostApproval:
 	case mtpc_messageActionSuggestedPostSuccess:
 	case mtpc_messageActionSuggestedPostRefund:
 	// Not money: "{user} suggests you add your date of birth". It used the
@@ -49,6 +48,12 @@ bool MoneyAction(const MTPMessageAction &action) {
 	// hidden rather than getting a view of its own.
 	case mtpc_messageActionSuggestBirthday:
 		return true;
+	case mtpc_messageActionSuggestedPostApproval: {
+		// The answer to a suggested post. It is money when it carries a
+		// price, or says the payer's balance was too low; a free one shows.
+		const auto &data = action.c_messageActionSuggestedPostApproval();
+		return data.vprice().has_value() || data.is_balance_too_low();
+	}
 	case mtpc_messageActionSetChatTheme:
 		// A theme change is shown, unless the theme is a collectible gift.
 		return (action.c_messageActionSetChatTheme().vtheme().type()
@@ -61,7 +66,8 @@ bool MoneyMessage(const MTPDmessage &data) {
 	if (const auto media = data.vmedia(); media && MoneyMedia(*media)) {
 		return true;
 	} else if (const auto suggested = data.vsuggested_post()) {
-		// A proposal to publish a post for a price.
+		// A proposal to publish a post for a price. A free one - a time
+		// and nothing else - is shown and answered (api_suggest_post).
 		return suggested->data().vprice().has_value();
 	}
 	return false;

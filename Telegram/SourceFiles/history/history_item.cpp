@@ -246,6 +246,7 @@ struct HistoryItem::CreateConfig {
 	TimeId scheduleRepeatPeriod = 0;
 	HistoryMessageMarkupData markup;
 	HistoryMessageRepliesData replies;
+	HistoryMessageSuggestInfo suggest;
 	bool imported = false;
 
 	// For messages created from existing messages (forwarded).
@@ -631,6 +632,7 @@ HistoryItem::HistoryItem(
 			}
 		}
 	}
+	config.suggest = fields.suggest;
 	if (!dropForwardInfo) {
 		config.originalDate = original->originalDate();
 		if (const auto info = original->originalHiddenSenderInfo()) {
@@ -881,6 +883,8 @@ HistoryServiceDependentData *HistoryItem::GetServiceDependentData() {
 		return append;
 	} else if (const auto poll = Get<HistoryServicePollAppendAnswer>()) {
 		return poll;
+	} else if (const auto decision = Get<HistoryServiceSuggestDecision>()) {
+		return decision;
 	}
 	return nullptr;
 }
@@ -1116,12 +1120,59 @@ bool HistoryItem::checkDiscussionLink(ChannelId id) const {
 	return false;
 }
 
+SuggestionActions HistoryItem::computeSuggestionActions() const {
+	return computeSuggestionActions(Get<HistoryMessageSuggestion>());
+}
+
+SuggestionActions HistoryItem::computeSuggestionActions(
+		const HistoryMessageSuggestion *suggest) const {
+	return suggest
+		? computeSuggestionActions(suggest->accepted, suggest->rejected)
+		: SuggestionActions::None;
+}
+
+// LoogriGram: upstream also answered a gift offer through here, until it
+// expired. Gift offers are hidden before they are parsed.
+SuggestionActions HistoryItem::computeSuggestionActions(
+		bool accepted,
+		bool rejected) const {
+	const auto channelIsAuthor = from()->isChannel();
+	const auto amMonoforumAdmin = history()->peer->amMonoforumAdmin();
+	const auto broadcast = history()->peer->monoforumBroadcast();
+	const auto canDecline = isRegular()
+		&& !(accepted || rejected)
+		&& (channelIsAuthor ? !amMonoforumAdmin : amMonoforumAdmin);
+	const auto canAccept = canDecline
+		&& (channelIsAuthor
+			? !amMonoforumAdmin
+			: (amMonoforumAdmin
+				&& broadcast
+				&& broadcast->canPostMessages()));
+	return canAccept
+		? SuggestionActions::AcceptAndDecline
+		: canDecline
+		? SuggestionActions::Decline
+		: SuggestionActions::None;
+}
+
+void HistoryItem::updateSuggestControls(
+		const HistoryMessageSuggestion *suggest) {
+	if (const auto markup = Get<HistoryMessageReplyMarkup>()) {
+		markup->updateSuggestControls(computeSuggestionActions(suggest));
+	}
+}
+
 void HistoryItem::setReplyMarkup(
 		HistoryMessageMarkupData &&markup,
 		bool ignoreSuggestButtons) {
 	const auto requestUpdate = [&] {
+		const auto actions = computeSuggestionActions();
+		if (actions != SuggestionActions::None
+			&& !Has<HistoryMessageReplyMarkup>()) {
+			AddComponents(HistoryMessageReplyMarkup::Bit());
+		}
 		if (const auto markup = Get<HistoryMessageReplyMarkup>()) {
-			markup->updateSuggestControls(SuggestionActions::None);
+			markup->updateSuggestControls(actions);
 		}
 		history()->owner().requestItemResize(this);
 		history()->session().changes().messageUpdated(
@@ -2119,9 +2170,13 @@ void HistoryItem::applyEdition(HistoryMessageEdition &&edition) {
 	if (!edition.useSameForwards) {
 		setForwardsCount(edition.forwards);
 	}
-	if (edition.mtpMedia && LoogriGram::HiddenMedia(*edition.mtpMedia)) {
-		// LoogriGram: edited into a money or story message. Nothing of it
-		// is kept.
+	if (edition.suggest.priced
+		|| (edition.mtpMedia
+			&& LoogriGram::HiddenMedia(*edition.mtpMedia))) {
+		// LoogriGram: edited into a money or story message, or into a
+		// suggested post with a price. Nothing of it is kept, and nothing is
+		// left to accept.
+		RemoveComponents(HistoryMessageSuggestion::Bit());
 		removeFromSharedMediaIndex();
 		setupContentHidden();
 		finishEdition(keyboardTop);
@@ -2192,6 +2247,21 @@ void HistoryItem::applyEdition(HistoryMessageEdition &&edition) {
 		}
 	}
 
+	if (!edition.useSameSuggest) {
+		if (edition.suggest.exists) {
+			if (!Has<HistoryMessageSuggestion>()) {
+				AddComponents(HistoryMessageSuggestion::Bit());
+			}
+			auto suggest = Get<HistoryMessageSuggestion>();
+			suggest->date = edition.suggest.date;
+			suggest->accepted = edition.suggest.accepted;
+			suggest->rejected = edition.suggest.rejected;
+			updateSuggestControls(suggest);
+		} else {
+			RemoveComponents(HistoryMessageSuggestion::Bit());
+			updateSuggestControls(nullptr);
+		}
+	}
 
 	if (edition.repeatPeriod) {
 		if (!Has<HistoryMessageSchedulePeriod>()) {
@@ -4409,6 +4479,15 @@ void HistoryItem::createComponents(CreateConfig &&config) {
 			mask |= HistoryMessageRestrictions::Bit();
 		}
 	}
+	if (config.suggest.exists) {
+		mask |= HistoryMessageSuggestion::Bit();
+		if (computeSuggestionActions(
+			config.suggest.accepted,
+			config.suggest.rejected
+		) != SuggestionActions::None) {
+			mask |= HistoryMessageReplyMarkup::Bit();
+		}
+	}
 
 	UpdateComponents(mask);
 
@@ -4512,7 +4591,12 @@ void HistoryItem::createComponents(CreateConfig &&config) {
 		flagSensitiveContent();
 	}
 
-
+	if (const auto suggest = Get<HistoryMessageSuggestion>()) {
+		suggest->date = config.suggest.date;
+		suggest->accepted = config.suggest.accepted;
+		suggest->rejected = config.suggest.rejected;
+		updateSuggestControls(suggest);
+	}
 }
 
 void HistoryItem::flagSensitiveContent() {
@@ -4703,6 +4787,9 @@ void HistoryItem::createComponentsHelper(HistoryItemCommonFields &&fields) {
 	if (fields.flags & MessageFlag::HasViews) {
 		config.viewsCount = 1;
 	}
+	if (fields.suggest.exists) {
+		config.suggest = fields.suggest;
+	}
 
 	createComponents(std::move(config));
 }
@@ -4823,6 +4910,7 @@ void HistoryItem::createComponents(const MTPDmessage &data) {
 	config.postAuthor = qs(data.vpost_author().value_or_empty());
 	config.restrictions = Data::UnavailableReason::Extract(
 		data.vrestriction_reason());
+	config.suggest = HistoryMessageSuggestInfo(data.vsuggested_post());
 	createComponents(std::move(config));
 }
 
@@ -5099,6 +5187,15 @@ void HistoryItem::createServiceFromMtp(const MTPDmessageService &message) {
 				answer.vtext());
 		}, [](const auto &) {
 		});
+	} else if (type == mtpc_messageActionSuggestedPostApproval) {
+		// LoogriGram: only an answer without a price gets this far; see
+		// LoogriGram::MoneyAction().
+		const auto &data = action.c_messageActionSuggestedPostApproval();
+		UpdateComponents(HistoryServiceSuggestDecision::Bit());
+		const auto decision = Get<HistoryServiceSuggestDecision>();
+		decision->rejected = data.is_rejected();
+		decision->rejectComment = qs(data.vreject_comment().value_or_empty());
+		decision->date = data.vschedule_date().value_or_empty();
 	} else if (type == mtpc_messageActionNoForwardsToggle) {
 		AddComponents(HistoryServiceNoForwardsToggle::Bit());
 	} else if (type == mtpc_messageActionNoForwardsRequest) {
@@ -6226,6 +6323,14 @@ void HistoryItem::setServiceMessageByAction(const MTPmessageAction &action) {
 		return result;
 	};
 
+	// LoogriGram: an answer with a price, or one saying the balance was too
+	// low, is hidden by LoogriGram::MoneyAction() and never reaches this.
+	auto prepareSuggestedPostApproval = [&](const MTPDmessageActionSuggestedPostApproval &data) {
+		return PreparedServiceText{ { data.is_rejected()
+			? tr::lng_action_post_rejected(tr::now)
+			: tr::lng_suggest_action_agreement(tr::now) } };
+	};
+
 	setServiceText(action.match(
 		prepareChatAddUserText,
 		prepareChatJoinedByLink,
@@ -6281,7 +6386,7 @@ void HistoryItem::setServiceMessageByAction(const MTPmessageAction &action) {
 		prepareTodoCompletions,
 		prepareTodoAppendTasks,
 		preparePollAppendAnswer,
-		PrepareEmptyText<MTPDmessageActionSuggestedPostApproval>,
+		prepareSuggestedPostApproval,
 		PrepareEmptyText<MTPDmessageActionSuggestedPostSuccess>,
 		PrepareEmptyText<MTPDmessageActionSuggestedPostRefund>,
 		PrepareEmptyText<MTPDmessageActionSuggestBirthday>,

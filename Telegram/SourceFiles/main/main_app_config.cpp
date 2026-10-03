@@ -64,6 +64,14 @@ int AppConfig::noForwardsRequestExpirePeriod() const {
 		_account->mtp().isTestMode() ? 300 : 86400);
 }
 
+int AppConfig::suggestedPostDelayMin() const {
+	return get<int>(u"stars_suggested_post_future_min"_q, 300);
+}
+
+int AppConfig::suggestedPostDelayMax() const {
+	return get<int>(u"appConfig.stars_suggested_post_future_max"_q, 2678400);
+}
+
 // LoogriGram: four affiliate-program server limits were read here. The
 // module that asked for them is deleted.
 

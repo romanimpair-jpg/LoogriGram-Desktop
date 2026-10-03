@@ -73,10 +73,12 @@ struct BotKeyboardButton;
 extern const char kOptionFastButtonsMode[];
 [[nodiscard]] bool FastButtonsMode();
 
-// LoogriGram: suggested posts and gift offers used these buttons too. Both
-// are money and deleted; only the free forwarding request is left.
+// LoogriGram: gift offers used these buttons too, and are deleted. A
+// suggested post has them only when it is free; one with a price is hidden.
 enum class SuggestionActions : uchar {
 	None,
+	Decline,
+	AcceptAndDecline,
 	NoForwardsRequest,
 };
 
@@ -638,6 +640,16 @@ struct HistoryMessageFactcheck
 	bool requested = false;
 };
 
+// LoogriGram: upstream also kept the price and, for a gift offer, the gift.
+// Only free suggestions get this component; see HistoryMessageSuggestInfo.
+struct HistoryMessageSuggestion
+: RuntimeComponent<HistoryMessageSuggestion, HistoryItem> {
+	TimeId date = 0;
+	mtpRequestId requestId = 0;
+	bool accepted = false;
+	bool rejected = false;
+};
+
 struct HistoryMessageRestrictions
 : RuntimeComponent<HistoryMessageRestrictions, HistoryItem> {
 	std::vector<Data::UnavailableReason> reasons;
@@ -721,6 +733,16 @@ struct HistoryServicePollDeleteAnswer
 : RuntimeComponent<HistoryServicePollDeleteAnswer, HistoryItem>
 , HistoryServiceDependentData {
 	PollAnswer answer;
+};
+
+// LoogriGram: the answer to a free suggested post. An answer that carries a
+// price, or says the payer's balance was too low, is hidden by MoneyAction().
+struct HistoryServiceSuggestDecision
+: RuntimeComponent<HistoryServiceSuggestDecision, HistoryItem>
+, HistoryServiceDependentData {
+	TimeId date = 0;
+	QString rejectComment;
+	bool rejected = false;
 };
 
 struct HistoryServiceNoForwardsRequest

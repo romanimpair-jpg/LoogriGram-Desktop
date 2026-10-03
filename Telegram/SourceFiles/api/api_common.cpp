@@ -14,6 +14,18 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace Api {
 
+MTPSuggestedPost SuggestToMTP(SuggestOptions suggest) {
+	using Flag = MTPDsuggestedPost::Flag;
+	// LoogriGram: never with a price. Upstream set f_price when the offer
+	// had one; what is sent from here is upstream's "for free" case.
+	return suggest.exists
+		? MTP_suggestedPost(
+			MTP_flags(suggest.date ? Flag::f_schedule_date : Flag()),
+			MTPStarsAmount(),
+			MTP_int(suggest.date))
+		: MTPSuggestedPost();
+}
+
 SendAction::SendAction(
 	not_null<Data::Thread*> thread,
 	SendOptions options)

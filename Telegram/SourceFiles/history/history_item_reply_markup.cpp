@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/history_item_reply_markup.h"
 
+#include "api/api_common.h"
 #include "data/data_session.h"
 #include "history/history_item.h"
 #include "history/history_item_components.h"
@@ -44,6 +45,7 @@ constexpr auto kButtonTypeIcons = std::array{
 	ButtonTypeIconRow{ ButtonType::Disabled, ButtonTypeIcon::None },
 	ButtonTypeIconRow{ ButtonType::SuggestDecline, ButtonTypeIcon::None },
 	ButtonTypeIconRow{ ButtonType::SuggestAccept, ButtonTypeIcon::None },
+	ButtonTypeIconRow{ ButtonType::SuggestChange, ButtonTypeIcon::None },
 	ButtonTypeIconRow{ ButtonType::CreateBot, ButtonTypeIcon::None },
 };
 
@@ -533,5 +535,35 @@ HistoryMessageRepliesData::HistoryMessageRepliesData(
 	maxId = fields.vmax_id().value_or_empty();
 	isNull = false;
 	pts = fields.vreplies_pts().v;
+}
+
+HistoryMessageSuggestInfo::HistoryMessageSuggestInfo(
+		const MTPSuggestedPost *data) {
+	if (!data) {
+		return;
+	}
+	const auto &fields = data->data();
+	if (fields.vprice().has_value()) {
+		priced = true;
+		return;
+	}
+	date = fields.vschedule_date().value_or_empty();
+	accepted = fields.is_accepted();
+	rejected = fields.is_rejected();
+	exists = true;
+}
+
+HistoryMessageSuggestInfo::HistoryMessageSuggestInfo(
+	const Api::SendOptions &options)
+: HistoryMessageSuggestInfo(options.suggest) {
+}
+
+HistoryMessageSuggestInfo::HistoryMessageSuggestInfo(
+		SuggestOptions options) {
+	if (!options.exists) {
+		return;
+	}
+	date = options.date;
+	exists = true;
 }
 

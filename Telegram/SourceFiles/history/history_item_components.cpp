@@ -792,6 +792,8 @@ ReplyKeyboard::ReplyKeyboard(
 						return withEmoji(st::chatSuggestAcceptIcon);
 					} else if (type == Type::SuggestDecline) {
 						return withEmoji(st::chatSuggestDeclineIcon);
+					} else if (type == Type::SuggestChange) {
+						return withEmoji(st::chatSuggestChangeIcon);
 					}
 					auto result = TextWithEntities();
 					if (const auto iconId = row[j].visual.iconId) {
@@ -1253,6 +1255,18 @@ void HistoryMessageReplyMarkup::updateData(
 
 void HistoryMessageReplyMarkup::updateSuggestControls(
 		SuggestionActions actions) {
+	if (actions == SuggestionActions::AcceptAndDecline
+		|| actions == SuggestionActions::NoForwardsRequest) {
+		data.flags |= ReplyMarkupFlag::SuggestionAccept;
+	} else {
+		data.flags &= ~ReplyMarkupFlag::SuggestionAccept;
+	}
+	if (actions == SuggestionActions::None) {
+		data.flags &= ~ReplyMarkupFlag::SuggestionDecline;
+	} else {
+		data.flags |= ReplyMarkupFlag::Inline
+			| ReplyMarkupFlag::SuggestionDecline;
+	}
 	using Type = HistoryMessageMarkupButton::Type;
 	using Visual = HistoryMessageMarkupButton::Visual;
 	const auto has = [&](Type type) {
@@ -1262,10 +1276,9 @@ void HistoryMessageReplyMarkup::updateSuggestControls(
 				type,
 				&HistoryMessageMarkupButton::type);
 	};
+	// LoogriGram: a gift offer had its own pair of buttons here. Gifts are
+	// deleted. Upstream also kept a separator flag that nothing read.
 	if (actions == SuggestionActions::NoForwardsRequest) {
-		data.flags |= ReplyMarkupFlag::Inline
-			| ReplyMarkupFlag::SuggestionAccept
-			| ReplyMarkupFlag::SuggestionDecline;
 		data.rows.push_back({
 			{
 				Type::SuggestDecline,
@@ -1278,13 +1291,62 @@ void HistoryMessageReplyMarkup::updateSuggestControls(
 				Visual(),
 			},
 		});
-	} else {
-		while (has(Type::SuggestAccept) || has(Type::SuggestDecline)) {
-			data.rows.pop_back();
+	} else if (actions == SuggestionActions::AcceptAndDecline) {
+		//     ... rows ...
+		// [decline] | [accept]
+		//   [suggestchanges]
+		if (has(Type::SuggestChange)) {
+			// Nothing changed.
+		} else {
+			if (has(Type::SuggestDecline)) {
+				data.rows.pop_back();
+			}
+			data.rows.push_back({
+				{
+					Type::SuggestDecline,
+					tr::lng_suggest_action_decline(tr::now),
+					Visual(),
+				},
+				{
+					Type::SuggestAccept,
+					tr::lng_suggest_action_accept(tr::now),
+					Visual(),
+				},
+			});
+			data.rows.push_back({ {
+				Type::SuggestChange,
+				tr::lng_suggest_action_change(tr::now),
+				Visual(),
+			} });
+			data.flags |= ReplyMarkupFlag::SuggestionAccept
+				| ReplyMarkupFlag::SuggestionDecline;
 		}
-		data.flags &= ~(ReplyMarkupFlag::SuggestionAccept
-			| ReplyMarkupFlag::SuggestionDecline);
+	} else {
+		while (!data.rows.empty()) {
+			if (has(Type::SuggestChange) || has(Type::SuggestAccept)) {
+				data.rows.pop_back();
+			} else if (has(Type::SuggestDecline)
+				&& actions == SuggestionActions::None) {
+				data.rows.pop_back();
+			} else {
+				break;
+			}
+		}
+		data.flags &= ~ReplyMarkupFlag::SuggestionAccept;
+		if (actions == SuggestionActions::None) {
+			data.flags &= ~ReplyMarkupFlag::SuggestionDecline;
+		} else if (!has(Type::SuggestDecline)) {
+			// ... rows ...
+			//  [decline]
+			data.rows.push_back({ {
+				Type::SuggestDecline,
+				tr::lng_suggest_action_decline(tr::now),
+				Visual(),
+			} });
+			data.flags |= ReplyMarkupFlag::SuggestionDecline;
+		}
 	}
+
 	inlineKeyboard = nullptr;
 }
 

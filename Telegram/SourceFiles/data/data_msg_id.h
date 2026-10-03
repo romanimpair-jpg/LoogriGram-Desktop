@@ -180,6 +180,24 @@ struct FullReplyTo {
 	friend inline bool operator==(FullReplyTo, FullReplyTo) = default;
 };
 
+// LoogriGram: a suggested post is a publishing time and nothing else.
+// Upstream also carried a price in stars or TON here; that is money.
+struct SuggestOptions {
+	uint32 exists : 1 = 0;
+	TimeId date = 0;
+
+	explicit operator bool() const {
+		return exists != 0;
+	}
+
+	friend inline auto operator<=>(
+		SuggestOptions,
+		SuggestOptions) = default;
+	friend inline bool operator==(
+		SuggestOptions,
+		SuggestOptions) = default;
+};
+
 struct GlobalMsgId {
 	FullMsgId itemId;
 	uint64 sessionUniqueId = 0;

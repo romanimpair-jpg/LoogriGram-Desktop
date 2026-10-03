@@ -20,6 +20,8 @@ namespace Api {
 
 inline constexpr auto kScheduledUntilOnlineTimestamp = TimeId(0x7FFFFFFE);
 
+[[nodiscard]] MTPSuggestedPost SuggestToMTP(SuggestOptions suggest);
+
 struct SendOptions {
 	PeerData *sendAs = nullptr;
 	TimeId scheduled = 0;
@@ -32,6 +34,7 @@ struct SendOptions {
 	bool mediaSpoiler = false;
 	bool welcomeTemplate = false;
 	crl::time ttlSeconds = 0;
+	SuggestOptions suggest;
 
 	friend inline bool operator==(
 		const SendOptions &,

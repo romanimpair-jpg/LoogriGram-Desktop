@@ -288,6 +288,7 @@ void EphemeralMessages::apply(const MTPDupdateEditEphemeralMessage &update) {
 	edition.useSameForwards = true;
 	edition.useSameReplies = true;
 	edition.useSameReactions = true;
+	edition.useSameSuggest = true;
 	edition.textWithEntities = {
 		qs(data.vmessage()),
 		Api::EntitiesFromMTP(

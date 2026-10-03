@@ -50,6 +50,8 @@ public:
 
 	[[nodiscard]] int quoteLengthMax() const;
 	[[nodiscard]] int noForwardsRequestExpirePeriod() const;
+	[[nodiscard]] int suggestedPostDelayMin() const;
+	[[nodiscard]] int suggestedPostDelayMax() const;
 
 	[[nodiscard]] bool callsDisabledForSession() const;
 	[[nodiscard]] int confcallSizeLimit() const;

@@ -1104,6 +1104,7 @@ void AddConfirmedLocalPlaceholder(const ConfirmedLocalFile &local) {
 		edition.useSameMarkup = true;
 		edition.useSameReplies = true;
 		edition.useSameReactions = true;
+		edition.useSameSuggest = true;
 		edition.savePreviousMedia = true;
 		local.itemToEdit->applyEdition(std::move(edition));
 		return;

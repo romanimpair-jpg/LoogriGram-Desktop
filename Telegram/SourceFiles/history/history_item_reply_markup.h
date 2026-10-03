@@ -97,6 +97,7 @@ struct HistoryMessageMarkupButton {
 
 		SuggestDecline,
 		SuggestAccept,
+		SuggestChange,
 		CreateBot,
 
 		kCount,
@@ -204,5 +205,21 @@ struct HistoryMessageRepliesData {
 	int repliesCount = 0;
 	bool isNull = true;
 	int pts = 0;
+};
+
+// LoogriGram: no price is kept. A suggestion that carries one is hidden
+// before it is parsed (LoogriGram::MoneyMessage); `priced` only lets
+// applyEdition hide a message that an edit gave a price to.
+struct HistoryMessageSuggestInfo {
+	HistoryMessageSuggestInfo() = default;
+	explicit HistoryMessageSuggestInfo(const MTPSuggestedPost *data);
+	explicit HistoryMessageSuggestInfo(const Api::SendOptions &options);
+	explicit HistoryMessageSuggestInfo(SuggestOptions options);
+
+	TimeId date = 0;
+	bool accepted = false;
+	bool rejected = false;
+	bool exists = false;
+	bool priced = false;
 };
 

@@ -10,7 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "api/api_cloud_password.h"
 #include "api/api_send_progress.h"
-#include "api/api_no_forwards_request.h"
+#include "api/api_suggest_post.h"
 #include "boxes/peers/choose_peer_box.h"
 #include "boxes/peers/create_managed_bot_box.h"
 #include "boxes/passcode_box.h"
@@ -546,6 +546,13 @@ void ActivateBotButton(ClickHandlerContext context, BotButtonLookup lookup) {
 
 	case ButtonType::SuggestDecline: {
 		Api::DeclineClickHandler(item)->onClick(ClickContext{
+			Qt::LeftButton,
+			QVariant::fromValue(context),
+		});
+	} break;
+
+	case ButtonType::SuggestChange: {
+		Api::SuggestChangesClickHandler(item)->onClick(ClickContext{
 			Qt::LeftButton,
 			QVariant::fromValue(context),
 		});

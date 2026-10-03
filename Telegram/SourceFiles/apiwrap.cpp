@@ -3666,6 +3666,9 @@ void ApiWrap::forwardMessages(
 	if (sendAs) {
 		sendFlags |= SendFlag::f_send_as;
 	}
+	if (action.options.suggest) {
+		sendFlags |= SendFlag::f_suggested_post;
+	}
 	const auto kGeneralId = Data::ForumTopic::kGeneralId;
 	const auto topicRootId = action.replyTo.topicRootId;
 	const auto topMsgId = (topicRootId == kGeneralId)
@@ -3678,7 +3681,7 @@ void ApiWrap::forwardMessages(
 	const auto monoforumPeer = monoforumPeerId
 		? session().data().peer(monoforumPeerId).get()
 		: nullptr;
-	if (monoforumPeer) {
+	if (monoforumPeer || (action.options.suggest && action.replyTo)) {
 		sendFlags |= SendFlag::f_reply_to;
 	}
 
@@ -3724,7 +3727,12 @@ void ApiWrap::forwardMessages(
 				MTP_vector<MTPlong>(randomIds),
 				history->peer->input(),
 				MTP_int(realTopMsgId),
-				(monoforumPeer
+				// LoogriGram: upstream passed this lambda's own replyTo,
+				// which carries only the topic, so a suggested change was not
+				// tied to the post it changes. It is the forwarded post's.
+				((action.options.suggest && action.replyTo)
+					? ReplyToForMTP(history, action.replyTo)
+					: monoforumPeer
 					? MTP_inputReplyToMonoForum(
 						monoforumPeer->input())
 					: MTPInputReplyTo()),
@@ -3737,7 +3745,7 @@ void ApiWrap::forwardMessages(
 				MTP_long(action.options.effectId),
 				MTPint(),
 				MTP_long(0),
-				MTPSuggestedPost());
+				Api::SuggestToMTP(action.options.suggest));
 		};
 		histories.sendPreparedMessage(
 			history,
@@ -3792,6 +3800,7 @@ void ApiWrap::forwardMessages(
 					},
 					.date = NewMessageDate(action.options),
 					.postAuthor = NewMessagePostAuthor(action),
+					.suggest = HistoryMessageSuggestInfo(action.options),
 					// forwarded messages don't have effects
 					//.effectId = action.options.effectId,
 				}, item);

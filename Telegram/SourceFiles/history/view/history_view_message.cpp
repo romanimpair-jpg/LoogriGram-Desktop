@@ -7,7 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_message.h"
 
-#include "api/api_no_forwards_request.h"
+#include "api/api_suggest_post.h"
 #include "api/api_transcribes.h"
 #include "base/options.h"
 #include "base/qt/qt_key_modifiers.h"
@@ -21,6 +21,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_helpers.h"
 #include "history/view/media/history_view_media_generic.h"
 #include "history/view/media/history_view_web_page.h"
+#include "history/view/media/history_view_suggest_decision.h"
 #include "history/view/reactions/history_view_reactions.h"
 #include "history/view/reactions/history_view_reactions_button.h"
 #include "history/view/history_view_reply_button.h"
@@ -506,6 +507,9 @@ Message::Message(
 , _bottomInfo(
 		&data->history()->owner().reactions(),
 		BottomInfoDataFromMessage(this)) {
+	if (data->Get<HistoryMessageSuggestion>()) {
+		_hideReply = 1;
+	}
 	initLogEntryOriginal();
 	initPsa();
 	if (data->displayHiddenSenderInfo()) {
@@ -516,6 +520,8 @@ Message::Message(
 	if (animation) {
 		_bottomInfo.continueEffectAnimation(std::move(animation));
 	}
+	initSuggestedInfo();
+
 	if (data->textAppearing()) {
 		AddComponents(TextAppearing::Bit());
 		const auto appearing = Get<TextAppearing>();
@@ -894,6 +900,38 @@ void Message::activateRichPageMedia(
 	}
 }
 
+void Message::refreshSuggestedInfo(
+		not_null<HistoryItem*> item,
+		not_null<const HistoryMessageSuggestion*> suggest,
+		const HistoryMessageReply *replyData) {
+	const auto link = (replyData && replyData->resolvedMessage)
+		? JumpToMessageClickHandler(
+			replyData->resolvedMessage.get(),
+			item->fullId())
+		: ClickHandlerPtr();
+	setServicePreMessage({}, link, std::make_unique<MediaGeneric>(
+		this,
+		GenerateSuggestRequestMedia(this, suggest),
+		MediaGenericDescriptor{
+			.maxWidth = st::chatSuggestWidth,
+			.fullAreaLink = link,
+			.service = true,
+			.hideServiceText = true,
+		}));
+}
+
+// LoogriGram: this was upstream's initPaidInformation, which also put the
+// Stars paid to send a message above it. Only the suggested post card is
+// left.
+void Message::initSuggestedInfo() {
+	const auto item = data();
+	if (!item->history()->peer->isMonoforum()) {
+		return;
+	} else if (const auto suggest = item->Get<HistoryMessageSuggestion>()) {
+		refreshSuggestedInfo(item, suggest, item->Get<HistoryMessageReply>());
+	}
+}
+
 void Message::refreshRightBadge() {
 	if (const auto badge = Get<RightBadge>(); badge && badge->overridden) {
 		return;
@@ -1189,6 +1227,21 @@ QSize Message::performCountOptimalSize() {
 		RemoveComponents(SummaryHeader::Bit());
 	}
 
+	if (item->history()->peer->isMonoforum()) {
+		if (const auto suggest = item->Get<HistoryMessageSuggestion>()) {
+			if (const auto service = Get<ServicePreMessage>()) {
+				// Ok, we didn't have the message, but now we have.
+				// That means this is not a plain post suggestion,
+				// but a suggestion of changes to previous suggestion.
+				if (service->media
+					&& !service->handler
+					&& replyData
+					&& replyData->resolvedMessage) {
+					refreshSuggestedInfo(item, suggest, replyData);
+				}
+			}
+		}
+	}
 
 	if (const auto postSender = item->discussionPostOriginalSender()) {
 		if (!postSender->isFullLoaded()) {
