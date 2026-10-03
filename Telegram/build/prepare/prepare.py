@@ -465,6 +465,15 @@ mac:
     git checkout 7387476bb3b7200d3b044015696cb3c28f78593c
 """)
 
+# LoogriGram: frozen. Upstream's stage ran `pacman -Syu`, which installs
+# whatever MSYS2 serves on the day: the installer was pinned, but nothing it
+# installed was. On 2026-10-03 MSYS2 no longer had mingw-w64-x86_64-diffutils
+# and this stage failed. It now installs exactly the 79 packages the last good
+# dependency build installed (run 34206584631, 2026-09-08) - the six core ones,
+# then the rest, as that run's two transactions did - from our own pre-release
+# deps-msys2-20260908, checked against a fixed SHA-256; pacman verifies each
+# package against the signature beside it. Never `pacman -Syu` here: change
+# this set only on purpose, together with the whole package.
 stage('msys64', """
 win:
     SET PATH=%THIRDPARTY_DIR%\\msys64\\usr\\bin;%PATH%
@@ -475,14 +484,13 @@ win:
     msys64.exe
     del msys64.exe
 
-    bash -c "pacman-key --init; pacman-key --populate; pacman -Syu --noconfirm"
-    pacman -Syu --noconfirm ^
-        make ^
-        mingw-w64-x86_64-diffutils ^
-        mingw-w64-x86_64-gperf ^
-        mingw-w64-x86_64-nasm ^
-        mingw-w64-x86_64-perl ^
-        mingw-w64-x86_64-pkgconf
+    powershell -Command "iwr -OutFile ./msys2-packages.tar https://github.com/romanimpair-jpg/LoogriGram-Desktop/releases/download/deps-msys2-20260908/msys2-packages-20260908.tar"
+    powershell -Command "if ((Get-FileHash -Algorithm SHA256 ./msys2-packages.tar).Hash -ne '2311B79A8AF30D3BBBF000FDBA73F4F6783F1188FCF0B344F133C69082C1214E') { Write-Output 'msys2-packages.tar does not match its frozen SHA-256'; exit 1 }"
+    tar -xf msys2-packages.tar
+    del msys2-packages.tar
+    bash -c "pacman-key --init; pacman-key --populate; pacman -U --noconfirm msys2-frozen/core/*.pkg.tar.zst"
+    bash -c "pacman -U --noconfirm msys2-frozen/rest/*.pkg.tar.zst"
+    bash -c "rm -rf msys2-frozen"
 """, 'ThirdParty')
 
 stage('python', """

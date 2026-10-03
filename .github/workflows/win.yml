@@ -3,7 +3,8 @@ name: Windows.
 # LoogriGram: upstream builds on every push and pull_request. A full Windows
 # build here costs hours of CI, so builds are manual-only and staged:
 #   validate - config and secrets only, a few minutes
-#   cache    - also build and cache dependencies
+#   cache    - also build and cache dependencies, and freeze them as the
+#              deps-trees release (see "Freeze dependency trees.")
 #   build    - full build, produces the artifact
 on:
   workflow_dispatch:
@@ -342,6 +343,43 @@ jobs:
           $after = (Get-PSDrive C).Free / 1GB
           Write-Output ("Free after: {0:N1} GB  (reclaimed {1:N1} GB)" -f $after, ($after - $before))
 
+      # LoogriGram: dependencies are frozen at the versions the last good build
+      # used, and change only on purpose. A cache is not a freeze: GitHub
+      # evicts one unused for seven days, and after an idle fortnight
+      # (2026-09-20 to 10-03) every dependency had to be rebuilt from whatever
+      # the internet served that day - which is how MSYS2 dropping a package
+      # broke the build. So a "cache" run also stores the built trees as
+      # release assets (deps-trees, a pre-release the updater never sees),
+      # and when a tree's cache matched nothing at all, it comes back from
+      # there. prepare.py still rebuilds any stage whose definition changed.
+      - name: Restore frozen dependency trees.
+        if: inputs.mode != 'validate' && (steps.cache-third-party.outputs.cache-matched-key == '' || (steps.cache-libs.outputs.cache-matched-key == '' && steps.cache-qt.outputs.cache-matched-key == ''))
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          THIRD_PARTY_MISSED: ${{ steps.cache-third-party.outputs.cache-matched-key == '' }}
+          LIBRARIES_MISSED: ${{ steps.cache-libs.outputs.cache-matched-key == '' && steps.cache-qt.outputs.cache-matched-key == '' }}
+        run: |
+          set -eo pipefail
+          if ! gh release view deps-trees --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "No deps-trees release yet; dependencies build from scratch."
+            exit 0
+          fi
+          gh release download deps-trees --repo "$GITHUB_REPOSITORY" --pattern MANIFEST.txt --dir "$RUNNER_TEMP" && cat "$RUNNER_TEMP/MANIFEST.txt"
+          ROOT="$(cygpath -u "$CACHE_ROOT")"
+          restore() {
+            local name="$1"
+            local dir="$RUNNER_TEMP/frozen-$name"
+            mkdir -p "$dir"
+            gh release download deps-trees --repo "$GITHUB_REPOSITORY" --pattern "$name.tar.gz.part-*" --dir "$dir"
+            cat "$dir"/$name.tar.gz.part-* | tar -xzf - -C "$ROOT"
+            rm -rf "$dir"
+            echo "Restored $name from deps-trees."
+          }
+          if [ "$THIRD_PARTY_MISSED" = "true" ]; then restore ThirdParty; fi
+          if [ "$LIBRARIES_MISSED" = "true" ]; then restore Libraries; fi
+
       - name: Libraries.
         id: libraries
         if: inputs.mode != 'validate'
@@ -427,6 +465,38 @@ jobs:
             ${{ env.LibrariesPath }}\[qQ]t[_-]*
             ${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
           key: ${{ steps.cache-qt.outputs.cache-primary-key }}
+
+      # LoogriGram: only in "cache" mode, which has time to spare - a build that
+      # rebuilt every dependency is already close to the job's limit. Run one
+      # "cache" after any build that rebuilt dependencies. The trees are split
+      # under GitHub's 2 GB asset limit; the old parts are deleted before the
+      # new ones go up, so a restore never mixes two sets. pipefail makes a
+      # failed tar abort the upload instead of publishing a partial archive.
+      - name: Freeze dependency trees.
+        if: inputs.mode == 'cache' && steps.libraries.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eo pipefail
+          ROOT="$(cygpath -u "$CACHE_ROOT")"
+          OUT="$RUNNER_TEMP/freeze"
+          mkdir -p "$OUT"
+          tar -czf - -C "$ROOT" ThirdParty | split -b 1900m -d -a 2 - "$OUT/ThirdParty.tar.gz.part-"
+          tar -czf - -C "$ROOT" Libraries | split -b 1900m -d -a 2 - "$OUT/Libraries.tar.gz.part-"
+          printf 'cache key %s\ncommit %s\nrun %s\ndate %s\n' "$CACHE_KEY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%F)" > "$OUT/MANIFEST.txt"
+          ls -la "$OUT"
+          if ! gh release view deps-trees --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create deps-trees --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --prerelease --latest=false --title "Frozen dependency trees" \
+              --notes "Built ThirdParty and Libraries trees for the desktop build - not an app release. Restored by win.yml when the Actions caches have been evicted. MANIFEST.txt names the run that made them."
+          fi
+          for asset in $(gh release view deps-trees --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'); do
+            gh release delete-asset deps-trees "$asset" --repo "$GITHUB_REPOSITORY" --yes
+          done
+          gh release upload deps-trees "$OUT"/* --repo "$GITHUB_REPOSITORY"
+          rm -rf "$OUT"
 
       - name: Check dav1d is present.
         if: inputs.mode == 'build'
