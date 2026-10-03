@@ -43,9 +43,13 @@ Upstream's ucrt64 switch was tried and reverted (`6b3c48e7d1`,
 `d4958b8bab`) - the rule is to stop following upstream until something
 breaks, and then to freeze, not to adopt. The dependencies are now frozen
 (`dd0ea5658d`, see Building, "Frozen dependencies"), and the build was
-re-run as 37158363951 - **not reported when this was written**. Owed, in
-order: freezing every other dependency (the list is in Android's "Start
-here"), then the reverse parity audit, Android's commits against this tree.
+re-run as 37158363951 - **not reported when this was written**. Every other
+dependency was frozen on 2026-10-04 (`eb81ed044d`). The reverse parity audit
+- Android's 337 commits against this tree - ran the same day and found four
+gaps, all mirrored here the same day: Telegram's help links, a verifier
+bot's note, the updater's hourly re-check, and picking or finding a
+location (see "Removed" and "Our own updater"). **None of them has been
+compiled yet**: they ride the next full build.
 
 ---
 
@@ -214,11 +218,25 @@ All deleted, not gated. Roughly in the order they were done.
 - **Greeting stickers**: an empty chat offered a random sticker to send. It
   now shows the plain "No messages here yet" line. A chat intro the peer set
   up themselves still shows, with their own sticker.
-- **The bot verification icon** before names (the verifier's text stays).
+- **Bot verification**, icon and text: being verified by a bot rather than
+  by Telegram reads as not verified. The icon went first (`8dada12a1c`); its
+  note on the profile, under a bot's app terms and in a new chat's intro
+  card went on 2026-10-04 (`6adee333cb`), for parity with Android. The
+  verifier's own side (`verify_peers_box`) stays.
 - **Nags and help**: the hover quick-reaction strip (right-click reactions
   kept), the FAQ / Features / Ask a Question rows, the "is this still your
-  number?" prompt. The 2FA password reminder is kept — losing that password
-  locks you out.
+  number?" prompt - and since 2026-10-04 (`d062a5d77c`, `c3041e5e96`) the
+  rest of Telegram's help: the pre-login settings' FAQ row and the
+  `tg://settings/faq`, `/ask-question` and `/features` links, now
+  unsupported. FAQ articles in settings search stay, as on Android. The 2FA
+  password reminder is kept — losing that password locks you out — and no
+  longer waits on the phone-number prompt it used to queue behind.
+- **Picking or finding a location** (`680eee9198`, 2026-10-04, parity with
+  Android): the attach menu's and poll answers' "Location" items, the
+  Mapbox web-map picker, Windows geolocation with its reverse geocoding,
+  and venue search. The config's venue bot name is read and dropped, and
+  an empty string written in its place, so the stored format is unchanged.
+  Received locations still draw and open maps.google.com.
 - **Telegram's updater** (`DESKTOP_APP_DISABLE_AUTOUPDATE=ON`, which also
   drops the `Updater.exe` target) and **crash-report uploads**
   (`DESKTOP_APP_DISABLE_CRASH_REPORTS=ON`; Windows still writes a local dump).
@@ -283,7 +301,10 @@ without trace.
 
 ### Our own updater
 
-`core/loogrigram_update.cpp`, started once per launch from `Application::run()`.
+`core/loogrigram_update.cpp`, started once per launch from `Application::run()`:
+it checks ten seconds in and then every hour while the app runs (since
+`00e97cf4bb`, as Android does on each return to the app), skipping a tick
+while a check or download is under way and stopping at Ready.
 It publishes its state — None, Checking, Downloading, Ready, plus progress —
 and the main menu row follows it: the label changes and a ring fills around
 the icon. Ready is terminal and the row then offers the restart. The asset's
