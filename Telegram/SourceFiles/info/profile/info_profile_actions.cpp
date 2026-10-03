@@ -1060,7 +1060,6 @@ private:
 	[[nodiscard]] Section makePersonalChannel(not_null<UserData*> user);
 	[[nodiscard]] Section makeInfo();
 	[[nodiscard]] Section makeAddAsContact(not_null<UserData*> user);
-	void addBotVerify();
 	void addMainApp(not_null<UserData*> user);
 	void addManagedBotFooter(not_null<UserData*> managerUser);
 	[[nodiscard]] Section makeReportOrDeleteReaction();
@@ -2030,20 +2029,13 @@ void DetailsFiller::addMainApp(not_null<UserData*> user) {
 	});
 
 	const auto url = tr::lng_mini_apps_tos_url(tr::now);
-	auto textProducer = rpl::combine(
-		tr::lng_profile_open_app_about(
-			lt_terms,
-			tr::lng_profile_open_app_terms(tr::url(url)),
-			tr::marked),
-		user->session().changes().peerFlagsValue(
-			user,
-			Data::PeerUpdate::Flag::VerifyInfo)
-	) | rpl::map([=](TextWithEntities text, auto) {
-		if (const auto verify = user->botVerifyDetails()) {
-			text = text.append(u"\n\n"_q).append(verify->description);
-		}
-		return text;
-	});
+	// LoogriGram: a verifier bot's note followed the terms here. Being
+	// verified by a bot rather than by Telegram reads as not verified, as
+	// on Android (873fe3ab there); see addBotVerify's removal below.
+	auto textProducer = tr::lng_profile_open_app_about(
+		lt_terms,
+		tr::lng_profile_open_app_terms(tr::url(url)),
+		tr::marked);
 	auto setup = [url](not_null<Ui::FlatLabel*> label) {
 		label->setClickHandlerFilter([=](const auto &...) {
 			UrlClickHandler::Open(url);
@@ -2084,35 +2076,10 @@ Section DetailsFiller::makeAddAsContact(not_null<UserData*> user) {
 	};
 }
 
-void DetailsFiller::addBotVerify() {
-	const auto peer = _peer.get();
-	auto shown = peer->session().changes().peerFlagsValue(
-		peer,
-		Data::PeerUpdate::Flag::VerifyInfo
-			| Data::PeerUpdate::Flag::FullInfo
-	) | rpl::map([=] {
-		const auto info = peer->botVerifyDetails();
-		if (!info || info->description.empty()) {
-			return false;
-		}
-		if (const auto user = peer->asUser()) {
-			if (user->botInfo && user->botInfo->hasMainApp) {
-				return false;
-			}
-		}
-		return true;
-	}) | rpl::distinct_until_changed();
-
-	auto description = peer->session().changes().peerFlagsValue(
-		peer,
-		Data::PeerUpdate::Flag::VerifyInfo
-	) | rpl::map([=] {
-		const auto info = peer->botVerifyDetails();
-		return info ? info->description : TextWithEntities();
-	});
-
-	_stack->addTextSeparator(std::move(description), std::move(shown));
-}
+// LoogriGram: addBotVerify quoted a verifier bot's note under the details of
+// a user or channel it had verified. Only Telegram's own verification is
+// honoured, as on Android (873fe3ab there): 8dada12a1c took the verifier's
+// icon and kept its text, and the text now goes too.
 
 void DetailsFiller::addManagedBotFooter(not_null<UserData*> managerUser) {
 	const auto botUsername = managerUser->username();
@@ -2491,7 +2458,6 @@ void DetailsFiller::buildSections() {
 	_stack->add(makeInfo());
 	if (const auto user = _peer->asUser()) {
 		_stack->add(makeAddAsContact(user));
-		addBotVerify();
 		if (const auto info = user->botInfo.get()) {
 			if (info->hasMainApp) {
 				addMainApp(user);
@@ -2509,7 +2475,6 @@ void DetailsFiller::buildSections() {
 			}
 		}
 	} else if (const auto channel = _peer->asChannel()) {
-		addBotVerify();
 		if (!channel->isMegagroup()) {
 			_stack->add(makeViewChannel(channel));
 		}

@@ -485,13 +485,12 @@ auto GenerateNewPeerInfo(
 			normalFg,
 			copy));
 
-		// LoogriGram: the verifier's icon led its line; the text stays.
-		const auto details = user->botVerifyDetails();
-		const auto text = details
-			? TextWithEntities(details->description)
-			: Ui::Text::IconEmoji(
-				&st::newPeerNonOfficial
-			).append(' ').append(tr::lng_new_contact_not_official(tr::now));
+		// LoogriGram: a verifier bot's note, led by its icon, took this line
+		// for an account the bot had verified. Being verified by a bot rather
+		// than by Telegram reads as not verified, as on Android (873fe3ab).
+		const auto text = Ui::Text::IconEmoji(
+			&st::newPeerNonOfficial
+		).append(' ').append(tr::lng_new_contact_not_official(tr::now));
 		push(std::make_unique<TextPartColored>(
 			text,
 			st::newPeerSubtitleMargin,
