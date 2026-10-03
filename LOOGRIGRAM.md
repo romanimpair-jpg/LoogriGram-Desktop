@@ -27,6 +27,22 @@ Work has moved to Android; see `loogrigram-android/LOOGRIGRAM.md`.
 
 Open items are in "Open and known" below. None of them block anything.
 
+**Reopened 2026-10-03 for parity work.** The user made desktop-Android parity
+two-way (see "Settled rules"). Done since: **free suggested posts restored**,
+both directions, matching Android - `12f173a996` (a free suggestion shows with
+Decline | Accept, and Suggest Changes limited to the time) and `f7bbe51779`
+(suggesting a post to a channel with a publishing time and no price). A
+suggestion with a price stays hidden, and so does a message edited into
+having one; the free forwarding request keeps its buttons
+(`api_suggest_post.cpp`, renamed back from `api_no_forwards_request`); no
+on-disk format changed (a suggestion persists only through the cloud draft).
+**Its first build, run 37138072076, had not reported when this was written**
+- if it failed, fix from `--log-failed`; the build-risk list is in the Android
+notes' "Start here". Still owed: the reverse audit, Android's commits against
+this tree - Android's `LOOGRIGRAM.md` "Start here" has the method and the
+first candidates (the iTunes cover lookup, the Help section's Privacy Policy
+row).
+
 ---
 
 ## Settled rules — do not re-litigate
