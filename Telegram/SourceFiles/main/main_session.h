@@ -39,7 +39,6 @@ class WelcomeMessages;
 class EphemeralMessages;
 class TopPeers;
 class Factchecks;
-class LocationPickers;
 class PromoSuggestions;
 class Passkeys;
 } // namespace Data
@@ -166,9 +165,6 @@ public:
 	}
 	[[nodiscard]] Data::Factchecks &factchecks() const {
 		return *_factchecks;
-	}
-	[[nodiscard]] Data::LocationPickers &locationPickers() const {
-		return *_locationPickers;
 	}
 	[[nodiscard]] Api::Updates &updates() const {
 		return *_updates;
@@ -316,7 +312,6 @@ private:
 	const std::unique_ptr<Data::TopPeers> _topGuestChatBots;
 	const std::unique_ptr<Data::RecentInlineBots> _recentInlineBots;
 	const std::unique_ptr<Data::Factchecks> _factchecks;
-	const std::unique_ptr<Data::LocationPickers> _locationPickers;
 	const std::unique_ptr<Data::PromoSuggestions> _promoSuggestions;
 	const std::unique_ptr<Data::Passkeys> _passkeys;
 	const std::unique_ptr<Settings::FaqSuggestions> _faqSuggestions;

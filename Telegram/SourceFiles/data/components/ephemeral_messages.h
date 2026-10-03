@@ -77,10 +77,6 @@ public:
 		const MTPInputMedia &media,
 		Data::FileOrigin origin = {},
 		Fn<MTPInputMedia()> rebuildMedia = nullptr);
-	[[nodiscard]] bool sendSimpleMedia(
-		not_null<History*> history,
-		FullReplyTo replyTo,
-		const MTPInputMedia &media);
 	void noteCallbackTopic(
 		not_null<History*> history,
 		PeerId botId,

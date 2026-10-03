@@ -51,7 +51,6 @@ set(style_files
     chat_helpers/chat_helpers.style
     chat_helpers/emoji_picker_overlay.style
     history/view/controls/history_view_voice_record_bar.style
-    ui/controls/location_picker.style
     calls/calls.style
     export/view/export.style
     info/info.style
@@ -113,8 +112,6 @@ PRIVATE
     chat_helpers/field_characters_count_manager.cpp
     chat_helpers/field_characters_count_manager.h
 
-    core/current_geo_location.cpp
-    core/current_geo_location.h
     core/file_location.cpp
     core/file_location.h
     core/mime_type.cpp
@@ -264,11 +261,8 @@ PRIVATE
     passport/ui/passport_form_row.h
 
 
-    platform/win/current_geo_location_win.cpp
-    platform/win/current_geo_location_win.h
     platform/win/text_recognition_win.h
     platform/platform_file_bookmark.h
-    platform/platform_current_geo_location.h
     platform/platform_text_recognition.h
 
     profile/profile_back_button.cpp

@@ -59,7 +59,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/storage_media_prepare.h"
 #include "ui/controls/emoji_button.h"
 #include "ui/controls/emoji_button_factory.h"
-#include "ui/controls/location_picker.h"
 #include "ui/chat/attach/attach_prepare.h"
 #include "ui/dynamic_image.h"
 #include "ui/dynamic_thumbnails.h"
@@ -2523,55 +2522,6 @@ object_ptr<Ui::RpWidget> CreatePollBox::setupContent() {
 		state->webPageLifetimes.remove(media.get());
 		setMedia(media, PollMedia(), nullptr, false);
 	};
-	const auto chooseLocation = [=](
-			std::shared_ptr<PollMediaState> media) {
-		const auto session = &_controller->session();
-		const auto &appConfig = session->appConfig();
-		auto map = appConfig.get<base::flat_map<QString, QString>>(
-			u"tdesktop_config_map"_q,
-			base::flat_map<QString, QString>());
-		const auto config = Ui::LocationPickerConfig{
-			.mapsToken = map[u"maps"_q],
-			.geoToken = map[u"geo"_q],
-		};
-		const auto applyGeo = [=](float64 lat, float64 lon) {
-			const auto point = Data::LocationPoint(
-				lat,
-				lon,
-				Data::LocationPoint::NoAccessHash);
-			auto pollMedia = PollMedia();
-			pollMedia.geo = point;
-			const auto cloudImage = session->data().location(point);
-			auto thumbnail = Ui::MakeGeoThumbnailWithPin(
-				cloudImage,
-				session,
-				Data::FileOrigin());
-			setMedia(media, pollMedia, std::move(thumbnail), true);
-		};
-		if (base::IsCtrlPressed()) {
-			const auto lat = 48.8566 + base::RandomValue<uint32>()
-				/ float64(std::numeric_limits<uint32>::max()) * 0.02 - 0.01;
-			const auto lon = 2.3522 + base::RandomValue<uint32>()
-				/ float64(std::numeric_limits<uint32>::max()) * 0.02 - 0.01;
-			applyGeo(lat, lon);
-			return;
-		}
-		if (!Ui::LocationPicker::Available(config)) {
-			return;
-		}
-		Ui::LocationPicker::Show({
-			.parent = _controller->widget().get(),
-			.config = config,
-			.chooseLabel = tr::lng_maps_point_send(),
-			.session = session,
-			.callback = crl::guard(this, [=](Data::InputVenue venue) {
-				applyGeo(venue.lat, venue.lon);
-			}),
-			.quit = [] { Shortcuts::Launch(Shortcuts::Command::Quit); },
-			.storageId = session->local().resolveStorageIdBots(),
-			.closeRequests = _controller->content()->death(),
-		});
-	};
 	const auto showMediaMenu = [=](
 			not_null<Ui::RpWidget*> button,
 			std::shared_ptr<PollMediaState> media,
@@ -2605,22 +2555,9 @@ object_ptr<Ui::RpWidget> CreatePollBox::setupContent() {
 				[=] { chooseDocument(media); },
 				&st::menuIconFile);
 		}
-		{
-			const auto &appConfig = _controller->session().appConfig();
-			auto map = appConfig.get<base::flat_map<QString, QString>>(
-				u"tdesktop_config_map"_q,
-				base::flat_map<QString, QString>());
-			const auto config = Ui::LocationPickerConfig{
-				.mapsToken = map[u"maps"_q],
-				.geoToken = map[u"geo"_q],
-			};
-			if (Ui::LocationPicker::Available(config)) {
-				state->mediaMenu->addAction(
-					tr::lng_maps_point(tr::now),
-					[=] { chooseLocation(media); },
-					&st::menuIconAddress);
-			}
-		}
+		// LoogriGram: a "Location" item picked a point on a web map for the
+		// answer. Nothing here picks or finds a location, as on Android
+		// (5e27de72 there); an answer that carries one still shows it.
 		if (allowStickers) {
 			state->mediaMenu->addAction(
 				tr::lng_chat_intro_choose_sticker(tr::now),

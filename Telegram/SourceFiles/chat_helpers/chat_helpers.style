@@ -1644,8 +1644,6 @@ editStickerSetNameLoading: InfiniteRadialAnimation(defaultInfiniteRadialAnimatio
 
 paidTagPadding: margins(16px, 6px, 16px, 6px);
 
-pickLocationRowHeight: 52px;
-
 sendGifBox: Box(defaultBox) {
 	shadowIgnoreBottomSkip: true;
 }

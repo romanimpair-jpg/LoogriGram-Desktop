@@ -31,7 +31,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/storage_facade.h"
 #include "data/components/ephemeral_messages.h"
 #include "data/components/factchecks.h"
-#include "data/components/location_pickers.h"
 #include "data/components/passkeys.h"
 #include "data/components/promo_suggestions.h"
 #include "data/components/recent_inline_bots.h"
@@ -125,7 +124,6 @@ Session::Session(
 	Data::TopPeerType::BotGuestChat))
 , _recentInlineBots(std::make_unique<Data::RecentInlineBots>(this))
 , _factchecks(std::make_unique<Data::Factchecks>(this))
-, _locationPickers(std::make_unique<Data::LocationPickers>())
 , _promoSuggestions(std::make_unique<Data::PromoSuggestions>(this, [=] {
 	using State = Data::SetupEmailState;
 	if (_promoSuggestions->setupEmailState() == State::Setup

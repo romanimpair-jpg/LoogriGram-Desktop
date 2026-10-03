@@ -21,7 +21,6 @@
     <file alias="palette.tgs">../../animations/palette.tgs</file>
     <file alias="sleep.tgs">../../animations/sleep.tgs</file>
     <file alias="greeting.tgs">../../animations/greeting.tgs</file>
-    <file alias="location.tgs">../../animations/location.tgs</file>
     <file alias="settings/chat_automation.tgs">../../animations/settings/chat_automation.tgs</file>
     <file alias="writing.tgs">../../animations/writing.tgs</file>
     <file alias="hours.tgs">../../animations/hours.tgs</file>

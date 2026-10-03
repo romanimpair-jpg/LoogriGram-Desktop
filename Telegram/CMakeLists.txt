@@ -549,8 +549,6 @@ PRIVATE
     data/components/ephemeral_messages.h
     data/components/factchecks.cpp
     data/components/factchecks.h
-    data/components/location_pickers.cpp
-    data/components/location_pickers.h
     data/components/passkeys.cpp
     data/components/passkeys.h
     data/components/promo_suggestions.cpp
@@ -1714,8 +1712,6 @@ PRIVATE
     ui/controls/custom_emoji_toast_icon.h
     ui/controls/emoji_button_factory.cpp
     ui/controls/emoji_button_factory.h
-    ui/controls/location_picker.cpp
-    ui/controls/location_picker.h
     ui/controls/silent_toggle.cpp
     ui/controls/silent_toggle.h
     ui/controls/table_rows.cpp
@@ -1900,7 +1896,6 @@ PRIVATE
     qrc/telegram/animations.qrc
     qrc/telegram/export.qrc
     qrc/telegram/export_rich.qrc
-    qrc/telegram/picker.qrc
     qrc/telegram/telegram.qrc
     qrc/telegram/sounds.qrc
     winrc/Telegram.rc

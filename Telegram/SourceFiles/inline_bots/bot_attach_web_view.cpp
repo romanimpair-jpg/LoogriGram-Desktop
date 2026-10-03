@@ -31,7 +31,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/shortcuts.h"
 #include "core/ui_integration.h" // TextContext
 #include "data/components/ephemeral_messages.h"
-#include "data/components/location_pickers.h"
 #include "data/data_bot_app.h"
 #include "data/data_changes.h"
 #include "data/data_document.h"
@@ -64,7 +63,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/basic_click_handlers.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/chat/attach/attach_bot_webview.h"
-#include "ui/controls/location_picker.h"
 #include "ui/controls/userpic_button.h"
 #include "ui/delayed_activation.h"
 #include "ui/effects/ripple_animation.h"
@@ -231,18 +229,6 @@ constexpr auto kPopularAppBotsLimit = 100;
 	}, [&](const MTPDjoinChatBotResultWebView &) {
 		return QString();
 	});
-}
-
-[[nodiscard]] Ui::LocationPickerConfig ResolveMapsConfig(
-		not_null<Main::Session*> session) {
-	const auto &appConfig = session->appConfig();
-	auto map = appConfig.get<base::flat_map<QString, QString>>(
-		u"tdesktop_config_map"_q,
-		base::flat_map<QString, QString>());
-	return {
-		.mapsToken = map[u"maps"_q],
-		.geoToken = map[u"geo"_q],
-	};
 }
 
 [[nodiscard]] Window::SessionController *WindowForThread(
@@ -2662,44 +2648,6 @@ void AttachWebView::toggleInMenu(
 	}).send();
 }
 
-void ChooseAndSendLocation(
-		not_null<Window::SessionController*> controller,
-		const Ui::LocationPickerConfig &config,
-		Api::SendAction action) {
-	const auto session = &controller->session();
-	if (const auto picker = session->locationPickers().lookup(action)) {
-		picker->activate();
-		return;
-	}
-	struct State {
-		Fn<void(Data::InputVenue, Api::SendAction)> send;
-	};
-	const auto state = std::make_shared<State>();
-	state->send = [=](Data::InputVenue venue, Api::SendAction action) {
-		state->send = nullptr;
-		if (venue.justLocation()) {
-			Api::SendLocation(action, venue.lat, venue.lon);
-		} else {
-			Api::SendVenue(action, venue);
-		}
-	};
-	const auto callback = [=](Data::InputVenue venue) {
-		state->send(venue, action);
-	};
-	const auto picker = Ui::LocationPicker::Show({
-		.parent = controller->widget(),
-		.config = config,
-		.chooseLabel = tr::lng_maps_point_send(),
-		.recipient = action.history->peer,
-		.session = session,
-		.callback = crl::guard(session, callback),
-		.quit = [] { Shortcuts::Launch(Shortcuts::Command::Quit); },
-		.storageId = session->local().resolveStorageIdBots(),
-		.closeRequests = controller->content()->death(),
-	});
-	session->locationPickers().emplace(action, picker);
-}
-
 std::unique_ptr<Ui::DropdownMenu> MakeAttachBotsMenu(
 		not_null<QWidget*> parent,
 		not_null<Window::SessionController*> controller,
@@ -2751,16 +2699,10 @@ std::unique_ptr<Ui::DropdownMenu> MakeAttachBotsMenu(
 		}, &st::menuIconCreatePoll);
 	}
 	// LoogriGram: an "Article" item opened the rich message editor.
-	const auto session = &controller->session();
-	const auto locationType = ChatRestriction::SendOther;
-	const auto config = ResolveMapsConfig(session);
-	if (Data::CanSendAnyOf(peer, locationType, false)
-		&& Ui::LocationPicker::Available(config)) {
-		raw->addAction(tr::lng_maps_point(tr::now), [=] {
-			Ui::PreventDelayedActivation();
-			ChooseAndSendLocation(controller, config, actionFactory());
-		}, &st::menuIconAddress);
-	}
+	// LoogriGram: a "Location" item sent a point or a venue picked on a web
+	// map (Mapbox), placed by Windows geolocation and named by the venue
+	// search bot. Nothing here finds or sends our location, as on Android
+	// (5e27de72 there).
 	if (Data::CanSend(peer, ChatRestriction::SendMusic, false)) {
 		++minimal;
 		raw->addAction(tr::lng_all_music(tr::now), [=] {
