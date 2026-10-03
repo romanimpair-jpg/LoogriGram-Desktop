@@ -450,11 +450,21 @@ days. So, since `dd0ea5658d`:
 - Both pre-releases are `--latest=false`; the in-app updater reads
   `/releases/latest` and never sees them.
 
-Still floating, owed (2026-10-03): `Eden-CI/msvc-dev-cmd@master`, the
-`actions/*@vN` tags, `windows-latest`, the python stage's unpinned
-`pip install`, and NuGet's `latest` download. The last good *full* build
-ran its dependency stages on 2026-09-08 (run 34206584631); read versions
-from there.
+- **Everything else** (`eb81ed044d`, 2026-10-04), read from the logs of
+  34206584631 and of `g7b24c5a` (run 35459450326): `runs-on:
+  windows-2025-vs2026`, not `windows-latest`; every action, Eden-CI's
+  `msvc-dev-cmd` included (it was the branch `master`), by commit SHA;
+  Python 3.12.10 through `setup-python`, not the image's; the python stage's
+  `pip install` at exact versions; NuGet v7.9.0 against a fixed SHA-256, and
+  CMake pointed at it with `NUGET_EXE` (`nuget.cmake` searched PATH first,
+  so every earlier build took the image's copy); `lzma` and
+  `gas-preprocessor`, which cloned `master`, checked out at fixed commits.
+  The rest of `prepare.py` was audited: every Windows stage clones a tag or
+  checks out a commit.
+
+A hosted image's build cannot be pinned, only its label; `validate` prints
+the one a run got. The same goes for the image's VS: the toolset is pinned
+to 14.44, the rest of the installation is the image's.
 
 ### The incremental build tree
 
