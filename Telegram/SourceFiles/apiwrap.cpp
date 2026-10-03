@@ -2294,6 +2294,9 @@ mtpRequestId ApiWrap::savePreparedDraftToCloud(
 	if (!textWithTags.tags.isEmpty()) {
 		flags |= MTPmessages_SaveDraft::Flag::f_entities;
 	}
+	if (draft.suggest) {
+		flags |= MTPmessages_SaveDraft::Flag::f_suggested_post;
+	}
 	// LoogriGram: a draft could hold an article, serialized and saved with
 	// the text. Nothing composes one, and one made elsewhere is read as its
 	// text, so a draft saved from here never carries an article.
@@ -2351,7 +2354,7 @@ mtpRequestId ApiWrap::savePreparedDraftToCloud(
 				draft.webpage,
 				textWithTags.text.isEmpty()),
 			MTP_long(0), // effect
-			MTPSuggestedPost(),
+			Api::SuggestToMTP(draft.suggest),
 			MTPInputRichMessage()
 		)).done([=](const MTPBool &, const MTP::Response &response) {
 			const auto requestId = response.requestId;
@@ -3893,6 +3896,7 @@ void ApiWrap::sendSharedContact(
 		.date = NewMessageDate(action.options),
 		.postAuthor = NewMessagePostAuthor(action),
 		.effectId = action.options.effectId,
+		.suggest = HistoryMessageSuggestInfo(action.options),
 	}, TextWithEntities(), MTP_messageMediaContact(
 		MTP_string(phone),
 		MTP_string(firstName),
@@ -4291,6 +4295,10 @@ void ApiWrap::sendMessage(
 			sendFlags |= MTPmessages_SendMessage::Flag::f_effect;
 			mediaFlags |= MTPmessages_SendMedia::Flag::f_effect;
 		}
+		if (action.options.suggest) {
+			sendFlags |= MTPmessages_SendMessage::Flag::f_suggested_post;
+			mediaFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
+		}
 		lastMessage = history->addNewLocalMessage({
 			.id = newId.msg,
 			.flags = flags,
@@ -4300,6 +4308,7 @@ void ApiWrap::sendMessage(
 			.scheduleRepeatPeriod = action.options.scheduleRepeatPeriod,
 			.postAuthor = NewMessagePostAuthor(action),
 			.effectId = action.options.effectId,
+			.suggest = HistoryMessageSuggestInfo(action.options),
 		}, sending, media);
 		const auto done = [=](
 				const MTPUpdates &result,
@@ -4337,6 +4346,7 @@ void ApiWrap::sendMessage(
 								text.entities),
 						};
 						draft.reply = action.replyTo;
+						draft.suggest = action.options.suggest;
 						draft.cursor = MessageCursor(
 							int(text.text.size()),
 							int(text.text.size()),
@@ -4384,7 +4394,7 @@ void ApiWrap::sendMessage(
 					MTPInputQuickReplyShortcut(),
 					MTP_long(action.options.effectId),
 					MTP_long(0),
-					MTPSuggestedPost()
+					Api::SuggestToMTP(action.options.suggest)
 				), done, fail);
 		} else {
 			histories.sendPreparedMessage(
@@ -4405,7 +4415,7 @@ void ApiWrap::sendMessage(
 					MTPInputQuickReplyShortcut(),
 					MTP_long(action.options.effectId),
 					MTP_long(0),
-					MTPSuggestedPost(),
+					Api::SuggestToMTP(action.options.suggest),
 					MTPInputRichMessage()
 				), done, fail);
 		}
@@ -4725,6 +4735,7 @@ void ApiWrap::sendMediaWithRandomId(
 			: Flag(0))
 		| (options.sendAs ? Flag::f_send_as : Flag(0))
 		| (options.effectId ? Flag::f_effect : Flag(0))
+		| (options.suggest ? Flag::f_suggested_post : Flag(0))
 		| (options.invertCaption ? Flag::f_invert_media : Flag(0));
 
 	auto &histories = history->owner().histories();
@@ -4748,7 +4759,7 @@ void ApiWrap::sendMediaWithRandomId(
 			MTPInputQuickReplyShortcut(),
 			MTP_long(options.effectId),
 			MTP_long(0),
-			MTPSuggestedPost()
+			Api::SuggestToMTP(options.suggest)
 		), [=](const MTPUpdates &result, const MTP::Response &response) {
 		if (done) done(true);
 		if (updateRecentStickers) {

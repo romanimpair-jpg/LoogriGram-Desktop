@@ -1128,6 +1128,7 @@ ComposeControls::ComposeControls(
 		.lockFromBottom = descriptor.voiceLockFromBottom,
 	}))
 , _sendMenuDetails(descriptor.sendMenuDetails)
+, _currentSuggest(descriptor.currentSuggest)
 , _moderateKeyActivateCallback(
 	std::move(descriptor.moderateKeyActivateCallback))
 , _saveDraftTimer([=] { saveDraft(); })
@@ -1166,6 +1167,43 @@ ComposeControls::ComposeControls(
 				updateControlsGeometry(_wrap->size());
 			} else if (_scheduled && !hasScheduled) {
 				_scheduled = nullptr;
+			}
+		}, _wrap->lifetime());
+	}
+	if (descriptor.suggestPostToggleShown) {
+		std::move(
+			descriptor.suggestPostToggleShown
+		) | rpl::on_next([=](bool has) {
+			if (!_toggleSuggestPost && has) {
+				_toggleSuggestPost = base::make_unique_q<Ui::IconButton>(
+					_wrap.get(),
+					st::historySuggestPostToggle);
+				_toggleSuggestPost->setVisible(
+					!_suggestPostActive && !isEditingMessage());
+				_toggleSuggestPost->clicks(
+				) | rpl::filter(
+					rpl::mappers::_1 == Qt::LeftButton
+				) | rpl::to_empty | rpl::start_to_stream(
+					_suggestPostToggleClicks,
+					_toggleSuggestPost->lifetime());
+				orderControls();
+				updateControlsVisibility();
+				updateControlsGeometry(_wrap->size());
+			} else if (_toggleSuggestPost && !has) {
+				_toggleSuggestPost = nullptr;
+				updateControlsGeometry(_wrap->size());
+			}
+		}, _wrap->lifetime());
+	}
+	if (descriptor.suggestPostToggleActive) {
+		std::move(
+			descriptor.suggestPostToggleActive
+		) | rpl::on_next([=](bool active) {
+			_suggestPostActive = active;
+			if (_toggleSuggestPost) {
+				_toggleSuggestPost->setVisible(
+					!_suggestPostActive && !isEditingMessage());
+				updateControlsGeometry(_wrap->size());
 			}
 		}, _wrap->lifetime());
 	}
@@ -1241,6 +1279,10 @@ ComposeControls::ComposeControls(
 
 rpl::producer<> ComposeControls::showScheduledRequests() const {
 	return _showScheduledRequests.events();
+}
+
+rpl::producer<> ComposeControls::suggestPostToggleClicks() const {
+	return _suggestPostToggleClicks.events();
 }
 
 rpl::producer<> ComposeControls::botKeyboardToggleClicks() const {
@@ -1867,13 +1909,18 @@ void ComposeControls::saveFieldToHistoryLocalDraft(bool save) {
 		return;
 	}
 	const auto id = _header->getDraftReply();
-	if (_preview && (id || !_field->empty())) {
-		_history->setDraft(
-			key,
-			std::make_unique<Data::Draft>(
-				_field,
-				id,
-				_preview->draft()));
+	// LoogriGram: never on an edit. Upstream could also edit a message into
+	// a suggestion of changes; that path stays deleted.
+	const auto suggest = (_currentSuggest && !isEditingMessage())
+		? _currentSuggest()
+		: SuggestOptions();
+	if (_preview && (id || suggest.exists || !_field->empty())) {
+		auto draft = std::make_unique<Data::Draft>(
+			_field,
+			id,
+			_preview->draft());
+		draft->suggest = suggest;
+		_history->setDraft(key, std::move(draft));
 	} else {
 		_history->clearDraft(key);
 	}
@@ -3634,6 +3681,9 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		- (_likeShown ? _like->width() : 0)
 		- (_botCommandShown ? _botCommandStart->width() : 0)
 		- ((_silent && !_silent->isHidden()) ? _silent->width() : 0)
+		- ((_toggleSuggestPost && !_toggleSuggestPost->isHidden())
+			? _toggleSuggestPost->width()
+			: 0)
 		- ((_scheduled && !_scheduled->isHidden())
 			? _scheduled->width()
 			: 0)
@@ -3724,6 +3774,12 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		_botKeyboardHide->moveToRight(right, buttonsTop);
 		right += _botKeyboardHide->width();
 	}
+	if (_toggleSuggestPost) {
+		_toggleSuggestPost->moveToRight(right, buttonsTop);
+		if (!_toggleSuggestPost->isHidden()) {
+			right += _toggleSuggestPost->width();
+		}
+	}
 	if (_scheduled) {
 		_scheduled->moveToRight(right, buttonsTop);
 		if (!_scheduled->isHidden()) {
@@ -3771,6 +3827,12 @@ void ComposeControls::updateControlsVisibility() {
 	}
 	if (_scheduled) {
 		_scheduled->setVisible(!hide);
+	}
+	if (_toggleSuggestPost) {
+		// LoogriGram: not while editing. Upstream could edit a message into
+		// a suggestion of changes; that path stays deleted.
+		_toggleSuggestPost->setVisible(
+			!_suggestPostActive && !isEditingMessage());
 	}
 	if (_commentsShown) {
 		_commentsShown->setVisible(!_commentsShownHidden.current());

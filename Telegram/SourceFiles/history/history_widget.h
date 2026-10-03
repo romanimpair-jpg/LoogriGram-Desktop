@@ -108,6 +108,8 @@ class ComposeSearch;
 class SubsectionTabs;
 class PullToNextChannel;
 struct SelectedQuote;
+class SuggestOptionsBar;
+enum class SuggestMode;
 } // namespace HistoryView
 
 namespace HistoryView::Controls {
@@ -221,9 +223,13 @@ public:
 		not_null<PeerData*> peer);
 
 	[[nodiscard]] FullReplyTo replyTo() const;
+	[[nodiscard]] SuggestOptions suggestOptions(
+		bool skipNoAdminCheck = false) const;
 	bool lastForceReplyReplied(const FullMsgId &replyTo) const;
 	bool lastForceReplyReplied() const;
+	bool cancelReplyOrSuggest(bool lastKeyboardUsed = false);
 	bool cancelReply(bool lastKeyboardUsed = false);
+	bool cancelSuggestPost();
 	void cancelEdit();
 	void updateForwarding();
 
@@ -692,6 +698,10 @@ private:
 
 	void setupScheduledToggle();
 	void refreshScheduledToggle();
+	void refreshSuggestPostToggle();
+	void applySuggestOptions(
+		SuggestOptions suggest,
+		HistoryView::SuggestMode mode);
 	void setupSendAsToggle();
 	void refreshSendAsToggle();
 	void refreshAttachBotsMenu();
@@ -724,6 +734,7 @@ private:
 	std::unique_ptr<Ui::SpoilerAnimation> _replySpoiler;
 	mutable base::Timer _updateEditTimeLeftDisplay;
 
+	std::unique_ptr<HistoryView::SuggestOptionsBar> _suggestOptions;
 
 	object_ptr<Ui::IconButton> _fieldBarCancel;
 
@@ -834,6 +845,7 @@ private:
 	object_ptr<Ui::IconButton> _botKeyboardShow;
 	object_ptr<Ui::IconButton> _botKeyboardHide;
 	object_ptr<Ui::IconButton> _botCommandStart;
+	object_ptr<Ui::IconButton> _toggleSuggestPost = { nullptr };
 	object_ptr<Ui::SilentToggle> _silent = { nullptr };
 	object_ptr<Ui::IconButton> _scheduled = { nullptr };
 	std::unique_ptr<HistoryView::Controls::TTLButton> _ttlInfo;

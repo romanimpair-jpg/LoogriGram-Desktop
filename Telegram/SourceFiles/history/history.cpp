@@ -122,7 +122,8 @@ using UpdateFlag = Data::HistoryUpdate::Flag;
 [[nodiscard]] std::unique_ptr<Data::Draft> CloneDraftForThread(
 		const Data::Draft &from,
 		MsgId topicRootId,
-		PeerId monoforumPeerId) {
+		PeerId monoforumPeerId,
+		bool suggestAllowed) {
 	auto reply = from.reply;
 	reply.topicRootId = topicRootId;
 	reply.monoforumPeerId = monoforumPeerId;
@@ -131,6 +132,7 @@ using UpdateFlag = Data::HistoryUpdate::Flag;
 		reply,
 		from.cursor,
 		from.webpage);
+	result->suggest = suggestAllowed ? from.suggest : SuggestOptions();
 	return result;
 }
 
@@ -138,11 +140,13 @@ void CopyDraftForThread(
 		not_null<Data::Draft*> to,
 		const Data::Draft &from,
 		MsgId topicRootId,
-		PeerId monoforumPeerId) {
+		PeerId monoforumPeerId,
+		bool suggestAllowed) {
 	to->textWithTags = from.textWithTags;
 	to->reply = from.reply;
 	to->reply.topicRootId = topicRootId;
 	to->reply.monoforumPeerId = monoforumPeerId;
+	to->suggest = suggestAllowed ? from.suggest : SuggestOptions();
 	to->cursor = from.cursor;
 	to->webpage = from.webpage;
 }
@@ -297,6 +301,7 @@ void History::createLocalDraftFromCloud(
 	}
 
 	auto existing = localDraft(topicRootId, monoforumPeerId);
+	const auto suggestAllowed = suggestDraftAllowed();
 	if (Data::DraftIsNull(existing)
 		|| !existing->date
 		|| draft->date >= existing->date) {
@@ -304,14 +309,16 @@ void History::createLocalDraftFromCloud(
 			setLocalDraft(CloneDraftForThread(
 				*draft,
 				topicRootId,
-				monoforumPeerId));
+				monoforumPeerId,
+				suggestAllowed));
 			existing = localDraft(topicRootId, monoforumPeerId);
 		} else if (existing != draft) {
 			CopyDraftForThread(
 				existing,
 				*draft,
 				topicRootId,
-				monoforumPeerId);
+				monoforumPeerId,
+				suggestAllowed);
 		}
 		existing->date = draft->date;
 	}
@@ -387,22 +394,28 @@ Data::Draft *History::createCloudDraft(
 		cloudDraft(topicRootId, monoforumPeerId)->date = TimeId(0);
 	} else {
 		auto existing = cloudDraft(topicRootId, monoforumPeerId);
+		const auto suggestAllowed = suggestDraftAllowed();
 		if (!existing) {
 			setCloudDraft(CloneDraftForThread(
 				*fromDraft,
 				topicRootId,
-				monoforumPeerId));
+				monoforumPeerId,
+				suggestAllowed));
 			existing = cloudDraft(topicRootId, monoforumPeerId);
 		} else if (existing != fromDraft) {
 			CopyDraftForThread(
 				existing,
 				*fromDraft,
 				topicRootId,
-				monoforumPeerId);
+				monoforumPeerId,
+				suggestAllowed);
 		}
 		existing->date = base::unixtime::now();
 		existing->reply.topicRootId = topicRootId;
 		existing->reply.monoforumPeerId = monoforumPeerId;
+		if (!suggestAllowed) {
+			existing->suggest = SuggestOptions();
+		}
 	}
 
 	if (const auto thread = threadFor(topicRootId, monoforumPeerId)) {
@@ -3842,6 +3855,10 @@ void History::monoforumChanged(Data::SavedMessages *old) {
 
 bool History::amMonoforumAdmin() const {
 	return (_flags & Flag::IsMonoforumAdmin);
+}
+
+bool History::suggestDraftAllowed() const {
+	return peer->isMonoforum() && !peer->amMonoforumAdmin();
 }
 
 bool History::hasForumThreadBars() const {

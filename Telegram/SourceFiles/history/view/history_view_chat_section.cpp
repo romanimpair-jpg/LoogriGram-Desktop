@@ -13,6 +13,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/controls/history_view_compose_controls.h"
 #include "history/view/controls/history_view_compose_search.h"
 #include "history/view/controls/history_view_draft_options.h"
+#include "history/view/controls/history_view_suggest_options.h"
 #include "history/view/history_view_about_view.h"
 #include "history/view/history_view_group_members_widget.h"
 #include "history/view/history_view_top_bar_widget.h"
@@ -410,6 +411,7 @@ ChatWidget::ChatWidget(
 			) | rpl::map([=] {
 				return session().scheduledMessages().count(_history) > 0;
 			}) | rpl::type_erased,
+		.currentSuggest = [=] { return suggestOptions(); },
 		.moderateKeyActivateCallback = [=](int key) {
 			const auto context = [=](FullMsgId itemId) {
 				return _inner->prepareClickContext(Qt::LeftButton, itemId);
@@ -418,6 +420,8 @@ ChatWidget::ChatWidget(
 				&& !_keyboard->isHidden()
 				&& _keyboard->moderateKeyActivate(key, context);
 		},
+		.suggestPostToggleShown = _suggestPostToggleShown.value(),
+		.suggestPostToggleActive = _suggestPostToggleActive.value(),
 		.botKeyboardShownToggleShown
 			= _botKeyboardShownToggleShown.value(),
 		.botKeyboardHideToggleShown
@@ -735,9 +739,13 @@ ChatWidget::ChatWidget(
 				&& (action.replyTo.messageId
 					== _composeControls->draftReplyingToMessage().messageId);
 			auto cancelledReply = false;
+			auto cancelledSuggest = false;
 			if (action.options.scheduled || !_justMarkingAsRead) {
 				if (replyMatches || lastKeyboardUsed) {
 					cancelledReply = cancelReply(lastKeyboardUsed);
+				}
+				if (mode() == Mode::History) {
+					cancelledSuggest = cancelSuggestPost();
 				}
 			}
 			if (action.options.scheduled) {
@@ -757,7 +765,8 @@ ChatWidget::ChatWidget(
 				if (mode() == Mode::History) {
 					showAtEnd();
 				}
-				if (cancelledReply && !action.clearDraft) {
+				if ((cancelledReply || cancelledSuggest)
+					&& !action.clearDraft) {
 					session().api().saveCurrentDraftToCloud();
 				}
 			}
@@ -878,6 +887,7 @@ ChatWidget::ChatWidget(
 		if (update.flags & (PeerUpdateFlag::FullInfo
 			| PeerUpdateFlag::Rights)) {
 			refreshCanSendMessages();
+			refreshSuggestPostToggle();
 		}
 		if (update.flags & PeerUpdateFlag::IsBlocked) {
 			refreshAboutView(true);
@@ -952,6 +962,7 @@ ChatWidget::ChatWidget(
 			}
 			if (flags & HistoryUpdateFlag::CloudDraft) {
 				_composeControls->applyCloudDraft();
+				refreshSuggestFromDraft();
 			}
 			if ((flags & HistoryUpdateFlag::UnreadMentions)
 				|| (flags & HistoryUpdateFlag::UnreadReactions)
@@ -1000,11 +1011,13 @@ ChatWidget::ChatWidget(
 		}, lifetime());
 	}
 
+	refreshSuggestFromDraft();
 
 	orderWidgets();
 
 	updateControlsVisibility();
 
+	refreshSuggestPostToggle();
 
 	refreshAboutView();
 
@@ -1020,6 +1033,7 @@ ChatWidget::~ChatWidget() {
 		_inner->setAboutView(nullptr);
 	}
 	_aboutView = nullptr;
+	_suggestOptions = nullptr;
 	_chooseTheme = nullptr;
 	base::take(_sendAction);
 	clearSupportPreloadRequest();
@@ -1217,7 +1231,8 @@ void ChatWidget::subscribeToTopic() {
 		}
 		if (update.flags & Flag::CloudDraft) {
 			_composeControls->applyCloudDraft();
-				}
+			refreshSuggestFromDraft();
+		}
 	}, _topicLifetime);
 
 	_topic->destroyed(
@@ -1673,6 +1688,14 @@ void ChatWidget::setupComposeControls() {
 			_topic
 				? std::make_shared<HistoryView::ScheduledMemento>(_topic)
 				: std::make_shared<HistoryView::ScheduledMemento>(_history));
+	}, lifetime());
+
+	_composeControls->suggestPostToggleClicks(
+	) | rpl::on_next([=] {
+		applySuggestOptions(
+			{ .exists = 1 },
+			SuggestMode::New);
+		_composeControls->cancelReplyMessage();
 	}, lifetime());
 
 	_composeControls->botKeyboardToggleClicks(
@@ -2191,6 +2214,7 @@ Api::SendAction ChatWidget::prepareSendAction(
 	}
 
 	result.options.sendAs = _composeControls->sendAsPeer();
+	result.options.suggest = suggestOptions();
 	result.clearDraft = true;
 	return result;
 }
@@ -3187,9 +3211,71 @@ void ChatWidget::setRepliesKeyboardState(MsgId id) {
 	_repliesKeyboardUsed = false;
 }
 
-// LoogriGram: a toggle beside the field turned a message into a post
-// suggested to a channel for a price in stars or TON, and a bar above
-// the field carried that price. Paying to be published is deleted.
+SuggestOptions ChatWidget::suggestOptions(bool skipNoAdminCheck) const {
+	const auto checked = skipNoAdminCheck
+		|| _history->suggestDraftAllowed();
+	return (checked && _suggestOptions)
+		? _suggestOptions->values()
+		: SuggestOptions();
+}
+
+void ChatWidget::applySuggestOptions(
+		SuggestOptions suggest,
+		SuggestMode suggestMode) {
+	Expects(suggest.exists);
+
+	_suggestOptions = std::make_unique<SuggestOptionsBar>(
+		controller()->uiShow(),
+		_peer,
+		suggest,
+		suggestMode);
+	_suggestOptions->updates() | rpl::on_next([=] {
+		update();
+		_composeControls->saveFieldToHistoryLocalDraft();
+		refreshTopBarActiveChat();
+	}, _suggestOptions->lifetime());
+	_composeControls->saveFieldToHistoryLocalDraft();
+	_suggestPostToggleActive = (_suggestOptions != nullptr);
+	updateControlsGeometry();
+	update();
+	refreshTopBarActiveChat();
+}
+
+bool ChatWidget::cancelSuggestPost() {
+	if (!_suggestOptions) {
+		return false;
+	}
+	_suggestOptions = nullptr;
+	updateControlsGeometry();
+	_composeControls->saveFieldToHistoryLocalDraft();
+	_suggestPostToggleActive = (_suggestOptions != nullptr);
+	update();
+	refreshTopBarActiveChat();
+	return true;
+}
+
+void ChatWidget::refreshSuggestPostToggle() {
+	const auto has = _history->suggestDraftAllowed();
+	_suggestPostToggleShown = has;
+	if (!has && _suggestOptions) {
+		cancelSuggestPost();
+	}
+}
+
+void ChatWidget::refreshSuggestFromDraft() {
+	if (!_history->suggestDraftAllowed()) {
+		return;
+	}
+	const auto topicRootId = _topic ? _topic->rootId() : MsgId();
+	const auto draft = _history->localDraft(
+		topicRootId,
+		_monoforumPeerId);
+	if (draft && draft->suggest.exists) {
+		applySuggestOptions(draft->suggest, SuggestMode::New);
+	} else {
+		cancelSuggestPost();
+	}
+}
 
 ChatWidget::Mode ChatWidget::mode() const {
 	if (_sublist) {
@@ -3460,6 +3546,7 @@ bool ChatWidget::showInternal(
 			if (params.reapplyLocalDraft) {
 				_composeControls->applyDraft(
 					ComposeControls::FieldHistoryAction::NewEntry);
+				refreshSuggestFromDraft();
 			} else if ((mode() == Mode::History)
 				&& !logMemento->highlightId()
 				&& !logMemento->sendBotStart()
@@ -3788,7 +3875,8 @@ void ChatWidget::subscribeToSublist() {
 		}
 		if (update.flags & Flag::CloudDraft) {
 			_composeControls->applyCloudDraft();
-				}
+			refreshSuggestFromDraft();
+		}
 	}, lifetime());
 
 	_sublist->destroyed(
@@ -3955,7 +4043,9 @@ void ChatWidget::updateControlsGeometry() {
 	} else {
 		const auto maxFieldHeight = computeMaxFieldHeightForKeyboard(
 			top,
-			bottom - tabsBottomSkip);
+			bottom
+				- tabsBottomSkip
+				- (_suggestOptions ? st::historyReplyHeight : 0));
 		if (_kbScroll && _kbShown && keyboardRowsVisible() && _keyboard) {
 			_keyboard->resizeToWidth(innerWidth, maxFieldHeight);
 			const auto keyboardReserve = std::min(
@@ -3985,6 +4075,9 @@ void ChatWidget::updateControlsGeometry() {
 		}
 	}
 	const auto composeTop = bottom;
+	if (_suggestOptions) {
+		bottom -= st::historyReplyHeight;
+	}
 	bottom -= tabsBottomSkip;
 
 	const auto scrollHeight = bottom - top;
@@ -4053,6 +4146,18 @@ void ChatWidget::paintEvent(QPaintEvent *e) {
 		QRect(0, aboveHeight, width(), height() - aboveHeight));
 	SectionWidget::PaintBackground(controller(), _theme.get(), this, bg);
 
+	if (_suggestOptions && !_bottom->isButtonActive()) {
+		auto p = Painter(this);
+		const auto backy = _composeControlsTop
+			- st::historyReplyHeight;
+		const auto backh = st::historyReplyHeight;
+		p.fillRect(
+			myrtlrect(0, backy, width(), backh),
+			st::historyReplyBg);
+		// LoogriGram: upstream also painted the icon and the lines on their
+		// own first, so the text was drawn twice in the same place.
+		_suggestOptions->paintBar(p, 0, backy, width());
+	}
 }
 
 bool ChatWidget::emptyShown() const {
@@ -4260,6 +4365,9 @@ void ChatWidget::listCancelRequest() {
 		return;
 	} else if (_composeControls->handleCancelRequest()) {
 		refreshTopBarActiveChat();
+		return;
+	} else if (_suggestOptions && _composeControls->fieldTextEmpty()) {
+		cancelSuggestPost();
 		return;
 	}
 	controller()->showBackFromStack();

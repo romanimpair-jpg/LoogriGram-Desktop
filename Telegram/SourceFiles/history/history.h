@@ -85,6 +85,7 @@ public:
 
 	void monoforumChanged(Data::SavedMessages *old);
 	[[nodiscard]] bool amMonoforumAdmin() const;
+	[[nodiscard]] bool suggestDraftAllowed() const;
 	[[nodiscard]] bool hasForumThreadBars() const;
 	void forumTabsChanged(bool forumTabs);
 

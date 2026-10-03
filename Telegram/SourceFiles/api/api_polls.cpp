@@ -255,6 +255,9 @@ void Polls::create(
 	if (action.options.effectId) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
 	}
+	if (action.options.suggest) {
+		sendFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
+	}
 	const auto sendAs = action.options.sendAs;
 	if (sendAs) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_send_as;
@@ -287,7 +290,7 @@ void Polls::create(
 			MTPInputQuickReplyShortcut(),
 			MTP_long(action.options.effectId),
 			MTP_long(0),
-			MTPSuggestedPost()
+			SuggestToMTP(action.options.suggest)
 		), [=](const MTPUpdates &result, const MTP::Response &response) {
 		if (clearCloudDraft) {
 			history->finishSavingCloudDraft(

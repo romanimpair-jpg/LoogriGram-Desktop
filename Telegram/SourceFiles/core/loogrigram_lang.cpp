@@ -39,6 +39,9 @@ constexpr auto kTranscribeTrialsOver = Entry{
 constexpr auto kPaidMessagesLocked = Entry{
 	.en = "%1 only accepts paid messages, which LoogriGram doesn't send.",
 };
+constexpr auto kSuggestPostAnytime = Entry{
+	.en = "Publish at any time. Click to choose one.",
+};
 
 [[nodiscard]] QString Pick(const Entry &entry, const QString &languageId) {
 	// Nothing is translated yet, so the id is unused. When a locale is added,
@@ -115,6 +118,10 @@ TextWithEntities TranscribeTrialsOver(TextWithEntities date) {
 
 TextWithEntities PaidMessagesLocked(TextWithEntities user) {
 	return Substitute(kPaidMessagesLocked, std::move(user));
+}
+
+QString SuggestPostAnytime() {
+	return Pick(kSuggestPostAnytime, ::Lang::GetInstance().id());
 }
 
 bool KeepCompiledString(const QByteArray &key) {

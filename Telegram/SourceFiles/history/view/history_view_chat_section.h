@@ -84,9 +84,11 @@ class EmptyPainter;
 class PullToNextChannel;
 class SubsectionTabs;
 class SelfForwardsTagger;
+class SuggestOptionsBar;
 class AboutView;
 class BottomControls;
 class PullToNextChannel;
+enum class SuggestMode;
 
 struct ChatViewId {
 	not_null<History*> history;
@@ -371,6 +373,12 @@ private:
 	void refreshCanSendMessages();
 	void refreshResolvedTopicRootState();
 	void setKeyboardReplyTo(HistoryItem *item);
+	[[nodiscard]] SuggestOptions suggestOptions(
+		bool skipNoAdminCheck = false) const;
+	void applySuggestOptions(
+		SuggestOptions suggest,
+		SuggestMode suggestMode);
+	bool cancelSuggestPost();
 	[[nodiscard]] bool realReplyOrEditActive() const;
 	[[nodiscard]] FullMsgId keyboardSourceId() const;
 	[[nodiscard]] HistoryItem *keyboardSourceItem() const;
@@ -406,6 +414,8 @@ private:
 	void sendBotCommand(
 		Bot::SendCommandRequest request,
 		Api::SendOptions options);
+	void refreshSuggestPostToggle();
+	void refreshSuggestFromDraft();
 	[[nodiscard]] HistoryItem *lookupRepliesRoot() const;
 	[[nodiscard]] Data::ForumTopic *lookupTopic();
 	[[nodiscard]] bool computeAreComments() const;
@@ -523,11 +533,14 @@ private:
 	object_ptr<Ui::InnerDropdown> _membersDropdown = { nullptr };
 	base::Timer _membersDropdownShowTimer;
 	std::unique_ptr<HistoryView::TopControls> _topControls;
+	rpl::variable<bool> _suggestPostToggleShown = false;
+	rpl::variable<bool> _suggestPostToggleActive = false;
 	rpl::variable<bool> _botKeyboardShownToggleShown = false;
 	rpl::variable<bool> _botKeyboardHideToggleShown = false;
 	rpl::variable<bool> _botCommandStartExtraGuard = true;
 	rpl::variable<QString> _botKeyboardPlaceholder;
 	std::unique_ptr<ComposeControls> _composeControls;
+	std::unique_ptr<SuggestOptionsBar> _suggestOptions;
 	std::unique_ptr<ComposeSearch> _composeSearch;
 	std::unique_ptr<HistoryView::BottomControls> _bottom;
 	std::unique_ptr<HistoryView::AboutView> _aboutView;

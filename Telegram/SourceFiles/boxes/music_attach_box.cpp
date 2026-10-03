@@ -1383,6 +1383,9 @@ void ApplySendOptions(
 	if (options.ttlSeconds != empty.ttlSeconds) {
 		base.ttlSeconds = options.ttlSeconds;
 	}
+	if (options.suggest != empty.suggest) {
+		base.suggest = options.suggest;
+	}
 }
 
 [[nodiscard]] Api::SendType CurrentSendType(const Api::SendAction &action) {
@@ -1754,7 +1757,8 @@ void MusicAttachBox(
 		auto &api = controller->session().api();
 		for (auto &group : bundle->groups) {
 			const auto optionsRequireSingle
-				= action.options.scheduleRepeatPeriod;
+				= action.options.scheduleRepeatPeriod
+				|| action.options.suggest;
 			const auto album = (group.type != Ui::AlbumType::None)
 				&& !optionsRequireSingle
 				? std::make_shared<SendingAlbum>()
@@ -1794,7 +1798,8 @@ void MusicAttachBox(
 			.text = &text,
 			.messagesCount = [&] {
 				const auto optionsRequireSingle
-					= action.options.scheduleRepeatPeriod;
+					= action.options.scheduleRepeatPeriod
+					|| action.options.suggest;
 				return optionsRequireSingle
 					? int(items.size())
 					: int((items.size() + Ui::MaxAlbumItems() - 1)

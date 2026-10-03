@@ -7,6 +7,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+namespace ChatHelpers {
+class Show;
+} // namespace ChatHelpers
+
 namespace Main {
 class Session;
 } // namespace Main
@@ -35,5 +39,47 @@ struct SuggestTimeBoxArgs {
 void ChooseSuggestTimeBox(
 	not_null<Ui::GenericBox*> box,
 	SuggestTimeBoxArgs &&args);
+
+// The bar above the message field while a post is being suggested. Clicking
+// it chooses the publishing time; upstream's opened the price box.
+class SuggestOptionsBar final {
+public:
+	SuggestOptionsBar(
+		std::shared_ptr<ChatHelpers::Show> show,
+		not_null<PeerData*> peer,
+		SuggestOptions values,
+		SuggestMode mode);
+	~SuggestOptionsBar();
+
+	void paintBar(QPainter &p, int x, int y, int outerWidth);
+	void edit();
+
+	void paintIcon(QPainter &p, int x, int y, int outerWidth);
+	void paintLines(QPainter &p, int x, int y, int outerWidth);
+
+	[[nodiscard]] SuggestOptions values() const;
+
+	[[nodiscard]] rpl::producer<> updates() const;
+
+	[[nodiscard]] rpl::lifetime &lifetime();
+
+private:
+	void updateTexts();
+
+	[[nodiscard]] TextWithEntities composeText() const;
+
+	const std::shared_ptr<ChatHelpers::Show> _show;
+	const not_null<PeerData*> _peer;
+	const SuggestMode _mode = SuggestMode::New;
+
+	Ui::Text::String _title;
+	Ui::Text::String _text;
+
+	SuggestOptions _values;
+	rpl::event_stream<> _updates;
+
+	rpl::lifetime _lifetime;
+
+};
 
 } // namespace HistoryView

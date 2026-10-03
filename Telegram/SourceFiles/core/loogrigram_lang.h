@@ -52,6 +52,10 @@ namespace LoogriGram::Lang {
 // The name is passed in, so the caller decides how it is emphasised.
 [[nodiscard]] TextWithEntities PaidMessagesLocked(TextWithEntities user);
 
+// The line under "Suggest a Post Below" before a time is chosen. Telegram's
+// text there asks for a price; a post suggested from here has none.
+[[nodiscard]] QString SuggestPostAnytime();
+
 // Keys whose compiled text must survive the cloud language pack.
 //
 // Editing lang.strings changes only the compiled default. On startup the

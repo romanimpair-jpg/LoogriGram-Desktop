@@ -70,6 +70,10 @@ struct Draft {
 	TimeId date = 0;
 	TextWithTags textWithTags;
 	FullReplyTo reply; // reply.messageId.msg is editMsgId for edit draft.
+	// LoogriGram: upstream took this in both constructors; it is set after
+	// construction instead, so callers that never have one stay as they are.
+	// It is never written to the local drafts file - see writeDrafts.
+	SuggestOptions suggest;
 	MessageCursor cursor;
 	WebPageDraft webpage;
 	mtpRequestId saveRequestId = 0;

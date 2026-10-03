@@ -70,6 +70,7 @@ Draft::Draft(
 bool DraftIsNull(const Draft *draft) {
 	return !draft
 		|| (!draft->reply.messageId
+			&& !draft->suggest.exists
 			&& DraftStringIsEmpty(draft->textWithTags.text));
 }
 
@@ -83,6 +84,7 @@ bool DraftsAreEqual(const Draft *a, const Draft *b) {
 	}
 	return (a->textWithTags == b->textWithTags)
 		&& (a->reply == b->reply)
+		&& (a->suggest == b->suggest)
 		&& (a->webpage == b->webpage);
 }
 
@@ -139,11 +141,21 @@ void ApplyPeerCloudDraft(
 			}
 		}, [](const auto &) {});
 	}
+	auto suggest = SuggestOptions();
+	if (!history->suggestDraftAllowed()) {
+		// Don't apply suggest options in unsupported chats.
+	} else if (const auto suggested = draft.vsuggested_post()) {
+		// LoogriGram: only the time is read. A price set on another device
+		// is dropped, so a draft sent from here is suggested for free.
+		suggest.exists = 1;
+		suggest.date = suggested->data().vschedule_date().value_or_empty();
+	}
 	auto cloudDraft = std::make_unique<Draft>(
 		textWithTags,
 		replyTo,
 		MessageCursor(Ui::kQFixedMax, Ui::kQFixedMax, Ui::kQFixedMax),
 		std::move(webpage));
+	cloudDraft->suggest = suggest;
 	cloudDraft->date = date;
 
 	history->setCloudDraft(std::move(cloudDraft));
