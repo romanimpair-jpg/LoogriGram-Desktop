@@ -36,12 +36,16 @@ suggestion with a price stays hidden, and so does a message edited into
 having one; the free forwarding request keeps its buttons
 (`api_suggest_post.cpp`, renamed back from `api_no_forwards_request`); no
 on-disk format changed (a suggestion persists only through the cloud draft).
-**Its first build, run 37138072076, had not reported when this was written**
-- if it failed, fix from `--log-failed`; the build-risk list is in the Android
-notes' "Start here". Still owed: the reverse audit, Android's commits against
-this tree - Android's `LOOGRIGRAM.md` "Start here" has the method and the
-first candidates (the iTunes cover lookup, the Help section's Privacy Policy
-row).
+Its first build, run 37138072076, failed before compiling anything of ours:
+every dependency cache had been evicted after the idle fortnight, and the
+rebuild died in MSYS2 ("target not found: mingw-w64-x86_64-diffutils").
+Upstream's ucrt64 switch was tried and reverted (`6b3c48e7d1`,
+`d4958b8bab`) - the rule is to stop following upstream until something
+breaks, and then to freeze, not to adopt. The dependencies are now frozen
+(`dd0ea5658d`, see Building, "Frozen dependencies"), and the build was
+re-run as 37158363951 - **not reported when this was written**. Owed, in
+order: freezing every other dependency (the list is in Android's "Start
+here"), then the reverse parity audit, Android's commits against this tree.
 
 ---
 
@@ -424,6 +428,33 @@ To install a build by hand, **replace only `app\LoogriGram.exe`**. tdesktop
 keeps its profile beside the executable, so `app\tdata\` holds the session,
 settings and ghost-mode state. A copy run from anywhere else silently creates
 a second, empty profile, which looks exactly like being logged out.
+
+### Frozen dependencies
+
+The rule: dependencies stay at the versions the last good build used and
+change only on purpose, with the whole package - never by following
+upstream. Upstream's msys64 stage pinned its installer and then ran `pacman
+-Syu`, which installs whatever MSYS2 serves that day; the build only stayed
+the same while the Actions caches lived, and GitHub evicts any unused for 7
+days. So, since `dd0ea5658d`:
+
+- **MSYS2:** `prepare.py`'s msys64 stage installs exactly the 79 packages
+  the last good dependency build installed (run 34206584631, 2026-09-08,
+  read from its log) - 6 core, then 73 - from the pre-release
+  `deps-msys2-20260908` (one tar, checked against a fixed SHA-256 in
+  `prepare.py`; pacman verifies each package's signature). No `-Syu`.
+- **Built trees:** a `cache` run stores `ThirdParty` and `Libraries` as the
+  `deps-trees` pre-release (split under 2 GB); any run whose cache matched
+  nothing restores them from there. Run one `cache` after any build that
+  rebuilt dependencies. Both steps are `continue-on-error`.
+- Both pre-releases are `--latest=false`; the in-app updater reads
+  `/releases/latest` and never sees them.
+
+Still floating, owed (2026-10-03): `Eden-CI/msvc-dev-cmd@master`, the
+`actions/*@vN` tags, `windows-latest`, the python stage's unpinned
+`pip install`, and NuGet's `latest` download. The last good *full* build
+ran its dependency stages on 2026-09-08 (run 34206584631); read versions
+from there.
 
 ### The incremental build tree
 
