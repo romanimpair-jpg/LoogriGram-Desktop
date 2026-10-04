@@ -438,31 +438,6 @@ void Reactions::preloadImageFor(const ReactionId &id) {
 	}
 }
 
-void Reactions::preloadAnimationsFor(const ReactionId &id) {
-	const auto preload = [&](DocumentData *document) {
-		const auto view = document
-			? document->activeMediaView()
-			: nullptr;
-		if (view) {
-			view->checkStickerLarge();
-		}
-	};
-	const auto custom = id.custom();
-	const auto document = custom ? _owner->document(custom).get() : nullptr;
-	const auto customSticker = document ? document->sticker() : nullptr;
-	const auto findId = custom
-		? ReactionId{ { customSticker ? customSticker->alt : QString() } }
-		: id;
-	const auto i = ranges::find(_available, findId, &Reaction::id);
-	if (i == end(_available)) {
-		return;
-	}
-	if (!custom) {
-		preload(i->centerIcon);
-	}
-	preload(i->aroundAnimation);
-}
-
 QImage Reactions::resolveReactionImageFor(const ReactionId &emoji) {
 	Expects(!emoji.custom());
 

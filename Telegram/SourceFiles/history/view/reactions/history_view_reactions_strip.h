@@ -31,9 +31,6 @@ namespace HistoryView::Reactions {
 struct ChosenReaction {
 	FullMsgId context;
 	Data::ReactionId id;
-	QImage icon;
-	QRect localGeometry;
-	QRect globalGeometry;
 
 	explicit operator bool() const {
 		return context && !id.empty();
@@ -77,11 +74,9 @@ public:
 	[[nodiscard]] int count() const;
 	void setSelected(int index) const;
 	[[nodiscard]] std::variant<AddedButton, ReactionId> selected() const;
-	[[nodiscard]] int computeOverSize() const;
 
 	void clearAppearAnimations(bool mainAppeared = true);
 
-	int fillChosenIconGetIndex(ChosenReaction &chosen) const;
 
 	[[nodiscard]] bool onlyAddedButton() const;
 	[[nodiscard]] bool onlyMainEmojiVisible() const;

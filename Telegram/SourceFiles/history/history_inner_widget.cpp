@@ -45,7 +45,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/power_saving.h"
 #include "ui/effects/path_shift_gradient.h"
 #include "ui/effects/message_sending_animation_controller.h"
-#include "ui/effects/reaction_fly_animation.h"
 #include "ui/text/text_isolated_emoji.h"
 #include "ui/text/text_utilities.h"
 #include "ui/boxes/edit_factcheck_box.h"
@@ -496,20 +495,6 @@ void HistoryInner::reactionChosen(const ChosenReaction &reaction) {
 		return;
 	}
 	item->toggleReaction(reaction.id, HistoryReactionSource::Selector);
-	if (!ranges::contains(item->chosenReactions(), reaction.id)) {
-		return;
-	} else if (const auto view = viewByItem(item)) {
-		if (const auto top = itemTop(view); top >= 0) {
-			const auto geometry = reaction.localGeometry.isEmpty()
-				? mapFromGlobal(reaction.globalGeometry)
-				: reaction.localGeometry;
-			view->animateReaction({
-				.id = reaction.id,
-				.flyIcon = reaction.icon,
-				.flyFrom = geometry.translated(0, -top),
-			});
-		}
-	}
 }
 
 Main::Session &HistoryInner::session() const {
@@ -811,10 +796,6 @@ void HistoryInner::repaintItem(const Element *view) {
 	if (top >= 0) {
 		const auto range = view->verticalRepaintRange();
 		update(0, top + range.top, width(), range.height);
-		const auto id = view->data()->fullId();
-		if (const auto area = _reactionsManager->lookupEffectArea(id)) {
-			update(*area);
-		}
 	}
 }
 
@@ -1419,9 +1400,6 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 			}
 		}
 		session().data().reactions().poll(item, context.now);
-		_reactionsManager->recordCurrentReactionEffect(
-			item->fullId(),
-			QPoint(0, top));
 	};
 
 	adjustCurrent(clip.top());
@@ -2548,10 +2526,6 @@ void HistoryInner::toggleFavoriteReaction(not_null<Element*> view) const {
 			favorite,
 			&Data::Reaction::id)) {
 		return;
-	} else if (!ranges::contains(item->chosenReactions(), favorite)) {
-		if (const auto top = itemTop(view); top >= 0) {
-			view->animateReaction({ .id = favorite });
-		}
 	}
 	item->toggleReaction(favorite, HistoryReactionSource::Quick);
 }

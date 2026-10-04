@@ -100,7 +100,6 @@ public:
 	// images for the icon by the time) is not fetched; effects are gone
 	// (the user's decision, 2026-10-04).
 
-	void preloadAnimationsFor(const ReactionId &emoji);
 
 	void send(not_null<HistoryItem*> item, bool addToRecent);
 	[[nodiscard]] bool sending(not_null<HistoryItem*> item) const;

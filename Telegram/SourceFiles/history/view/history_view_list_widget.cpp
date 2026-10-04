@@ -63,7 +63,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/inactive_press.h"
 #include "ui/effects/message_sending_animation_controller.h"
 #include "ui/effects/path_shift_gradient.h"
-#include "ui/effects/reaction_fly_animation.h"
 #include "ui/chat/chat_theme.h"
 #include "ui/chat/chat_style.h"
 #include "ui/painter.h"
@@ -2968,10 +2967,6 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 		_delegate->listPaintEmpty(p, context);
 		return;
 	}
-	if (_reactionsManager) {
-		_reactionsManager->startEffectsCollection();
-	}
-
 	const auto session = &this->session();
 	auto top = itemTop(from->get());
 
@@ -3049,11 +3044,6 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 			}
 		}
 		session->data().reactions().poll(item, context.now);
-		if (_reactionsManager) {
-			_reactionsManager->recordCurrentReactionEffect(
-				item->fullId(),
-				QPoint(0, top));
-		}
 		top += height;
 		context.translate(0, -height);
 		p.translate(0, height);
@@ -3735,10 +3725,6 @@ void ListWidget::toggleFavoriteReaction(not_null<Element*> view) const {
 			favorite,
 			&Data::Reaction::id)) {
 		return;
-	} else if (!ranges::contains(item->chosenReactions(), favorite)) {
-		if (const auto top = itemTop(view); top >= 0) {
-			view->animateReaction({ .id = favorite });
-		}
 	}
 	item->toggleReaction(favorite, HistoryReactionSource::Quick);
 }
@@ -3978,20 +3964,6 @@ void ListWidget::reactionChosen(ChosenReaction reaction) {
 		return;
 	}
 	item->toggleReaction(reaction.id, HistoryReactionSource::Selector);
-	if (!ranges::contains(item->chosenReactions(), reaction.id)) {
-		return;
-	} else if (const auto view = viewForItem(item)) {
-		const auto geometry = reaction.localGeometry.isEmpty()
-			? mapFromGlobal(reaction.globalGeometry)
-			: reaction.localGeometry;
-		if (const auto top = itemTop(view); top >= 0) {
-			view->animateReaction({
-				.id = reaction.id,
-				.flyIcon = reaction.icon,
-				.flyFrom = geometry.translated(0, -top),
-			});
-		}
-	}
 }
 
 void ListWidget::mousePressEvent(QMouseEvent *e) {
@@ -5318,13 +5290,6 @@ void ListWidget::repaintItem(const Element *view) {
 	const auto top = itemTop(view);
 	const auto range = view->verticalRepaintRange();
 	update(0, top + range.top, width(), range.height);
-	const auto id = view->data()->fullId();
-	const auto area = _reactionsManager
-		? _reactionsManager->lookupEffectArea(id)
-		: std::nullopt;
-	if (area) {
-		update(*area);
-	}
 }
 
 void ListWidget::repaintItem(const Element *view, QRect rect) {

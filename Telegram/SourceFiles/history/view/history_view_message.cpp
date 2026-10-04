@@ -38,7 +38,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/share_box.h"
 #include "boxes/peers/tag_info_box.h"
 #include "ui/chat/torn_edge.h"
-#include "ui/effects/reaction_fly_animation.h"
 #include "ui/effects/ripple_animation.h"
 #include "ui/text/text_utilities.h"
 #include "ui/text/text_custom_emoji.h"
@@ -515,7 +514,7 @@ Message::Message(
 	if (data->displayHiddenSenderInfo()) {
 		AddComponents(HiddenSenderTooltip::Bit());
 	}
-	setupReactions(replacing);
+	refreshReactions();
 	initSuggestedInfo();
 
 	if (data->textAppearing()) {
@@ -1057,60 +1056,6 @@ void Message::applyGroupAdminChanges(
 	if (!data()->out()
 		&& changes.contains(peerToUser(data()->author()->id))) {
 		history()->owner().requestViewResize(this);
-	}
-}
-
-void Message::animateReaction(Ui::ReactionFlyAnimationArgs &&args) {
-	const auto item = data();
-	const auto media = this->media();
-
-	auto g = countGeometry();
-	if (g.width() < 1 || isHidden()) {
-		return;
-	}
-	const auto repainter = [=] { repaint(); };
-
-	const auto bubble = drawBubble();
-	const auto reactionsInBubble = _reactions && embedReactionsInBubble();
-	const auto mediaDisplayed = media && media->isDisplayed();
-
-	if (_reactions && !reactionsInBubble) {
-		const auto reactionsHeight = st::mediaInBubbleSkip + _reactions->height();
-		const auto reactionsLeft = (!bubble && mediaDisplayed)
-			? media->contentRectForReactions().x()
-			: 0;
-		g.setHeight(g.height() - reactionsHeight);
-		const auto reactionsPosition = QPoint(reactionsLeft + g.left(), g.top() + g.height() + st::mediaInBubbleSkip);
-		_reactions->animate(args.translated(-reactionsPosition), repainter);
-		return;
-	}
-
-	const auto keyboard = item->inlineReplyKeyboard();
-	auto keyboardHeight = 0;
-	if (keyboard) {
-		keyboardHeight = keyboard->naturalHeight();
-		g.setHeight(g.height() - st::msgBotKbButton.margin - keyboardHeight);
-	}
-
-	if (bubble) {
-		// Entry page is always a bubble bottom.
-		auto inner = g;
-		if (_comments) {
-			inner.setHeight(inner.height() - st::historyCommentsButtonHeight);
-		}
-		auto trect = inner.marginsRemoved(st::msgPadding);
-		const auto reactionsTop = (reactionsInBubble && !_viewButton)
-			? st::mediaInBubbleSkip
-			: 0;
-		const auto reactionsHeight = reactionsInBubble
-			? (reactionsTop + _reactions->height())
-			: 0;
-		if (reactionsInBubble) {
-			trect.setHeight(trect.height() - reactionsHeight);
-			const auto reactionsPosition = QPoint(trect.left(), trect.top() + trect.height() + reactionsTop);
-			_reactions->animate(args.translated(-reactionsPosition), repainter);
-			return;
-		}
 	}
 }
 
@@ -1923,9 +1868,6 @@ void Message::draw(Painter &p, const PaintContext &context) const {
 			if (context.reactionInfo && !displayInfo && !_reactions) {
 				const auto add = QPoint(0, mediaHeight);
 				context.reactionInfo->position = mediaPosition + add;
-				if (context.reactionInfo->effectPaint) {
-					context.reactionInfo->effectOffset -= add;
-				}
 			}
 			if (maybeMediaHighlight
 				&& !context.highlightPathCache->isEmpty()) {
@@ -1967,9 +1909,6 @@ void Message::draw(Painter &p, const PaintContext &context) const {
 			if (context.reactionInfo && !displayInfo && !_reactions) {
 				context.reactionInfo->position
 					= QPoint(inner.left(), trect.y() + trect.height());
-				if (context.reactionInfo->effectPaint) {
-					context.reactionInfo->effectOffset -= QPoint(0, mediaHeight);
-				}
 			}
 		}
 		if (check) {
@@ -2015,9 +1954,6 @@ void Message::draw(Painter &p, const PaintContext &context) const {
 			if (context.reactionInfo && !_reactions) {
 				const auto add = QPoint(0, inner.top() + inner.height());
 				context.reactionInfo->position = add;
-				if (context.reactionInfo->effectPaint) {
-					context.reactionInfo->effectOffset -= add;
-				}
 			}
 			if (_comments) {
 				const auto o = p.opacity();
@@ -2083,9 +2019,6 @@ void Message::draw(Painter &p, const PaintContext &context) const {
 		if (context.reactionInfo && !_reactions) {
 			const auto add = QPoint(0, g.height());
 			context.reactionInfo->position = g.topLeft() + add;
-			if (context.reactionInfo->effectPaint) {
-				context.reactionInfo->effectOffset -= add;
-			}
 		}
 		p.translate(-g.topLeft());
 	}
@@ -2119,9 +2052,6 @@ void Message::draw(Painter &p, const PaintContext &context) const {
 	}
 	if (hasGesture) {
 		p.translate(-gestureShift, 0);
-		if (context.reactionInfo && context.reactionInfo->effectPaint) {
-			context.reactionInfo->effectOffset += QPoint(gestureShift, 0);
-		}
 
 		constexpr auto kShiftRatio = 1.5;
 		constexpr auto kBouncePart = 0.25;

@@ -61,7 +61,6 @@ public:
 		int delta,
 		Qt::ScrollPhase phase) override;
 
-	void animateReaction(Ui::ReactionFlyAnimationArgs &&args) override;
 
 private:
 	[[nodiscard]] QRect countGeometry() const;

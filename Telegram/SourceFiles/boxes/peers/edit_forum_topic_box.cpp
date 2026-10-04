@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "ui/widgets/fields/input_field.h"
 #include "ui/widgets/shadow.h"
-#include "ui/effects/emoji_fly_animation.h"
 #include "ui/abstract_button.h"
 #include "ui/vertical_list.h"
 #include "data/data_document.h"
@@ -145,8 +144,7 @@ bool DefaultIconEmoji::readyInDefaultState() {
 		not_null<QWidget*> parent,
 		not_null<Window::SessionController*> controller,
 		rpl::producer<DefaultIcon> defaultIcon,
-		rpl::producer<DocumentId> iconId,
-		Fn<bool(not_null<Ui::RpWidget*>)> paintIconFrame) {
+		rpl::producer<DocumentId> iconId) {
 	struct State {
 		std::unique_ptr<Ui::Text::CustomEmoji> icon;
 		QImage defaultIcon;
@@ -182,9 +180,7 @@ bool DefaultIconEmoji::readyInDefaultState() {
 
 	result->resize(size, size);
 	result->paintRequest(
-	) | rpl::filter([=] {
-		return !paintIconFrame(result);
-	}) | rpl::on_next([=](QRect clip) {
+	) | rpl::on_next([=](QRect clip) {
 		auto args = Ui::Text::CustomEmoji::Context{
 			.textColor = st::windowFg->c,
 			.now = crl::now(),
@@ -235,13 +231,11 @@ bool DefaultIconEmoji::readyInDefaultState() {
 }
 
 struct IconSelector {
-	Fn<bool(not_null<Ui::RpWidget*>)> paintIconFrame;
 	rpl::producer<DocumentId> iconIdValue;
 };
 
 [[nodiscard]] IconSelector AddIconSelector(
 		not_null<Ui::GenericBox*> box,
-		not_null<Ui::RpWidget*> button,
 		not_null<Window::SessionController*> controller,
 		rpl::producer<DefaultIcon> defaultIcon,
 		rpl::producer<int> coverHeight,
@@ -250,13 +244,10 @@ struct IconSelector {
 	using namespace ChatHelpers;
 
 	struct State {
-		std::unique_ptr<Ui::EmojiFlyAnimation> animation;
 		rpl::variable<DocumentId> iconId;
-		QPointer<QWidget> button;
 	};
 	const auto state = box->lifetime().make_state<State>(State{
 		.iconId = iconId,
-		.button = button.get(),
 	});
 
 	const auto manager = &controller->session().data().customEmojiManager();
@@ -327,7 +318,6 @@ struct IconSelector {
 
 	selector->customChosen(
 	) | rpl::on_next([=](ChatHelpers::FileChosen data) {
-		const auto owner = &controller->session().data();
 		const auto document = data.document;
 		const auto id = document->id;
 		const auto custom = (id != kDefaultIconId);
@@ -336,38 +326,12 @@ struct IconSelector {
 		if (premium) {
 			return;
 		}
-		const auto body = controller->window().widget()->bodyWidget();
-		if (state->button && custom) {
-			const auto &from = data.messageSendingFrom;
-			auto args = Ui::ReactionFlyAnimationArgs{
-				.id = { { id } },
-				.flyIcon = from.frame,
-				.flyFrom = body->mapFromGlobal(from.globalStartGeometry),
-			};
-			state->animation = std::make_unique<Ui::EmojiFlyAnimation>(
-				body,
-				&owner->reactions(),
-				std::move(args),
-				[=] { state->animation->repaint(); },
-				[] { return st::windowFg->c; },
-				Data::CustomEmojiSizeTag::Large);
-		}
+		// LoogriGram: a chosen custom icon flew from the list into the
+		// topic's icon (Ui::EmojiFlyAnimation); no big animations.
 		state->iconId = id;
 	}, selector->lifetime());
 
-	auto paintIconFrame = [=](not_null<Ui::RpWidget*> button) {
-		if (!state->animation) {
-			return false;
-		} else if (state->animation->paintBadgeFrame(button)) {
-			return true;
-		}
-		InvokeQueued(state->animation->layer(), [=] {
-			state->animation = nullptr;
-		});
-		return false;
-	};
 	return {
-		.paintIconFrame = std::move(paintIconFrame),
 		.iconIdValue = state->iconId.value(),
 	};
 }
@@ -405,7 +369,6 @@ void EditForumTopicBox(
 		rpl::variable<DocumentId> iconId = 0;
 		std::vector<int32> otherColorIds;
 		mtpRequestId requestId = 0;
-		Fn<bool(not_null<Ui::RpWidget*>)> paintIconFrame;
 	};
 	const auto state = box->lifetime().make_state<State>();
 	const auto &colors = Data::ForumTopicColorIds();
@@ -432,17 +395,13 @@ void EditForumTopicBox(
 		title->setFocusFast();
 	});
 
-	const auto paintIconFrame = [=](not_null<Ui::RpWidget*> widget) {
-		return state->paintIconFrame && state->paintIconFrame(widget);
-	};
 	const auto icon = (topic && topic->isGeneral())
 		? GeneralIconPreview(title->parentWidget())
 		: EditIconButton(
 			title->parentWidget(),
 			controller,
 			state->defaultIcon.value(),
-			state->iconId.value(),
-			paintIconFrame);
+			state->iconId.value());
 
 	title->geometryValue(
 	) | rpl::on_next([=](QRect geometry) {
@@ -485,14 +444,12 @@ void EditForumTopicBox(
 
 		auto selector = AddIconSelector(
 			box,
-			icon,
 			controller,
 			state->defaultIcon.value(),
 			top->heightValue(),
 			state->iconId.current(),
 			[&](object_ptr<Ui::RpWidget> footer) {
 				top->add(std::move(footer)); });
-		state->paintIconFrame = std::move(selector.paintIconFrame);
 		std::move(
 			selector.iconIdValue
 		) | rpl::on_next([=](DocumentId iconId) {

@@ -20,7 +20,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_todo_list.h"
 #include "info/profile/info_profile_cover.h"
 #include "ui/chat/chat_style.h"
-#include "ui/effects/reaction_fly_animation.h"
 #include "ui/text/text_options.h"
 #include "ui/painter.h"
 #include "ui/power_saving.h"
@@ -417,7 +416,7 @@ Service::Service(
 	not_null<HistoryItem*> data,
 	Element *replacing)
 : Element(delegate, data, replacing, Flag::ServiceMessage) {
-	setupReactions(replacing);
+	refreshReactions();
 }
 
 void Service::clickHandlerPressedChanged(
@@ -456,22 +455,6 @@ QRect Service::countGeometry() const {
 	auto margins = st::msgServiceMargin;
 	margins.setTop(marginTop());
 	return result.marginsRemoved(margins);
-}
-
-void Service::animateReaction(Ui::ReactionFlyAnimationArgs &&args) {
-	auto g = countGeometry();
-	if (g.width() < 1 || isHidden()) {
-		return;
-	}
-	const auto repainter = [=] { repaint(); };
-
-	if (_reactions) {
-		const auto reactionsHeight = st::mediaInBubbleSkip + _reactions->height();
-		const auto reactionsLeft = 0;
-		g.setHeight(g.height() - reactionsHeight);
-		const auto reactionsPosition = QPoint(reactionsLeft + g.left(), g.top() + g.height() + st::mediaInBubbleSkip);
-		_reactions->animate(args.translated(-reactionsPosition), repainter);
-	}
 }
 
 QSize Service::performCountCurrentSize(int newWidth) {

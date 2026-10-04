@@ -30,7 +30,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/controls/send_button.h"
 #include "ui/effects/animations.h"
 #include "ui/effects/radial_animation.h"
-#include "ui/effects/reaction_fly_animation.h"
 #include "ui/layers/generic_box.h"
 #include "ui/text/custom_emoji_text_badge.h"
 #include "ui/text/text_utilities.h"
@@ -267,11 +266,7 @@ struct MessagesUi::MessageView {
 	ClickHandlerPtr fromLink;
 	Ui::Animations::Simple toggleAnimation;
 	Ui::Animations::Simple sentAnimation;
-	Data::ReactionId reactionId;
 	std::unique_ptr<Ui::InfiniteRadialAnimation> sendingAnimation;
-	std::unique_ptr<Ui::ReactionFlyAnimation> reactionAnimation;
-	std::unique_ptr<Ui::RpWidget> reactionWidget;
-	QPoint reactionShift;
 	TextWithEntities original;
 	Ui::PeerUserpicView view;
 	Ui::Text::String name;
@@ -493,7 +488,6 @@ void MessagesUi::updateMessageSize(MessageView &entry) {
 			- _liveBadge.maxWidth()
 			- space
 			- _adminBadge.maxWidth()));
-	updateReactionPosition(entry);
 
 	const auto contentHeight = entry.textTop + textHeight + padding.bottom();
 	const auto userpicHeight = hasUserpic
@@ -621,7 +615,6 @@ void MessagesUi::recountHeights(
 	for (auto e = end(_views); i != e; ++i) {
 		i->top = top;
 		top += i->height;
-		updateReactionPosition(*i);
 	}
 	if (_views.empty()) {
 		_scrollToAnimation.stop();
@@ -677,135 +670,12 @@ void MessagesUi::appendMessage(const Message &data) {
 	}
 	entry.height = 0;
 	toggleMessage(entry, true);
-	checkReactionContent(entry, data.text);
 }
 
 // LoogriGram: the top stars donors wore a crown before their name, ranked
 // by what they had paid. Deleted with the donor list.
 TextWithEntities MessagesUi::nameText(not_null<PeerData*> peer) {
 	return tr::bold(peer->shortName());
-}
-
-void MessagesUi::checkReactionContent(
-		MessageView &entry,
-		const TextWithEntities &text) {
-	auto outLength = 0;
-	using Type = Data::Reactions::Type;
-	const auto reactions = &_show->session().data().reactions();
-	const auto set = [&](Data::ReactionId id) {
-		reactions->preloadAnimationsFor(id);
-		entry.reactionId = std::move(id);
-	};
-	if (text.entities.size() == 1
-		&& text.entities.front().type() == EntityType::CustomEmoji
-		&& text.entities.front().offset() == 0
-		&& text.entities.front().length() == text.text.size()) {
-		set({ text.entities.front().data().toULongLong() });
-	} else if (const auto emoji = Ui::Emoji::Find(text.text, &outLength)) {
-		if (outLength < text.text.size()) {
-			return;
-		}
-		const auto &all = reactions->list(Type::All);
-		for (const auto &reaction : all) {
-			if (reaction.id.custom()) {
-				continue;
-			}
-			const auto &text = reaction.id.emoji();
-			if (Ui::Emoji::Find(text) != emoji) {
-				continue;
-			}
-			set(reaction.id);
-			break;
-		}
-	}
-}
-
-void MessagesUi::startReactionAnimation(MessageView &entry) {
-	entry.reactionWidget = std::make_unique<Ui::RpWidget>(_parent);
-	const auto raw = entry.reactionWidget.get();
-	raw->show();
-	raw->setAttribute(Qt::WA_TransparentForMouseEvents);
-
-	if (!_effectsLifetime) {
-		rpl::combine(
-			_scroll->scrollTopValue(),
-			_scroll->RpWidget::positionValue()
-		) | rpl::on_next([=](int yshift, QPoint point) {
-			_reactionBasePosition = point - QPoint(0, yshift);
-			for (auto &view : _views) {
-				updateReactionPosition(view);
-			}
-		}, _effectsLifetime);
-	}
-
-	entry.reactionAnimation = std::make_unique<Ui::ReactionFlyAnimation>(
-		&_show->session().data().reactions(),
-		Ui::ReactionFlyAnimationArgs{
-			.id = entry.reactionId,
-			.effectOnly = true,
-		},
-		[=] { raw->update(); },
-		st::reactionInlineImage);
-	updateReactionPosition(entry);
-
-	const auto effectSize = st::reactionInlineImage * 2;
-	const auto animation = entry.reactionAnimation.get();
-	raw->resize(effectSize, effectSize);
-	raw->paintRequest() | rpl::on_next([=] {
-		if (animation->finished()) {
-			crl::on_main(raw, [=] {
-				removeReaction(raw);
-			});
-			return;
-		}
-		auto p = QPainter(raw);
-		const auto size = raw->width();
-		const auto skip = (size - st::reactionInlineImage) / 2;
-		const auto target = QRect(
-			QPoint(skip, skip),
-			QSize(st::reactionInlineImage, st::reactionInlineImage));
-		animation->paintGetArea(
-			p,
-			QPoint(),
-			target,
-			st::radialFg->c,
-			QRect(),
-			crl::now());
-	}, raw->lifetime());
-}
-
-void MessagesUi::removeReaction(not_null<Ui::RpWidget*> widget) {
-	const auto i = ranges::find_if(_views, [&](const MessageView &entry) {
-		return entry.reactionWidget.get() == widget;
-	});
-	if (i != end(_views)) {
-		i->reactionId = {};
-		i->reactionWidget = nullptr;
-		i->reactionAnimation = nullptr;
-	};
-}
-
-void MessagesUi::updateReactionPosition(MessageView &entry) {
-	if (const auto widget = entry.reactionWidget.get()) {
-		if (entry.failed) {
-			widget->resize(0, 0);
-			return;
-		}
-		const auto padding = st::groupCallMessagePadding;
-		const auto userpicSize = st::groupCallUserpic;
-		const auto userpicPadding = st::groupCallUserpicPadding;
-		const auto esize = st::emojiSize;
-		const auto eleft = entry.text.maxWidth() - st::emojiPadding - esize;
-		const auto etop = (st::normalFont->height - esize) / 2;
-		const auto effectSize = st::reactionInlineImage * 2;
-		entry.reactionShift = QPoint(entry.left, entry.top)
-			+ QPoint(
-				userpicPadding.left() + userpicSize + userpicPadding.right(),
-				padding.top())
-			+ QPoint(eleft + (esize / 2), etop + (esize / 2))
-			- QPoint(effectSize / 2, effectSize / 2);
-		widget->move(_reactionBasePosition + entry.reactionShift);
-	}
 }
 
 void MessagesUi::updateTopFade() {
@@ -989,9 +859,6 @@ void MessagesUi::setupMessagesWidget() {
 				.now = now,
 				.paused = !_messages->window()->isActiveWindow(),
 			});
-			if (!scaled && entry.reactionId && !entry.reactionAnimation) {
-				startReactionAnimation(entry);
-			}
 
 			if (scaled) {
 				p.restore();
@@ -1243,11 +1110,6 @@ void MessagesUi::move(int left, int bottom, int width, int availableHeight) {
 void MessagesUi::raise() {
 	if (_scroll) {
 		_scroll->raise();
-	}
-	for (const auto &view : _views) {
-		if (const auto widget = view.reactionWidget.get()) {
-			widget->raise();
-		}
 	}
 }
 

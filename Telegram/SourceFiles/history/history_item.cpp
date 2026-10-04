@@ -1693,12 +1693,11 @@ void HistoryItem::markPollVotesRead() {
 	}
 }
 
-bool HistoryItem::markContentsRead(bool fromThisClient) {
+bool HistoryItem::markContentsRead() {
 	auto result = false;
 	if (hasUnreadReaction()) {
-		if (fromThisClient) {
-			_history->owner().requestUnreadReactionsAnimation(this);
-		}
+		// LoogriGram: reading our own unread reactions here played their
+		// burst on the message (fromThisClient); no big animations.
 		markReactionsRead();
 		result = true;
 	}

@@ -38,8 +38,6 @@ struct BubblePattern;
 struct ChatPaintContext;
 struct ChatPaintHighlight;
 class ChatStyle;
-struct ReactionFlyAnimationArgs;
-class ReactionFlyAnimation;
 class RippleAnimation;
 } // namespace Ui
 
@@ -700,14 +698,6 @@ public:
 		return fromLink();
 	}
 
-
-	virtual void animateReaction(Ui::ReactionFlyAnimationArgs &&args) = 0;
-	void animateUnreadReactions();
-	[[nodiscard]] auto takeReactionAnimations()
-	-> base::flat_map<
-		Data::ReactionId,
-		std::unique_ptr<Ui::ReactionFlyAnimation>>;
-
 	void overrideMedia(std::unique_ptr<Media> media);
 	void overrideRightBadge(const QString &text, BadgeRole role);
 
@@ -767,7 +757,6 @@ protected:
 	void clearSpecialOnlyEmoji();
 	void checkSpecialOnlyEmoji();
 
-	void setupReactions(Element *replacing);
 	void refreshReactions();
 	bool updateReactions();
 

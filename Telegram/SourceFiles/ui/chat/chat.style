@@ -706,8 +706,6 @@ reactionGradientFadeSize: 24px;
 reactionAppearStartSkip: 2px;
 reactionMainAppearShift: 20px;
 reactionCollapseFadeThreshold: 40px;
-reactionFlyUp: 50px;
-
 replyCornerHeight: 20px;
 replyCornerShadow: margins(4px, 8px, 4px, 8px);
 replyCornerCenter: point(7px, -2px);

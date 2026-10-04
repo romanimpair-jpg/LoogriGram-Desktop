@@ -20,7 +20,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session_settings.h"
 #include "ui/chat/chat_theme.h"
 #include "ui/effects/animations.h"
-#include "ui/effects/reaction_fly_animation.h"
 #include "ui/effects/round_area_with_shadow.h"
 #include "ui/layers/generic_box.h"
 #include "ui/widgets/labels.h"
@@ -42,7 +41,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace {
 
 constexpr auto kCenterSizeMultiplier = 1.6;
-constexpr auto kMaxLandingWait = 3 * crl::time(1000);
 
 using Strip = HistoryView::Reactions::Strip;
 
@@ -61,19 +59,12 @@ using Strip = HistoryView::Reactions::Strip;
 	return PlainIconSize() / float64(CenterIconSize());
 }
 
-[[nodiscard]] float64 CenterIconMultiplier() {
-	return CenterIconSize() / float64(st::reactStripImage);
-}
-
 class StripPreview final : public Ui::RpWidget {
 public:
 	explicit StripPreview(QWidget *parent);
 
 	void setList(std::vector<Data::Reaction> list, int selectedCount);
-	void setHiddenIndex(int index);
 	[[nodiscard]] int slotCount() const;
-	[[nodiscard]] QRect slotGeometry(int index) const;
-	[[nodiscard]] QRect plainIconGeometry(int index) const;
 	[[nodiscard]] rpl::producer<int> clicks() const;
 
 protected:
@@ -102,7 +93,6 @@ private:
 	QImage _pillCache;
 	int _selectedCount = 0;
 	int _columns = 1;
-	int _hiddenIndex = -1;
 	int _pressed = -1;
 	rpl::event_stream<int> _clicks;
 
@@ -174,13 +164,6 @@ void StripPreview::setList(
 	update();
 }
 
-void StripPreview::setHiddenIndex(int index) {
-	if (_hiddenIndex != index) {
-		_hiddenIndex = index;
-		update();
-	}
-}
-
 int StripPreview::slotCount() const {
 	return _columns;
 }
@@ -205,24 +188,6 @@ QRect StripPreview::innerRect() const {
 			+ st::reactionCornerShadow.top(),
 		innerWidth,
 		st::reactStripHeight);
-}
-
-QRect StripPreview::slotGeometry(int index) const {
-	const auto inner = innerRect();
-	return QRect(
-		inner.x() + st::reactStripSkip + index * st::reactStripSize,
-		inner.y() + (st::reactStripHeight - st::reactStripSize) / 2,
-		st::reactStripSize,
-		st::reactStripSize);
-}
-
-QRect StripPreview::plainIconGeometry(int index) const {
-	const auto full = CenterIconSize();
-	const auto size = PlainIconSize();
-	const auto shift = (st::reactStripSize - full) / 2 + (full - size) / 2;
-	return QRect(
-		slotGeometry(index).topLeft() + QPoint(shift, shift),
-		QSize(size, size));
 }
 
 rpl::producer<int> StripPreview::clicks() const {
@@ -350,16 +315,14 @@ void StripPreview::paintEvent(QPaintEvent *e) {
 		inner.x() + st::reactStripSkip,
 		inner.y() + (st::reactStripHeight - st::reactStripSize) / 2);
 	for (auto i = 0; i != count; ++i) {
-		if (i != _hiddenIndex) {
-			p.setOpacity((i < _selectedCount)
-				? 1.
-				: st::settingsReactionsFillerOpacity);
-			_strip.paintOne(
-				p,
-				i,
-				position,
-				(_list[i].centerIcon ? 1. : PlainIconScale()));
-		}
+		p.setOpacity((i < _selectedCount)
+			? 1.
+			: st::settingsReactionsFillerOpacity);
+		_strip.paintOne(
+			p,
+			i,
+			position,
+			(_list[i].centerIcon ? 1. : PlainIconScale()));
 		position += QPoint(st::reactStripSize, 0);
 	}
 	p.setOpacity(1.);
@@ -601,14 +564,6 @@ void ReactionsSettingsBox(
 		base::flat_map<DocumentId, Data::ReactionId> docToReaction;
 		base::flat_map<Data::ReactionId, DocumentId> reactionToDoc;
 		StripPreview *preview = nullptr;
-		std::unique_ptr<Ui::ReactionFlyAnimation> fly;
-		Ui::RpWidget *flyLayer = nullptr;
-		QRect flyArea;
-		QRect flyRepaintArea;
-		crl::time flyFinishedAt = 0;
-		int flyIndex = -1;
-		bool flyCustom = false;
-		bool flyLanded = false;
 		Fn<void()> refresh;
 	};
 
@@ -641,7 +596,6 @@ void ReactionsSettingsBox(
 		const auto docId = r.selectAnimation->id;
 		state->docToReaction.emplace(docId, r.id);
 		state->reactionToDoc.emplace(r.id, docId);
-		reactions->preloadAnimationsFor(r.id);
 	}
 
 	const auto allowed = [=](const Data::ReactionId &id) {
@@ -808,126 +762,13 @@ void ReactionsSettingsBox(
 		}, [] {}, box->lifetime());
 	}
 
-	const auto finishFly = [=] {
-		state->fly = nullptr;
-		state->flyArea = QRect();
-		state->flyRepaintArea = QRect();
-		state->flyFinishedAt = 0;
-		state->flyLanded = false;
-		state->flyIndex = -1;
-		if (state->flyLayer) {
-			state->flyLayer->hide();
-		}
-		state->preview->setHiddenIndex(-1);
-	};
-	const auto startFly = [=](
-			Data::ReactionId id,
-			Ui::MessageSendingAnimationFrom from,
-			int index) {
-		if (from.frame.isNull() || index < 0) {
-			return;
-		}
-		if (!state->flyLayer) {
-			const auto layer = Ui::CreateChild<Ui::RpWidget>(box.get());
-			state->flyLayer = layer;
-			layer->setAttribute(Qt::WA_TransparentForMouseEvents);
-			box->sizeValue(
-			) | rpl::on_next([=](QSize size) {
-				layer->setGeometry(QRect(QPoint(), size));
-			}, layer->lifetime());
-			layer->paintRequest(
-			) | rpl::on_next([=](QRect clip) {
-				if (!state->fly) {
-					return;
-				}
-				auto p = QPainter(layer);
-				const auto preview = state->preview;
-				const auto index = state->flyIndex;
-				const auto target = state->flyCustom
-					? Ui::MapFrom(
-						layer,
-						preview,
-						preview->plainIconGeometry(index))
-					: [&] {
-						const auto slot = Ui::MapFrom(
-							layer,
-							preview,
-							preview->slotGeometry(index));
-						const auto size = st::reactStripImage;
-						return QRect(
-							slot.topLeft() + QPoint(
-								(slot.width() - size) / 2,
-								(slot.height() - size) / 2),
-							QSize(size, size));
-					}();
-				const auto flying = state->fly->flying();
-				const auto area = state->fly->paintGetArea(
-					p,
-					QPoint(),
-					target,
-					st::windowFg->c,
-					clip,
-					crl::now());
-				state->flyRepaintArea = area.united(state->flyArea);
-				state->flyArea = area;
-				if (flying && !state->fly->flying()) {
-					state->preview->setHiddenIndex(-1);
-				}
-				if (state->fly->finished() && !state->flyLanded) {
-					const auto now = crl::now();
-					if (!state->flyFinishedAt) {
-						state->flyFinishedAt = now;
-					}
-					if (state->fly->centerInDefaultState()
-						|| (now - state->flyFinishedAt
-							>= kMaxLandingWait)) {
-						state->flyLanded = true;
-					} else {
-						layer->update(state->flyRepaintArea);
-					}
-				}
-				if (state->flyLanded) {
-					crl::on_main(layer, [=] {
-						if (state->flyLanded) {
-							finishFly();
-						}
-					});
-				}
-			}, layer->lifetime());
-		}
-		state->flyIndex = index;
-		state->flyCustom = (id.custom() != 0);
-		state->preview->setHiddenIndex(index);
-		state->flyLayer->raise();
-		state->flyLayer->show();
-		state->fly = std::make_unique<Ui::ReactionFlyAnimation>(
-			reactions,
-			Ui::ReactionFlyAnimationArgs{
-				.id = id,
-				.flyIcon = from.frame,
-				.flyFrom = state->flyLayer->mapFromGlobal(
-					from.globalStartGeometry),
-				.flyUp = st::settingsReactionsFlyUp,
-				.centerSizeMultiplier = CenterIconMultiplier(),
-				.flyKeepSize = true,
-			},
-			[=] {
-				const auto layer = state->flyLayer;
-				layer->update(state->flyRepaintArea.isEmpty()
-					? layer->rect()
-					: state->flyRepaintArea);
-			},
-			(id.custom() ? PlainIconSize() : int(st::reactStripImage)),
-			Data::CustomEmojiSizeTag::Large);
-	};
-
-	const auto toggle = [=](
-			Data::ReactionId id,
-			std::optional<Ui::MessageSendingAnimationFrom> from) {
+	// LoogriGram: a reaction chosen below flew up into its slot of the strip
+	// (startFly, Ui::ReactionFlyAnimation) and burst there; no big
+	// animations (2026-10-04).
+	const auto toggle = [=](Data::ReactionId id) {
 		if (!allowed(id)) {
 			return;
 		}
-		finishFly();
 		const auto favorite = reactions->favoriteId();
 		auto &extras = state->extras;
 		const auto i = ranges::find(extras, id);
@@ -949,9 +790,6 @@ void ReactionsSettingsBox(
 			reactions->setFavorite(id);
 		} else if (state->composedSelected < state->preview->slotCount()) {
 			extras.push_back(id);
-			if (from) {
-				startFly(id, *from, state->composedSelected);
-			}
 		} else {
 			return;
 		}
@@ -967,13 +805,13 @@ void ReactionsSettingsBox(
 		const auto id = (i != end(state->docToReaction))
 			? i->second
 			: Data::ReactionId{ docId };
-		toggle(id, data.messageSendingFrom);
+		toggle(id);
 	}, selector->lifetime());
 
 	state->preview->clicks(
 	) | rpl::on_next([=](int index) {
 		if (index >= 0 && index < int(state->composedIds.size())) {
-			toggle(state->composedIds[index], std::nullopt);
+			toggle(state->composedIds[index]);
 		}
 	}, state->preview->lifetime());
 

@@ -288,8 +288,6 @@ public:
 	void applyGroupAdminChanges(
 		const base::flat_set<UserId> &changes) override;
 
-	void animateReaction(Ui::ReactionFlyAnimationArgs &&args) override;
-
 	QRect bottomInfoAnchor() const override;
 	QRect innerGeometry() const override;
 	QPoint mediaTopLeft() const override;

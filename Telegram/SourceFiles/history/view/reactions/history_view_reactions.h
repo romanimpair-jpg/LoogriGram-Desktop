@@ -16,8 +16,6 @@ class Reactions;
 
 namespace Ui {
 struct ChatPaintContext;
-struct ReactionFlyAnimationArgs;
-class ReactionFlyAnimation;
 } // namespace Ui
 
 namespace Ui::Text {
@@ -40,7 +38,6 @@ struct InlineListData {
 	enum class Flag : uchar {
 		InBubble  = 0x01,
 		OutLayout = 0x02,
-		Flipped   = 0x04,
 		Centered  = 0x10,
 	};
 	friend inline constexpr bool is_flag_type(Flag) { return true; };
@@ -85,17 +82,6 @@ public:
 		const ClickHandlerPtr &handler,
 		bool pressed,
 		Fn<void()> repaint);
-
-	void animate(
-		Ui::ReactionFlyAnimationArgs &&args,
-		Fn<void()> repaint);
-	[[nodiscard]] auto takeAnimations()
-	-> base::flat_map<
-		ReactionId,
-		std::unique_ptr<Ui::ReactionFlyAnimation>>;
-	void continueAnimations(base::flat_map<
-		ReactionId,
-		std::unique_ptr<Ui::ReactionFlyAnimation>> animations);
 
 private:
 	struct Dimension {

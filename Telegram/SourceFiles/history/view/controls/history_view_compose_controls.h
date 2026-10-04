@@ -73,7 +73,6 @@ class SilentToggle;
 class DropdownMenu;
 struct PreparedBundle;
 struct PreparedList;
-class ReactionFlyAnimation;
 class ChatStyle;
 } // namespace Ui
 

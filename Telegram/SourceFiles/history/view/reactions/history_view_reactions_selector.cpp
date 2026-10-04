@@ -932,23 +932,7 @@ void Selector::mouseReleaseEvent(QMouseEvent *e) {
 }
 
 ChosenReaction Selector::lookupChosen(const Data::ReactionId &id) const {
-	Expects(_strip != nullptr);
-
-	auto result = ChosenReaction{
-		.id = id,
-	};
-	const auto index = _strip->fillChosenIconGetIndex(result);
-	if (result.icon.isNull()) {
-		return result;
-	}
-	const auto rect = QRect(_skipx + index * _size, _skipy, _size, _size);
-	const auto imageSize = _strip->computeOverSize();
-	result.globalGeometry = mapToGlobal(QRect(
-		_inner.x() + rect.x() + (rect.width() - imageSize) / 2,
-		_inner.y() + rect.y() + (rect.height() - imageSize) / 2,
-		imageSize,
-		imageSize));
-	return result;
+	return { .id = id };
 }
 
 void Selector::preloadAllRecentsAnimations() {
@@ -1080,8 +1064,6 @@ void Selector::createList() {
 	) | rpl::on_next([=](ChatHelpers::FileChosen data) {
 		_chosen.fire({
 			.id = _unifiedFactoryOwner->lookupReactionId(data.document->id),
-			.icon = data.messageSendingFrom.frame,
-			.globalGeometry = data.messageSendingFrom.globalStartGeometry,
 		});
 	}, _list->lifetime());
 

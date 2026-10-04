@@ -249,7 +249,7 @@ public:
 	void markReactionsRead();
 	void markPollVotesRead();
 	void markMediaAndMentionRead();
-	bool markContentsRead(bool fromThisClient = false);
+	bool markContentsRead();
 	void setIsPinned(bool isPinned);
 
 	// For edit media in history_message.

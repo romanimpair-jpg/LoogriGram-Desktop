@@ -352,36 +352,10 @@ Manager::Manager(
 Manager::~Manager() = default;
 
 ChosenReaction Manager::lookupChosen(const ReactionId &id) const {
-	auto result = ChosenReaction{
+	return {
 		.context = _buttonContext,
 		.id = id,
 	};
-	const auto button = _button.get();
-	if (!button) {
-		return result;
-	}
-	const auto index = _strip.fillChosenIconGetIndex(result);
-	if (result.icon.isNull()) {
-		return result;
-	}
-	const auto between = st::reactionCornerSkip;
-	const auto oneHeight = (st::reactionCornerSize.height() + between);
-	const auto expanded = (_strip.count() > 1);
-	const auto skip = (expanded ? st::reactionExpandedSkip : 0);
-	const auto scroll = button->scroll();
-	const auto local = skip + index * oneHeight - scroll;
-	const auto geometry = button->geometry();
-	const auto top = button->expandUp()
-		? (geometry.height() - local - _outer.height())
-		: local;
-	const auto rect = QRect(geometry.topLeft() + QPoint(0, top), _outer);
-	const auto imageSize = _strip.computeOverSize();
-	result.localGeometry = QRect(
-		rect.x() + (rect.width() - imageSize) / 2,
-		rect.y() + (rect.height() - imageSize) / 2,
-		imageSize,
-		imageSize);
-	return result;
 }
 
 void Manager::stealWheelEvents(not_null<QWidget*> target) {
@@ -500,14 +474,6 @@ void Manager::paint(QPainter &p, const PaintContext &context) {
 		}
 		paintButton(p, context, current);
 	}
-
-	for (const auto &[id, effect] : _collectedEffects) {
-		const auto offset = effect.effectOffset;
-		p.translate(offset);
-		_activeEffectAreas[id] = effect.effectPaint(p).translated(offset);
-		p.translate(-offset);
-	}
-	_collectedEffects.clear();
 }
 
 ClickHandlerPtr Manager::computeButtonLink(QPoint position) const {
@@ -579,7 +545,6 @@ bool Manager::overCurrentButton(QPoint position) const {
 }
 
 void Manager::remove(FullMsgId context) {
-	_activeEffectAreas.remove(context);
 	if (_buttonContext == context) {
 		_buttonContext = {};
 		_button = nullptr;
@@ -784,31 +749,9 @@ void Manager::clearAppearAnimations() {
 	_strip.clearAppearAnimations();
 }
 
-std::optional<QRect> Manager::lookupEffectArea(FullMsgId itemId) const {
-	const auto i = _activeEffectAreas.find(itemId);
-	return (i != end(_activeEffectAreas))
-		? i->second
-		: std::optional<QRect>();
-}
-
-void Manager::startEffectsCollection() {
-	_collectedEffects.clear();
-	_currentReactionInfo = {};
-}
-
 auto Manager::currentReactionPaintInfo()
 -> not_null<Ui::ReactionPaintInfo*> {
 	return &_currentReactionInfo;
-}
-
-void Manager::recordCurrentReactionEffect(FullMsgId itemId, QPoint origin) {
-	if (_currentReactionInfo.effectPaint) {
-		_currentReactionInfo.effectOffset += origin
-			+ _currentReactionInfo.position;
-		_collectedEffects[itemId] = base::take(_currentReactionInfo);
-	} else if (!_collectedEffects.empty()) {
-		_collectedEffects.remove(itemId);
-	}
 }
 
 bool Manager::showContextMenu(

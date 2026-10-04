@@ -24,7 +24,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_tag.h"
 #include "ui/text/text_custom_emoji.h"
 #include "ui/chat/chat_style.h"
-#include "ui/effects/reaction_fly_animation.h"
 #include "ui/effects/ripple_animation.h"
 #include "ui/painter.h"
 #include "ui/rect.h"
@@ -49,7 +48,6 @@ constexpr auto kMaxNicePerRow = 5;
 
 struct InlineList::Button {
 	QRect geometry;
-	mutable std::unique_ptr<Ui::ReactionFlyAnimation> animation;
 	mutable QImage image;
 	mutable ClickHandlerPtr link;
 	mutable std::unique_ptr<Ui::Text::CustomEmoji> custom;
@@ -298,7 +296,6 @@ QSize InlineList::countOptimalSize() {
 }
 
 QSize InlineList::countCurrentSize(int newWidth) {
-	_data.flags &= ~Data::Flag::Flipped;
 	if (_buttons.empty()) {
 		return optimalSize();
 	}
@@ -363,7 +360,6 @@ int InlineList::countNiceWidth() const {
 }
 
 void InlineList::flipToRight() {
-	_data.flags |= Data::Flag::Flipped;
 	for (auto &button : _buttons) {
 		button.geometry.moveLeft(
 			width() - button.geometry.x() - button.geometry.width());
@@ -383,78 +379,42 @@ void InlineList::paint(
 		const PaintContext &context,
 		int outerWidth,
 		const QRect &clip) const {
-	struct SingleAnimation {
-		not_null<Ui::ReactionFlyAnimation*> animation;
-		QColor textColor;
-		QRect target;
-	};
-	std::vector<SingleAnimation> animations;
-
-	auto finished = std::vector<std::unique_ptr<Ui::ReactionFlyAnimation>>();
+	// LoogriGram: a chosen reaction flew in from the selector and burst
+	// around its button (Ui::ReactionFlyAnimation, painted over the list via
+	// context.reactionInfo->effectPaint); the button bubble grew in as it
+	// landed. The user's decision, 2026-10-04: no big animated views. This
+	// is the paint with no animation running.
 	const auto st = context.st;
 	const auto stm = context.messageStyle();
 	const auto padding = st::reactionInlinePadding;
 	const auto size = st::reactionInlineSize;
 	const auto skip = (size - st::reactionInlineImage) / 2;
 	const auto inbubble = (_data.flags & Data::Flag::InBubble);
-	const auto flipped = (_data.flags & Data::Flag::Flipped);
 	p.setFont(st::semiboldFont);
 	for (const auto &button : _buttons) {
-		if (context.reactionInfo
-			&& button.animation
-			&& button.animation->finished()) {
-			// Let the animation (and its custom emoji) live while painting.
-			finished.push_back(std::move(button.animation));
-		}
-		const auto animating = (button.animation != nullptr);
 		const auto &geometry = button.geometry;
-		const auto mine = button.chosen;
-		const auto withoutMine = button.count - (mine ? 1 : 0);
-		const auto skipImage = animating
-			&& (withoutMine < 1 || !button.animation->flying());
-		const auto bubbleProgress = skipImage
-			? button.animation->flyingProgress()
-			: 1.;
-		const auto bubbleReady = (bubbleProgress == 1.);
-		const auto bubbleSkip = anim::interpolate(
-			geometry.height() - geometry.width(),
-			0,
-			bubbleProgress);
+		const auto chosen = button.chosen;
 		const auto inner = geometry.marginsRemoved(padding);
-		const auto chosen = mine
-			&& (!animating || !button.animation->flying() || skipImage);
-		if (bubbleProgress > 0.) {
+		{
 			auto hq = PainterHighQualityEnabler(p);
 			p.setPen(Qt::NoPen);
 			auto opacity = 1.;
 			auto color = QColor();
 			if (inbubble) {
 				if (!chosen) {
-					opacity = bubbleProgress * (context.outbg
+					opacity = context.outbg
 						? kOutNonChosenOpacity
-						: kInNonChosenOpacity);
-				} else if (!bubbleReady) {
-					opacity = bubbleProgress;
+						: kInNonChosenOpacity;
 				}
 				color = stm->msgFileBg->c;
 			} else {
-				if (!bubbleReady) {
-					opacity = bubbleProgress;
-				}
 				color = (chosen
 					? st->msgServiceFg()
 					: st->msgServiceBg())->c;
 			}
-
-			const auto fill = geometry.marginsAdded({
-				flipped ? bubbleSkip : 0,
-				0,
-				flipped ? 0 : bubbleSkip,
-				0,
-			});
-			paintSingleBg(p, fill, color, opacity);
+			paintSingleBg(p, geometry, color, opacity);
 			if (inbubble && !chosen) {
-				p.setOpacity(bubbleProgress);
+				p.setOpacity(1.);
 			}
 		}
 		if (!button.custom && button.image.isNull()) {
@@ -475,7 +435,7 @@ void InlineList::paint(
 				? st->historyFileInIconFgSelected()
 				: st->historyFileInIconFg());
 		if (_ripple && _ripple->buttonId == button.id) {
-			if (!bubbleReady || _ripple->width != geometry.width()) {
+			if (_ripple->width != geometry.width()) {
 				_ripple.reset();
 			} else {
 				const auto savedOpacity = p.opacity();
@@ -497,31 +457,18 @@ void InlineList::paint(
 		const auto image = QRect(
 			inner.topLeft() + QPoint(skip, skip),
 			QSize(st::reactionInlineImage, st::reactionInlineImage));
-		if (!skipImage) {
-			if (const auto custom = button.custom.get()) {
-				paintCustomFrame(
-					p,
-					custom,
-					inner.topLeft(),
-					context,
-					textFg.color());
-			} else if (!button.image.isNull()) {
-				p.drawImage(image.topLeft(), button.image);
-			}
-		}
-		if (animating) {
-			animations.push_back({
-				.animation = button.animation.get(),
-				.textColor = textFg.color(),
-				.target = image,
-			});
-		}
-		if (bubbleProgress == 0.) {
-			p.setOpacity(1.);
-			continue;
+		if (const auto custom = button.custom.get()) {
+			paintCustomFrame(
+				p,
+				custom,
+				inner.topLeft(),
+				context,
+				textFg.color());
+		} else if (!button.image.isNull()) {
+			p.drawImage(image.topLeft(), button.image);
 		}
 		resolveUserpicsImage(button);
-		const auto left = inner.x() + (flipped ? 0 : bubbleSkip);
+		const auto left = inner.x();
 		if (button.userpics) {
 			p.drawImage(
 				left + size + st::reactionInlineUserpicsPadding.left(),
@@ -537,29 +484,6 @@ void InlineList::paint(
 				textTop + st::semiboldFont->ascent,
 				button.text);
 		}
-		if (!bubbleReady) {
-			p.setOpacity(1.);
-		}
-	}
-	if (!animations.empty() && context.reactionInfo) {
-		const auto now = context.now;
-		context.reactionInfo->effectPaint = [
-			now,
-			list = std::move(animations)
-		](QPainter &p) {
-			auto result = QRect();
-			for (const auto &single : list) {
-				const auto area = single.animation->paintGetArea(
-					p,
-					QPoint(),
-					single.target,
-					single.textColor,
-					QRect(), // Clip, for emoji status.
-					now);
-				result = result.isEmpty() ? area : result.united(area);
-			}
-			return result;
-		};
 	}
 }
 
@@ -589,7 +513,6 @@ bool InlineList::getState(
 				button.link->setProperty(
 					kReactionsCountEmojiProperty,
 					QVariant::fromValue(button.id));
-				_owner->preloadAnimationsFor(button.id);
 			}
 			_lastPoint = point - button.geometry.topLeft();
 			_lastPointButton = button.id;
@@ -634,20 +557,6 @@ void InlineList::clickHandlerPressedChanged(
 	} else if (_ripple) {
 		_ripple->lastStop();
 	}
-}
-
-void InlineList::animate(
-		Ui::ReactionFlyAnimationArgs &&args,
-		Fn<void()> repaint) {
-	const auto i = ranges::find(_buttons, args.id, &Button::id);
-	if (i == end(_buttons)) {
-		return;
-	}
-	i->animation = std::make_unique<Ui::ReactionFlyAnimation>(
-		_owner,
-		std::move(args),
-		std::move(repaint),
-		st::reactionInlineImage);
 }
 
 void InlineList::resolveUserpicsImage(const Button &button) const {
@@ -697,30 +606,6 @@ void InlineList::paintCustomFrame(
 	p.drawImage(
 		innerTopLeft + QPoint(_customSkip, _customSkip),
 		_customCache);
-}
-
-auto InlineList::takeAnimations()
--> base::flat_map<ReactionId, std::unique_ptr<Ui::ReactionFlyAnimation>> {
-	auto result = base::flat_map<
-		ReactionId,
-		std::unique_ptr<Ui::ReactionFlyAnimation>>();
-	for (auto &button : _buttons) {
-		if (button.animation) {
-			result.emplace(button.id, std::move(button.animation));
-		}
-	}
-	return result;
-}
-
-void InlineList::continueAnimations(base::flat_map<
-		ReactionId,
-		std::unique_ptr<Ui::ReactionFlyAnimation>> animations) {
-	for (auto &[id, animation] : animations) {
-		const auto i = ranges::find(_buttons, id, &Button::id);
-		if (i != end(_buttons)) {
-			i->animation = std::move(animation);
-		}
-	}
 }
 
 InlineListData InlineListDataFromMessage(not_null<Element*> view) {

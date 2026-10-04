@@ -234,20 +234,6 @@ bool Strip::onlyAddedButton() const {
 		&& (_icons.front().added != AddedButton::None);
 }
 
-int Strip::fillChosenIconGetIndex(ChosenReaction &chosen) const {
-	const auto i = ranges::find(_icons, chosen.id, &ReactionIcons::id);
-	if (i == end(_icons)) {
-		return -1;
-	}
-	const auto &icon = *i;
-	if (const auto &appear = icon.appear; appear && appear->animating()) {
-		chosen.icon = appear->frame(_st.textFg->c);
-	} else if (const auto &select = icon.select; select && select->valid()) {
-		chosen.icon = select->frame(_st.textFg->c);
-	}
-	return (i - begin(_icons));
-}
-
 void Strip::paintExpandIcon(
 		QPainter &p,
 		QPoint position,
@@ -318,10 +304,6 @@ auto Strip::selected() const -> std::variant<AddedButton, ReactionId> {
 		return icon.added;
 	}
 	return icon.id;
-}
-
-int Strip::computeOverSize() const {
-	return int(base::SafeRound(_finalSize * kHoverScale));
 }
 
 void Strip::clearAppearAnimations(bool mainAppeared) {
@@ -421,12 +403,6 @@ void Strip::loadIcons() {
 			if (!icon.select) {
 				all = false;
 			}
-		}
-	}
-	if (all && !_icons.empty() && _icons.front().selectAnimation) {
-		auto &data = _icons.front().selectAnimation->owner().reactions();
-		for (const auto &icon : _icons) {
-			data.preloadAnimationsFor(icon.id);
 		}
 	}
 }

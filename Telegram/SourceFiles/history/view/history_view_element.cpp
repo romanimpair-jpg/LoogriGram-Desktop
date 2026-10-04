@@ -50,7 +50,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/chat/torn_edge.h"
 #include "ui/effects/glare.h"
 #include "ui/effects/path_shift_gradient.h"
-#include "ui/effects/reaction_fly_animation.h"
 #include "ui/toast/toast.h"
 #include "ui/text/text_utilities.h"
 #include "ui/item_text_options.h"
@@ -2741,24 +2740,6 @@ bool Element::isSignedAuthorElided() const {
 	return false;
 }
 
-void Element::setupReactions(Element *replacing) {
-	refreshReactions();
-	auto animations = replacing
-		? replacing->takeReactionAnimations()
-		: base::flat_map<
-		Data::ReactionId,
-		std::unique_ptr<Ui::ReactionFlyAnimation>>();
-	if (!animations.empty()) {
-		const auto repainter = [=] { repaint(); };
-		for (const auto &[id, animation] : animations) {
-			animation->setRepaintCallback(repainter);
-		}
-		if (_reactions) {
-			_reactions->continueAnimations(std::move(animations));
-		}
-	}
-}
-
 void Element::refreshReactions() {
 	using namespace Reactions;
 	auto reactionsData = InlineListDataFromMessage(this);
@@ -2787,14 +2768,6 @@ void Element::refreshReactions() {
 				} else {
 					const auto source = HistoryReactionSource::Existing;
 					item->toggleReaction(id, source);
-				}
-				if (const auto now = weak.get()) {
-					const auto chosen = now->data()->chosenReactions();
-					if (ranges::contains(chosen, id)) {
-						now->animateReaction({
-							.id = id,
-						});
-					}
 				}
 			});
 		};
@@ -3267,25 +3240,6 @@ void Element::clickHandlerPressedChanged(
 	if (const auto rich = richpage()) {
 		rich->article.clickHandlerPressedChanged(handler, pressed);
 	}
-}
-
-void Element::animateUnreadReactions() {
-	const auto &recent = data()->recentReactions();
-	for (const auto &[id, list] : recent) {
-		if (ranges::contains(list, true, &Data::RecentReaction::unread)) {
-			animateReaction({ .id = id });
-		}
-	}
-}
-
-auto Element::takeReactionAnimations()
--> base::flat_map<
-		Data::ReactionId,
-		std::unique_ptr<Ui::ReactionFlyAnimation>> {
-	if (_reactions) {
-		return _reactions->takeAnimations();
-	}
-	return {};
 }
 
 QRect Element::bottomInfoAnchor() const {

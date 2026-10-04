@@ -376,7 +376,6 @@ settingsIconRadius: 6px;
 settingsReactionRightIcon: 20px;
 settingsReactionsIslandPadding: margins(12px, 12px, 12px, 4px);
 settingsReactionsFillerOpacity: 0.4;
-settingsReactionsFlyUp: 12px;
 settingsReactionsAboutLabel: FlatLabel(defaultFlatLabel) {
 	textFg: windowSubTextFg;
 	align: align(center);

@@ -84,12 +84,9 @@ private:
 	void startHighlight(MsgId id);
 	void recountHeights(std::vector<MessageView>::iterator i, int top);
 	void appendMessage(const Message &data);
-	void checkReactionContent(
-		MessageView &entry,
-		const TextWithEntities &text);
-	void startReactionAnimation(MessageView &entry);
-	void updateReactionPosition(MessageView &entry);
-	void removeReaction(not_null<Ui::RpWidget*> widget);
+	// LoogriGram: a message made of a single reaction emoji burst over the
+	// video chat (checkReactionContent, startReactionAnimation); no big
+	// animations (2026-10-04).
 	void setupMessagesWidget();
 
 	void applyGeometry();
@@ -126,9 +123,6 @@ private:
 	MsgId _delayedHighlightId = 0;
 	MsgId _highlightId = 0;
 	Ui::Animations::Simple _highlightAnimation;
-
-	QPoint _reactionBasePosition;
-	rpl::lifetime _effectsLifetime;
 
 	Ui::Text::String _liveBadge;
 	Ui::Text::String _adminBadge;

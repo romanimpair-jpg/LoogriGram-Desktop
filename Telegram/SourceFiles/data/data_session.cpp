@@ -2235,12 +2235,6 @@ void Session::highlightProcessDone(uint64 processId) {
 	}
 }
 
-void Session::requestUnreadReactionsAnimation(not_null<HistoryItem*> item) {
-	enumerateItemViews(item, [&](not_null<ViewElement*> view) {
-		view->animateUnreadReactions();
-	});
-}
-
 rpl::producer<not_null<const HistoryItem*>> Session::itemRemoved() const {
 	return _itemRemoved.events();
 }

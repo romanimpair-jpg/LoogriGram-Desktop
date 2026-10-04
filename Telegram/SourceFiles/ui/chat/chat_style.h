@@ -139,8 +139,6 @@ struct MessageImageStyle {
 
 struct ReactionPaintInfo {
 	QPoint position;
-	QPoint effectOffset;
-	Fn<QRect(QPainter&)> effectPaint;
 };
 
 struct BackgroundEmojiCache {

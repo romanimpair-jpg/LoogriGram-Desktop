@@ -1712,13 +1712,9 @@ PRIVATE
     ui/controls/warning_tooltip.h
     ui/effects/animated_string.cpp
     ui/effects/animated_string.h
-    ui/effects/emoji_fly_animation.cpp
-    ui/effects/emoji_fly_animation.h
     ui/effects/message_sending_animation_common.h
     ui/effects/message_sending_animation_controller.cpp
     ui/effects/message_sending_animation_controller.h
-    ui/effects/reaction_fly_animation.cpp
-    ui/effects/reaction_fly_animation.h
     ui/effects/thanos_effect.cpp
     ui/effects/thanos_effect.h
     ui/effects/thanos_effect_controller.cpp
