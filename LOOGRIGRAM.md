@@ -393,6 +393,16 @@ entries cannot collide. `CompanyName` is `LoogriMedia`. The main menu keeps a
 "Based on Telegram Desktop" attribution link, which the API Terms want anyway.
 The Windows Startup shortcut reads "LoogriGram autorun link".
 
+Since 2026-10-04 (`4a57609593`) the window title falls back to `AppName`,
+not "Telegram", with no chat open (the API Terms want "Telegram" out of the
+app title), and so do the crash window and the local automation prompt. The
+Start menu shortcut is `AppName + ".lnk"`; Windows takes the name it shows
+on notifications from it. It was "Telegram.lnk", which also got recreated
+over an official client's own shortcut of that name. An old "Telegram.lnk"
+that starts this exe is removed. The round-video encoder's TELEGRAM mark,
+drawn outside the visible circle, stays: a LOOGRIGRAM one would single out
+videos sent from this fork.
+
 Four files carry the artwork, all ours:
 
 | File | Used for |
