@@ -435,6 +435,16 @@ the updater row, `TranscribeTrialsOver`, `PaidMessagesLocked`), never as
 
 ## Open and known
 
+- **Owed for parity (2026-10-04), not started:** the user's decision removes
+  every "big animated view" on both clients. Done here: the reaction preview
+  (`3042504db8`). Still to do: the reaction burst (`Ui::ReactionFlyAnimation`
+  and its users), message effects (the send menu's selector,
+  `Api::SendOptions::effectId`, the bottom-info icon, the catalogue in
+  `data_message_reactions`), `HistoryView::EmojiInteractions` and
+  `ChatHelpers::EmojiInteractions` (emoji interactions, Premium sticker
+  effects, message effects) and the birthday effect. Android is doing the
+  same and holds the detailed plan in its `LOOGRIGRAM.md` "Start here". None
+  of desktop's commits since `dd0ea5658d` has been built.
 - **Media takes a beat to start loading.** Opening a channel pauses before
   photos load, and a video pauses before it downloads; not felt in the
   official client. Measured with `-debug` (logs land in `app\DebugLogs\`):
