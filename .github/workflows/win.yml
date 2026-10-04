@@ -169,31 +169,6 @@ jobs:
           fi
           echo "Mode: ${{ inputs.mode }}"
 
-      # LoogriGram: the release's tag is made here, first thing, not by
-      # "Publish release." at the end. Run 37158363951 built for four hours
-      # and then GitHub refused to create its tag with this job's token -
-      # HTTP 403 "Resource not accessible by integration". By then the built
-      # commit was no longer the head of patches (commits had been pushed
-      # during the build), and it was a commit that changed this file; every
-      # earlier release was tagged while its commit was still the head. Made
-      # now, the tag is too, and publishing only attaches a release to it. A
-      # failed run leaves a tag without a release, which the updater never
-      # sees (it reads releases), and re-running the commit reuses it.
-      - name: Tag the build.
-        if: inputs.mode == 'build' && inputs.config == 'Release'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="g${GITHUB_SHA::7}"
-          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
-            echo "tag $TAG already exists"
-          else
-            gh api "repos/$GITHUB_REPOSITORY/git/refs" \
-              -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" >/dev/null
-            echo "created tag $TAG at $GITHUB_SHA"
-          fi
-
       - name: Prepare directories.
         run: |
           mkdir %userprofile%\TBuild\Libraries
@@ -230,6 +205,88 @@ jobs:
           # total stayed pinned either side of 260 and the failure persisted.
           echo "REPO_NAME=tg" >> $GITHUB_ENV
 
+      # LoogriGram: every tool the build takes part of the binaries from is
+      # pinned here instead of taken from the runner image, which changes
+      # under us (the user's rule: freeze every dependency). These are the
+      # versions the last good build used, read from its log and the image
+      # readme (run 37158363951, image 20260925.250.1): CMake 4.4.3, Ninja
+      # 1.13.2 (meson's stages and every CMake one), Strawberry Perl 5.42.0.1
+      # (OpenSSL's and Qt's configure; its c\bin also gave meson its ccache),
+      # Git 2.55.0.windows.5 (checkout and prepare.py's clones; opus and
+      # openal-soft stamp versions with it) and GitHub CLI 2.101.0. Each is
+      # checked against the SHA-256 GitHub records for the release asset and
+      # put in front of PATH; "Check the pinned tools." fails the run if any
+      # resolves elsewhere. Strawberry's zip is 300 MB, so only perl\ and
+      # c\bin\ are unpacked. Left to the image, by necessity: Windows itself,
+      # PowerShell, the Git Bash that "shell: bash" steps run in, and VS
+      # beyond its pinned 14.44 toolset and the SDK version.
+      - name: Pinned tools.
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $root = Join-Path $env:RUNNER_TEMP 'pinned'
+          New-Item -ItemType Directory -Force $root | Out-Null
+          $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+          $tools = @(
+            @{ name = 'strawberry'; only = @('perl/*', 'c/bin/*'); path = @('c\bin', 'perl\bin', 'perl\site\bin')
+               url = 'https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54201_64bit/strawberry-perl-5.42.0.1-64bit-portable.zip'
+               sha = 'a1cde185656cf307b51670eed69f648b9eff15b5c518cb136e027c628e650b71' },
+            @{ name = 'git'; only = @(); path = @('cmd')
+               url = 'https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.5/MinGit-2.55.0.5-64-bit.zip'
+               sha = '56d7b226b7693196cfc71fef26568f536c4a021ab6c37ff2db4287bed908e96e' },
+            @{ name = 'gh'; only = @(); path = @('bin')
+               url = 'https://github.com/cli/cli/releases/download/v2.101.0/gh_2.101.0_windows_amd64.zip'
+               sha = 'bc6c814367b193cd8e713611d61e36013c0ef843b8f516458fe3eda039192794' },
+            @{ name = 'ninja'; only = @(); path = @('.')
+               url = 'https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-win.zip'
+               sha = '07fc8261b42b20e71d1720b39068c2e14ffcee6396b76fb7a795fb460b78dc65' },
+            @{ name = 'cmake'; only = @(); path = @('cmake-4.4.3-windows-x86_64\bin')
+               url = 'https://github.com/Kitware/CMake/releases/download/v4.4.3/cmake-4.4.3-windows-x86_64.zip'
+               sha = '4d52ebab7193a698651639ed80d8d04fd903358843572cf44c7fd234cb7c26ab' }
+          )
+          # Entries added later land earlier in PATH, so cmake ends up first.
+          foreach ($t in $tools) {
+            $zip = Join-Path $root "$($t.name).zip"
+            Invoke-WebRequest -Uri $t.url -OutFile $zip
+            $got = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
+            if ($got -ne $t.sha) { throw "$($t.name): SHA-256 $got, expected $($t.sha)" }
+            $dir = Join-Path $root $t.name
+            New-Item -ItemType Directory -Force $dir | Out-Null
+            & $tar -xf $zip -C $dir @($t.only)
+            if ($LASTEXITCODE -ne 0) { throw "$($t.name): unpacking failed" }
+            Remove-Item $zip
+            foreach ($sub in $t.path) {
+              (Resolve-Path (Join-Path $dir $sub)).Path | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+            }
+            Write-Output "$($t.name): $($t.url.Split('/')[-1]) ok"
+          }
+
+      # LoogriGram: the release's tag is made here, at the start, not by
+      # "Publish release." at the end. Run 37158363951 built for four hours
+      # and then GitHub refused to create its tag with this job's token -
+      # HTTP 403 "Resource not accessible by integration". By then the built
+      # commit was no longer the head of patches (commits had been pushed
+      # during the build), and it was a commit that changed this file; every
+      # earlier release was tagged while its commit was still the head. Made
+      # now, the tag is too, and publishing only attaches a release to it. A
+      # failed run leaves a tag without a release, which the updater never
+      # sees (it reads releases), and re-running the commit reuses it.
+      - name: Tag the build.
+        if: inputs.mode == 'build' && inputs.config == 'Release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="g${GITHUB_SHA::7}"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "tag $TAG already exists"
+          else
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" >/dev/null
+            echo "created tag $TAG at $GITHUB_SHA"
+          fi
+
       - name: Clone.
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -245,12 +302,27 @@ jobs:
 
       # LoogriGram: the image's own Python changes with the image, and
       # prepare.py builds its venv - and the meson every library uses - from
-      # it. 3.12.10 is what the last good builds had; the image keeps it in
-      # its tool cache, and setup-python fetches exactly it if one day not.
+      # it: 3.12.10, the last one listed, so the default on PATH. But CMake's
+      # FindPython does its own search and takes the newest Python it can
+      # find, which for tg_angle, tg_owt and ada was the image's 3.14.7 (run
+      # 37158363951). Both are what the last good build used; setup-python
+      # fetches either exactly if the image ever lacks it, and the next step
+      # removes every other version so FindPython cannot find a newer one.
       - name: Python.
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.12.10'
+          python-version: |
+            3.14.7
+            3.12.10
+
+      - name: Only the pinned Pythons.
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TOOL_CACHE 'Python'
+          Get-ChildItem $dir -Directory |
+            Where-Object { $_.Name -notin '3.14.7', '3.12.10' } |
+            Remove-Item -Recurse -Force
+          Get-ChildItem $dir -Directory | ForEach-Object Name
 
       - name: First set up.
         shell: bash
@@ -299,10 +371,29 @@ jobs:
           sdk: ${{ env.SDK }}
           toolset: ${{ case(matrix.arch == 'arm64', '', '14.44') }}
 
-      - name: NuGet sources.
+      # LoogriGram: after vcvars, which rewrites PATH: every pinned tool must
+      # still resolve to its pinned copy, or the run stops here.
+      - name: Check the pinned tools.
+        shell: pwsh
         run: |
-          nuget sources Disable -Name "Microsoft Visual Studio Offline Packages"
-          nuget sources Add -Source https://api.nuget.org/v3/index.json & exit 0
+          $root = Join-Path $env:RUNNER_TEMP 'pinned'
+          $failed = $false
+          foreach ($exe in 'cmake', 'ninja', 'perl', 'ccache', 'git', 'gh') {
+            $c = Get-Command $exe -ErrorAction SilentlyContinue | Select-Object -First 1
+            $src = if ($c) { $c.Source } else { '<not found>' }
+            Write-Output "$exe -> $src"
+            if (-not $src.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) {
+              Write-Output "::error::$exe resolves outside the pinned tools: $src"
+              $failed = $true
+            }
+          }
+          cmake --version | Select-Object -First 1
+          Write-Output "ninja $(ninja --version)"
+          perl -e 'print "perl $^V\n"'
+          git --version
+          gh --version | Select-Object -First 1
+          python -V
+          if ($failed) { exit 1 }
 
       # Restore and save are split deliberately. actions/cache only writes its
       # cache in a post step, which is skipped when any step fails - so a
@@ -727,6 +818,16 @@ jobs:
               text.replace(old, new, 1))
           print('stamped ' + tag)
           PY
+
+      # LoogriGram: moved here from before the caches, and run with the frozen
+      # nuget.exe prepare.py's NuGet stage fetched rather than the image's -
+      # only the app's own configure restores NuGet packages, so nothing
+      # before this needs the sources.
+      - name: NuGet sources.
+        if: inputs.mode == 'build'
+        run: |
+          %CACHE_ROOT%\ThirdParty\NuGet\nuget.exe sources Disable -Name "Microsoft Visual Studio Offline Packages"
+          %CACHE_ROOT%\ThirdParty\NuGet\nuget.exe sources Add -Source https://api.nuget.org/v3/index.json & exit 0
 
       - name: Telegram Desktop build.
         id: telegram
