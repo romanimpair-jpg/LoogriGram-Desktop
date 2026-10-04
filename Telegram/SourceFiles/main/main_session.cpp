@@ -347,14 +347,14 @@ rpl::producer<> Session::downloaderTaskFinished() const {
 // deleted with it.
 
 void Session::applyGhostModePrivacy() {
-	// Exception lists are left alone rather than cleared. Wiping an "always
-	// allow" entry someone set on purpose would be destructive, and since
-	// nothing here ever restores a previous value it would not be undoable.
-	auto rule = Api::UserPrivacy::Rule();
-	rule.option = Api::UserPrivacy::Option::Nobody;
-	rule.ignoreAlways = true;
-	rule.ignoreNever = true;
-	_api->userPrivacy().save(Api::UserPrivacy::Key::LastSeen, rule);
+	// The "Always share with" list is kept: wiping an entry someone set on
+	// purpose would be destructive, and nothing here ever restores a previous
+	// value, so it could not be undone. This used to send a bare "Nobody",
+	// which - account.setPrivacy replacing the whole rule set - wiped both
+	// lists despite saying otherwise. Same on Android, the user's choice
+	// (2026-10-04).
+	_api->userPrivacy().saveNobodyKeepingAlways(
+		Api::UserPrivacy::Key::LastSeen);
 
 	// Read receipts themselves cannot be withheld: messages.readHistory both
 	// tells the sender and sets the read position our other devices sync

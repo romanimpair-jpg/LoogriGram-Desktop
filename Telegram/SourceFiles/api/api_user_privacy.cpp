@@ -277,6 +277,33 @@ void UserPrivacy::save(
 	_privacySaveRequests.emplace(keyTypeId, requestId);
 }
 
+// LoogriGram: account.setPrivacy replaces the whole rule set, so saving a bare
+// "Nobody" would wipe the exception lists - the only way any client removes
+// someone from one is to send the list without them. The current rules are
+// read fresh from the server (the cached ones may be stale or absent), and
+// saved back exactly as picking "Nobody" in the privacy box would: the
+// "Always share with" list kept, "Never share with" dropped, since it means
+// nothing under Nobody. A failed read sends nothing rather than guess.
+void UserPrivacy::saveNobodyKeepingAlways(Key key) {
+	_api.request(MTPaccount_GetPrivacy(
+		KeyToTL(key)
+	)).done([=](const MTPaccount_PrivacyRules &result) {
+		result.match([&](const MTPDaccount_privacyRules &data) {
+			_session->data().processUsers(data.vusers());
+			_session->data().processChats(data.vchats());
+			auto rule = TLToRules(data.vrules(), _session->data());
+			rule.option = Option::Nobody;
+			rule.never = Exceptions();
+			rule.ignoreAlways = false;
+			rule.ignoreNever = true;
+			save(key, rule);
+		});
+	}).fail([=](const MTP::Error &error) {
+		LOG(("LoogriGram: could not read privacy rules, not changing them: %1"
+			).arg(error.type()));
+	}).send();
+}
+
 void UserPrivacy::apply(
 		mtpTypeId type,
 		const TLRules &rules,

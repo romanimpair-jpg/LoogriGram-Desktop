@@ -54,6 +54,8 @@ public:
 	void save(
 		Key key,
 		const UserPrivacy::Rule &rule);
+	// LoogriGram: ghost mode's Last Seen -> Nobody, keeping the exceptions.
+	void saveNobodyKeepingAlways(Key key);
 	void apply(
 		mtpTypeId type,
 		const MTPVector<MTPPrivacyRule> &rules,
