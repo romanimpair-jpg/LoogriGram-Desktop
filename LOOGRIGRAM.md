@@ -257,7 +257,12 @@ All deleted, not gated. Roughly in the order they were done.
   `tg://settings/faq`, `/ask-question` and `/features` links, now
   unsupported. FAQ articles in settings search stay, as on Android. The 2FA
   password reminder is kept — losing that password locks you out — and no
-  longer waits on the phone-number prompt it used to queue behind.
+  longer waits on the phone-number prompt it used to queue behind. The
+  "Add your birthday" and "Add your photo" top bar suggestions
+  (`BIRTHDAY_SETUP`, `USERPIC_SETUP`) went on 2026-10-04 (`c9c0265100`,
+  Android `a0e53171`): their spec files are deleted, and so is
+  `Spec::dayDependent`, which only the birthday one used. Priorities 1 and
+  3 stay unused.
 - **Picking or finding a location** (`680eee9198`, 2026-10-04, parity with
   Android): the attach menu's and poll answers' "Location" items, the
   Mapbox web-map picker, Windows geolocation with its reverse geocoding,

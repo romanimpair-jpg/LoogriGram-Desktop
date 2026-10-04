@@ -28,7 +28,7 @@ One switch in the main menu, next to Night Mode.
 - **AI compose**, **large animated emoji**, the **greeting sticker** in empty chats, and **emoji and sticker suggestion popups** above the message field.
 - **Trending stickers and emoji.** Telegram's suggested packs don't appear anywhere: no Trending tab, no trending packs in the sticker or emoji panel, and no counter for packs you haven't looked at. Your own packs, sticker search and packs opened from a link work as before.
 - **Bots can't set your emoji status.** The permission is revoked if a bot already had it. An account verified by a bot rather than by Telegram looks unverified.
-- **Nags and Telegram's help:** the quick-reaction strip on hover (reactions are still on right-click), the FAQ / Features / Ask a Question rows and the links that opened them, and the "is this still your number?" prompt. The two-step verification password reminder is kept, because forgetting that password locks you out.
+- **Nags and Telegram's help:** the quick-reaction strip on hover (reactions are still on right-click), the FAQ / Features / Ask a Question rows and the links that opened them, the "is this still your number?" prompt, and the "Add your birthday" and "Add your photo" bars above the chat list. The two-step verification password reminder is kept, because forgetting that password locks you out.
 - **Your location.** The app never asks Windows where you are, and there is no map to pick a place to send. A location someone sends you opens in Google Maps in your browser.
 - **Telegram's updater and crash-report uploads.** Updates come from this repository instead (see below).
 - **macOS and Linux builds.** This tree builds for Windows only.
