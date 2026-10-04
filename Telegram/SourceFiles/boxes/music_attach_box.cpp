@@ -1362,9 +1362,6 @@ void ApplySendOptions(
 	if (options.scheduleRepeatPeriod != empty.scheduleRepeatPeriod) {
 		base.scheduleRepeatPeriod = options.scheduleRepeatPeriod;
 	}
-	if (options.effectId != empty.effectId) {
-		base.effectId = options.effectId;
-	}
 	if (options.silent != empty.silent) {
 		base.silent = options.silent;
 	}

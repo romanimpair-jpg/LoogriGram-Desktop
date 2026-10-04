@@ -256,7 +256,6 @@ Reactions::Reactions(not_null<Session*> owner)
 		kRefreshFullListEach
 	) | rpl::on_next([=] {
 		refreshDefault();
-		requestEffects();
 	}, _lifetime);
 
 	_owner->session().changes().messageUpdates(
@@ -315,19 +314,12 @@ void Reactions::refreshDefault() {
 	requestDefault();
 }
 
-void Reactions::refreshEffects() {
-	if (_effects.empty()) {
-		requestEffects();
-	}
-}
-
 const std::vector<Reaction> &Reactions::list(Type type) const {
 	switch (type) {
 	case Type::Active: return _active;
 	case Type::Recent: return _recent;
 	case Type::Top: return _top;
 	case Type::All: return _available;
-	case Type::Effects: return _effects;
 	}
 	Unexpected("Type in Reactions::list.");
 }
@@ -421,19 +413,9 @@ rpl::producer<> Reactions::favoriteUpdates() const {
 	return _favoriteUpdated.events();
 }
 
-rpl::producer<> Reactions::effectsUpdates() const {
-	return _effectsUpdated.events();
-}
-
 void Reactions::preloadReactionImageFor(const ReactionId &emoji) {
 	if (!emoji.emoji().isEmpty()) {
 		preloadImageFor(emoji);
-	}
-}
-
-void Reactions::preloadEffectImageFor(EffectId id) {
-	if (id != kFakeEffectId) {
-		preloadImageFor({ DocumentId(id) });
 	}
 }
 
@@ -442,38 +424,17 @@ void Reactions::preloadImageFor(const ReactionId &id) {
 		return;
 	}
 	auto &set = _images.emplace(id).first->second;
-	set.effect = (id.custom() != 0);
-	const auto &list = set.effect ? _effects : _available;
-	const auto i = ranges::find(list, id, &Reaction::id);
-	const auto document = (i == end(list))
+	const auto i = ranges::find(_available, id, &Reaction::id);
+	const auto document = (i == end(_available))
 		? nullptr
 		: i->centerIcon
 		? i->centerIcon
 		: i->selectAnimation.get();
-	if (document || (set.effect && i != end(list))) {
-		if (!set.effect || i->centerIcon) {
-			loadImage(set, document, !i->centerIcon);
-		} else {
-			generateImage(set, i->title);
-		}
-		if (set.effect) {
-			preloadEffect(*i);
-		}
-	} else if (set.effect && !_waitingForEffects) {
-		_waitingForEffects = true;
-		refreshEffects();
-	} else if (!set.effect && !_waitingForReactions) {
+	if (document) {
+		loadImage(set, document, !i->centerIcon);
+	} else if (!_waitingForReactions) {
 		_waitingForReactions = true;
 		refreshDefault();
-	}
-}
-
-void Reactions::preloadEffect(const Reaction &effect) {
-	if (effect.aroundAnimation) {
-		effect.aroundAnimation->createMediaView()->checkStickerLarge();
-	} else {
-		const auto premium = effect.selectAnimation;
-		premium->loadVideoThumbnail(premium->stickerSetOrigin());
 	}
 }
 
@@ -508,12 +469,6 @@ QImage Reactions::resolveReactionImageFor(const ReactionId &emoji) {
 	return resolveImageFor(emoji);
 }
 
-QImage Reactions::resolveEffectImageFor(EffectId id) {
-	return (id == kFakeEffectId)
-		? QImage()
-		: resolveImageFor({ DocumentId(id) });
-}
-
 QImage Reactions::resolveImageFor(const ReactionId &id) {
 	auto i = _images.find(id);
 	if (i == end(_images)) {
@@ -522,7 +477,6 @@ QImage Reactions::resolveImageFor(const ReactionId &id) {
 		Assert(i != end(_images));
 	}
 	auto &set = i->second;
-	set.effect = (id.custom() != 0);
 
 	const auto resolve = [&](QImage &image, int size) {
 		const auto factor = style::DevicePixelRatio();
@@ -554,9 +508,7 @@ QImage Reactions::resolveImageFor(const ReactionId &id) {
 		image.setDevicePixelRatio(factor);
 	};
 	if (set.image.isNull() && set.icon) {
-		resolve(
-			set.image,
-			set.effect ? st::effectInfoImage : st::reactionInlineImage);
+		resolve(set.image, st::reactionInlineImage);
 		crl::async([icon = std::move(set.icon)]{});
 	}
 	return set.image;
@@ -564,7 +516,7 @@ QImage Reactions::resolveImageFor(const ReactionId &id) {
 
 void Reactions::resolveReactionImages() {
 	for (auto &[id, set] : _images) {
-		if (set.effect || !set.image.isNull() || set.icon || set.media) {
+		if (!set.image.isNull() || set.icon || set.media) {
 			continue;
 		}
 		const auto i = ranges::find(_available, id, &Reaction::id);
@@ -582,31 +534,6 @@ void Reactions::resolveReactionImages() {
 	}
 }
 
-void Reactions::resolveEffectImages() {
-	for (auto &[id, set] : _images) {
-		if (!set.effect || !set.image.isNull() || set.icon || set.media) {
-			continue;
-		}
-		const auto i = ranges::find(_effects, id, &Reaction::id);
-		const auto document = (i == end(_effects))
-			? nullptr
-			: i->centerIcon
-			? i->centerIcon
-			: nullptr;
-		if (document) {
-			loadImage(set, document, false);
-		} else if (i != end(_effects)) {
-			generateImage(set, i->title);
-		} else {
-			LOG(("API Error: Effect '%1' not found!"
-				).arg(ReactionIdToLog(id)));
-		}
-		if (i != end(_effects)) {
-			preloadEffect(*i);
-		}
-	}
-}
-
 void Reactions::loadImage(
 		ImageSet &set,
 		not_null<DocumentData*> document,
@@ -614,9 +541,7 @@ void Reactions::loadImage(
 	if (!set.image.isNull() || set.icon) {
 		return;
 	} else if (!set.media) {
-		if (!set.effect) {
-			set.fromSelectAnimation = fromSelectAnimation;
-		}
+		set.fromSelectAnimation = fromSelectAnimation;
 		set.media = document->createMediaView();
 		set.media->checkStickerLarge();
 	}
@@ -628,26 +553,6 @@ void Reactions::loadImage(
 			downloadTaskFinished();
 		}, _imagesLoadLifetime);
 	}
-}
-
-void Reactions::generateImage(ImageSet &set, const QString &emoji) {
-	Expects(set.effect);
-
-	const auto e = Ui::Emoji::Find(emoji);
-	Assert(e != nullptr);
-
-	const auto large = Ui::Emoji::GetSizeLarge();
-	const auto factor = style::DevicePixelRatio();
-	auto image = QImage(large, large, QImage::Format_ARGB32_Premultiplied);
-	image.setDevicePixelRatio(factor);
-	image.fill(Qt::transparent);
-	{
-		QPainter p(&image);
-		Ui::Emoji::Draw(p, e, large, 0, 0);
-	}
-	const auto size = st::effectInfoImage;
-	set.image = image.scaled(size * factor, size * factor);
-	set.image.setDevicePixelRatio(factor);
 }
 
 void Reactions::setAnimatedIcon(ImageSet &set) {
@@ -757,25 +662,6 @@ void Reactions::requestGeneric() {
 	}).send();
 }
 
-void Reactions::requestEffects() {
-	if (_effectsRequestId) {
-		return;
-	}
-	auto &api = _owner->session().api();
-	_effectsRequestId = api.request(MTPmessages_GetAvailableEffects(
-		MTP_int(_effectsHash)
-	)).done([=](const MTPmessages_AvailableEffects &result) {
-		_effectsRequestId = 0;
-		result.match([&](const MTPDmessages_availableEffects &data) {
-			updateEffects(data);
-		}, [&](const MTPDmessages_availableEffectsNotModified &) {
-		});
-	}).fail([=] {
-		_effectsRequestId = 0;
-		_effectsHash = 0;
-	}).send();
-}
-
 void Reactions::updateTop(const MTPDmessages_reactions &data) {
 	_topHash = data.vhash().v;
 	_topIds = ListFromMTP(data);
@@ -844,32 +730,6 @@ void Reactions::updateGeneric(const MTPDmessages_stickerSet &data) {
 	}
 }
 
-void Reactions::updateEffects(const MTPDmessages_availableEffects &data) {
-	_effectsHash = data.vhash().v;
-
-	const auto &list = data.veffects().v;
-	const auto toCache = [&](DocumentData *document) {
-		if (document) {
-			_iconsCache.emplace(document, document->createMediaView());
-		}
-	};
-	for (const auto &document : data.vdocuments().v) {
-		toCache(_owner->processDocument(document));
-	}
-	_effects.clear();
-	_effects.reserve(list.size());
-	for (const auto &effect : list) {
-		if (const auto parsed = parse(effect)) {
-			_effects.push_back(*parsed);
-		}
-	}
-	if (_waitingForEffects) {
-		_waitingForEffects = false;
-		resolveEffectImages();
-	}
-	effectsUpdated();
-}
-
 void Reactions::recentUpdated() {
 	_topRefreshTimer.callOnce(kTopRequestDelay);
 	_recentUpdated.fire({});
@@ -881,12 +741,7 @@ void Reactions::defaultUpdated() {
 	if (_genericAnimations.empty()) {
 		requestGeneric();
 	}
-	refreshEffects();
 	_defaultUpdated.fire({});
-}
-
-void Reactions::effectsUpdated() {
-	_effectsUpdated.fire({});
 }
 
 not_null<CustomEmojiManager::Listener*> Reactions::resolveListener() {
@@ -993,48 +848,6 @@ std::optional<Reaction> Reactions::parse(const MTPAvailableReaction &entry) {
 			? _owner->processDocument(*data.varound_animation()).get()
 			: nullptr),
 		.active = !data.is_inactive(),
-	});
-}
-
-std::optional<Reaction> Reactions::parse(const MTPAvailableEffect &entry) {
-	const auto &data = entry.data();
-	const auto emoji = qs(data.vemoticon());
-	const auto known = (Ui::Emoji::Find(emoji) != nullptr);
-	if (!known) {
-		LOG(("API Error: Unknown emoji in effects: %1").arg(emoji));
-		return std::nullopt;
-	}
-	const auto id = DocumentId(data.vid().v);
-	const auto stickerId = data.veffect_sticker_id().v;
-	const auto document = _owner->document(stickerId);
-	if (!document->sticker()) {
-		LOG(("API Error: Bad sticker in effects: %1").arg(stickerId));
-		return std::nullopt;
-	}
-	const auto aroundId = data.veffect_animation_id().value_or_empty();
-	const auto around = aroundId
-		? _owner->document(aroundId).get()
-		: nullptr;
-	if (around && !around->sticker()) {
-		LOG(("API Error: Bad sticker in effects around: %1").arg(aroundId));
-		return std::nullopt;
-	}
-	const auto iconId = data.vstatic_icon_id().value_or_empty();
-	const auto icon = iconId ? _owner->document(iconId).get() : nullptr;
-	if (icon && !icon->sticker()) {
-		LOG(("API Error: Bad sticker in effects icon: %1").arg(iconId));
-		return std::nullopt;
-	}
-	return std::make_optional(Reaction{
-		.id = ReactionId{ id },
-		.title = emoji,
-		.appearAnimation = document,
-		.selectAnimation = document,
-		.centerIcon = icon,
-		.aroundAnimation = around,
-		.active = true,
-		.effect = true,
-		.premium = data.is_premium_required(),
 	});
 }
 

@@ -1312,7 +1312,7 @@ void ScheduledWidget::checkProcessingVideoTooltip(
 		_processingVideoCanShow = false;
 		return;
 	}
-	const auto rect = view->effectIconGeometry();
+	const auto rect = view->bottomInfoAnchor();
 	if (rect.top() > visibleTop
 		&& rect.top() + rect.height() <= visibleBottom) {
 		showProcessingVideoTooltip();
@@ -1330,7 +1330,7 @@ void ScheduledWidget::updateProcessingVideoTooltipPosition() {
 		return;
 	}
 	const auto shift = view->skipBlockWidth() / 2;
-	const auto rect = view->effectIconGeometry().translated(shift, 0);
+	const auto rect = view->bottomInfoAnchor().translated(shift, 0);
 	const auto countPosition = [=](QSize size) {
 		const auto origin = rect.bottomLeft();
 		return origin - QPoint(

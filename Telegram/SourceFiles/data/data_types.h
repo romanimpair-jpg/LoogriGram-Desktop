@@ -141,7 +141,6 @@ using TodoListId = FullMsgId;
 using WallPaperId = uint64;
 using CallId = uint64;
 using BotAppId = uint64;
-using EffectId = uint64;
 
 struct EmojiStatusId {
 	DocumentId documentId = 0;
@@ -335,8 +334,6 @@ enum class MessageFlag : uint64 {
 	DisplayFromProfiles   = (1ULL << 41),
 
 	ShowSimilarChannels   = (1ULL << 42),
-
-	EffectWatched         = (1ULL << 46),
 
 	SensitiveContent      = (1ULL << 47),
 	HasRestrictions       = (1ULL << 48),

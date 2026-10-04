@@ -90,7 +90,6 @@ struct HistoryItemCommonFields {
 	UserId viaBotId = 0;
 	QString postAuthor;
 	uint64 groupedId = 0;
-	EffectId effectId = 0;
 	HistoryMessageMarkupData markup;
 	HistoryMessageSuggestInfo suggest;
 	bool ignoreForwardFrom = false;
@@ -242,8 +241,6 @@ public:
 	[[nodiscard]] bool hasUnreadReaction() const;
 	[[nodiscard]] bool hasUnreadPollVote() const;
 	void setHasUnreadPollVote();
-	[[nodiscard]] bool hasUnwatchedEffect() const;
-	bool markEffectWatched();
 	[[nodiscard]] bool isUnreadMedia() const;
 	[[nodiscard]] bool isIncomingUnreadMedia() const;
 	[[nodiscard]] bool hasUnreadMediaFlag() const;
@@ -433,7 +430,6 @@ public:
 	void markEphemeralSent();
 	void markTextAppearingStarted();
 	void incrementReplyToTopCounter();
-	void applyEffectWatchedOnUnreadKnown();
 
 	void setHasHiddenLinks(bool has) const;
 	[[nodiscard]] bool hasHiddenLinks() const;
@@ -553,7 +549,6 @@ public:
 
 	[[nodiscard]] bool isEmpty() const;
 	[[nodiscard]] MessageGroupId groupId() const;
-	[[nodiscard]] EffectId effectId() const;
 	[[nodiscard]] bool hasPossibleRestrictions() const;
 	[[nodiscard]] QString computeUnavailableReason() const;
 	[[nodiscard]] bool isMediaSensitive() const;
@@ -628,7 +623,6 @@ private:
 	void createComponentsHelper(HistoryItemCommonFields &&fields);
 	void createComponents(CreateConfig &&config);
 	void setupForwardedComponent(const CreateConfig &config);
-	void applyInitialEffectWatched();
 
 	[[nodiscard]] bool generateLocalEntitiesByReply() const;
 	[[nodiscard]] TextWithEntities withLocalEntities(
@@ -759,7 +753,9 @@ private:
 	TimeId _ttlDestroyAt = 0;
 
 	MessageGroupId _groupId = MessageGroupId();
-	EffectId _effectId = 0;
+	// LoogriGram: _effectId kept the message effect a sender attached, for
+	// its icon by the time and for playing it. Effects neither play nor show
+	// (the user's decision, 2026-10-04), so the server's effect is not read.
 	HistoryView::Element *_mainView = nullptr;
 
 	friend class HistoryView::Element;

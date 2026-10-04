@@ -1596,8 +1596,7 @@ int HistoryWidget::itemTopForHighlight(
 	Assert(itemTop >= 0);
 
 	const auto item = view->data();
-	const auto unwatchedEffect = item->hasUnwatchedEffect();
-	const auto showReactions = item->hasUnreadReaction() || unwatchedEffect;
+	const auto showReactions = item->hasUnreadReaction();
 	const auto reactionCenter = showReactions
 		? view->reactionButtonParameters({}, {}).center.y()
 		: -1;

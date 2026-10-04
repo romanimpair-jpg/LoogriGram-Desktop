@@ -26,7 +26,8 @@ struct SendOptions {
 	PeerData *sendAs = nullptr;
 	TimeId scheduled = 0;
 	TimeId scheduleRepeatPeriod = 0;
-	EffectId effectId = 0;
+	// LoogriGram: effectId chose a message effect to send with; the picker
+	// and the effects themselves are gone (2026-10-04).
 	bool silent = false;
 	bool handleSupportSwitch = false;
 	bool invertCaption = false;

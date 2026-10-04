@@ -676,7 +676,10 @@ public:
 	void previousInBlocksChanged();
 	void nextInBlocksRemoved();
 
-	[[nodiscard]] virtual QRect effectIconGeometry() const;
+	// LoogriGram: was effectIconGeometry(). With no effect icon (scheduled
+	// messages never had one) it gave an empty rect at the top-left of the
+	// time info, which is all the processing-video tooltip still points at.
+	[[nodiscard]] virtual QRect bottomInfoAnchor() const;
 	[[nodiscard]] virtual QRect innerGeometry() const = 0;
 	[[nodiscard]] virtual QPoint mediaTopLeft() const;
 
@@ -704,10 +707,6 @@ public:
 	-> base::flat_map<
 		Data::ReactionId,
 		std::unique_ptr<Ui::ReactionFlyAnimation>>;
-
-	void animateUnreadEffect();
-	[[nodiscard]] virtual auto takeEffectAnimation()
-	-> std::unique_ptr<Ui::ReactionFlyAnimation>;
 
 	void overrideMedia(std::unique_ptr<Media> media);
 	void overrideRightBadge(const QString &text, BadgeRole role);

@@ -40,8 +40,6 @@ struct Reaction {
 	DocumentData *aroundAnimation = nullptr;
 	int count = 0;
 	bool active = false;
-	bool effect = false;
-	bool premium = false;
 };
 
 struct PossibleItemReactionsRef {
@@ -76,14 +74,12 @@ public:
 	void refreshRecent();
 	void refreshRecentDelayed();
 	void refreshDefault();
-	void refreshEffects();
 
 	enum class Type {
 		Active,
 		Recent,
 		Top,
 		All,
-		Effects,
 	};
 	[[nodiscard]] const std::vector<Reaction> &list(Type type) const;
 	[[nodiscard]] ReactionId favoriteId() const;
@@ -96,17 +92,13 @@ public:
 	[[nodiscard]] rpl::producer<> recentUpdates() const;
 	[[nodiscard]] rpl::producer<> defaultUpdates() const;
 	[[nodiscard]] rpl::producer<> favoriteUpdates() const;
-	[[nodiscard]] rpl::producer<> effectsUpdates() const;
 
 	void preloadReactionImageFor(const ReactionId &emoji);
 	[[nodiscard]] QImage resolveReactionImageFor(const ReactionId &emoji);
 
-	// This is used to reserve space for the effect in BottomInfo but not
-	// actually paint anything, used in case we want to paint icon ourselves.
-	static constexpr auto kFakeEffectId = EffectId(1);
-
-	void preloadEffectImageFor(EffectId id);
-	[[nodiscard]] QImage resolveEffectImageFor(EffectId id);
+	// LoogriGram: the message effects catalogue (Type::Effects, with its
+	// images for the icon by the time) is not fetched; effects are gone
+	// (the user's decision, 2026-10-04).
 
 	void preloadAnimationsFor(const ReactionId &emoji);
 
@@ -133,7 +125,6 @@ private:
 		std::shared_ptr<DocumentMedia> media;
 		std::unique_ptr<Ui::AnimatedIcon> icon;
 		bool fromSelectAnimation = false;
-		bool effect = false;
 	};
 
 	[[nodiscard]] not_null<CustomEmojiManager::Listener*> resolveListener();
@@ -143,17 +134,14 @@ private:
 	void requestRecent();
 	void requestDefault();
 	void requestGeneric();
-	void requestEffects();
 
 	void updateTop(const MTPDmessages_reactions &data);
 	void updateRecent(const MTPDmessages_reactions &data);
 	void updateDefault(const MTPDmessages_availableReactions &data);
 	void updateGeneric(const MTPDmessages_stickerSet &data);
-	void updateEffects(const MTPDmessages_availableEffects &data);
 
 	void recentUpdated();
 	void defaultUpdated();
-	void effectsUpdated();
 
 	[[nodiscard]] std::optional<Reaction> resolveById(const ReactionId &id);
 	[[nodiscard]] std::vector<Reaction> resolveByIds(
@@ -164,20 +152,15 @@ private:
 
 	[[nodiscard]] std::optional<Reaction> parse(
 		const MTPAvailableReaction &entry);
-	[[nodiscard]] std::optional<Reaction> parse(
-		const MTPAvailableEffect &entry);
 
-	void preloadEffect(const Reaction &effect);
 	void preloadImageFor(const ReactionId &id);
 	[[nodiscard]] QImage resolveImageFor(const ReactionId &id);
 	void loadImage(
 		ImageSet &set,
 		not_null<DocumentData*> document,
 		bool fromSelectAnimation);
-	void generateImage(ImageSet &set, const QString &emoji);
 	void setAnimatedIcon(ImageSet &set);
 	void resolveReactionImages();
-	void resolveEffectImages();
 	void downloadTaskFinished();
 
 	[[nodiscard]] DocumentData *randomLoadedFrom(
@@ -198,7 +181,6 @@ private:
 	std::vector<ReactionId> _topIds;
 	base::flat_set<ReactionId> _unresolvedTop;
 	std::vector<not_null<DocumentData*>> _genericAnimations;
-	std::vector<Reaction> _effects;
 	ReactionId _favoriteId;
 	ReactionId _unresolvedFavoriteId;
 	std::optional<Reaction> _favorite;
@@ -212,7 +194,6 @@ private:
 	rpl::event_stream<> _recentUpdated;
 	rpl::event_stream<> _defaultUpdated;
 	rpl::event_stream<> _favoriteUpdated;
-	rpl::event_stream<> _effectsUpdated;
 
 	// We need &i->second stay valid while inserting new items.
 	// So we use std::map instead of base::flat_map here.
@@ -232,13 +213,9 @@ private:
 
 	mtpRequestId _genericRequestId = 0;
 
-	mtpRequestId _effectsRequestId = 0;
-	int32 _effectsHash = 0;
-
 	base::flat_map<ReactionId, ImageSet> _images;
 	rpl::lifetime _imagesLoadLifetime;
 	bool _waitingForReactions = false;
-	bool _waitingForEffects = false;
 
 	base::flat_map<FullMsgId, mtpRequestId> _sentRequests;
 

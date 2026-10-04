@@ -366,9 +366,6 @@ void ScheduleBox(
 		if (action.options.silent) {
 			options.silent = action.options.silent;
 		}
-		if (action.options.effectId) {
-			options.effectId = action.options.effectId;
-		}
 		submit(options);
 	});
 	SetupMenuAndShortcuts(

@@ -147,9 +147,6 @@ void SendExistingMedia(
 			sendFlags |= MTPmessages_SendMedia::Flag::f_schedule_repeat_period;
 		}
 	}
-	if (action.options.effectId) {
-		sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
-	}
 	if (action.options.suggest) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
 	}
@@ -166,7 +163,6 @@ void SendExistingMedia(
 		.date = NewMessageDate(action.options),
 		.scheduleRepeatPeriod = action.options.scheduleRepeatPeriod,
 		.postAuthor = NewMessagePostAuthor(action),
-		.effectId = action.options.effectId,
 		.suggest = HistoryMessageSuggestInfo(action.options),
 		.mediaSpoiler = action.options.mediaSpoiler,
 	}, media, caption);
@@ -210,7 +206,7 @@ void SendExistingMedia(
 				MTP_int(action.options.scheduleRepeatPeriod),
 				(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
 				MTPInputQuickReplyShortcut(),
-				MTP_long(action.options.effectId),
+				MTP_long(0), // effect
 				MTP_long(0),
 				SuggestToMTP(action.options.suggest)
 			), [=](const MTPUpdates &result, const MTP::Response &response) {
@@ -341,7 +337,6 @@ void SendMusicSelectionBatch(
 			.scheduleRepeatPeriod = action.options.scheduleRepeatPeriod,
 			.postAuthor = NewMessagePostAuthor(action),
 			.groupedId = groupId,
-			.effectId = action.options.effectId,
 			.suggest = HistoryMessageSuggestInfo(action.options),
 			.mediaSpoiler = action.options.mediaSpoiler,
 		}, items[i].document, itemCaption);
@@ -450,9 +445,6 @@ void SendMusicSelectionBatch(
 			if (sendAs) {
 				sendFlags |= MTPmessages_SendMedia::Flag::f_send_as;
 			}
-			if (action.options.effectId) {
-				sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
-			}
 			if (action.options.suggest) {
 				sendFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
 			}
@@ -477,7 +469,7 @@ void SendMusicSelectionBatch(
 					MTP_int(action.options.scheduleRepeatPeriod),
 					(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
 					MTPInputQuickReplyShortcut(),
-					MTP_long(action.options.effectId),
+					MTP_long(0), // effect
 					MTP_long(0),
 					SuggestToMTP(action.options.suggest)
 				), [=](const MTPUpdates &result, const MTP::Response &response) {
@@ -498,7 +490,6 @@ void SendMusicSelectionBatch(
 				? Flag::f_schedule_date
 				: Flag(0))
 			| (sendAs ? Flag::f_send_as : Flag(0))
-			| (action.options.effectId ? Flag::f_effect : Flag(0))
 			| (action.options.invertCaption
 				? Flag::f_invert_media
 				: Flag(0));
@@ -525,7 +516,7 @@ void SendMusicSelectionBatch(
 				MTP_int(action.options.scheduled),
 				(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
 				MTPInputQuickReplyShortcut(),
-				MTP_long(action.options.effectId),
+				MTP_long(0), // effect
 				MTP_long(0)
 			), [=](const MTPUpdates &result, const MTP::Response &response) {
 			if (done) {
@@ -703,9 +694,6 @@ bool SendDice(MessageToSend &message) {
 			sendFlags |= MTPmessages_SendMedia::Flag::f_schedule_repeat_period;
 		}
 	}
-	if (action.options.effectId) {
-		sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
-	}
 	if (action.options.suggest) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
 	}
@@ -724,7 +712,6 @@ bool SendDice(MessageToSend &message) {
 		.date = NewMessageDate(action.options),
 		.scheduleRepeatPeriod = action.options.scheduleRepeatPeriod,
 		.postAuthor = NewMessagePostAuthor(action),
-		.effectId = action.options.effectId,
 		.suggest = HistoryMessageSuggestInfo(action.options),
 	}, TextWithEntities(), MTP_messageMediaDice(
 		MTP_flags(MTPDmessageMediaDice::Flag()),
@@ -751,7 +738,7 @@ bool SendDice(MessageToSend &message) {
 			MTP_int(action.options.scheduleRepeatPeriod),
 			(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
 			MTPInputQuickReplyShortcut(),
-			MTP_long(action.options.effectId),
+			MTP_long(0), // effect
 			MTP_long(0),
 			SuggestToMTP(action.options.suggest)
 		), [=](const MTPUpdates &result, const MTP::Response &response) {
@@ -1015,7 +1002,6 @@ void AddConfirmedLocalPlaceholder(const ConfirmedLocalFile &local) {
 			: local.file->album
 			? local.file->album->groupId
 			: uint64(0),
-		.effectId = local.file->to.options.effectId,
 		.suggest = HistoryMessageSuggestInfo(local.file->to.options),
 	}, local.caption, local.media);
 	if (welcomeTemplate) {

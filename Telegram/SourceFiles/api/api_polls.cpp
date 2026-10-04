@@ -252,9 +252,6 @@ void Polls::create(
 			sendFlags |= MTPmessages_SendMedia::Flag::f_schedule_repeat_period;
 		}
 	}
-	if (action.options.effectId) {
-		sendFlags |= MTPmessages_SendMedia::Flag::f_effect;
-	}
 	if (action.options.suggest) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
 	}
@@ -288,7 +285,7 @@ void Polls::create(
 			MTP_int(action.options.scheduleRepeatPeriod),
 			(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
 			MTPInputQuickReplyShortcut(),
-			MTP_long(action.options.effectId),
+			MTP_long(0), // effect
 			MTP_long(0),
 			SuggestToMTP(action.options.suggest)
 		), [=](const MTPUpdates &result, const MTP::Response &response) {

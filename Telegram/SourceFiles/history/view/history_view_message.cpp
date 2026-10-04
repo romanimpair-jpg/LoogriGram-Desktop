@@ -516,10 +516,6 @@ Message::Message(
 		AddComponents(HiddenSenderTooltip::Bit());
 	}
 	setupReactions(replacing);
-	auto animation = replacing ? replacing->takeEffectAnimation() : nullptr;
-	if (animation) {
-		_bottomInfo.continueEffectAnimation(std::move(animation));
-	}
 	initSuggestedInfo();
 
 	if (data->textAppearing()) {
@@ -1118,12 +1114,7 @@ void Message::animateReaction(Ui::ReactionFlyAnimationArgs &&args) {
 	}
 }
 
-auto Message::takeEffectAnimation()
--> std::unique_ptr<Ui::ReactionFlyAnimation> {
-	return _bottomInfo.takeEffectAnimation();
-}
-
-QRect Message::effectIconGeometry() const {
+QRect Message::bottomInfoAnchor() const {
 	if (hidesBottomInfo()) {
 		return {};
 	}
@@ -1146,7 +1137,7 @@ QRect Message::effectIconGeometry() const {
 
 	const auto fromBottomInfo = [&](QPoint bottomRight) {
 		const auto size = _bottomInfo.currentSize();
-		return _bottomInfo.effectIconGeometry().translated(
+		return QRect().translated(
 			bottomRight - QPoint(size.width(), size.height()));
 	};
 	if (bubble) {
@@ -5201,7 +5192,7 @@ int Message::infoWidth() const {
 }
 
 int Message::bottomInfoFirstLineWidth() const {
-	return hidesBottomInfo() ? 0 : _bottomInfo.firstLineWidth();
+	return hidesBottomInfo() ? 0 : _bottomInfo.width();
 }
 
 bool Message::bottomInfoIsWide() const {

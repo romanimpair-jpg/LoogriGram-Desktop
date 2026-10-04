@@ -1819,7 +1819,6 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 						? Flag::f_silent
 						: Flag(0))
 					| (sublistPeer ? Flag::f_reply_to : Flag())
-					| (options.effectId ? Flag::f_effect : Flag())
 					| (range.fromEphemeral
 						? Flag::f_from_ephemeral
 						: Flag(0));
@@ -1858,7 +1857,7 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 						MTP_int(options.scheduleRepeatPeriod),
 						MTP_inputPeerEmpty(),
 						MTPInputQuickReplyShortcut(),
-						MTP_long(options.effectId),
+						MTP_long(0), // effect
 						MTP_int(videoTimestamp.value_or(0)),
 						MTP_long(0),
 						MTPSuggestedPost());

@@ -14,8 +14,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace Ui {
 struct ChatPaintContext;
 class AnimatedIcon;
-struct ReactionFlyAnimationArgs;
-class ReactionFlyAnimation;
 } // namespace Ui
 
 namespace Data {
@@ -53,7 +51,6 @@ public:
 		QDateTime date;
 		QDateTime editedDate;
 		QString author;
-		EffectId effectId = 0;
 		TimeId scheduleRepeatPeriod = 0;
 		std::optional<int> views;
 		std::optional<int> replies;
@@ -65,7 +62,6 @@ public:
 
 	void update(Data &&data, int availableWidth);
 
-	[[nodiscard]] int firstLineWidth() const;
 	[[nodiscard]] bool isWide() const;
 	[[nodiscard]] TextState textState(
 		not_null<const Message*> view,
@@ -80,44 +76,20 @@ public:
 		bool inverted,
 		const PaintContext &context) const;
 
-	[[nodiscard]] auto takeEffectAnimation()
-		-> std::unique_ptr<Ui::ReactionFlyAnimation>;
-	void continueEffectAnimation(
-		std::unique_ptr<Ui::ReactionFlyAnimation> animation);
-
-	QRect effectIconGeometry() const;
-
 private:
-	struct Effect;
-
 	void layout();
 	void layoutDateText();
 	void layoutViewsText();
 	void layoutRepliesText();
-	void layoutEffectText();
-
-	[[nodiscard]] int countEffectMaxWidth() const;
-	[[nodiscard]] int countEffectHeight(int newWidth) const;
-	void paintEffect(
-		Painter &p,
-		QPoint origin,
-		int left,
-		int top,
-		int availableWidth,
-		const PaintContext &context) const;
 
 	QSize countOptimalSize() override;
 	QSize countCurrentSize(int newWidth) override;
-
-	[[nodiscard]] Effect prepareEffectWithId(EffectId id);
 
 	const not_null<::Data::Reactions*> _reactionsOwner;
 	Data _data;
 	Ui::Text::String _authorEditedDate;
 	Ui::Text::String _views;
 	Ui::Text::String _replies;
-	std::unique_ptr<Effect> _effect;
-	int _effectMaxWidth = 0;
 	bool _authorElided = false;
 
 };

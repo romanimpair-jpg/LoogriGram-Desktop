@@ -454,15 +454,11 @@ HistoryItem::HistoryItem(
 	.from = data.vfrom_id() ? peerFromMTP(*data.vfrom_id()) : PeerId(0),
 	.date = data.vdate().v,
 	.scheduleRepeatPeriod = data.vschedule_repeat_period().value_or_empty(),
-	.effectId = data.veffect().value_or_empty(),
 }) {
 	if (LoogriGram::HiddenMessage(data)) {
 		setupContentHidden();
 		return;
 	}
-	// Called only for server-received messages, not locally created ones.
-	applyInitialEffectWatched();
-
 	const auto media = data.vmedia();
 	const auto checked = media
 		? CheckMessageMedia(*media)
@@ -832,13 +828,9 @@ HistoryItem::HistoryItem(
 	? history->owner().peer(fields.from)
 	: history->peer)
 , _flags(FinalizeMessageFlags(history, fields.flags))
-, _date(fields.date)
-, _effectId(fields.effectId) {
+, _date(fields.date) {
 	if (isHistoryEntry() && IsClientMsgId(id)) {
 		_history->registerClientSideMessage(this);
-	}
-	if (_effectId) {
-		_history->owner().reactions().preloadEffectImageFor(_effectId);
 	}
 	if (isGuestChatBotMessage()) {
 		_history->setHasGuestChatBotMessages();
@@ -1595,18 +1587,6 @@ bool HistoryItem::hasUnreadPollVote() const {
 
 void HistoryItem::setHasUnreadPollVote() {
 	_flags |= MessageFlag::HasUnreadPollVote;
-}
-
-bool HistoryItem::hasUnwatchedEffect() const {
-	return effectId() && !(_flags & MessageFlag::EffectWatched);
-}
-
-bool HistoryItem::markEffectWatched() {
-	if (!hasUnwatchedEffect()) {
-		return false;
-	}
-	_flags |= MessageFlag::EffectWatched;
-	return true;
 }
 
 bool HistoryItem::mentionsMe() const {
@@ -4190,10 +4170,6 @@ MessageGroupId HistoryItem::groupId() const {
 	return _groupId;
 }
 
-EffectId HistoryItem::effectId() const {
-	return _effectId;
-}
-
 QString HistoryItem::computeUnavailableReason() const {
 	if (const auto restrictions = Get<HistoryMessageRestrictions>()) {
 		_flags |= MessageFlag::HasRestrictions;
@@ -4647,23 +4623,6 @@ void HistoryItem::setupForwardedComponent(const CreateConfig &config) {
 			= std::make_unique<HiddenSenderInfo>(config.savedFromSenderName, false);
 	}
 	forwarded->imported = config.imported;
-}
-
-void HistoryItem::applyInitialEffectWatched() {
-	if (!effectId()) {
-		return;
-	} else if (out()) {
-		// If this message came from the server, not generated on send.
-		_flags |= MessageFlag::EffectWatched;
-	} else if (_history->inboxReadTillId() && !unread(_history)) {
-		_flags |= MessageFlag::EffectWatched;
-	}
-}
-
-void HistoryItem::applyEffectWatchedOnUnreadKnown() {
-	if (effectId() && !out() && !unread(_history)) {
-		_flags |= MessageFlag::EffectWatched;
-	}
 }
 
 bool HistoryItem::generateLocalEntitiesByReply() const {

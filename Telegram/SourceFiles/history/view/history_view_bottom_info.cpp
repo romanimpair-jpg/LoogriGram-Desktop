@@ -9,7 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "ui/chat/message_bubble.h"
 #include "ui/chat/chat_style.h"
-#include "ui/effects/reaction_fly_animation.h"
 #include "ui/text/custom_emoji_helper.h"
 #include "ui/text/format_values.h"
 #include "ui/text/text_options.h"
@@ -84,12 +83,6 @@ namespace {
 
 } // namespace
 
-struct BottomInfo::Effect {
-	mutable std::unique_ptr<Ui::ReactionFlyAnimation> animation;
-	mutable QImage image;
-	EffectId id = 0;
-};
-
 BottomInfo::BottomInfo(
 	not_null<::Data::Reactions*> reactionsOwner,
 	Data &&data)
@@ -108,54 +101,12 @@ void BottomInfo::update(Data &&data, int availableWidth) {
 	}
 }
 
-int BottomInfo::countEffectMaxWidth() const {
-	auto result = 0;
-	if (_effect) {
-		result += st::reactionInfoSize;
-		result += st::reactionInfoBetween;
-	}
-	if (result) {
-		result += (st::reactionInfoSkip - st::reactionInfoBetween);
-	}
-	return result;
-}
-
-int BottomInfo::countEffectHeight(int newWidth) const {
-	const auto left = 0;
-	auto x = 0;
-	auto y = 0;
-	auto widthLeft = newWidth;
-	if (_effect) {
-		const auto add = st::reactionInfoBetween;
-		const auto width = st::reactionInfoSize;
-		if (x > left && widthLeft < width) {
-			x = left;
-			y += st::msgDateFont->height;
-			widthLeft = newWidth;
-		}
-		x += width + add;
-		widthLeft -= width + add;
-	}
-	if (x > left) {
-		y += st::msgDateFont->height;
-	}
-	return y;
-}
-
-int BottomInfo::firstLineWidth() const {
-	if (height() == minHeight()) {
-		return width();
-	}
-	return maxWidth() - _effectMaxWidth;
-}
-
 bool BottomInfo::isWide() const {
 	return (_data.flags & Data::Flag::Edited)
 		|| _data.scheduleRepeatPeriod
 		|| !_data.author.isEmpty()
 		|| !_views.isEmpty()
-		|| !_replies.isEmpty()
-		|| _effect;
+		|| !_replies.isEmpty();
 }
 
 TextState BottomInfo::textState(
@@ -163,8 +114,6 @@ TextState BottomInfo::textState(
 		QPoint position) const {
 	const auto item = view->data();
 	auto result = TextState(item);
-	// LoogriGram: the effect icon replayed the message's effect on click
-	// (replayEffectLink); effects don't play (2026-10-04).
 	const auto textWidth = _authorEditedDate.maxWidth();
 	auto withTicksWidth = textWidth;
 	if (_data.flags & (Data::Flag::OutLayout | Data::Flag::Sending)) {
@@ -331,105 +280,23 @@ void BottomInfo::paint(
 			firstLineBottom + st::historyViewsTop,
 			outerWidth);
 	}
-	if (_effect) {
-		auto left = position.x();
-		auto top = position.y();
-		auto available = width();
-		if (height() != minHeight()) {
-			available = std::min(available, _effectMaxWidth);
-			left += width() - available;
-			top += st::msgDateFont->height;
-		}
-		paintEffect(p, position, left, top, available, context);
-	}
-}
-
-void BottomInfo::paintEffect(
-		Painter &p,
-		QPoint origin,
-		int left,
-		int top,
-		int availableWidth,
-		const PaintContext &context) const {
-	struct SingleAnimation {
-		not_null<Ui::ReactionFlyAnimation*> animation;
-		QRect target;
-	};
-	std::vector<SingleAnimation> animations;
-
-	auto x = left;
-	auto y = top;
-	auto widthLeft = availableWidth;
-	if (_effect) {
-		const auto animating = (_effect->animation != nullptr);
-		const auto add = st::reactionInfoBetween;
-		const auto width = st::reactionInfoSize;
-		if (x > left && widthLeft < width) {
-			x = left;
-			y += st::msgDateFont->height;
-			widthLeft = availableWidth;
-		}
-		if (_effect->image.isNull()) {
-			_effect->image = _reactionsOwner->resolveEffectImageFor(
-				_effect->id);
-		}
-		const auto image = QRect(
-			x + (st::reactionInfoSize - st::effectInfoImage) / 2,
-			y + (st::msgDateFont->height - st::effectInfoImage) / 2,
-			st::effectInfoImage,
-			st::effectInfoImage);
-		if (!_effect->image.isNull()) {
-			p.drawImage(image.topLeft(), _effect->image);
-		}
-		if (animating) {
-			animations.push_back({
-				.animation = _effect->animation.get(),
-				.target = image,
-			});
-		}
-		x += width + add;
-		widthLeft -= width + add;
-	}
-	if (!animations.empty() && context.reactionInfo) {
-		const auto now = context.now;
-		context.reactionInfo->effectPaint = [
-			now,
-			origin,
-			list = std::move(animations)
-		](QPainter &p) {
-			auto result = QRect();
-			for (const auto &single : list) {
-				const auto area = single.animation->paintGetArea(
-					p,
-					origin,
-					single.target,
-					QColor(255, 255, 255, 0), // Colored, for emoji status.
-					QRect(), // Clip, for emoji status.
-					now);
-				result = result.isEmpty() ? area : result.united(area);
-			}
-			return result;
-		};
-	}
+	// LoogriGram: a message's effect showed as an icon on a second line
+	// here (paintEffect), which replayed the effect on click and caught the
+	// effect's fly animation after sending. Effects are gone (2026-10-04),
+	// and with them the only reason this info took a second line.
 }
 
 QSize BottomInfo::countCurrentSize(int newWidth) {
 	if (newWidth >= maxWidth()) {
 		return optimalSize();
 	}
-	const auto dateHeight = st::msgDateFont->height;
-	const auto noReactionsWidth = maxWidth() - _effectMaxWidth;
-	accumulate_min(newWidth, std::max(noReactionsWidth, _effectMaxWidth));
-	return QSize(
-		newWidth,
-		dateHeight + countEffectHeight(newWidth));
+	return QSize(newWidth, st::msgDateFont->height);
 }
 
 void BottomInfo::layout() {
 	layoutDateText();
 	layoutViewsText();
 	layoutRepliesText();
-	layoutEffectText();
 	initDimensions();
 }
 
@@ -506,14 +373,6 @@ void BottomInfo::layoutRepliesText() {
 		Ui::NameTextOptions());
 }
 
-void BottomInfo::layoutEffectText() {
-	if (!_data.effectId) {
-		_effect = nullptr;
-		return;
-	}
-	_effect = std::make_unique<Effect>(prepareEffectWithId(_data.effectId));
-}
-
 QSize BottomInfo::countOptimalSize() {
 	auto width = 0;
 	if (_data.flags & (Data::Flag::OutLayout | Data::Flag::Sending)) {
@@ -539,47 +398,8 @@ QSize BottomInfo::countOptimalSize() {
 	if (_data.flags & Data::Flag::Ephemeral) {
 		width += st::historyEphemeralStateWidth;
 	}
-	_effectMaxWidth = countEffectMaxWidth();
-	width += _effectMaxWidth;
 	const auto dateHeight = st::msgDateFont->height;
 	return QSize(width, dateHeight);
-}
-
-BottomInfo::Effect BottomInfo::prepareEffectWithId(EffectId id) {
-	auto result = Effect{ .id = id };
-	_reactionsOwner->preloadEffectImageFor(id);
-	return result;
-}
-
-auto BottomInfo::takeEffectAnimation()
--> std::unique_ptr<Ui::ReactionFlyAnimation> {
-	return _effect ? std::move(_effect->animation) : nullptr;
-}
-
-void BottomInfo::continueEffectAnimation(
-		std::unique_ptr<Ui::ReactionFlyAnimation> animation) {
-	if (_effect) {
-		_effect->animation = std::move(animation);
-	}
-}
-
-QRect BottomInfo::effectIconGeometry() const {
-	if (!_effect) {
-		return {};
-	}
-	auto left = 0;
-	auto top = 0;
-	auto available = width();
-	if (height() != minHeight()) {
-		available = std::min(available, _effectMaxWidth);
-		left += width() - available;
-		top += st::msgDateFont->height;
-	}
-	return QRect(
-		left + (st::reactionInfoSize - st::effectInfoImage) / 2,
-		top + (st::msgDateFont->height - st::effectInfoImage) / 2,
-		st::effectInfoImage,
-		st::effectInfoImage);
 }
 
 BottomInfo::Data BottomInfoDataFromMessage(not_null<Message*> message) {
@@ -588,7 +408,6 @@ BottomInfo::Data BottomInfoDataFromMessage(not_null<Message*> message) {
 
 	auto result = BottomInfo::Data();
 	result.date = message->dateTime();
-	result.effectId = item->effectId();
 	if (message->hasOutLayout()) {
 		result.flags |= Flag::OutLayout;
 	}

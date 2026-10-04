@@ -243,9 +243,6 @@ void ScheduledMessages::sendNowSimpleMessage(
 			: MTPDmessage::Flag(0))
 		| ((localFlags & MessageFlag::Outgoing)
 			? MTPDmessage::Flag::f_out
-			: MTPDmessage::Flag(0))
-		| (local->effectId()
-			? MTPDmessage::Flag::f_effect
 			: MTPDmessage::Flag(0));
 	const auto views = 1;
 	const auto forwards = 0;
@@ -281,7 +278,7 @@ void ScheduledMessages::sendNowSimpleMessage(
 			MTPVector<MTPRestrictionReason>(),
 			MTP_int(update.vttl_period().value_or_empty()),
 			MTPint(), // quick_reply_shortcut_id
-			MTP_long(local->effectId()), // effect
+			MTP_long(0), // effect
 			MTPFactCheck(),
 			MTPint(), // report_delivery_until_date
 			MTPlong(), // paid_message_stars

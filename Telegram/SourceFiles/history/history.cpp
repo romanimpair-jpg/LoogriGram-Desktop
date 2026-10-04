@@ -3678,9 +3678,6 @@ void History::setInboxReadTill(MsgId upTo) {
 		accumulate_max(*_inboxReadBefore, upTo + 1);
 	} else {
 		_inboxReadBefore = upTo + 1;
-		for (const auto &item : _items) {
-			item->applyEffectWatchedOnUnreadKnown();
-		}
 	}
 }
 

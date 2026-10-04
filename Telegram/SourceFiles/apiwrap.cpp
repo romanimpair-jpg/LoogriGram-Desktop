@@ -3583,9 +3583,6 @@ void ApiWrap::forwardMessages(
 			sendFlags |= SendFlag::f_schedule_repeat_period;
 		}
 	}
-	if (action.options.effectId) {
-		sendFlags |= SendFlag::f_effect;
-	}
 	if (draft.options != Data::ForwardOptions::PreserveInfo) {
 		sendFlags |= SendFlag::f_drop_author;
 	}
@@ -3671,7 +3668,7 @@ void ApiWrap::forwardMessages(
 					? sendAs->input()
 					: MTP_inputPeerEmpty()),
 				MTPInputQuickReplyShortcut(),
-				MTP_long(action.options.effectId),
+				MTP_long(0), // effect
 				MTPint(),
 				MTP_long(0),
 				Api::SuggestToMTP(action.options.suggest));
@@ -3730,8 +3727,6 @@ void ApiWrap::forwardMessages(
 					.date = NewMessageDate(action.options),
 					.postAuthor = NewMessagePostAuthor(action),
 					.suggest = HistoryMessageSuggestInfo(action.options),
-					// forwarded messages don't have effects
-					//.effectId = action.options.effectId,
 				}, item);
 				_session->data().registerMessageRandomId(randomId, newId);
 				if (!localIds) {
@@ -3821,7 +3816,6 @@ void ApiWrap::sendSharedContact(
 		.replyTo = action.replyTo,
 		.date = NewMessageDate(action.options),
 		.postAuthor = NewMessagePostAuthor(action),
-		.effectId = action.options.effectId,
 		.suggest = HistoryMessageSuggestInfo(action.options),
 	}, TextWithEntities(), MTP_messageMediaContact(
 		MTP_string(phone),
@@ -4217,10 +4211,6 @@ void ApiWrap::sendMessage(
 				mediaFlags |= MTPmessages_SendMedia::Flag::f_schedule_repeat_period;
 			}
 		}
-		if (action.options.effectId) {
-			sendFlags |= MTPmessages_SendMessage::Flag::f_effect;
-			mediaFlags |= MTPmessages_SendMedia::Flag::f_effect;
-		}
 		if (action.options.suggest) {
 			sendFlags |= MTPmessages_SendMessage::Flag::f_suggested_post;
 			mediaFlags |= MTPmessages_SendMedia::Flag::f_suggested_post;
@@ -4233,7 +4223,6 @@ void ApiWrap::sendMessage(
 			.date = NewMessageDate(action.options),
 			.scheduleRepeatPeriod = action.options.scheduleRepeatPeriod,
 			.postAuthor = NewMessagePostAuthor(action),
-			.effectId = action.options.effectId,
 			.suggest = HistoryMessageSuggestInfo(action.options),
 		}, sending, media);
 		const auto done = [=](
@@ -4318,7 +4307,7 @@ void ApiWrap::sendMessage(
 					MTP_int(action.options.scheduleRepeatPeriod),
 					(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
 					MTPInputQuickReplyShortcut(),
-					MTP_long(action.options.effectId),
+					MTP_long(0), // effect
 					MTP_long(0),
 					Api::SuggestToMTP(action.options.suggest)
 				), done, fail);
@@ -4339,7 +4328,7 @@ void ApiWrap::sendMessage(
 					MTP_int(action.options.scheduleRepeatPeriod),
 					(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
 					MTPInputQuickReplyShortcut(),
-					MTP_long(action.options.effectId),
+					MTP_long(0), // effect
 					MTP_long(0),
 					Api::SuggestToMTP(action.options.suggest),
 					MTPInputRichMessage()
@@ -4660,7 +4649,6 @@ void ApiWrap::sendMediaWithRandomId(
 			? Flag::f_schedule_repeat_period
 			: Flag(0))
 		| (options.sendAs ? Flag::f_send_as : Flag(0))
-		| (options.effectId ? Flag::f_effect : Flag(0))
 		| (options.suggest ? Flag::f_suggested_post : Flag(0))
 		| (options.invertCaption ? Flag::f_invert_media : Flag(0));
 
@@ -4683,7 +4671,7 @@ void ApiWrap::sendMediaWithRandomId(
 			MTP_int(options.scheduleRepeatPeriod),
 			(options.sendAs ? options.sendAs->input() : MTP_inputPeerEmpty()),
 			MTPInputQuickReplyShortcut(),
-			MTP_long(options.effectId),
+			MTP_long(0), // effect
 			MTP_long(0),
 			Api::SuggestToMTP(options.suggest)
 		), [=](const MTPUpdates &result, const MTP::Response &response) {
@@ -4799,7 +4787,6 @@ void ApiWrap::sendAlbumIfReady(not_null<SendingAlbum*> album) {
 		//	? Flag::f_schedule_repeat_period
 		//	: Flag(0))
 		| (sendAs ? Flag::f_send_as : Flag(0))
-		| (album->options.effectId ? Flag::f_effect : Flag(0))
 		| (album->options.invertCaption ? Flag::f_invert_media : Flag(0));
 	auto &histories = history->owner().histories();
 	const auto peer = history->peer;
@@ -4817,7 +4804,7 @@ void ApiWrap::sendAlbumIfReady(not_null<SendingAlbum*> album) {
 			//MTP_int(album->options.scheduleRepeatPeriod),
 			(sendAs ? sendAs->input() : MTP_inputPeerEmpty()),
 			MTPInputQuickReplyShortcut(),
-			MTP_long(album->options.effectId),
+			MTP_long(0), // effect
 			MTP_long(0)
 		), [=](const MTPUpdates &result, const MTP::Response &response) {
 		_sendingAlbums.remove(groupId);

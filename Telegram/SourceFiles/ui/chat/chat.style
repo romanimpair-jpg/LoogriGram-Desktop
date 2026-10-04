@@ -691,10 +691,6 @@ reactionInlineUserpics: GroupCallUserpics {
 	align: align(left);
 }
 
-reactionInfoSize: 15px;
-reactionInfoSkip: 3px;
-reactionInfoBetween: 3px;
-
 reactionCornerSize: size(36px, 32px);
 reactionCornerCenter: point(7px, -9px);
 reactionCornerImage: 22px;
@@ -716,8 +712,6 @@ replyCornerHeight: 20px;
 replyCornerShadow: margins(4px, 8px, 4px, 8px);
 replyCornerCenter: point(7px, -2px);
 replyCornerTextPadding: margins(6px, 0px, 6px, 0px);
-
-effectInfoImage: 12px;
 
 searchInChatMultiSelectItem: MultiSelectItem(defaultMultiSelectItem) {
 	maxWidth: 200px;
