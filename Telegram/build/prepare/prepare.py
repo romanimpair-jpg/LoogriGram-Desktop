@@ -493,15 +493,17 @@ win:
     bash -c "rm -rf msys2-frozen"
 """, 'ThirdParty')
 
-# LoogriGram: frozen at what the last good dependency build installed (run
-# 34206584631, 2026-09-08). Unpinned, a rebuild of this stage took whatever
-# PyPI served that day - and meson builds several libraries below.
+# LoogriGram: frozen at what the last good dependency build installed - run
+# 37158363951 (2026-10-04), which rebuilt every library after the caches were
+# evicted and so built the trees now kept with meson 1.12.1 (2026-09-08's run
+# had 1.12.0). Unpinned, a rebuild of this stage took whatever PyPI served
+# that day - and meson builds several libraries below.
 stage('python', """
 version: """ + (subprocess.run(['python', '-V'], capture_output=True, text=True, env=modifiedEnv).stdout.strip().split()[-1] if win else '0') + """
 win:
     python -m venv python
     python\\Scripts\\activate.bat
-    pip install pywin32==312 six==1.17.0 meson==1.12.0
+    pip install pywin32==312 six==1.17.0 meson==1.12.1
     deactivate
 """, 'ThirdParty')
 
