@@ -235,6 +235,16 @@ All deleted, not gated. Roughly in the order they were done.
 - **Greeting stickers**: an empty chat offered a random sticker to send. It
   now shows the plain "No messages here yet" line. A chat intro the peer set
   up themselves still shows, with their own sticker.
+- **Trending sticker and emoji sets** (2026-10-04, `8359383304`, mirroring
+  Android's `3c8b32c7`/`ad39e7b0`): never requested, cached or marked read.
+  Gone: the panel's Featured section (shown when we had no sets of our own),
+  the box's Trending tab and its unread counter, the trending emoji sets in
+  the emoji panel, a group set chooser's fallback to them, and the
+  `appearance/stickers-and-emoji/trending` deep link. `StickersSetFlag` bits
+  5 and 6 and `FeaturedSetId`'s value stay unused. The two cache files are
+  deleted when the map is read and their map slots are written as 0. Lang
+  keys are kept. Found sets in sticker search keep the trending row layout
+  and its Add button.
 - **Bot verification**, icon and text: being verified by a bot rather than
   by Telegram reads as not verified. The icon went first (`8dada12a1c`); its
   note on the profile, under a bot's app terms and in a new chat's intro
