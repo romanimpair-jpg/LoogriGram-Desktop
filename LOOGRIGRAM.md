@@ -506,10 +506,24 @@ to 14.44, the rest of the installation is the image's.
 
 Run 37158363951 (2026-10-04) rebuilt every library after the caches were
 evicted, and is the last good dependency build now: its python stage got
-meson 1.12.1, which is the pin since `73faf2f20d`. **Still floating** - the
-image's own tools, which the dependency stages use: CMake (4.4 then), Git
-(2.55) and Strawberry's tools (`ccache` was picked up from it). Pinning
-them is owed.
+meson 1.12.1, which is the pin since `73faf2f20d`.
+
+- **The image's own tools** (`028979d4ce`, 2026-10-04, the user's "pin
+  everything"): "Pinned tools." fetches CMake 4.4.3, Ninja 1.13.2,
+  Strawberry Perl 5.42.0.1 (`perl\`, and `c\bin\` for the `ccache` meson
+  wraps compilers in), MinGit 2.55.0.windows.5 and GitHub CLI 2.101.0 - the
+  versions 37158363951 used - checks each against the SHA-256 GitHub records
+  for the asset and puts it first on PATH; "Check the pinned tools." stops
+  the run if any resolves elsewhere after vcvars. Python: CMake's FindPython
+  ignores PATH and takes the newest Python it can find (3.14.7 for
+  `tg_angle`, `tg_owt`, `ada`), so setup-python installs 3.14.7 and 3.12.10
+  and "Only the pinned Pythons." deletes every other version from the tool
+  cache. "NuGet sources." runs the frozen `nuget.exe`, just before the app
+  build. Validate run 37197839493 confirmed all of it; the steps cost ~30s.
+
+Left to the image because they cannot be pinned: Windows, PowerShell, the
+Git Bash that `shell: bash` steps run in, and Visual Studio beyond its
+pinned 14.44 toolset and the SDK version.
 
 ### The incremental build tree
 
