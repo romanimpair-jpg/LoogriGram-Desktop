@@ -35,7 +35,6 @@ struct Group;
 
 namespace HistoryView {
 class ElementDelegate;
-class EmojiInteractions;
 struct TextState;
 struct SelectionModeResult;
 struct StateRequest;
@@ -223,16 +222,7 @@ public:
 	HistoryView::ElementChatMode elementChatMode();
 	not_null<Ui::PathShiftGradient*> elementPathShiftGradient();
 	void elementReplyTo(const FullReplyTo &to);
-	void elementStartInteraction(not_null<const Element*> view);
-	void elementStartPremium(
-		not_null<const Element*> view,
-		Element *replacing);
-	void elementCancelPremium(not_null<const Element*> view);
-	void elementStartEffect(
-		not_null<const Element*> view,
-		Element *replacing);
 
-	void startEffectOnRead(not_null<HistoryItem*> item);
 	void updateBotInfo(bool recount = true);
 
 	bool wasSelectedText() const;
@@ -575,7 +565,6 @@ private:
 	const not_null<PeerData*> _peer;
 	const not_null<History*> _history;
 	const not_null<HistoryView::ElementDelegate*> _elementDelegate;
-	const std::unique_ptr<HistoryView::EmojiInteractions> _emojiInteractions;
 	std::shared_ptr<Ui::ChatTheme> _theme;
 
 	History *_migrated = nullptr;

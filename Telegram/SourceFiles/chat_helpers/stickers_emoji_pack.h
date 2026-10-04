@@ -43,10 +43,11 @@ namespace Stickers {
 
 using IsolatedEmoji = Ui::Text::IsolatedEmoji;
 
+// LoogriGram: EmojiInteraction (0) is gone with emoji interactions; the
+// others keep their values, which are part of the effect cache keys.
 enum class EffectType : uint8 {
-	EmojiInteraction,
-	PremiumSticker,
-	MessageEffect,
+	PremiumSticker = 1,
+	MessageEffect = 2,
 };
 
 class EmojiPack final {
@@ -74,17 +75,6 @@ public:
 	[[nodiscard]] Sticker stickerForEmoji(EmojiPtr emoji);
 	[[nodiscard]] Sticker stickerForEmoji(const IsolatedEmoji &emoji);
 
-	[[nodiscard]] EmojiPtr chooseInteractionEmoji(
-		not_null<HistoryItem*> item) const;
-	[[nodiscard]] EmojiPtr chooseInteractionEmoji(
-		const QString &emoticon) const;
-	[[nodiscard]] auto animationsForEmoji(EmojiPtr emoji) const
-		-> const base::flat_map<int, not_null<DocumentData*>> &;
-	[[nodiscard]] bool hasAnimationsFor(not_null<HistoryItem*> item) const;
-	[[nodiscard]] bool hasAnimationsFor(const QString &emoticon) const;
-	[[nodiscard]] int animationsVersion() const {
-		return _animationsVersion;
-	}
 	[[nodiscard]] rpl::producer<> refreshed() const {
 		return _refreshed.events();
 	}
@@ -112,17 +102,12 @@ private:
 
 	void refresh();
 	void refreshDelayed();
-	void refreshAnimations();
 	void applySet(const MTPDmessages_stickerSet &data);
 	void applyPack(
 		const MTPDstickerPack &data,
 		const base::flat_map<uint64, not_null<DocumentData*>> &map);
-	void applyAnimationsSet(const MTPDmessages_stickerSet &data);
 	[[nodiscard]] auto collectStickers(const QVector<MTPDocument> &list) const
 		-> base::flat_map<uint64, not_null<DocumentData*>>;
-	[[nodiscard]] auto collectAnimationsIndices(
-		const QVector<MTPStickerPack> &packs) const
-		-> base::flat_map<uint64, base::flat_set<int>>;
 	void refreshAll();
 	void refreshItems(EmojiPtr emoji);
 	void refreshItems(const base::flat_set<not_null<ViewElement*>> &list);
@@ -136,12 +121,6 @@ private:
 	mtpRequestId _requestId = 0;
 
 	base::flat_set<not_null<HistoryView::Element*>> _onlyCustomItems;
-
-	int _animationsVersion = 0;
-	base::flat_map<
-		EmojiPtr,
-		base::flat_map<int, not_null<DocumentData*>>> _animations;
-	mtpRequestId _animationsRequestId = 0;
 
 	base::flat_map<
 		ProviderKey,

@@ -21,10 +21,6 @@ namespace Main {
 class Session;
 } // namespace Main
 
-namespace ChatHelpers {
-struct EmojiInteractionsBunch;
-} // namespace ChatHelpers
-
 namespace Api {
 
 class Updates final {
@@ -153,21 +149,10 @@ private:
 		MsgId rootId,
 		PeerId fromId,
 		const MTPSendMessageAction &action);
-	void handleEmojiInteraction(
-		not_null<PeerData*> peer,
-		const MTPDsendMessageEmojiInteraction &data);
 	void handleSpeakingInCall(
 		not_null<PeerData*> peer,
 		PeerId participantPeerId,
 		PeerData *participantPeerLoaded);
-	void handleEmojiInteraction(
-		not_null<PeerData*> peer,
-		MsgId messageId,
-		const QString &emoticon,
-		ChatHelpers::EmojiInteractionsBunch bunch);
-	void handleEmojiInteraction(
-		not_null<PeerData*> peer,
-		const QString &emoticon);
 
 	const not_null<Main::Session*> _session;
 

@@ -766,10 +766,9 @@ void StickerInBubblePart::ensureCreated(Element *replacing) const {
 	} else if (const auto data = _lookup()) {
 		const auto sticker = data.sticker;
 		if (sticker->sticker()) {
-			const auto skipPremiumEffect = true;
 			_link = data.link;
 			_skipTop = data.skipTop;
-			_sticker.emplace(_parent, sticker, skipPremiumEffect, replacing);
+			_sticker.emplace(_parent, sticker, replacing);
 			if (data.stopOnLastFrame) {
 				_sticker->setStopOnLastFrame(true);
 			}

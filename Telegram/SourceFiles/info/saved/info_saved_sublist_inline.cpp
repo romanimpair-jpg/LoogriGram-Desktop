@@ -126,7 +126,6 @@ private:
 	void listAddTranslatedItems(
 		not_null<HistoryView::TranslateTracker*> tracker) override;
 	not_null<Window::SessionController*> listWindow() override;
-	not_null<QWidget*> listEmojiInteractionsParent() override;
 	not_null<const Ui::ChatStyle*> listChatStyle() override;
 	rpl::producer<bool> listChatWideValue() override;
 	std::unique_ptr<HistoryView::Reactions::Manager>
@@ -477,10 +476,6 @@ void InlineSublistInner::listAddTranslatedItems(
 
 not_null<Window::SessionController*> InlineSublistInner::listWindow() {
 	return _controller->parentController();
-}
-
-not_null<QWidget*> InlineSublistInner::listEmojiInteractionsParent() {
-	return _parent;
 }
 
 not_null<const Ui::ChatStyle*> InlineSublistInner::listChatStyle() {

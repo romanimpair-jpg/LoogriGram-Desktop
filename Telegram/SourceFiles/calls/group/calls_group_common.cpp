@@ -135,7 +135,7 @@ namespace {
 		if (player->ready()) {
 			const auto now = crl::now();
 			const auto color = st::windowFgActive->c;
-			auto info = player->frame(inner, color, false, now, false);
+			auto info = player->frame(inner, color, now, false);
 			p.drawImage(
 				QRect(QPoint(left + outerSkip, outerSkip), inner),
 				info.image);

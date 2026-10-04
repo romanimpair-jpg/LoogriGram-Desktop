@@ -198,7 +198,6 @@ public:
 		int addedCount) override;
 	void listMarkContentsRead(
 		const base::flat_set<not_null<HistoryItem*>> &items) override;
-	bool listAllowsReadEffect(not_null<const Element*> view) override;
 	MessagesBarData listMessagesBar(
 		const std::vector<not_null<Element*>> &elements,
 		bool markLastAsRead) override;

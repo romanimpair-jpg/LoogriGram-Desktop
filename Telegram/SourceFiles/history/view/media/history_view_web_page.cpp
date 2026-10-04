@@ -250,7 +250,7 @@ void WebPage::setupAdditionalData() {
 				continue;
 			}
 			raw->views.push_back(
-				std::make_unique<Sticker>(_parent, sticker, true));
+				std::make_unique<Sticker>(_parent, sticker));
 		}
 		const auto side = std::ceil(std::sqrt(raw->views.size()));
 		const auto box = UnitedLineHeight() * kStickerSetLines;
@@ -273,10 +273,7 @@ void WebPage::setupAdditionalData() {
 			auto &manager = session->data().customEmojiManager();
 			const auto document = session->data().document(id).get();
 			if (document->sticker()) {
-				auto view = std::make_unique<Sticker>(
-					_parent,
-					document,
-					true);
+				auto view = std::make_unique<Sticker>(_parent, document);
 				view->setWebpagePart();
 				view->initSize(box);
 				raw->views.push_back(std::move(view));
@@ -302,7 +299,7 @@ void WebPage::customEmojiResolveDone(not_null<DocumentData*> document) {
 		return;
 	}
 	const auto box = UnitedLineHeight() * kStickerSetLines;
-	auto view = std::make_unique<Sticker>(_parent, document, true);
+	auto view = std::make_unique<Sticker>(_parent, document);
 	view->setWebpagePart();
 	view->initSize(box);
 	raw->views.clear();

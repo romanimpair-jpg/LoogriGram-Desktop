@@ -28,7 +28,6 @@ public:
 	FrameInfo frame(
 		QSize size,
 		QColor colored,
-		bool mirrorHorizontal,
 		crl::time now,
 		bool paused) override;
 	bool markFrameShown() override;
@@ -52,7 +51,6 @@ public:
 	FrameInfo frame(
 		QSize size,
 		QColor colored,
-		bool mirrorHorizontal,
 		crl::time now,
 		bool paused) override;
 	bool markFrameShown() override;
@@ -79,7 +77,6 @@ public:
 	FrameInfo frame(
 		QSize size,
 		QColor colored,
-		bool mirrorHorizontal,
 		crl::time now,
 		bool paused) override;
 	bool markFrameShown() override;

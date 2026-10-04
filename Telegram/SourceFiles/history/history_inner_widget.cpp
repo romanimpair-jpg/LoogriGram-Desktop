@@ -33,7 +33,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_quick_action.h"
 #include "history/view/history_view_add_poll_option.h"
 #include "history/view/history_view_element_overlay.h"
-#include "history/view/history_view_emoji_interactions.h"
 #include "history/view/history_view_top_peers_selector.h"
 #include "history/history_inner_widget_accessibility.h"
 #include "history/history_item_components.h"
@@ -72,7 +71,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/sticker_set_box.h"
 #include "boxes/translate_box.h"
 #include "chat_helpers/message_field.h"
-#include "chat_helpers/emoji_interactions.h"
 #include "history/history_widget.h"
 #include "history/view/history_view_translate_tracker.h"
 #include "base/platform/base_platform_info.h"
@@ -304,30 +302,6 @@ public:
 			_widget->elementReplyTo(to);
 		}
 	}
-	void elementStartInteraction(not_null<const Element*> view) override {
-		if (_widget) {
-			_widget->elementStartInteraction(view);
-		}
-	}
-	void elementStartPremium(
-			not_null<const Element*> view,
-			Element *replacing) override {
-		if (_widget) {
-			_widget->elementStartPremium(view, replacing);
-		}
-	}
-	void elementCancelPremium(not_null<const Element*> view) override {
-		if (_widget) {
-			_widget->elementCancelPremium(view);
-		}
-	}
-	void elementStartEffect(
-			not_null<const Element*> view,
-			Element *replacing) override {
-		if (_widget) {
-			_widget->elementStartEffect(view, replacing);
-		}
-	}
 
 	QString elementAuthorRank(not_null<const Element*> view) override {
 		return {};
@@ -355,11 +329,6 @@ HistoryInner::HistoryInner(
 , _peer(history->peer)
 , _history(history)
 , _elementDelegate(_history->delegateMixin()->delegate())
-, _emojiInteractions(std::make_unique<HistoryView::EmojiInteractions>(
-	this,
-	controller->content(),
-	&controller->session(),
-	[=](not_null<const Element*> view) { return itemTop(view); }))
 , _migrated(history->migrateFrom())
 , _translateTracker(std::make_unique<HistoryView::TranslateTracker>(history))
 , _pathGradient(
@@ -408,21 +377,6 @@ HistoryInner::HistoryInner(
 		if (!elementAnimationsPaused()) {
 			update();
 		}
-	}, lifetime());
-
-	using PlayRequest = ChatHelpers::EmojiInteractionPlayRequest;
-	_controller->emojiInteractions().playRequests(
-	) | rpl::filter([=](const PlayRequest &request) {
-		return (request.item->history() == _history)
-			&& _controller->widget()->isActive();
-	}) | rpl::on_next([=](PlayRequest &&request) {
-		if (const auto view = viewByItem(request.item)) {
-			_emojiInteractions->play(std::move(request), view);
-		}
-	}, lifetime());
-	_emojiInteractions->playStarted(
-	) | rpl::on_next([=](QString &&emoji) {
-		_controller->emojiInteractions().playStarted(_peer, std::move(emoji));
 	}, lifetime());
 
 	_reactionsManager->chosen(
@@ -1362,14 +1316,6 @@ Ui::ChatPaintContext HistoryInner::preparePaintContext(
 	});
 }
 
-void HistoryInner::startEffectOnRead(not_null<HistoryItem*> item) {
-	if (item->history() == _history) {
-		if (const auto view = item->mainView()) {
-			_emojiInteractions->playEffectOnRead(view);
-		}
-	}
-}
-
 void HistoryInner::paintEvent(QPaintEvent *e) {
 	const auto overlapped = _controller->contentOverlapped(this, e);
 	const auto pendingResized = hasPendingResizedItems();
@@ -1422,25 +1368,12 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 	_translateTracker->startBunch();
 	auto readTill = (HistoryItem*)nullptr;
 	auto readContents = base::flat_set<not_null<HistoryItem*>>();
-	auto startEffects = base::flat_set<not_null<const Element*>>();
-	auto startInteractions = base::flat_set<not_null<const Element*>>();
 	const auto markingAsViewed = _widget->markingContentsRead();
 	const auto guard = gsl::finally([&] {
 		if (_pinnedItem) {
 			_translateTracker->add(_pinnedItem);
 		}
 		_translateTracker->finishBunch();
-		if (!startEffects.empty()) {
-			for (const auto &view : startEffects) {
-				_emojiInteractions->playEffectOnRead(view);
-			}
-		}
-		if (!startInteractions.empty()) {
-			for (const auto &view : startInteractions) {
-				_animatedStickersPlayed.emplace(view->data());
-				_controller->emojiInteractions().startAutoplay(view);
-			}
-		}
 		if (readTill && _widget->markingMessagesRead()) {
 			session().data().histories().readInboxTill(readTill);
 		}
@@ -1472,17 +1405,8 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 			if (isUnread) {
 				readTill = item;
 			}
-			if (markingAsViewed && item->hasUnwatchedEffect()) {
-				startEffects.emplace(view);
-			}
-			if (markingAsViewed
-				&& !item->out()
-				&& !_animatedStickersPlayed.contains(item)
-				&& !PowerSaving::On(PowerSaving::kEmojiChat)
-				&& HistoryView::CanPlayEmojiInteraction(view)
-				&& session().emojiStickersPack().hasAnimationsFor(item)) {
-				startInteractions.emplace(view);
-			}
+			// LoogriGram: a shown message's effect and an emoji's
+			// interaction were started here; no big animations (2026-10-04).
 			if (withReaction) {
 				readContents.insert(item);
 			} else if (item->isUnreadMention()
@@ -4390,10 +4314,6 @@ void HistoryInner::visibleAreaUpdated(int top, int bottom) {
 	}
 	checkActivation();
 
-	_emojiInteractions->visibleAreaUpdated(
-		_visibleAreaTop,
-		_visibleAreaBottom);
-
 	if (_overlayHost) {
 		_overlayHost->updatePosition();
 	}
@@ -4980,27 +4900,6 @@ not_null<Ui::PathShiftGradient*> HistoryInner::elementPathShiftGradient() {
 
 void HistoryInner::elementReplyTo(const FullReplyTo &to) {
 	return _widget->replyToMessage(to);
-}
-
-void HistoryInner::elementStartInteraction(not_null<const Element*> view) {
-	_controller->emojiInteractions().startOutgoing(view);
-}
-
-void HistoryInner::elementStartPremium(
-		not_null<const Element*> view,
-		Element *replacing) {
-	_emojiInteractions->playPremiumEffect(view, replacing);
-	_animatedStickersPlayed.emplace(view->data());
-}
-
-void HistoryInner::elementCancelPremium(not_null<const Element*> view) {
-	_emojiInteractions->cancelPremiumEffect(view);
-}
-
-void HistoryInner::elementStartEffect(
-		not_null<const Element*> view,
-		Element *replacing) {
-	_emojiInteractions->playEffect(view);
 }
 
 auto HistoryInner::getSelectionState() const

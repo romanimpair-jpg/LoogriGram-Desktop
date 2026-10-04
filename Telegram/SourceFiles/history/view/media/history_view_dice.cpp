@@ -35,8 +35,7 @@ Dice::Dice(not_null<Element*> parent, not_null<Data::MediaDice*> dice)
 , _dice(dice)
 , _link(dice->makeHandler()) {
 	if (const auto document = Lookup(parent, dice->emoji(), 0)) {
-		const auto skipPremiumEffect = false;
-		_start.emplace(parent, document, skipPremiumEffect);
+		_start.emplace(parent, document);
 		_start->setDiceIndex(_dice->emoji(), 0);
 	}
 	_showLastFrame = _parent->data()->Has<HistoryMessageForwarded>();
@@ -58,16 +57,14 @@ ClickHandlerPtr Dice::link() {
 void Dice::draw(Painter &p, const PaintContext &context, const QRect &r) {
 	if (!_start) {
 		if (const auto document = Lookup(_parent, _dice->emoji(), 0)) {
-			const auto skipPremiumEffect = false;
-			_start.emplace(_parent, document, skipPremiumEffect);
+			_start.emplace(_parent, document);
 			_start->setDiceIndex(_dice->emoji(), 0);
 			_start->initSize();
 		}
 	}
 	if (const auto value = _end ? 0 : _dice->value()) {
 		if (const auto document = Lookup(_parent, _dice->emoji(), value)) {
-			const auto skipPremiumEffect = false;
-			_end.emplace(_parent, document, skipPremiumEffect);
+			_end.emplace(_parent, document);
 			_end->setDiceIndex(_dice->emoji(), value);
 			_end->initSize();
 		}

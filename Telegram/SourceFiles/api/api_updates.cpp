@@ -47,7 +47,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_send_action.h"
 #include "data/data_message_reactions.h"
 #include "inline_bots/bot_attach_web_view.h"
-#include "chat_helpers/emoji_interactions.h"
 #include "lang/lang_cloud_manager.h"
 #include "history/history.h"
 #include "history/history_item.h"
@@ -1112,12 +1111,11 @@ void Updates::handleSendActionUpdate(
 	}
 	if (!from || !from->isUser() || from->isSelf()) {
 		return;
-	} else if (action.type() == mtpc_sendMessageEmojiInteraction) {
-		handleEmojiInteraction(peer, action.c_sendMessageEmojiInteraction());
-		return;
-	} else if (action.type() == mtpc_sendMessageEmojiInteractionSeen) {
-		const auto &data = action.c_sendMessageEmojiInteractionSeen();
-		handleEmojiInteraction(peer, qs(data.vemoticon()));
+	} else if (action.type() == mtpc_sendMessageEmojiInteraction
+		|| action.type() == mtpc_sendMessageEmojiInteractionSeen) {
+		// LoogriGram: these played someone's emoji interaction over the chat
+		// or showed "watching" in the top bar; no big animations (the user's
+		// decision, 2026-10-04). They are not typing either, so stop here.
 		return;
 	} else if (action.type() == mtpc_sendMessageTextDraftAction) {
 		const auto &data = action.c_sendMessageTextDraftAction();
@@ -1140,20 +1138,6 @@ void Updates::handleSendActionUpdate(
 		from->asUser(),
 		action,
 		when);
-}
-
-void Updates::handleEmojiInteraction(
-		not_null<PeerData*> peer,
-		const MTPDsendMessageEmojiInteraction &data) {
-	const auto json = data.vinteraction().match([&](
-			const MTPDdataJSON &data) {
-		return data.vdata().v;
-	});
-	handleEmojiInteraction(
-		peer,
-		data.vmsg_id().v,
-		qs(data.vemoticon()),
-		ChatHelpers::EmojiInteractions::Parse(json));
 }
 
 void Updates::handleSpeakingInCall(
@@ -1184,32 +1168,6 @@ void Updates::handleSpeakingInCall(
 			}
 		}
 	}
-}
-
-void Updates::handleEmojiInteraction(
-		not_null<PeerData*> peer,
-		MsgId messageId,
-		const QString &emoticon,
-		ChatHelpers::EmojiInteractionsBunch bunch) {
-	if (session().windows().empty()) {
-		return;
-	}
-	const auto window = session().windows().front();
-	window->emojiInteractions().startIncoming(
-		peer,
-		messageId,
-		emoticon,
-		std::move(bunch));
-}
-
-void Updates::handleEmojiInteraction(
-		not_null<PeerData*> peer,
-		const QString &emoticon) {
-	if (session().windows().empty()) {
-		return;
-	}
-	const auto window = session().windows().front();
-	window->emojiInteractions().seenOutgoing(peer, emoticon);
 }
 
 void Updates::applyUpdatesNoPtsCheck(const MTPUpdates &updates) {

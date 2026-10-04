@@ -76,7 +76,6 @@ void TopicIconView::paintInRect(QPainter &p, QRect rect, QColor textColor) {
 		paint(_player->frame(
 			st::infoTopicCover.photo.size,
 			colored,
-			false,
 			crl::now(),
 			_paused()).image);
 		_player->markFrameShown();

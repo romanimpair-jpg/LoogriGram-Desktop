@@ -147,14 +147,10 @@ public:
 	virtual ElementChatMode elementChatMode() = 0;
 	virtual not_null<Ui::PathShiftGradient*> elementPathShiftGradient() = 0;
 	virtual void elementReplyTo(const FullReplyTo &to) = 0;
-	virtual void elementStartInteraction(not_null<const Element*> view) = 0;
-	virtual void elementStartPremium(
-		not_null<const Element*> view,
-		Element *replacing) = 0;
-	virtual void elementCancelPremium(not_null<const Element*> view) = 0;
-	virtual void elementStartEffect(
-		not_null<const Element*> view,
-		Element *replacing) = 0;
+	// LoogriGram: elementStartInteraction, elementStartPremium,
+	// elementCancelPremium and elementStartEffect played emoji interactions,
+	// Premium sticker effects and message effects over the chat. The user's
+	// decision, 2026-10-04: no big animated views.
 	virtual QString elementAuthorRank(not_null<const Element*> view) = 0;
 	virtual bool elementHideTopicButton(not_null<const Element*> view) = 0;
 
@@ -213,14 +209,6 @@ public:
 	void elementHandleViaClick(not_null<UserData*> bot) override;
 	ElementChatMode elementChatMode() override;
 	void elementReplyTo(const FullReplyTo &to) override;
-	void elementStartInteraction(not_null<const Element*> view) override;
-	void elementStartPremium(
-		not_null<const Element*> view,
-		Element *replacing) override;
-	void elementCancelPremium(not_null<const Element*> view) override;
-	void elementStartEffect(
-		not_null<const Element*> view,
-		Element *replacing) override;
 	QString elementAuthorRank(not_null<const Element*> view) override;
 	bool elementHideTopicButton(not_null<const Element*> view) override;
 

@@ -64,7 +64,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "dialogs/ui/chat_search_in.h"
 #include "passport/passport_form_controller.h"
 #include "chat_helpers/tabbed_selector.h"
-#include "chat_helpers/emoji_interactions.h"
 #include "core/shortcuts.h"
 #include "core/application.h"
 #include "core/core_screenshot_protection.h"
@@ -1323,8 +1322,6 @@ SessionController::SessionController(
 	not_null<Controller*> window)
 : SessionNavigation(session)
 , _window(window)
-, _emojiInteractions(
-	std::make_unique<ChatHelpers::EmojiInteractions>(session))
 , _chatPreviewManager(std::make_unique<ChatPreviewManager>(this))
 , _isPrimary(window->isPrimary())
 , _hasDialogs(window->id().hasChatsList())

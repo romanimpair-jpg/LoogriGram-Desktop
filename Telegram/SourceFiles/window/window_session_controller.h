@@ -38,7 +38,6 @@ struct SearchState;
 
 namespace ChatHelpers {
 class TabbedSelector;
-class EmojiInteractions;
 struct FileChosen;
 } // namespace ChatHelpers
 
@@ -396,9 +395,6 @@ public:
 	[[nodiscard]] rpl::producer<> imeCompositionStarts() const;
 	[[nodiscard]] not_null<MainWidget*> content() const;
 	[[nodiscard]] Adaptive &adaptive() const;
-	[[nodiscard]] ChatHelpers::EmojiInteractions &emojiInteractions() const {
-		return *_emojiInteractions;
-	}
 
 	void setConnectingBottomSkip(int skip);
 	rpl::producer<int> connectingBottomSkipValue() const;
@@ -776,7 +772,9 @@ private:
 		Api::SendOptions options);
 
 	const not_null<Controller*> _window;
-	const std::unique_ptr<ChatHelpers::EmojiInteractions> _emojiInteractions;
+	// LoogriGram: _emojiInteractions sent our emoji interactions, played
+	// incoming ones and reported them seen. The user's decision, 2026-10-04:
+	// no big animated views.
 	const std::unique_ptr<ChatPreviewManager> _chatPreviewManager;
 	const bool _isPrimary = false;
 	const bool _hasDialogs = false;

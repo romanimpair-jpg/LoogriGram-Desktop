@@ -140,8 +140,6 @@ protected:
 	int resizeGetHeight(int newWidth) override;
 
 private:
-	struct EmojiInteractionSeenAnimation;
-
 	[[nodiscard]] bool rootChatsListBar() const;
 	[[nodiscard]] bool communityChatsListBar() const;
 	[[nodiscard]] bool communityUserpicShown() const;
@@ -170,7 +168,6 @@ private:
 	void closeMenu();
 	void unrippleMenuButton();
 
-	void handleEmojiInteractionSeen(const QString &emoticon);
 	bool paintSendAction(
 		Painter &p,
 		int x,
@@ -214,7 +211,6 @@ private:
 	const bool _primaryWindow = false;
 	ActiveChat _activeChat;
 	QString _customTitleText;
-	std::unique_ptr<EmojiInteractionSeenAnimation> _emojiInteractionSeen;
 	rpl::lifetime _activeChatLifetime;
 
 	Ui::Text::String _title;

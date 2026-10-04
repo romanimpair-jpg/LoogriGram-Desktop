@@ -25,7 +25,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_message.h"
 #include "history/view/history_view_cursor_state.h"
 #include "base/unixtime.h"
-#include "chat_helpers/emoji_interactions.h"
 #include "core/click_handler_types.h"
 #include "main/main_session.h"
 #include "lottie/lottie_icon.h"
@@ -164,10 +163,8 @@ TextState BottomInfo::textState(
 		QPoint position) const {
 	const auto item = view->data();
 	auto result = TextState(item);
-	if (const auto link = replayEffectLink(view, position)) {
-		result.link = link;
-		return result;
-	}
+	// LoogriGram: the effect icon replayed the message's effect on click
+	// (replayEffectLink); effects don't play (2026-10-04).
 	const auto textWidth = _authorEditedDate.maxWidth();
 	auto withTicksWidth = textWidth;
 	if (_data.flags & (Data::Flag::OutLayout | Data::Flag::Sending)) {
@@ -212,49 +209,6 @@ TextState BottomInfo::textState(
 		result.cursor = CursorState::Date;
 	}
 	return result;
-}
-
-ClickHandlerPtr BottomInfo::replayEffectLink(
-		not_null<const Message*> view,
-		QPoint position) const {
-	if (!_effect) {
-		return nullptr;
-	}
-	auto left = 0;
-	auto top = 0;
-	auto available = width();
-	if (height() != minHeight()) {
-		available = std::min(available, _effectMaxWidth);
-		left += width() - available;
-		top += st::msgDateFont->height;
-	}
-	if (_effect) {
-		const auto image = QRect(
-			left,
-			top,
-			st::reactionInfoSize,
-			st::msgDateFont->height);
-		if (image.contains(position)) {
-			if (!_replayLink) {
-				_replayLink = replayEffectLink(view);
-			}
-			return _replayLink;
-		}
-	}
-	return nullptr;
-}
-
-ClickHandlerPtr BottomInfo::replayEffectLink(
-		not_null<const Message*> view) const {
-	const auto weak = base::make_weak(view);
-	return std::make_shared<LambdaClickHandler>([=](ClickContext context) {
-		const auto my = context.other.value<ClickHandlerContext>();
-		if ([[maybe_unused]] const auto controller = my.sessionWindow.get()) {
-			if (const auto strong = weak.get()) {
-				strong->delegate()->elementStartEffect(strong, nullptr);
-			}
-		}
-	});
 }
 
 bool BottomInfo::isSignedAuthorElided() const {

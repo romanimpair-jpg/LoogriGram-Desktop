@@ -58,7 +58,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_forum_topic.h"
 #include "data/data_send_action.h"
 #include "dialogs/dialogs_main_list.h"
-#include "chat_helpers/emoji_interactions.h"
 #include "base/call_delayed.h"
 #include "base/unixtime.h"
 #include "support/support_helper.h"
@@ -73,8 +72,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace HistoryView {
 namespace {
-
-constexpr auto kEmojiInteractionSeenDuration = 3 * crl::time(1000);
 
 [[nodiscard]] inline bool HasGroupCallMenu(not_null<PeerData*> peer) {
 	return !peer->isUser()
@@ -98,13 +95,6 @@ QString TopBarNameText(
 }
 
 } // namespace
-
-struct TopBarWidget::EmojiInteractionSeenAnimation {
-	Ui::SendActionAnimation animation;
-	Ui::Animations::Basic scheduler;
-	Ui::Text::String text = { st::dialogsTextWidthMin };
-	crl::time till = 0;
-};
 
 QString SwitchToChooseFromQuery() {
 	return u"from:"_q;
@@ -719,25 +709,9 @@ bool TopBarWidget::paintSendAction(
 	if (!_sendAction) {
 		return false;
 	}
-	const auto seen = _emojiInteractionSeen.get();
-	if (!seen || seen->till <= now) {
-		return _sendAction->paint(p, x, y, availableWidth, outerWidth, fg, now);
-	}
-	const auto animationWidth = seen->animation.width();
-	const auto extraAnimationWidth = animationWidth * 2;
-	seen->animation.paint(
-		p,
-		fg,
-		x,
-		y + st::normalFont->ascent,
-		outerWidth,
-		now);
-
-	x += animationWidth;
-	availableWidth -= extraAnimationWidth;
-	p.setPen(fg);
-	seen->text.drawElided(p, x, y, availableWidth);
-	return true;
+	// LoogriGram: "watching <emoji>" (someone seeing our emoji interaction)
+	// was painted here instead; interactions are gone (2026-10-04).
+	return _sendAction->paint(p, x, y, availableWidth, outerWidth, fg, now);
 }
 
 bool TopBarWidget::paintConnectingState(
@@ -872,7 +846,6 @@ void TopBarWidget::setActiveChat(
 
 	if (peerChanged || topicChanged) {
 		_titleNameVersion = 0;
-		_emojiInteractionSeen = nullptr;
 		_activeChatLifetime.destroy();
 		if (const auto peer = _activeChat.key.peer()) {
 			session().changes().peerFlagsValue(
@@ -890,16 +863,6 @@ void TopBarWidget::setActiveChat(
 			) | rpl::on_next([=] {
 				updateControlsVisibility();
 				updateControlsGeometry();
-			}, _activeChatLifetime);
-		}
-
-		if (const auto history = _activeChat.key.history()) {
-			using InteractionSeen = ChatHelpers::EmojiInteractionSeen;
-			_controller->emojiInteractions().seen(
-			) | rpl::filter([=](const InteractionSeen &seen) {
-				return (seen.peer == history->peer);
-			}) | rpl::on_next([=](const InteractionSeen &seen) {
-				handleEmojiInteractionSeen(seen.emoticon);
 			}, _activeChatLifetime);
 		}
 
@@ -927,41 +890,6 @@ void TopBarWidget::setActiveChat(
 	updateControlsVisibility();
 	refreshUnreadBadge();
 	setupDragOnBackButton();
-}
-
-void TopBarWidget::handleEmojiInteractionSeen(const QString &emoticon) {
-	auto seen = _emojiInteractionSeen.get();
-	if (!seen) {
-		_emojiInteractionSeen
-			= std::make_unique<EmojiInteractionSeenAnimation>();
-		seen = _emojiInteractionSeen.get();
-		seen->animation.start(Ui::SendActionAnimation::Type::ChooseSticker);
-		seen->scheduler.init([=] {
-			if (seen->till <= crl::now()) {
-				crl::on_main(this, [=] {
-					if (_emojiInteractionSeen
-						&& _emojiInteractionSeen->till <= crl::now()) {
-						_emojiInteractionSeen = nullptr;
-						update();
-					}
-				});
-			} else {
-				const auto skip = st::topBarArrowPadding.bottom();
-				update(
-					_leftTaken,
-					st::topBarHeight - skip - st::dialogsTextFont->height,
-					seen->animation.width(),
-					st::dialogsTextFont->height);
-			}
-		});
-		seen->scheduler.start();
-	}
-	seen->till = crl::now() + kEmojiInteractionSeenDuration;
-	seen->text.setText(
-		st::dialogsTextStyle,
-		tr::lng_user_action_watching_animations(tr::now, lt_emoji, emoticon),
-		Ui::NameTextOptions());
-	update();
 }
 
 void TopBarWidget::setCustomTitle(const QString &title) {

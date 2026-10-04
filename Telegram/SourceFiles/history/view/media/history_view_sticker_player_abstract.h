@@ -23,7 +23,6 @@ public:
 	[[nodiscard]] virtual FrameInfo frame(
 		QSize size,
 		QColor colored,
-		bool mirrorHorizontal,
 		crl::time now,
 		bool paused) = 0;
 	virtual bool markFrameShown() = 0;

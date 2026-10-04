@@ -363,7 +363,6 @@ std::unique_ptr<Data::Media> HistoryItem::CreateMedia(
 					: nullptr),
 				.videoTimestamp = media.vvideo_timestamp().value_or_empty(),
 				.hasQualitiesList = list && !list->v.isEmpty(),
-				.skipPremiumEffect = media.is_nopremium(),
 				.spoiler = (media.is_spoiler()
 					|| (media.vttl_seconds().has_value()
 						&& media.is_video())),
@@ -778,7 +777,6 @@ HistoryItem::HistoryItem(
 	using Args = Data::MediaFile::Args;
 	_media = std::make_unique<Data::MediaFile>(this, document, Args{
 		.hasQualitiesList = video && !video->qualities.empty(),
-		.skipPremiumEffect = true,
 		.spoiler = mediaSpoiler,
 	});
 	setText(caption);

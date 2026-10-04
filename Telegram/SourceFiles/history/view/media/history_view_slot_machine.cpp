@@ -98,8 +98,7 @@ void SlotMachine::resolve(
 	if (!document) {
 		return;
 	}
-	const auto skipPremiumEffect = false;
-	sticker.emplace(_parent, document, skipPremiumEffect);
+	sticker.emplace(_parent, document);
 	sticker->setDiceIndex(kEmoji, singleTimeIndex);
 	if (initSize) {
 		sticker->initSize();

@@ -15,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_document.h"
 #include "data/stickers/data_custom_emoji.h"
 #include "main/main_session.h"
-#include "chat_helpers/stickers_emoji_pack.h"
 #include "chat_helpers/stickers_lottie.h"
 #include "ui/chat/chat_style.h"
 #include "ui/text/text_isolated_emoji.h"
@@ -125,52 +124,15 @@ void CustomEmoji::customEmojiResolveDone(not_null<DocumentData*> document) {
 
 std::unique_ptr<Sticker> CustomEmoji::createStickerPart(
 	not_null<DocumentData*> document) const {
-	const auto skipPremiumEffect = false;
-	auto result = std::make_unique<Sticker>(
-		_parent,
-		document,
-		skipPremiumEffect);
+	auto result = std::make_unique<Sticker>(_parent, document);
 	result->initSize(_singleSize);
 	result->setCustomCachingTag(_cachingTag);
 	result->setCustomEmojiPart();
 	return result;
 }
 
-void CustomEmoji::refreshInteractionLink() {
-	if (_lines.size() != 1 || _lines.front().size() != 1) {
-		return;
-	}
-	const auto &pack = _parent->history()->session().emojiStickersPack();
-	const auto version = pack.animationsVersion();
-	if (_animationsCheckVersion == version) {
-		return;
-	}
-	_animationsCheckVersion = version;
-	if (pack.hasAnimationsFor(_parent->data())) {
-		const auto weak = base::make_weak(this);
-		_interactionLink = std::make_shared<LambdaClickHandler>([weak] {
-			if (const auto that = weak.get()) {
-				that->interactionLinkClicked();
-			}
-		});
-	} else {
-		_interactionLink = nullptr;
-	}
-}
-
-ClickHandlerPtr CustomEmoji::link() {
-	refreshInteractionLink();
-	return _interactionLink;
-}
-
-void CustomEmoji::interactionLinkClicked() {
-	const auto &entry = _lines.front().front();
-	if (const auto sticker = std::get_if<StickerPtr>(&entry)) {
-		if ((*sticker)->ready()) {
-			_parent->delegate()->elementStartInteraction(_parent);
-		}
-	}
-}
+// LoogriGram: a lone big custom emoji had a link that started an emoji
+// interaction (refreshInteractionLink); no big animations (2026-10-04).
 
 CustomEmoji::~CustomEmoji() {
 	if (_hasHeavyPart) {

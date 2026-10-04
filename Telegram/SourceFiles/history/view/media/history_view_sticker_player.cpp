@@ -47,13 +47,11 @@ int LottiePlayer::framesCount() {
 LottiePlayer::FrameInfo LottiePlayer::frame(
 		QSize size,
 		QColor colored,
-		bool mirrorHorizontal,
 		crl::time now,
 		bool paused) {
 	auto request = Lottie::FrameRequest();
 	request.box = size * style::DevicePixelRatio();
 	request.colored = colored;
-	request.mirrorHorizontal = mirrorHorizontal;
 	const auto info = _lottie->frameInfo(request);
 	return { .image = info.image, .index = info.index };
 }
@@ -106,7 +104,6 @@ int WebmPlayer::framesCount() {
 WebmPlayer::FrameInfo WebmPlayer::frame(
 		QSize size,
 		QColor colored,
-		bool mirrorHorizontal,
 		crl::time now,
 		bool paused) {
 	auto request = ::Media::Clip::FrameRequest();
@@ -155,7 +152,6 @@ int StaticStickerPlayer::framesCount() {
 StaticStickerPlayer::FrameInfo StaticStickerPlayer::frame(
 		QSize size,
 		QColor colored,
-		bool mirrorHorizontal,
 		crl::time now,
 		bool paused) {
 	return { _frame };

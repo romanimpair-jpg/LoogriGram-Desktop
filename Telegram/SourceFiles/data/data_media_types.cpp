@@ -849,7 +849,6 @@ MediaFile::MediaFile(
 , _ttlSeconds(args.ttlSeconds)
 , _emoji(document->sticker() ? document->sticker()->alt : QString())
 , _videoTimestamp(args.videoTimestamp)
-, _skipPremiumEffect(args.skipPremiumEffect)
 , _hasQualitiesList(args.hasQualitiesList)
 , _spoiler(args.spoiler) {
 	parent->history()->owner().registerDocumentItem(_document, parent);
@@ -884,7 +883,6 @@ std::unique_ptr<Media> MediaFile::clone(not_null<HistoryItem*> parent) {
 		.videoCover = _videoCover,
 		.videoTimestamp = _videoTimestamp,
 		.hasQualitiesList = _hasQualitiesList,
-		.skipPremiumEffect = true,
 		.spoiler = _spoiler,
 	});
 }
@@ -1242,7 +1240,6 @@ std::unique_ptr<HistoryView::Media> MediaFile::createView(
 			std::make_unique<HistoryView::Sticker>(
 				message,
 				_document,
-				_skipPremiumEffect,
 				replacing));
 	} else if (_document->isVideoMessage()) {
 		const auto &entry = _document->session().api().transcribes().entry(

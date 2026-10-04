@@ -431,8 +431,6 @@ PRIVATE
     chat_helpers/bot_command.h
     chat_helpers/bot_keyboard.cpp
     chat_helpers/bot_keyboard.h
-    chat_helpers/emoji_interactions.cpp
-    chat_helpers/emoji_interactions.h
     chat_helpers/emoji_keywords.cpp
     chat_helpers/emoji_keywords.h
     chat_helpers/emoji_list_widget.cpp
@@ -954,8 +952,6 @@ PRIVATE
     history/view/history_view_element_overlay.h
     history/view/history_view_element.cpp
     history/view/history_view_element.h
-    history/view/history_view_emoji_interactions.cpp
-    history/view/history_view_emoji_interactions.h
     history/view/history_view_empty_list_bubble.cpp
     history/view/history_view_empty_list_bubble.h
     history/view/history_view_fake_items.cpp

@@ -223,13 +223,9 @@ std::unique_ptr<Media> CreateAttach(
 	} else if (document) {
 		const auto spoiler = false;
 		if (document->sticker()) {
-			const auto skipPremiumEffect = true;
 			return std::make_unique<UnwrappedMedia>(
 				parent,
-				std::make_unique<Sticker>(
-					parent,
-					document,
-					skipPremiumEffect));
+				std::make_unique<Sticker>(parent, document));
 		} else if (document->isAnimation() || document->isVideoFile()) {
 			return std::make_unique<Gif>(
 				parent,

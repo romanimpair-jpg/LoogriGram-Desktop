@@ -3734,9 +3734,6 @@ void HistoryWidget::newItemAdded(not_null<HistoryItem*> item) {
 	if (item->showNotification()) {
 		destroyUnreadBar();
 		if (markingMessagesRead()) {
-			if (_list && item->hasUnwatchedEffect()) {
-				_list->startEffectOnRead(item);
-			}
 			if (item->isUnreadMention() && !item->isUnreadMedia()) {
 				session().api().markContentsRead(item);
 			}

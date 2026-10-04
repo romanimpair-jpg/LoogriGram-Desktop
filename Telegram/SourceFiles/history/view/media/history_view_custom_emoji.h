@@ -33,7 +33,6 @@ using LargeCustomEmoji = std::variant<
 
 class CustomEmoji final
 	: public UnwrappedMedia::Content
-	, public base::has_weak_ptr
 	, private Data::CustomEmojiManager::Listener {
 public:
 	CustomEmoji(
@@ -47,7 +46,6 @@ public:
 		Painter &p,
 		const PaintContext &context,
 		const QRect &r) override;
-	ClickHandlerPtr link() override;
 
 	bool alwaysShowOutTimestamp() override;
 	bool hasTextForCopy() const override {
@@ -85,15 +83,10 @@ private:
 	[[nodiscard]] std::unique_ptr<Sticker> createStickerPart(
 		not_null<DocumentData*> document) const;
 
-	void refreshInteractionLink();
-	void interactionLinkClicked();
-
 	const not_null<Element*> _parent;
 	std::vector<std::vector<LargeCustomEmoji>> _lines;
-	ClickHandlerPtr _interactionLink;
 	QImage _selectedFrame;
 	int _singleSize = 0;
-	int _animationsCheckVersion = -1;
 	ChatHelpers::StickerLottieSize _cachingTag = {};
 	bool _hasHeavyPart = false;
 	bool _resolving = false;

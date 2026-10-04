@@ -4752,10 +4752,6 @@ void ChatWidget::listMarkContentsRead(
 	session().api().markContentsRead(items);
 }
 
-bool ChatWidget::listAllowsReadEffect(not_null<const Element*>) {
-	return true;
-}
-
 MessagesBarData ChatWidget::listMessagesBar(
 		const std::vector<not_null<Element*>> &elements,
 		bool markLastAsRead) {

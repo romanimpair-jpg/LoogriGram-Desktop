@@ -37,7 +37,6 @@ public:
 	Sticker(
 		not_null<Element*> parent,
 		not_null<DocumentData*> data,
-		bool skipPremiumEffect,
 		Element *replacing = nullptr,
 		const Lottie::ColorReplacements *replacements = nullptr);
 	~Sticker();
@@ -92,15 +91,12 @@ public:
 	[[nodiscard]] static QSize Size(not_null<DocumentData*> document);
 	[[nodiscard]] static QSize PremiumEffectSize(
 		not_null<DocumentData*> document);
-	[[nodiscard]] static QSize UsualPremiumEffectSize();
-	[[nodiscard]] static QSize EmojiEffectSize();
 	[[nodiscard]] static QSize MessageEffectSize();
 	[[nodiscard]] static QSize EmojiSize();
 	[[nodiscard]] static ClickHandlerPtr ShowSetHandler(
 		not_null<DocumentData*> document);
 
 private:
-	[[nodiscard]] bool hasPremiumEffect() const;
 	[[nodiscard]] bool customEmojiPart() const;
 	[[nodiscard]] bool emojiSticker() const;
 	[[nodiscard]] bool webpagePart() const;
@@ -111,7 +107,6 @@ private:
 	bool paintPixmap(Painter &p, const PaintContext &context, const QRect &r);
 	void paintPath(Painter &p, const PaintContext &context, const QRect &r);
 	[[nodiscard]] QPixmap paintedPixmap(const PaintContext &context) const;
-	[[nodiscard]] bool mirrorHorizontal() const;
 	void paintSensitiveTag(
 		Painter &p,
 		const PaintContext &context,
@@ -124,8 +119,6 @@ private:
 	void playerCreated();
 	void unloadPlayer();
 	void emojiStickerClicked();
-	void premiumStickerClicked();
-	void checkPremiumEffectStart();
 
 	const not_null<Element*> _parent;
 	const not_null<DocumentData*> _data;
@@ -141,10 +134,7 @@ private:
 	mutable int _framesCount = -1;
 	ChatHelpers::StickerLottieSize _cachingTag = {};
 	mutable bool _oncePlayed : 1 = false;
-	mutable bool _premiumEffectPlayed : 1 = false;
-	mutable bool _premiumEffectSkipped : 1 = false;
 	mutable bool _nextLastFrame : 1 = false;
-	bool _skipPremiumEffect : 1 = false;
 	bool _customEmojiPart : 1 = false;
 	bool _emojiSticker : 1 = false;
 	bool _webpagePart : 1 = false;

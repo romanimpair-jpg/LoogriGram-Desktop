@@ -950,22 +950,6 @@ void InnerWidget::expandGroupContaining(not_null<HistoryItem*> item) {
 	}
 }
 
-void InnerWidget::elementStartInteraction(not_null<const Element*> view) {
-}
-
-void InnerWidget::elementStartPremium(
-	not_null<const Element*> view,
-	Element *replacing) {
-}
-
-void InnerWidget::elementCancelPremium(not_null<const Element*> view) {
-}
-
-void InnerWidget::elementStartEffect(
-	not_null<const Element*> view,
-	Element *replacing) {
-}
-
 QString InnerWidget::elementAuthorRank(not_null<const Element*> view) {
 	return {};
 }

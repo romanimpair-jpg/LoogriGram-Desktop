@@ -110,11 +110,6 @@ private:
 	QSize countCurrentSize(int newWidth) override;
 
 	[[nodiscard]] Effect prepareEffectWithId(EffectId id);
-	[[nodiscard]] ClickHandlerPtr replayEffectLink(
-		not_null<const Message*> view,
-		QPoint position) const;
-	[[nodiscard]] ClickHandlerPtr replayEffectLink(
-		not_null<const Message*> view) const;
 
 	const not_null<::Data::Reactions*> _reactionsOwner;
 	Data _data;
@@ -122,7 +117,6 @@ private:
 	Ui::Text::String _views;
 	Ui::Text::String _replies;
 	std::unique_ptr<Effect> _effect;
-	mutable ClickHandlerPtr _replayLink;
 	int _effectMaxWidth = 0;
 	bool _authorElided = false;
 

@@ -250,8 +250,7 @@ bool PaintStickerThumbnailPath(
 		QPainter &p,
 		not_null<Data::DocumentMedia*> media,
 		QRect target,
-		QLinearGradient *gradient,
-		bool mirrorHorizontal) {
+		QLinearGradient *gradient) {
 	const auto &path = media->thumbnailPath();
 	const auto dimensions = media->owner()->dimensions;
 	if (path.isEmpty() || dimensions.isEmpty() || target.isEmpty()) {
@@ -270,12 +269,6 @@ bool PaintStickerThumbnailPath(
 			0);
 		p.setBrush(*gradient);
 	}
-	if (mirrorHorizontal) {
-		const auto c = QPointF(target.width() / 2., target.height() / 2.);
-		p.translate(c);
-		p.scale(-1., 1.);
-		p.translate(-c);
-	}
 	p.scale(
 		target.width() / float64(dimensions.width()),
 		target.height() / float64(dimensions.height()));
@@ -288,8 +281,7 @@ bool PaintStickerThumbnailPath(
 		QPainter &p,
 		not_null<Data::DocumentMedia*> media,
 		QRect target,
-		not_null<Ui::PathShiftGradient*> gradient,
-		bool mirrorHorizontal) {
+		not_null<Ui::PathShiftGradient*> gradient) {
 	return gradient->paint([&](const Ui::PathShiftGradient::Background &bg) {
 		if (const auto color = std::get_if<style::color>(&bg)) {
 			p.setBrush(*color);
@@ -297,16 +289,14 @@ bool PaintStickerThumbnailPath(
 				p,
 				media,
 				target,
-				nullptr,
-				mirrorHorizontal);
+				nullptr);
 		}
 		const auto gradient = v::get<QLinearGradient*>(bg);
 		return PaintStickerThumbnailPath(
 			p,
 			media,
 			target,
-			gradient,
-			mirrorHorizontal);
+			gradient);
 	});
 }
 

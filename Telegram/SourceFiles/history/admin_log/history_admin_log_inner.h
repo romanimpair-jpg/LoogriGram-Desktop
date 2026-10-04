@@ -167,16 +167,6 @@ public:
 	HistoryView::ElementChatMode elementChatMode() override;
 	not_null<Ui::PathShiftGradient*> elementPathShiftGradient() override;
 	void elementReplyTo(const FullReplyTo &to) override;
-	void elementStartInteraction(
-		not_null<const HistoryView::Element*> view) override;
-	void elementStartPremium(
-		not_null<const HistoryView::Element*> view,
-		HistoryView::Element *replacing) override;
-	void elementCancelPremium(
-		not_null<const HistoryView::Element*> view) override;
-	void elementStartEffect(
-		not_null<const HistoryView::Element*> view,
-		HistoryView::Element *replacing) override;
 	QString elementAuthorRank(
 		not_null<const HistoryView::Element*> view) override;
 	bool elementHideTopicButton(

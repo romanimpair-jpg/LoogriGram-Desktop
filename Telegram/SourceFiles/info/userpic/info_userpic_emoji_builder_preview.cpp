@@ -120,7 +120,6 @@ bool PreviewPainter::paintForeground(QPainter &p) {
 		auto frame = _player->frame(
 			Size(_emojiSize),
 			QColor(c, c, c, c),
-			false,
 			crl::now(),
 			_paused);
 

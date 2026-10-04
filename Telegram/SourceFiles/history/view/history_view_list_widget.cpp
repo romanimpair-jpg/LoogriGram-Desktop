@@ -27,8 +27,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_about_view.h"
 #include "history/view/history_view_drag.h"
 #include "history/view/history_view_element.h"
-#include "history/view/history_view_emoji_interactions.h"
-#include "chat_helpers/emoji_interactions.h"
 #include "history/view/history_view_message.h"
 #include "history/view/history_view_service_message.h"
 #include "history/view/history_view_cursor_state.h"
@@ -127,10 +125,6 @@ WindowListDelegate::WindowListDelegate(
 
 not_null<Window::SessionController*> WindowListDelegate::listWindow() {
 	return _window;
-}
-
-not_null<QWidget*> WindowListDelegate::listEmojiInteractionsParent() {
-	return _window->content();
 }
 
 not_null<const Ui::ChatStyle*> WindowListDelegate::listChatStyle() {
@@ -510,11 +504,6 @@ ListWidget::ListWidget(
 : RpWidget(parent)
 , _delegate(delegate)
 , _session(session)
-, _emojiInteractions(std::make_unique<EmojiInteractions>(
-	this,
-	_delegate->listEmojiInteractionsParent(),
-	session,
-	[=](not_null<const Element*> view) { return itemTop(view); }))
 , _context(_delegate->listContext())
 , _inverted(_delegate->listInvertedOrder())
 , _itemAverageHeight(itemMinimalHeight())
@@ -554,27 +543,6 @@ ListWidget::ListWidget(
 		});
 	}
 	_scrollDateHideTimer.setCallback([this] { scrollDateHideByTimer(); });
-
-	if (const auto window = controllerOrNull()) {
-		using PlayRequest = ChatHelpers::EmojiInteractionPlayRequest;
-		window->emojiInteractions().playRequests(
-		) | rpl::filter([=](const PlayRequest &request) {
-			return (viewForItem(request.item) != nullptr)
-				&& window->widget()->isActive();
-		}) | rpl::on_next([=](PlayRequest &&request) {
-			if (const auto view = viewForItem(request.item)) {
-				_emojiInteractions->play(std::move(request), view);
-			}
-		}, lifetime());
-		_emojiInteractions->playStarted(
-		) | rpl::on_next([=](QString &&emoji) {
-			if (const auto history = _delegate->listTranslateHistory()) {
-				window->emojiInteractions().playStarted(
-					history->peer,
-					std::move(emoji));
-			}
-		}, lifetime());
-	}
 
 	_session->data().viewRepaintRequest(
 	) | rpl::on_next([this](Data::RequestViewRepaint data) {
@@ -1509,7 +1477,6 @@ void ListWidget::visibleTopBottomUpdated(
 	session().data().itemVisibilitiesUpdated();
 	_applyUpdatedScrollState.call();
 
-	_emojiInteractions->visibleAreaUpdated(_visibleTop, _visibleBottom);
 	if (_overlayHost) {
 		_overlayHost->updatePosition();
 	}
@@ -2600,28 +2567,6 @@ void ListWidget::elementReplyTo(const FullReplyTo &to) {
 	replyToMessageRequestNotify(to, base::IsCtrlPressed());
 }
 
-void ListWidget::elementStartInteraction(not_null<const Element*> view) {
-	if (const auto window = controllerOrNull()) {
-		window->emojiInteractions().startOutgoing(view);
-	}
-}
-
-void ListWidget::elementStartPremium(
-		not_null<const Element*> view,
-		Element *replacing) {
-	_emojiInteractions->playPremiumEffect(view, replacing);
-}
-
-void ListWidget::elementCancelPremium(not_null<const Element*> view) {
-	_emojiInteractions->cancelPremiumEffect(view);
-}
-
-void ListWidget::elementStartEffect(
-		not_null<const Element*> view,
-		Element *replacing) {
-	_emojiInteractions->playEffect(view);
-}
-
 QString ListWidget::elementAuthorRank(not_null<const Element*> view) {
 	return _delegate->listElementAuthorRank(view);
 }
@@ -2957,26 +2902,12 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 	}
 	auto readTill = (HistoryItem*)nullptr;
 	auto readContents = base::flat_set<not_null<HistoryItem*>>();
-	auto startEffects = base::flat_set<not_null<const Element*>>();
-	auto startInteractions = base::flat_set<not_null<const Element*>>();
 	const auto markingAsViewed = markingMessagesRead();
 	const auto markingContentRead = markingContentsRead();
-	const auto interactionsWindow = controllerOrNull();
 	const auto guard = gsl::finally([&] {
 		if (_translateTracker) {
 			_delegate->listAddTranslatedItems(_translateTracker.get());
 			_translateTracker->finishBunch();
-		}
-		if (!startEffects.empty()) {
-			for (const auto &view : startEffects) {
-				_emojiInteractions->playEffectOnRead(view);
-			}
-		}
-		if (!startInteractions.empty()) {
-			for (const auto &view : startInteractions) {
-				_animatedStickersPlayed.emplace(view->data());
-				interactionsWindow->emojiInteractions().startAutoplay(view);
-			}
 		}
 		if (markingAsViewed && readTill) {
 			_delegate->listMarkReadTill(readTill);
@@ -3104,20 +3035,8 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 			if (isUnread) {
 				readTill = item;
 			}
-			if (markingContentRead
-				&& item->hasUnwatchedEffect()
-				&& _delegate->listAllowsReadEffect(view)) {
-				startEffects.emplace(view);
-			}
-			if (markingContentRead
-				&& interactionsWindow
-				&& !item->out()
-				&& !_animatedStickersPlayed.contains(item)
-				&& !PowerSaving::On(PowerSaving::kEmojiChat)
-				&& CanPlayEmojiInteraction(view)
-				&& session->emojiStickersPack().hasAnimationsFor(item)) {
-				startInteractions.emplace(view);
-			}
+			// LoogriGram: a shown message's effect and an emoji's
+			// interaction were started here; no big animations (2026-10-04).
 			if (withReaction) {
 				readContents.insert(item);
 			} else if (item->isUnreadMention()
@@ -5637,7 +5556,6 @@ void ListWidget::itemRemoved(not_null<const HistoryItem*> item) {
 		_accessibilitySelectionAnchor = nullptr;
 	}
 	_accessibilityIdentities.remove(item);
-	_animatedStickersPlayed.remove(item);
 	const auto i = _views.find(item);
 	if (i == end(_views)) {
 		return;

@@ -38,18 +38,6 @@ constexpr auto kRefreshTimeout = 7200 * crl::time(1000);
 constexpr auto kEmojiCachesCount = 4;
 constexpr auto kPremiumCachesCount = 8;
 
-[[nodiscard]] std::optional<int> IndexFromEmoticon(const QString &emoticon) {
-	if (emoticon.size() < 2) {
-		return std::nullopt;
-	}
-	const auto first = emoticon[0].unicode();
-	return (first >= '1' && first <= '9')
-		? std::make_optional(first - '1')
-		: (first == 55357 && emoticon[1].unicode() == 56607)
-		? std::make_optional(9)
-		: std::nullopt;
-}
-
 [[nodiscard]] const Lottie::ColorReplacements *ColorReplacements(int index) {
 	Expects(index >= 1 && index <= 5);
 
@@ -164,58 +152,6 @@ auto EmojiPack::stickerForEmoji(const IsolatedEmoji &emoji) -> Sticker {
 	return {};
 }
 
-EmojiPtr EmojiPack::chooseInteractionEmoji(
-		not_null<HistoryItem*> item) const {
-	return chooseInteractionEmoji(item->originalText().text);
-}
-
-EmojiPtr EmojiPack::chooseInteractionEmoji(
-		const QString &emoticon) const {
-	const auto emoji = Ui::Emoji::Find(emoticon);
-	if (!emoji) {
-		return nullptr;
-	}
-	if (!animationsForEmoji(emoji).empty()) {
-		return emoji;
-	}
-	if (const auto original = emoji->original(); original != emoji) {
-		if (!animationsForEmoji(original).empty()) {
-			return original;
-		}
-	}
-	static const auto kHearts = {
-		QString::fromUtf8("\xf0\x9f\x92\x9b"),
-		QString::fromUtf8("\xf0\x9f\x92\x99"),
-		QString::fromUtf8("\xf0\x9f\x92\x9a"),
-		QString::fromUtf8("\xf0\x9f\x92\x9c"),
-		QString::fromUtf8("\xf0\x9f\xa7\xa1"),
-		QString::fromUtf8("\xf0\x9f\x96\xa4"),
-		QString::fromUtf8("\xf0\x9f\xa4\x8e"),
-		QString::fromUtf8("\xf0\x9f\xa4\x8d"),
-	};
-	return ranges::contains(kHearts, emoji->id())
-		? Ui::Emoji::Find(QString::fromUtf8("\xe2\x9d\xa4"))
-		: emoji;
-}
-
-auto EmojiPack::animationsForEmoji(EmojiPtr emoji) const
--> const base::flat_map<int, not_null<DocumentData*>> & {
-	static const auto empty = base::flat_map<int, not_null<DocumentData*>>();
-	if (!emoji) {
-		return empty;
-	}
-	const auto i = _animations.find(emoji);
-	return (i != end(_animations)) ? i->second : empty;
-}
-
-bool EmojiPack::hasAnimationsFor(not_null<HistoryItem*> item) const {
-	return !animationsForEmoji(chooseInteractionEmoji(item)).empty();
-}
-
-bool EmojiPack::hasAnimationsFor(const QString &emoticon) const {
-	return !animationsForEmoji(chooseInteractionEmoji(emoticon)).empty();
-}
-
 std::unique_ptr<Lottie::SinglePlayer> EmojiPack::effectPlayer(
 		not_null<DocumentData*> document,
 		QByteArray data,
@@ -245,8 +181,6 @@ std::unique_ptr<Lottie::SinglePlayer> EmojiPack::effectPlayer(
 	};
 	const auto size = (type == EffectType::PremiumSticker)
 		? HistoryView::Sticker::PremiumEffectSize(document)
-		: (type == EffectType::EmojiInteraction)
-		? HistoryView::Sticker::EmojiEffectSize()
 		: HistoryView::Sticker::MessageEffectSize();
 	const auto request = Lottie::FrameRequest{
 		size * style::DevicePixelRatio(),
@@ -281,7 +215,9 @@ void EmojiPack::refresh() {
 		MTP_int(0) // hash
 	)).done([=](const MTPmessages_StickerSet &result) {
 		_requestId = 0;
-		refreshAnimations();
+		// LoogriGram: refreshAnimations() fetched the emoji interactions'
+		// sticker set here and rescheduled this refresh once it answered.
+		refreshDelayed();
 		result.match([&](const MTPDmessages_stickerSet &data) {
 			applySet(data);
 		}, [](const MTPDmessages_stickerSetNotModified &) {
@@ -289,27 +225,6 @@ void EmojiPack::refresh() {
 		});
 	}).fail([=](const MTP::Error &error) {
 		_requestId = 0;
-		refreshDelayed();
-	}).send();
-}
-
-void EmojiPack::refreshAnimations() {
-	if (_animationsRequestId) {
-		return;
-	}
-	_animationsRequestId = _session->api().request(MTPmessages_GetStickerSet(
-		MTP_inputStickerSetAnimatedEmojiAnimations(),
-		MTP_int(0) // hash
-	)).done([=](const MTPmessages_StickerSet &result) {
-		_animationsRequestId = 0;
-		refreshDelayed();
-		result.match([&](const MTPDmessages_stickerSet &data) {
-			applyAnimationsSet(data);
-		}, [](const MTPDmessages_stickerSetNotModified &) {
-			LOG(("API Error: Unexpected messages.stickerSetNotModified."));
-		});
-	}).fail([=] {
-		_animationsRequestId = 0;
 		refreshDelayed();
 	}).send();
 }
@@ -339,56 +254,6 @@ void EmojiPack::applySet(const MTPDmessages_stickerSet &data) {
 		refreshItems(emoji);
 	}
 	_refreshed.fire({});
-}
-
-void EmojiPack::applyAnimationsSet(const MTPDmessages_stickerSet &data) {
-	const auto stickers = collectStickers(data.vdocuments().v);
-	const auto &packs = data.vpacks().v;
-	const auto indices = collectAnimationsIndices(packs);
-
-	_animations.clear();
-	for (const auto &pack : packs) {
-		pack.match([&](const MTPDstickerPack &data) {
-			const auto emoticon = qs(data.vemoticon());
-			if (IndexFromEmoticon(emoticon).has_value()) {
-				return;
-			}
-			const auto emoji = Ui::Emoji::Find(emoticon);
-			if (!emoji) {
-				return;
-			}
-			for (const auto &id : data.vdocuments().v) {
-				const auto i = indices.find(id.v);
-				if (i == end(indices)) {
-					continue;
-				}
-				const auto j = stickers.find(id.v);
-				if (j == end(stickers)) {
-					continue;
-				}
-				for (const auto index : i->second) {
-					_animations[emoji].emplace(index, j->second);
-				}
-			}
-		});
-	}
-	++_animationsVersion;
-}
-
-auto EmojiPack::collectAnimationsIndices(
-	const QVector<MTPStickerPack> &packs
-) const -> base::flat_map<uint64, base::flat_set<int>> {
-	auto result = base::flat_map<uint64, base::flat_set<int>>();
-	for (const auto &pack : packs) {
-		pack.match([&](const MTPDstickerPack &data) {
-			if (const auto index = IndexFromEmoticon(qs(data.vemoticon()))) {
-				for (const auto &id : data.vdocuments().v) {
-					result[id.v].emplace(*index);
-				}
-			}
-		});
-	}
-	return result;
 }
 
 void EmojiPack::refreshAll() {

@@ -75,7 +75,6 @@ class AboutView;
 struct TextState;
 struct StateRequest;
 class ElementOverlayHost;
-class EmojiInteractions;
 class TranslateTracker;
 enum class CursorState : char;
 enum class PointState : char;
@@ -137,9 +136,6 @@ public:
 	}
 	virtual void listMarkContentsRead(
 		const base::flat_set<not_null<HistoryItem*>> &items) = 0;
-	virtual bool listAllowsReadEffect(not_null<const Element*>) {
-		return false;
-	}
 	virtual MessagesBarData listMessagesBar(
 		const std::vector<not_null<Element*>> &elements,
 		bool markLastAsRead) = 0;
@@ -194,7 +190,6 @@ public:
 	[[nodiscard]] virtual Window::SessionController *listWindowOrNull() {
 		return listWindow();
 	}
-	virtual not_null<QWidget*> listEmojiInteractionsParent() = 0;
 	virtual not_null<const Ui::ChatStyle*> listChatStyle() = 0;
 	virtual rpl::producer<bool> listChatWideValue() = 0;
 	virtual std::unique_ptr<Reactions::Manager> listMakeReactionsManager(
@@ -235,7 +230,6 @@ public:
 	explicit WindowListDelegate(not_null<Window::SessionController*> window);
 
 	not_null<Window::SessionController*> listWindow() override;
-	not_null<QWidget*> listEmojiInteractionsParent() override;
 	not_null<const Ui::ChatStyle*> listChatStyle() override;
 	rpl::producer<bool> listChatWideValue() override;
 	std::unique_ptr<Reactions::Manager> listMakeReactionsManager(
@@ -526,14 +520,6 @@ public:
 	ElementChatMode elementChatMode() override;
 	not_null<Ui::PathShiftGradient*> elementPathShiftGradient() override;
 	void elementReplyTo(const FullReplyTo &to) override;
-	void elementStartInteraction(not_null<const Element*> view) override;
-	void elementStartPremium(
-		not_null<const Element*> view,
-		Element *replacing) override;
-	void elementCancelPremium(not_null<const Element*> view) override;
-	void elementStartEffect(
-		not_null<const Element*> view,
-		Element *replacing) override;
 	QString elementAuthorRank(not_null<const Element*> view) override;
 	bool elementHideTopicButton(not_null<const Element*> view) override;
 
@@ -924,7 +910,6 @@ private:
 
 	const not_null<ListDelegate*> _delegate;
 	const not_null<Main::Session*> _session;
-	const std::unique_ptr<EmojiInteractions> _emojiInteractions;
 	const Context _context;
 	const bool _inverted = false;
 
@@ -947,7 +932,6 @@ private:
 		not_null<Element*>,
 		ItemRevealAnimation> _itemRevealAnimations;
 	int _itemsRevealHeight = 0;
-	base::flat_set<not_null<const HistoryItem*>> _animatedStickersPlayed;
 	base::flat_map<not_null<PeerData*>, Ui::PeerUserpicView> _userpics;
 	base::flat_map<not_null<PeerData*>, Ui::PeerUserpicView> _userpicsCache;
 	base::flat_map<MsgId, Ui::PeerUserpicView> _hiddenSenderUserpics;

@@ -611,24 +611,6 @@ ElementChatMode DefaultElementDelegate::elementChatMode() {
 void DefaultElementDelegate::elementReplyTo(const FullReplyTo &to) {
 }
 
-void DefaultElementDelegate::elementStartInteraction(
-	not_null<const Element*> view) {
-}
-
-void DefaultElementDelegate::elementStartPremium(
-	not_null<const Element*> view,
-	Element *replacing) {
-}
-
-void DefaultElementDelegate::elementCancelPremium(
-	not_null<const Element*> view) {
-}
-
-void DefaultElementDelegate::elementStartEffect(
-	not_null<const Element*> view,
-	Element *replacing) {
-}
-
 QString DefaultElementDelegate::elementAuthorRank(
 		not_null<const Element*> view) {
 	return {};
