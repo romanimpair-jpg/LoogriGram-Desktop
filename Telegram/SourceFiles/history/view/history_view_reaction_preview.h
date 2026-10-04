@@ -12,13 +12,8 @@ class PhotoData;
 
 namespace Ui {
 class DropdownMenu;
-class PopupMenu;
 class RpWidget;
 } // namespace Ui
-
-namespace Data {
-struct ReactionId;
-} // namespace Data
 
 namespace Window {
 class SessionController;
@@ -43,17 +38,8 @@ void ShowWidgetPreview(
 	Fn<void(not_null<Ui::RpWidget*>)> setupContent,
 	Fn<void(not_null<Ui::DropdownMenu*>)> fillMenu);
 
-bool ShowReactionPreview(
-	not_null<Window::SessionController*> controller,
-	FullMsgId origin,
-	Data::ReactionId reactionId,
-	bool emojiPreview = false);
-
-[[nodiscard]] bool AttachReactionPreviewToMenu(
-	not_null<Ui::PopupMenu*> menu,
-	not_null<Window::SessionController*> controller,
-	QPoint desiredPosition,
-	FullMsgId origin,
-	const Data::ReactionId &reactionId);
+// LoogriGram: ShowReactionPreview and AttachReactionPreviewToMenu played a
+// reaction or custom emoji large - over the chat, or above the who-reacted
+// list. Both are gone; the sticker, photo and widget previews polls use stay.
 
 } // namespace HistoryView

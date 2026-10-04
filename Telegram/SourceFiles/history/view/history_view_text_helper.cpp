@@ -10,9 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/click_handler_types.h"
 #include "data/data_document.h"
 #include "data/data_session.h"
-#include "data/stickers/data_custom_emoji.h"
 #include "history/view/history_view_element.h"
-#include "history/view/history_view_reaction_preview.h"
 #include "history/history.h"
 #include "main/main_session.h"
 #include "window/window_session_controller.h"
@@ -41,31 +39,9 @@ void InitElementTextPart(not_null<Element*> view, Ui::Text::String &text) {
 			}
 		});
 	}
-	if (text.hasCustomEmoji()) {
-		text.setCustomEmojiClickHandler(
-			[](QStringView entityData) {
-				return Data::ParseCustomEmojiData(entityData) != 0;
-			},
-			[weak = base::make_weak(view)](
-					QStringView entityData,
-					ClickContext context) {
-				const auto view = weak.get();
-				if (!view) {
-					return;
-				}
-				const auto my = context.other.value<ClickHandlerContext>();
-				if (const auto controller = my.sessionWindow.get()) {
-					const auto documentId = Data::ParseCustomEmojiData(entityData);
-					if (documentId) {
-						ShowReactionPreview(
-							controller,
-							my.itemId,
-							Data::ReactionId{ documentId },
-							true);
-					}
-				}
-			});
-	}
+	// LoogriGram: clicking a custom emoji in the text played it large over
+	// the chat with its pack's name (ShowReactionPreview). It does nothing
+	// now, as on Android; the pack is offered from the message's menu.
 }
 
 } // namespace HistoryView

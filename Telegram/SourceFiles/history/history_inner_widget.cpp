@@ -2771,9 +2771,8 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 		// LoogriGram: right-clicking a reaction already on a message used to
 		// open ShowReactionPreview - a body-sized overlay playing the sticker
 		// with its pack name. Gone; the right click now falls through to the
-		// ordinary message menu. The who-reacted list above is kept, and so is
-		// the preview for a custom emoji clicked in message text, which is a
-		// different gesture.
+		// ordinary message menu. The who-reacted list above is kept, without
+		// the large reaction it used to carry.
 	}
 	if (!linkPhoneNumber.isEmpty()) {
 		PhoneClickHandler(session, linkPhoneNumber).onClick(

@@ -9,21 +9,15 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "base/call_delayed.h"
 #include "base/event_filter.h"
-#include "boxes/sticker_set_box.h"
 #include "data/data_document.h"
 #include "data/data_photo.h"
-#include "data/data_message_reactions.h"
 #include "data/data_session.h"
-#include "data/stickers/data_custom_emoji.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "mainwindow.h"
-#include "ui/cached_special_layer_shadow_corners.h"
-#include "ui/effects/show_animation.h"
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/dropdown_menu.h"
 #include "ui/widgets/labels.h"
-#include "ui/widgets/popup_menu.h"
 #include "ui/widgets/shadow.h"
 #include "ui/wrap/fade_wrap.h"
 #include "ui/painter.h"
@@ -59,16 +53,12 @@ struct PreviewOverlayState {
 	base::unique_qptr<Window::MediaPreviewWidget> mediaPreview;
 	base::unique_qptr<Ui::AbstractButton> clickable;
 	base::unique_qptr<Ui::FadeWrap<Ui::DropdownMenu>> menuWrap;
-	base::unique_qptr<Ui::AbstractButton> background;
-	base::unique_qptr<Ui::FlatLabel> label;
 	Fn<void()> extraHide;
 	rpl::lifetime shutdownGuard;
 
 	void clear() {
 		shutdownGuard.destroy();
 		menuWrap.reset();
-		background.reset();
-		label.reset();
 		mediaPreview.reset();
 		clickable.reset();
 	}
@@ -78,19 +68,6 @@ struct PreviewOverlay {
 	std::shared_ptr<PreviewOverlayState> state;
 	Fn<void()> hideAll;
 };
-
-[[nodiscard]] DocumentData *LookupReactionDocument(
-		not_null<Window::SessionController*> controller,
-		const Data::ReactionId &reactionId) {
-	auto &owner = controller->session().data();
-	if (const auto custom = reactionId.custom()) {
-		return owner.document(custom);
-	} else if (const auto resolved
-			= owner.reactions().lookupTemporary(reactionId)) {
-		return resolved->selectAnimation;
-	}
-	return nullptr;
-}
 
 template <typename MediaData>
 [[nodiscard]] PreviewOverlay CreatePreviewOverlay(
@@ -210,191 +187,6 @@ bool ShowPhotoPreview(
 		controller,
 		CreatePreviewOverlay(controller, origin, photo),
 		std::move(fillMenu));
-	return true;
-}
-
-bool ShowReactionPreview(
-		not_null<Window::SessionController*> controller,
-		FullMsgId origin,
-		Data::ReactionId reactionId,
-		bool emojiPreview) {
-	const auto document = LookupReactionDocument(controller, reactionId);
-	if (!document) {
-		return false;
-	}
-	const auto overlay = CreatePreviewOverlay(controller, origin, document);
-	const auto &state = overlay.state;
-
-	const auto mainwidget = controller->widget()->bodyWidget();
-	const auto shadowExtend = st::boxRoundShadow.extend;
-
-	if (reactionId.custom() && document->sticker()) {
-		const auto setId = document->sticker()->set;
-		const auto packName
-			= document->owner().customEmojiManager().lookupSetName(setId.id);
-		if (!packName.isEmpty()) {
-			state->background = base::make_unique_q<Ui::AbstractButton>(
-				mainwidget);
-			const auto show = controller->uiShow();
-			const auto hideAll = overlay.hideAll;
-			state->background->setClickedCallback([=] {
-				hideAll();
-				show->show(Box<StickerSetBox>(
-					show,
-					setId,
-					Data::StickersType::Emoji));
-			});
-			state->label = base::make_unique_q<Ui::FlatLabel>(
-				state->background.get(),
-				(emojiPreview
-					? tr::lng_context_animated_emoji_preview
-					: tr::lng_context_animated_reaction)(
-						lt_name,
-						rpl::single(Ui::Text::Colorized(packName)),
-						tr::rich));
-			state->label->setAttribute(Qt::WA_TransparentForMouseEvents);
-			const auto backgroundRaw = state->background.get();
-			const auto labelRaw = state->label.get();
-
-			backgroundRaw->paintOn([=](QPainter &p) {
-				const auto innerRect = backgroundRaw->rect() - shadowExtend;
-				Ui::Shadow::paint(
-					p,
-					innerRect,
-					backgroundRaw->width(),
-					st::boxRoundShadow,
-					Ui::SpecialLayerShadowCorners(),
-					RectPart::Full);
-				auto hq = PainterHighQualityEnabler(p);
-				p.setPen(Qt::NoPen);
-				p.setBrush(st::windowBg);
-				p.drawRoundedRect(
-					innerRect,
-					st::boxRadius,
-					st::boxRadius);
-			});
-
-			labelRaw->show();
-			Ui::Animations::ShowWidgets({ backgroundRaw });
-		}
-	}
-	const auto backgroundRaw = state->background.get();
-	const auto labelRaw = state->label.get();
-	state->extraHide = [=] {
-		if (backgroundRaw && labelRaw) {
-			Ui::Animations::HideWidgets({
-				backgroundRaw,
-				labelRaw,
-			});
-		}
-	};
-
-	const auto mediaPreviewRaw = state->mediaPreview.get();
-	mainwidget->sizeValue() | rpl::on_next([=](QSize size) {
-		mediaPreviewRaw->setGeometry(Rect(size));
-
-		if (backgroundRaw && labelRaw) {
-			const auto maxLabelWidth = labelRaw->textMaxWidth() / 2;
-			labelRaw->resizeToWidth(maxLabelWidth);
-			const auto labelHeight = labelRaw->height() * 2;
-			const auto padding = st::msgServicePadding;
-			const auto innerWidth = maxLabelWidth + rect::m::sum::h(padding);
-			const auto innerHeight = labelHeight + rect::m::sum::v(padding);
-			const auto bgWidth = innerWidth + rect::m::sum::h(shadowExtend);
-			const auto bgHeight = innerHeight + rect::m::sum::v(shadowExtend);
-			const auto bgX = (size.width() - bgWidth) / 2;
-			const auto bgY = (size.height() * 3 / 4) - (bgHeight / 2);
-
-			backgroundRaw->setGeometry(bgX, bgY, bgWidth, bgHeight);
-			labelRaw->setGeometry(
-				shadowExtend.left() + padding.left(),
-				shadowExtend.top() + padding.top(),
-				maxLabelWidth,
-				labelHeight);
-			backgroundRaw->raise();
-		}
-	}, mediaPreviewRaw->lifetime());
-	return true;
-}
-
-bool AttachReactionPreviewToMenu(
-		not_null<Ui::PopupMenu*> menu,
-		not_null<Window::SessionController*> controller,
-		QPoint desiredPosition,
-		FullMsgId origin,
-		const Data::ReactionId &reactionId) {
-	const auto document = LookupReactionDocument(controller, reactionId);
-	if (!document) {
-		return false;
-	}
-	const auto size = st::reactionPreviewInMenuSize;
-	const auto skip = st::reactionPreviewInMenuSkip;
-	menu->setAdditionalMenuPadding(
-		QMargins(0, size + skip, 0, 0),
-		QMargins());
-	if (!menu->prepareGeometryFor(desiredPosition)) {
-		return false;
-	}
-	const auto preview = Ui::CreateChild<Window::MediaPreviewWidget>(
-		menu.get(),
-		controller);
-	preview->setAttribute(Qt::WA_TransparentForMouseEvents);
-	preview->setPaintBackground(false);
-	preview->setHideEmoji(true);
-	preview->setMaxContentSize(size);
-	preview->setCustomDuration(menu->st().showDuration);
-	preview->showPreview(origin, document);
-
-	// Menu hides children, so widget's own pause release never runs.
-	const auto weak = base::make_weak(controller);
-	QObject::connect(menu.get(), &QObject::destroyed, [weak] {
-		if (const auto strong = weak.get()) {
-			strong->disableGifPauseReason(
-				Window::GifPauseReason::MediaPreview);
-		}
-	});
-
-	const auto background = menu->useTransparency()
-		? nullptr
-		: Ui::CreateChild<Ui::RpWidget>(menu.get());
-	if (background) {
-		background->setAttribute(Qt::WA_TransparentForMouseEvents);
-		const auto bg = menu->st().menu.itemBg;
-		background->paintOn([=](QPainter &p) {
-			p.fillRect(background->rect(), bg);
-		});
-		background->show();
-		background->lower();
-	}
-
-	menu->sizeValue() | rpl::on_next([=](QSize outer) {
-		const auto padding = menu->preparedPadding();
-		const auto left = padding.left();
-		const auto width = outer.width() - left - padding.right();
-		if (background) {
-			background->setGeometry(left, 0, width, padding.top());
-		}
-		preview->setGeometry(left, padding.top() - skip - size, width, size);
-	}, preview->lifetime());
-
-	using ShowState = Ui::PopupMenu::ShowState;
-	menu->showStateValue() | rpl::on_next([=](ShowState state) {
-		if (state.toggling) {
-			preview->hide();
-			if (background) {
-				background->hide();
-			}
-			return;
-		}
-		if (background && background->isHidden()) {
-			background->show();
-		}
-		if (preview->isHidden()) {
-			preview->show();
-		}
-		preview->raise();
-	}, preview->lifetime());
-
 	return true;
 }
 

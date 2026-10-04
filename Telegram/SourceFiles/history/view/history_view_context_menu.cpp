@@ -20,7 +20,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "history/view/history_view_list_widget.h"
 #include "history/view/history_view_cursor_state.h"
-#include "history/view/history_view_reaction_preview.h"
 #include "history/history.h"
 #include "history/history_item.h"
 #include "history/history_item_components.h"
@@ -2497,16 +2496,9 @@ void ShowWhoReactedMenu(
 			state->addedToBottom,
 			appendBottom);
 		if (creating) {
-			if (!(*menu)->empty() && AttachReactionPreviewToMenu(
-					not_null(menu->get()),
-					controller,
-					position,
-					itemId,
-					id)) {
-				(*menu)->popupPrepared();
-			} else {
-				(*menu)->popup(position);
-			}
+			// LoogriGram: the reaction played large above the list here
+			// (AttachReactionPreviewToMenu). The menu is the list alone.
+			(*menu)->popup(position);
 		}
 	}, lifetime);
 }
