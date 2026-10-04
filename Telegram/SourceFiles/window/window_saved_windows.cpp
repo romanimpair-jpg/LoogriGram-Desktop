@@ -10,6 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "base/call_delayed.h"
 #include "core/application.h"
+#include "core/version.h"
 #include "data/data_channel.h"
 #include "data/data_community.h"
 #include "data/data_forum.h"
@@ -913,8 +914,9 @@ QString SavedWindows::shellTitle(
 		&& _app->domain().accountsAuthedCount() > 1)
 		? st::wrap_rtl(session->user()->name())
 		: QString();
+	// LoogriGram: AppName, not "Telegram", as in MainWindow's title.
 	return name.isEmpty()
-		? (user.isEmpty() ? u"Telegram"_q : user)
+		? (user.isEmpty() ? AppName.utf16() : user)
 		: user.isEmpty()
 		? name
 		: (name + u" @ "_q + user);

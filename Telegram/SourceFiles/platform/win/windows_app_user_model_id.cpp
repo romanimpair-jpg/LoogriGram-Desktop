@@ -11,6 +11,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "platform/win/windows_toast_activator.h"
 #include "base/platform/win/base_windows_winrt.h"
 #include "core/launcher.h"
+#include "core/version.h"
 
 #include <propvarutil.h>
 #include <propkey.h>
@@ -203,13 +204,14 @@ QString systemShortcutPath() {
 	return QString();
 }
 
-void CleanupShortcut() {
+// LoogriGram: removes the Start menu shortcut `name` if it starts this exe.
+void RemoveShortcutIfOurs(const QString &name) {
 	const auto myid = MyExecutablePathId();
 	if (!myid) {
 		return;
 	}
 
-	QString path = systemShortcutPath() + u"Telegram.lnk"_q;
+	QString path = systemShortcutPath() + name;
 	std::wstring p = QDir::toNativeSeparators(path).toStdWString();
 
 	DWORD attributes = GetFileAttributes(p.c_str());
@@ -236,6 +238,11 @@ void CleanupShortcut() {
 	if (GetUniqueFileId(szGotPath) == myid) {
 		QFile().remove(path);
 	}
+}
+
+void CleanupShortcut() {
+	RemoveShortcutIfOurs(AppName.utf16() + u".lnk"_q);
+	RemoveShortcutIfOurs(u"Telegram.lnk"_q);
 }
 
 bool validateShortcutAt(const QString &path) {
@@ -363,7 +370,12 @@ bool ValidateShortcut() {
 			return true;
 		}
 
-		path += u"Telegram.lnk"_q;
+		// LoogriGram: this shortcut names us in the Start menu and on every
+		// notification. It was "Telegram.lnk", which said "Telegram" and was
+		// recreated over an official client's own shortcut of that name. An
+		// old one that starts this exe is removed.
+		RemoveShortcutIfOurs(u"Telegram.lnk"_q);
+		path += AppName.utf16() + u".lnk"_q;
 		if (validateShortcutAt(path)) {
 			return true;
 		}

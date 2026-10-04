@@ -31,7 +31,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_open_from_tray" = "Open LoogriGram";
 "lng_minimize_to_tray" = "Minimize to Tray";
 "lng_quit_from_tray" = "Quit LoogriGram";
-"lng_tray_icon_text" = "Telegram is still running here,\nyou can change this in Settings.\nIf it disappears from the tray,\nyou can drag it back from the hidden icons.";
+"lng_tray_icon_text" = "LoogriGram is still running here,\nyou can change this in Settings.\nIf it disappears from the tray,\nyou can drag it back from the hidden icons.";
 
 // For lng_month_year or plain month name.
 "lng_month1" = "January";
@@ -430,8 +430,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_bad_phone" = "Invalid phone number. Please try again.";
 "lng_bad_code" = "You have entered an invalid code.";
 "lng_bad_name" = "Enter your first and last name.";
-"lng_bad_photo" = "Sorry, Telegram can't process that type of image.";
-"lng_bad_video" = "Sorry, Telegram can't process that type of video.";
+"lng_bad_photo" = "Sorry, LoogriGram can't process that type of image.";
+"lng_bad_video" = "Sorry, LoogriGram can't process that type of video.";
 
 "lng_signin_title" = "Cloud password check";
 "lng_signin_desc" = "Please enter your cloud password.";
@@ -680,7 +680,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_settings_title_total_count" = "Total unread count";
 "lng_settings_native_frame" = "Use system window frame";
 "lng_settings_qt_frame" = "Use Qt window frame";
-"lng_settings_auto_start" = "Launch Telegram when system starts";
+"lng_settings_auto_start" = "Launch LoogriGram when system starts";
 "lng_settings_start_min" = "Launch minimized";
 "lng_settings_auto_start_disabled_uwp" = "Starting with the system was disabled in Windows Settings.\n\nPlease enable LoogriGram in the Startup Apps Settings.";
 "lng_settings_restore_windows" = "Restore last opened windows";
@@ -692,7 +692,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_restore_windows_disabled_toast" = "Windows will not be restored. You can enable this in Settings > Advanced.";
 "lng_restore_windows_unavailable" = "This chat is no longer available.";
 "lng_settings_open_system_settings" = "Open Settings";
-"lng_settings_add_sendto" = "Place Telegram in \"Send to\" menu";
+"lng_settings_add_sendto" = "Place LoogriGram in \"Send to\" menu";
 "lng_settings_mac_warn_before_quit" = "Show warning before quitting with {text}";
 "lng_settings_mac_round_icon" = "Round application icon";
 
@@ -834,13 +834,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_settings_passcode_disable" = "Disable passcode";
 "lng_settings_passcode_disable_sure" = "Are you sure you want to disable passcode?";
 "lng_settings_use_winhello" = "Unlock with Windows Hello";
-"lng_settings_use_winhello_about" = "You need to enter your passcode once before unlocking Telegram with Windows Hello.";
+"lng_settings_use_winhello_about" = "You need to enter your passcode once before unlocking LoogriGram with Windows Hello.";
 "lng_settings_use_touchid" = "Unlock with Touch ID";
-"lng_settings_use_touchid_about" = "You need to enter your passcode once before unlocking Telegram with Touch ID.";
+"lng_settings_use_touchid_about" = "You need to enter your passcode once before unlocking LoogriGram with Touch ID.";
 "lng_settings_use_applewatch" = "Unlock with Apple Watch";
-"lng_settings_use_applewatch_about" = "You need to enter your passcode once before unlocking Telegram with Apple Watch.";
+"lng_settings_use_applewatch_about" = "You need to enter your passcode once before unlocking LoogriGram with Apple Watch.";
 "lng_settings_use_systempwd" = "Unlock with System Password";
-"lng_settings_use_systempwd_about" = "You need to enter your passcode once before unlocking Telegram with System Password.";
+"lng_settings_use_systempwd_about" = "You need to enter your passcode once before unlocking LoogriGram with System Password.";
 "lng_settings_password_disable" = "Disable cloud password";
 "lng_settings_password_abort" = "Abort two-step verification setup";
 "lng_settings_about_bio" = "Any details such as age, occupation or city.\nExample: 23 y.o. designer from San Francisco";
@@ -1141,7 +1141,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_download_path_temp" = "Temp folder";
 "lng_download_path_default" = "Default folder";
 "lng_download_path_header" = "Choose download path";
-"lng_download_path_default_radio" = "Telegram folder in system «Downloads»";
+"lng_download_path_default_radio" = "LoogriGram folder in system «Downloads»";
 "lng_download_path_temp_radio" = "Temp folder, cleared on logout or uninstall";
 "lng_download_path_dir_radio" = "Custom folder, cleared only manually";
 "lng_download_path_choose" = "Choose download path";
@@ -1181,11 +1181,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_local_storage_clear" = "Clear all";
 "lng_local_storage_clear_selected" = "Clear selected";
 "lng_local_storage_clearing" = "Clearing...";
-"lng_local_storage_device_telegram" = "Telegram cache";
+"lng_local_storage_device_telegram" = "LoogriGram cache";
 "lng_local_storage_device_other" = "Other data";
 "lng_local_storage_device_free" = "Free";
 "lng_local_storage_device_total" = "Total";
-"lng_local_storage_device_usage" = "Telegram uses {percent} of your device storage.";
+"lng_local_storage_device_usage" = "LoogriGram uses {percent} of your device storage.";
 "lng_local_storage_clearing_about" = "Please keep this window open while the cache is being cleared.";
 "lng_local_storage_cleared" = "{size} freed on your device!";
 "lng_local_storage_about" = "All media will stay in the Telegram cloud and can be re-downloaded if you need them again.";
@@ -1220,7 +1220,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_passcode_touchid" = "You need to enter your passcode\nbefore you can use Touch ID.";
 "lng_passcode_applewatch" = "You need to enter your passcode\nbefore you can use Watch to unlock.";
 "lng_passcode_systempwd" = "You need to enter your passcode\nbefore you can use system password.";
-"lng_passcode_winhello_unlock" = "Telegram wants to unlock with Windows Hello.";
+"lng_passcode_winhello_unlock" = "LoogriGram wants to unlock with Windows Hello.";
 "lng_passcode_touchid_unlock" = "unlock";
 "lng_passcode_create_button" = "Save Passcode";
 "lng_passcode_check_button" = "Submit";
@@ -1228,7 +1228,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_passcode_create_title" = "Create Local Passcode";
 "lng_passcode_check_title" = "Enter Passcode";
 "lng_passcode_change_title" = "Enter Passcode";
-"lng_passcode_unlock_about" = "Unlock Telegram to continue.";
+"lng_passcode_unlock_about" = "Unlock LoogriGram to continue.";
 
 "lng_cloud_password_waiting_code" = "Confirmation code sent to {email}...";
 "lng_cloud_password_confirm" = "Confirm recovery email";
@@ -1313,7 +1313,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_proxy_credentials" = "Credentials";
 "lng_proxy_description" = "Your saved proxy list will be here.";
 "lng_proxy_sponsor" = "Proxy sponsor";
-"lng_proxy_sponsor_about" = "This channel is shown by your proxy server.\nTo remove this channel from your chat list,\ndisable the proxy in Telegram Settings.";
+"lng_proxy_sponsor_about" = "This channel is shown by your proxy server.\nTo remove this channel from your chat list,\ndisable the proxy in LoogriGram Settings.";
 "lng_proxy_sponsor_warning" = "This proxy may display a sponsored channel in your chat list. This doesn't reveal any of your Telegram traffic.";
 "lng_proxy_web_warning" = "This WEB proxy runs a web page from its provider in the background while you're connected. Only use it if you trust the provider. It may also display a sponsored channel in your chat list. This doesn't reveal any of your Telegram traffic.";
 "lng_proxy_add_from_clipboard" = "Add proxy from clipboard";
@@ -2551,7 +2551,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_sure_delete_selected_days#other" = "{count} selected days";
 
 "lng_message_empty" = "Empty Message";
-"lng_message_unsupported" = "This message is not supported by your version of Telegram. Please update to the latest version in Settings > Advanced, or install it from {link}. If you are already using the latest version, this message might depend on a feature that is not yet implemented.";
+"lng_message_unsupported" = "This message is not supported by your version of LoogriGram. Please update it from the main menu, or download the latest version from {link}. If you are already using the latest version, this message might depend on a feature that is not yet implemented.";
 "lng_unsupported_message_title" = "Unsupported Message";
 "lng_unsupported_message_text" = "Update LoogriGram to view this message";
 "lng_unsupported_message_update" = "Update";
@@ -6290,7 +6290,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_theme_editor_error" = "The editor encountered an error :( See 'log.txt' for details.";
 "lng_theme_editor_sure_close" = "Are you sure you want to close the editor? Your changes won't be saved.";
 "lng_theme_editor_need_auth" = "You need to log in to save your theme.";
-"lng_theme_editor_need_unlock" = "You need to unlock Telegram to save your theme.";
+"lng_theme_editor_need_unlock" = "You need to unlock LoogriGram to save your theme.";
 "lng_theme_editor_done" = "Theme exported successfully!";
 "lng_theme_editor_title" = "Edit color palette";
 "lng_theme_editor_save_button" = "Save theme";
@@ -7395,7 +7395,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_passport_error_cant_read" = "Can't read this file. Please choose an image.";
 "lng_passport_bad_name" = "Please use latin characters only.";
 "lng_passport_wait_upload" = "Please wait until the file has finished uploading.";
-"lng_passport_app_out_of_date" = "Sorry, your Telegram app is out of date and can't handle this request. Please update Telegram.";
+"lng_passport_app_out_of_date" = "Sorry, your LoogriGram app is out of date and can't handle this request. Please update LoogriGram.";
 
 "lng_export_title" = "Export Your Data";
 "lng_export_progress_title" = "Exporting your data";
@@ -7446,7 +7446,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_export_state_chats_list" = "Processing chats...";
 "lng_export_state_chats" = "Chats";
 "lng_export_skip_file" = "Skip this file";
-"lng_export_progress" = "You can close this window now. Please don't quit Telegram until the data export is completed.";
+"lng_export_progress" = "You can close this window now. Please don't quit LoogriGram until the data export is completed.";
 "lng_export_stop" = "Stop";
 "lng_export_sure_stop" = "Are you sure you want to stop exporting your data?\n\nIf you do, you'll need to start over.";
 "lng_export_about_done" = "Your data was successfully exported.";
@@ -7752,9 +7752,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_outdated_soon" = "Otherwise, LoogriGram will stop updating on {date}.";
 "lng_outdated_now" = "So LoogriGram can update to newer versions.";
 
-"lng_screen_reader_bar_text" = "Telegram is working in Screen Reader mode.";
+"lng_screen_reader_bar_text" = "LoogriGram is working in Screen Reader mode.";
 "lng_screen_reader_bar_disable" = "Disable";
-"lng_screen_reader_confirm_text" = "Telegram detected accessibility software is being used in your system and it is working in Screen Reader friendly mode.\n\nThis may result in unexpected changes to the way Telegram user interface works.\n\nIf you do not use Screen Reader software with Telegram, please disable this mode.";
+"lng_screen_reader_confirm_text" = "LoogriGram detected accessibility software is being used in your system and it is working in Screen Reader friendly mode.\n\nThis may result in unexpected changes to the way LoogriGram user interface works.\n\nIf you do not use Screen Reader software with LoogriGram, please disable this mode.";
 "lng_screen_reader_confirm_disable" = "Disable";
 "lng_screen_reader_settings_title" = "Screen reader";
 "lng_screen_reader_settings_disable" = "Disable screen reader mode";

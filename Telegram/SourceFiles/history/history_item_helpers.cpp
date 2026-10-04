@@ -995,7 +995,9 @@ bool CanHoldItemNotification(not_null<const HistoryItem*> item) {
 }
 
 [[nodiscard]] TextWithEntities UnsupportedMessageText() {
-	const auto siteLink = u"https://desktop.telegram.org"_q;
+	// LoogriGram: our releases; desktop.telegram.org offers Telegram's build.
+	const auto siteLink
+		= u"https://github.com/romanimpair-jpg/LoogriGram-Desktop/releases"_q;
 	auto result = TextWithEntities{
 		tr::lng_message_unsupported(tr::now, lt_link, siteLink)
 	};
