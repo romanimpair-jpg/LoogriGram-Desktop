@@ -273,6 +273,28 @@ All deleted, not gated. Roughly in the order they were done.
   drops the `Updater.exe` target) and **crash-report uploads**
   (`DESKTOP_APP_DISABLE_CRASH_REPORTS=ON`; Windows still writes a local dump).
 - **macOS and Linux** (272 files), and upstream's other workflows.
+- **Every "big animated view"** (the user's decision, 2026-10-04, both
+  clients; Android `988742b1`, `1056c5c4`, `a36fbf36`, `4f7e40ea`). In order:
+  the reaction preview beside the who-reacted menu and the custom-emoji
+  click handler (`3042504db8`); birthday balloons on profiles and the
+  `showFinished` plumbing only they read (`101b007820`); both
+  `EmojiInteractions` classes - incoming interaction actions are dropped
+  before the typing manager, the top bar's "watching" goes - plus Premium
+  sticker effects (a click opens the set; incoming Premium stickers are no
+  longer mirrored, as upstream already did for "nopremium" ones) and effect
+  playback (`7df5d4c973`); the send menu's effect picker and the selector,
+  emoji-list and sticker-list "message effects" modes, which also took the
+  Show argument of `FillSendMenu`/`SetupMenuAndShortcuts` and
+  `history_view_fake_items` (`e50995c977`); `SendOptions::effectId`, the
+  item's effect and "effect watched" flag, the effect icon line in
+  `BottomInfo` and the effects catalogue in `Data::Reactions`
+  (`cbdf5aac89`); and `Ui::ReactionFlyAnimation` with
+  `Ui::EmojiFlyAnimation` - the burst on inline reactions, the manager's
+  overlay, the reactions settings box's fly, video-chat reaction messages and
+  the topic icon's fly (`6d1b3e4547`). The long-press sticker preview keeps
+  its Premium effect, as on Android. `effectIconGeometry` survives as
+  `Element::bottomInfoAnchor`, which the scheduled section's processing-video
+  tooltip points at.
 
 Left on purpose, being different features: the **promoted / proxy-sponsor
 channel** (`Data::PromoSuggestions`, `help.getPromoData`,
@@ -435,16 +457,13 @@ the updater row, `TranscribeTrialsOver`, `PaidMessagesLocked`), never as
 
 ## Open and known
 
-- **Owed for parity (2026-10-04), not started:** the user's decision removes
-  every "big animated view" on both clients. Done here: the reaction preview
-  (`3042504db8`). Still to do: the reaction burst (`Ui::ReactionFlyAnimation`
-  and its users), message effects (the send menu's selector,
-  `Api::SendOptions::effectId`, the bottom-info icon, the catalogue in
-  `data_message_reactions`), `HistoryView::EmojiInteractions` and
-  `ChatHelpers::EmojiInteractions` (emoji interactions, Premium sticker
-  effects, message effects) and the birthday effect. Android is doing the
-  same and holds the detailed plan in its `LOOGRIGRAM.md` "Start here". None
-  of desktop's commits since `dd0ea5658d` has been built.
+- **Not built since `dd0ea5658d`.** Every desktop commit after it - the
+  trending, setup-hint, branding and big-animation removals - has only been
+  checked by the tools, never compiled. The big-animation ones rewrote
+  signatures across many files (`FillSendMenu`, `SetupMenuAndShortcuts`,
+  `ScheduleBox`, `StickerPlayer::frame`, `PaintStickerThumbnailPath`,
+  `Sticker`'s constructor, `HistoryItem::markContentsRead`), so expect the
+  first build to need a round of fixes.
 - **Media takes a beat to start loading.** Opening a channel pauses before
   photos load, and a video pauses before it downloads; not felt in the
   official client. Measured with `-debug` (logs land in `app\DebugLogs\`):
