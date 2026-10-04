@@ -125,7 +125,13 @@ Server-side half, `Session::applyGhostModePrivacy`: **Last Seen → Nobody** and
 **hide read date** (`hide_read_marks`, free, not Premium). Applied once per
 account on first login (a KV pref remembers it, so changing Last Seen by hand
 later is not undone on the next start) and again on every explicit enable.
-Never reversed. Exception lists are deliberately left intact.
+Never reversed. Last Seen keeps its "Always share with" list (`5bc269bedd`,
+the user's choice, as on Android): `UserPrivacy::saveNobodyKeepingAlways`
+reads the rules fresh and saves them back as the privacy box saves Nobody,
+"Never share with" dropped as meaningless there. Until then this saved a
+bare Nobody while its comment claimed the lists were kept - **`setPrivacy`
+replaces the whole rule set**, and `ignoreAlways`/`ignoreNever` only mean
+"send no list", so both lists were wiped.
 
 **Delivery reports are sent, deliberately.** Ordinary chats have no delivery
 receipt (one tick means the server has it). The only report the client sends
