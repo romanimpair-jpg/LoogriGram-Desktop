@@ -60,23 +60,6 @@ namespace {
 		: 0;
 }
 
-[[nodiscard]] uint64 CountFeaturedHash(
-		not_null<Main::Session*> session,
-		const Data::StickersSetsOrder &order) {
-	auto result = HashInit();
-	const auto &sets = session->data().stickers().sets();
-	for (const auto setId : order) {
-		HashUpdate(result, setId);
-
-		const auto it = sets.find(setId);
-		if (it != sets.cend()
-			&& (it->second->flags & Data::StickersSetFlag::Unread)) {
-			HashUpdate(result, 1);
-		}
-	}
-	return HashFinalize(result);
-}
-
 } // namespace
 
 uint64 CountStickersHash(
@@ -118,18 +101,6 @@ uint64 CountRecentStickersHash(
 
 uint64 CountFavedStickersHash(not_null<Main::Session*> session) {
 	return CountSpecialStickerSetHash(session, Data::Stickers::FavedSetId);
-}
-
-uint64 CountFeaturedStickersHash(not_null<Main::Session*> session) {
-	return CountFeaturedHash(
-		session,
-		session->data().stickers().featuredSetsOrder());
-}
-
-uint64 CountFeaturedEmojiHash(not_null<Main::Session*> session) {
-	return CountFeaturedHash(
-		session,
-		session->data().stickers().featuredEmojiSetsOrder());
 }
 
 uint64 CountSavedGifsHash(not_null<Main::Session*> session) {

@@ -37,7 +37,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/image/image.h"
 #include "ui/cached_round_corners.h"
 #include "ui/painter.h"
-#include "ui/unread_badge_paint.h"
 #include "media/clip/media_clip_reader.h"
 #include "main/main_session.h"
 #include "styles/style_layers.h"
@@ -73,21 +72,6 @@ constexpr auto kHandleMegagroupSetAddressChangeTimeout = crl::time(1000);
 }
 
 } // namespace
-
-class StickersBox::CounterWidget : public Ui::RpWidget {
-public:
-	CounterWidget(QWidget *parent, rpl::producer<int> count);
-
-protected:
-	void paintEvent(QPaintEvent *e) override;
-
-private:
-	void setCounter(int counter);
-
-	QString _text;
-	Ui::UnreadBadgeStyle _st;
-
-};
 
 // This class is hold in header because it requires Qt preprocessing.
 class StickersBox::Inner : public Ui::RpWidget {
@@ -177,7 +161,6 @@ private:
 		[[nodiscard]] bool isMasksSet() const;
 		[[nodiscard]] bool isEmojiSet() const;
 		[[nodiscard]] bool isInstalled() const;
-		[[nodiscard]] bool isUnread() const;
 		[[nodiscard]] bool isArchived() const;
 
 		const not_null<StickersSet*> set;
@@ -256,14 +239,10 @@ private:
 		not_null<Row*> row,
 		Media::Clip::Notification notification);
 
-	void readVisibleSets();
-
 	void updateControlsGeometry();
 	void rebuildAppendSet(not_null<StickersSet*> set);
 	void fillSetCover(not_null<StickersSet*> set, DocumentData **outSticker, int *outWidth, int *outHeight) const;
 	int fillSetCount(not_null<StickersSet*> set) const;
-	[[nodiscard]] Data::StickersSetFlags fillSetFlags(
-		not_null<StickersSet*> set) const;
 	void rebuildMegagroupSet();
 	void handleMegagroupSetAddressChange();
 	void setMegagroupSelectedSet(const StickerSetIdentifier &set);
@@ -335,46 +314,6 @@ private:
 
 };
 
-StickersBox::CounterWidget::CounterWidget(
-	QWidget *parent,
-	rpl::producer<int> count)
-: RpWidget(parent) {
-	setAttribute(Qt::WA_TransparentForMouseEvents);
-
-	_st.sizeId = Dialogs::Ui::UnreadBadgeSize::StickersBox;
-	_st.textTop = st::stickersFeaturedBadgeTextTop;
-	_st.size = st::stickersFeaturedBadgeSize;
-	_st.padding = st::stickersFeaturedBadgePadding;
-	_st.font = st::stickersFeaturedBadgeFont;
-
-	std::move(
-		count
-	) | rpl::on_next([=](int count) {
-		setCounter(count);
-		update();
-	}, lifetime());
-}
-
-void StickersBox::CounterWidget::setCounter(int counter) {
-	_text = (counter > 0) ? QString::number(counter) : QString();
-	auto dummy = QImage(1, 1, QImage::Format_ARGB32_Premultiplied);
-	auto p = QPainter(&dummy);
-
-	const auto badge = Ui::PaintUnreadBadge(p, _text, 0, 0, _st);
-
-	resize(badge.width(), st::stickersFeaturedBadgeSize);
-}
-
-void StickersBox::CounterWidget::paintEvent(QPaintEvent *e) {
-	Painter p(this);
-
-	if (!_text.isEmpty()) {
-		const auto unreadRight = rtl() ? 0 : width();
-		const auto unreadTop = 0;
-		Ui::PaintUnreadBadge(p, _text, unreadRight, unreadTop, _st);
-	}
-}
-
 template <typename ...Args>
 StickersBox::Tab::Tab(int index, Args&&... args)
 : _index(index)
@@ -412,16 +351,12 @@ StickersBox::StickersBox(
 , _session(&_show->session())
 , _api(&_session->mtp())
 , _tabs(this, st::stickersTabs)
-, _unreadBadge(
-	this,
-	_session->data().stickers().featuredSetsUnreadCountValue())
 , _section(section)
 , _isMasks(masks)
 , _isEmoji(false)
 , _installed(_isMasks ? Tab() : Tab(0, this, _show, Section::Installed))
 , _masks(_isMasks ? Tab(0, this, _show, Section::Masks) : Tab())
-, _featured(_isMasks ? Tab() : Tab(1, this, _show, Section::Featured))
-, _archived((_isMasks ? 1 : 2), this, _show, Section::Archived) {
+, _archived(1, this, _show, Section::Archived) {
 	_tabs->setRippleTopRoundRadius(st::boxRadius);
 }
 
@@ -607,9 +542,6 @@ void StickersBox::prepare() {
 	if (_masks.widget() && _section != Section::Masks) {
 		_masks.widget()->hide();
 	}
-	if (_featured.widget() && _section != Section::Featured) {
-		_featured.widget()->hide();
-	}
 	if (_archived.widget() && _section != Section::Archived) {
 		_archived.widget()->hide();
 	}
@@ -623,28 +555,15 @@ void StickersBox::prepare() {
 			if (_installed.widget()) {
 				_installed.widget()->setRowRemovedBySetId(setId, false);
 			}
-			if (_featured.widget()) {
-				_featured.widget()->setRowRemovedBySetId(setId, false);
-			}
 		};
 		const auto markAsRemovedCallback = [=](uint64 setId) {
 			if (_installed.widget()) {
 				_installed.widget()->setRowRemovedBySetId(setId, true);
 			}
-			if (_featured.widget()) {
-				_featured.widget()->setRowRemovedBySetId(setId, true);
-			}
 		};
 		if (const auto installed = _installed.widget()) {
 			installed->setInstallSetCallback(markAsInstalledCallback);
 			installed->setRemoveSetCallback(markAsRemovedCallback);
-		}
-		if (const auto featured = _featured.widget()) {
-			featured->setInstallSetCallback([=](uint64 setId) {
-				installCallback(setId);
-				markAsInstalledCallback(setId);
-			});
-			featured->setRemoveSetCallback(markAsRemovedCallback);
 		}
 		if (const auto archived = _archived.widget()) {
 			archived->setInstallSetCallback(installCallback);
@@ -676,10 +595,8 @@ void StickersBox::prepare() {
 		_tab = &_masks;
 	} else if (_section == Section::Archived) {
 		_tab = &_archived;
-	} else if (_section == Section::Attached) {
+	} else { // _section == Section::Attached
 		_tab = &_attached;
-	} else { // _section == Section::Featured
-		_tab = &_featured;
 	}
 	setInnerWidget(_tab->takeWidget(), topSkip());
 	setDimensions(st::boxWideWidth, st::boxMaxListHeight);
@@ -717,7 +634,6 @@ void StickersBox::prepare() {
 
 	if (_tabs) {
 		_tabs->raise();
-		_unreadBadge->raise();
 	}
 	rebuildList();
 }
@@ -726,8 +642,6 @@ void StickersBox::refreshTabs() {
 	if (!_tabs) {
 		return;
 	}
-
-	const auto &stickers = session().data().stickers();
 
 	_tabIndices.clear();
 	auto sections = std::vector<QString>();
@@ -739,13 +653,6 @@ void StickersBox::refreshTabs() {
 		sections.push_back(tr::lng_stickers_masks_tab(tr::now));
 		_tabIndices.push_back(Section::Masks);
 	}
-	const auto showFeatured = _featured.widget()
-		&& (!stickers.featuredSetsOrder().isEmpty()
-			|| _section == Section::Featured);
-	if (showFeatured) {
-		sections.push_back(tr::lng_stickers_featured_tab(tr::now));
-		_tabIndices.push_back(Section::Featured);
-	}
 	const auto showArchived = _archived.widget()
 		&& (!archivedSetsOrder().isEmpty()
 			|| _section == Section::Archived);
@@ -755,7 +662,6 @@ void StickersBox::refreshTabs() {
 	}
 	_tabs->setSections(sections);
 	if ((_section == Section::Archived && !_tabIndices.contains(Section::Archived))
-		|| (_section == Section::Featured && !_tabIndices.contains(Section::Featured))
 		|| (_section == Section::Masks && !_tabIndices.contains(Section::Masks))) {
 		switchTab();
 	} else {
@@ -816,23 +722,11 @@ void StickersBox::paintEvent(QPaintEvent *e) {
 void StickersBox::updateTabsGeometry() {
 	if (!_tabs) return;
 
-	const auto maxTabs = _isMasks ? 2 : 3;
+	const auto maxTabs = 2;
 
 	_tabs->resizeToWidth(_tabIndices.size() * width() / maxTabs);
-	_unreadBadge->setVisible(_tabIndices.contains(Section::Featured));
 
 	setInnerTopSkip(topSkip());
-
-	auto featuredLeft = width() / maxTabs;
-	auto featuredRight = 2 * width() / maxTabs;
-	auto featuredTextWidth = st::stickersTabs.labelStyle.font->width(tr::lng_stickers_featured_tab(tr::now));
-	auto featuredTextRight = featuredLeft + (featuredRight - featuredLeft - featuredTextWidth) / 2 + featuredTextWidth;
-	auto unreadBadgeLeft = featuredTextRight - st::stickersFeaturedBadgeSkip;
-	auto unreadBadgeTop = st::stickersFeaturedBadgeTop;
-	if (unreadBadgeLeft + _unreadBadge->width() > featuredRight) {
-		unreadBadgeLeft = featuredRight - _unreadBadge->width();
-	}
-	_unreadBadge->moveToLeft(unreadBadgeLeft, unreadBadgeTop);
 
 	_tabs->moveToLeft(0, 0);
 }
@@ -851,8 +745,6 @@ void StickersBox::switchTab() {
 	auto newTab = _tab;
 	if (newSection == Section::Installed) {
 		newTab = &_installed;
-	} else if (newSection == Section::Featured) {
-		newTab = &_featured;
 	} else if (newSection == Section::Archived) {
 		newTab = &_archived;
 		requestArchivedSets();
@@ -880,7 +772,6 @@ void StickersBox::switchTab() {
 	_section = newSection;
 	setInnerWidget(_tab->takeWidget(), topSkip());
 	_tabs->raise();
-	_unreadBadge->raise();
 	_tab->widget()->show();
 	rebuildList();
 	scrollToY(_tab->scrollTop());
@@ -905,10 +796,9 @@ QPixmap StickersBox::grabContentCache() {
 	return result;
 }
 
-std::array<StickersBox::Inner*, 5> StickersBox::widgets() const {
+std::array<StickersBox::Inner*, 4> StickersBox::widgets() const {
 	return {
 		_installed.widget(),
-		_featured.widget(),
 		_archived.widget(),
 		_attached.widget(),
 		_masks.widget()
@@ -1024,7 +914,6 @@ void StickersBox::resizeEvent(QResizeEvent *e) {
 
 void StickersBox::handleStickersUpdated() {
 	if (_section == Section::Installed
-		|| _section == Section::Featured
 		|| _section == Section::Masks) {
 		rebuildList();
 	} else {
@@ -1045,12 +934,12 @@ void StickersBox::rebuildList(Tab *tab) {
 		tab = _tab;
 	}
 
-	if ((tab == &_installed) || (tab == &_masks) || (_tab == &_featured)) {
+	if ((tab == &_installed) || (tab == &_masks)) {
 		_localOrder = tab->widget()->fullOrder();
 		_localRemoved = tab->widget()->removedSets();
 	}
 	tab->widget()->rebuild(_isMasks);
-	if ((tab == &_installed) || (tab == &_masks) || (_tab == &_featured)) {
+	if ((tab == &_installed) || (tab == &_masks)) {
 		tab->widget()->setFullOrder(_localOrder);
 	}
 	tab->widget()->setRemovedSets(_localRemoved);
@@ -1136,11 +1025,10 @@ StickersBox::Inner::Row::Row(
 StickersBox::Inner::Row::~Row() {
 	if (!--set->locked) {
 		const auto installed = !!(set->flags & SetFlag::Installed);
-		const auto featured = !!(set->flags & SetFlag::Featured);
 		const auto special = !!(set->flags & SetFlag::Special);
 		const auto archived = !!(set->flags & SetFlag::Archived);
 		const auto emoji = !!(set->flags & SetFlag::Emoji);
-		if (!installed && !featured && !special && !archived && !emoji) {
+		if (!installed && !special && !archived && !emoji) {
 			auto &sets = set->owner().stickers().setsRef();
 			if (const auto i = sets.find(set->id); i != end(sets)) {
 				sets.erase(i);
@@ -1164,10 +1052,6 @@ bool StickersBox::Inner::Row::isEmojiSet() const {
 
 bool StickersBox::Inner::Row::isInstalled() const {
 	return (flagsOverride & SetFlag::Installed);
-}
-
-bool StickersBox::Inner::Row::isUnread() const {
-	return (flagsOverride & SetFlag::Unread);
 }
 
 bool StickersBox::Inner::Row::isArchived() const {
@@ -1289,7 +1173,6 @@ void StickersBox::Inner::setup() {
 	session().downloaderTaskFinished(
 	) | rpl::on_next([=] {
 		update();
-		readVisibleSets();
 	}, lifetime());
 
 	setMouseTracking(true);
@@ -1461,16 +1344,6 @@ void StickersBox::Inner::paintRow(Painter &p, not_null<Row*> row, int index) {
 	p.setFont(st::contactsNameStyle.font);
 	p.setPen(_st.nameFg);
 	p.drawTextLeft(namex, namey, width(), row->title, row->titleWidth);
-
-	if (row->isUnread()) {
-		p.setPen(Qt::NoPen);
-		p.setBrush(st::stickersFeaturedUnreadBg);
-
-		{
-			PainterHighQualityEnabler hq(p);
-			p.drawEllipse(style::rtlrect(namex + row->titleWidth + st::stickersFeaturedUnreadSkip, namey + st::stickersFeaturedUnreadTop, st::stickersFeaturedUnreadSize, st::stickersFeaturedUnreadSize, width()));
-		}
-	}
 
 	const auto statusText = (row->count == 0)
 		? tr::lng_contacts_loading(tr::now)
@@ -1891,7 +1764,6 @@ void StickersBox::Inner::updateSelected() {
 			const auto row = _rows[selectedIndex].get();
 			if (!_megagroupSet
 				&& (_isInstalledTab
-					|| (_section == Section::Featured)
 					|| !row->isInstalled()
 					|| row->isArchived()
 					|| row->removed)) {
@@ -2261,15 +2133,11 @@ void StickersBox::Inner::rebuild(bool masks) {
 	clear();
 	const auto &order = ([&]() -> const StickersSetsOrder & {
 		if (_section == Section::Installed) {
-			const auto &result = session().data().stickers().setsOrder();
-			if (_megagroupSet && result.empty()) {
-				return session().data().stickers().featuredSetsOrder();
-			}
-			return result;
+			// LoogriGram: a group's sticker set chooser listed the trending
+			// sets instead when we had none installed.
+			return session().data().stickers().setsOrder();
 		} else if (_section == Section::Masks) {
 			return session().data().stickers().maskSetsOrder();
-		} else if (_section == Section::Featured) {
-			return session().data().stickers().featuredSetsOrder();
 		}
 		return masks
 			? session().data().stickers().archivedMaskSetsOrder()
@@ -2280,12 +2148,10 @@ void StickersBox::Inner::rebuild(bool masks) {
 
 	const auto &sets = session().data().stickers().sets();
 	if (_megagroupSet) {
-		auto usingFeatured = session().data().stickers().setsOrder().empty();
-		// LoogriGram: upstream's ternary had the two "trending" labels
-		// swapped, so this sticker chooser said "trending emoji".
-		_megagroupSubTitle->setText(usingFeatured
-			? tr::lng_stickers_group_from_featured(tr::now)
-			: tr::lng_stickers_group_from_your(tr::now));
+		// LoogriGram: "Choose from trending stickers" when that list was
+		// the trending one (see above); it is always ours now.
+		_megagroupSubTitle->setText(
+			tr::lng_stickers_group_from_your(tr::now));
 		updateControlsGeometry();
 	} else if (_isInstalledTab) {
 		const auto cloudIt = sets.find((_section == Section::Masks)
@@ -2358,7 +2224,7 @@ void StickersBox::Inner::updateRows() {
 		if (!row->isRecentSet()) {
 			auto wasInstalled = row->isInstalled();
 			auto wasArchived = row->isArchived();
-			row->flagsOverride = fillSetFlags(set);
+			row->flagsOverride = set->flags;
 			if (_isInstalledTab) {
 				row->flagsOverride &= ~SetFlag::Archived;
 			}
@@ -2404,16 +2270,13 @@ int StickersBox::Inner::countMaxNameWidth(bool installedSet) const {
 		namew -= installedSet
 			? (_installedWidth - st::stickersTrendingInstalled.width)
 			: (_addWidth - st::stickersTrendingAdd.width);
-		if (_section == Section::Featured) {
-			namew -= st::stickersFeaturedUnreadSize + st::stickersFeaturedUnreadSkip;
-		}
 	}
 	return namew;
 }
 
 void StickersBox::Inner::rebuildAppendSet(not_null<StickersSet*> set) {
 	auto flagsOverride = (set->id != Data::Stickers::CloudRecentSetId)
-		? fillSetFlags(set)
+		? set->flags
 		: SetFlag::Installed;
 	auto removed = false;
 	if (_isInstalledTab && (flagsOverride & SetFlag::Archived)) {
@@ -2552,14 +2415,6 @@ int StickersBox::Inner::fillSetCount(not_null<StickersSet*> set) const {
 	return result + added;
 }
 
-Data::StickersSetFlags StickersBox::Inner::fillSetFlags(
-		not_null<StickersSet*> set) const {
-	const auto result = set->flags;
-	return (_section == Section::Featured)
-		? result
-		: (result & ~SetFlag::Unread);
-}
-
 template <typename Check>
 StickersSetsOrder StickersBox::Inner::collectSets(Check check) const {
 	StickersSetsOrder result;
@@ -2626,9 +2481,6 @@ void StickersBox::Inner::visibleTopBottomUpdated(
 	_visibleTop = visibleTop;
 	_visibleBottom = visibleBottom;
 	updateScrollbarWidth();
-	if (_section == Section::Featured) {
-		readVisibleSets();
-	}
 	checkLoadMore();
 }
 
@@ -2638,38 +2490,6 @@ void StickersBox::Inner::checkLoadMore() {
 		int scrollTop = _visibleTop, scrollTopMax = height() - scrollHeight;
 		if (scrollTop + PreloadHeightsCount * scrollHeight >= scrollTopMax) {
 			_loadMoreCallback();
-		}
-	}
-}
-
-void StickersBox::Inner::readVisibleSets() {
-	auto itemsVisibleTop = _visibleTop - _itemsTop;
-	auto itemsVisibleBottom = _visibleBottom - _itemsTop;
-	int rowFrom = floorclamp(itemsVisibleTop, _rowHeight, 0, _rows.size());
-	int rowTo = ceilclamp(itemsVisibleBottom, _rowHeight, 0, _rows.size());
-	for (int i = rowFrom; i < rowTo; ++i) {
-		const auto row = _rows[i].get();
-		if (!row->isUnread()) {
-			continue;
-		}
-		if ((i * _rowHeight < itemsVisibleTop)
-			|| ((i + 1) * _rowHeight > itemsVisibleBottom)) {
-			continue;
-		}
-		const auto thumbnailLoading = row->set->hasThumbnail()
-			? row->set->thumbnailLoading()
-			: row->sticker
-			? row->sticker->thumbnailLoading()
-			: false;
-		const auto thumbnailLoaded = row->set->hasThumbnail()
-			? (row->thumbnailMedia
-				&& (row->thumbnailMedia->image()
-					|| !row->thumbnailMedia->content().isEmpty()))
-			: row->sticker
-			? (row->stickerMedia && row->stickerMedia->loaded())
-			: true;
-		if (!thumbnailLoading || thumbnailLoaded) {
-			session().api().readFeaturedSetDelayed(row->set->id);
 		}
 	}
 }

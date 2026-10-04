@@ -101,7 +101,6 @@ constexpr auto kSaveCloudDraftTimeout = 1000;
 
 constexpr auto kSmallDelayMs = 5;
 constexpr auto kDeleteHistoryRetryLimit = 8;
-constexpr auto kReadFeaturedSetsTimeout = crl::time(1000);
 constexpr auto kFileLoaderQueueStopTimeout = crl::time(5000);
 constexpr auto kStickersByEmojiInvalidateTimeout = crl::time(6 * 1000);
 constexpr auto kNotifySettingSaveTimeout = crl::time(1000);
@@ -171,7 +170,6 @@ ApiWrap::ApiWrap(not_null<Main::Session*> session)
 , _messageDataResolveDelayed([=] { resolveMessageDatas(); })
 , _webPagesTimer([=] { resolveWebPages(); })
 , _draftsSaveTimer([=] { saveDraftsToCloud(); })
-, _featuredSetsReadTimer([=] { readFeaturedSets(); })
 , _dialogsLoadState(std::make_unique<DialogsLoadState>())
 , _fileLoader(std::make_unique<TaskQueue>(kFileLoaderQueueStopTimeout))
 , _updateNotifyTimer([=] { sendNotifySettingsUpdates(); })
@@ -2824,7 +2822,8 @@ void ApiWrap::updateStickers() {
 	requestStickers(now);
 	requestRecentStickers(now, false);
 	requestFavedStickers(now);
-	requestFeaturedStickers(now);
+	// LoogriGram: Telegram's trending sets were requested here and with
+	// custom emoji below; they are not fetched or offered.
 }
 
 void ApiWrap::updateSavedGifs() {
@@ -2841,7 +2840,6 @@ void ApiWrap::updateMasks() {
 void ApiWrap::updateCustomEmoji() {
 	const auto now = crl::now();
 	requestCustomEmoji(now);
-	requestFeaturedEmoji(now);
 }
 
 void ApiWrap::requestSpecialStickersForce(
@@ -3099,41 +3097,6 @@ void ApiWrap::requestFavedStickers(std::optional<TimeId> now) {
 	}).send();
 }
 
-void ApiWrap::requestFeaturedStickers(TimeId now) {
-	if (!_session->data().stickers().featuredUpdateNeeded(now)
-		|| _featuredStickersUpdateRequest) {
-		return;
-	}
-	_featuredStickersUpdateRequest = request(MTPmessages_GetFeaturedStickers(
-		MTP_long(Api::CountFeaturedStickersHash(_session))
-	)).done([=](const MTPmessages_FeaturedStickers &result) {
-		_featuredStickersUpdateRequest = 0;
-		_session->data().stickers().featuredSetsReceived(result);
-	}).fail([=] {
-		_featuredStickersUpdateRequest = 0;
-		_session->data().stickers().setLastFeaturedUpdate(crl::now());
-		LOG(("App Fail: Failed to get featured stickers!"));
-	}).send();
-}
-
-void ApiWrap::requestFeaturedEmoji(TimeId now) {
-	if (!_session->data().stickers().featuredEmojiUpdateNeeded(now)
-		|| _featuredEmojiUpdateRequest) {
-		return;
-	}
-	_featuredEmojiUpdateRequest = request(
-		MTPmessages_GetFeaturedEmojiStickers(
-			MTP_long(Api::CountFeaturedStickersHash(_session)))
-	).done([=](const MTPmessages_FeaturedStickers &result) {
-		_featuredEmojiUpdateRequest = 0;
-		_session->data().stickers().featuredEmojiSetsReceived(result);
-	}).fail([=] {
-		_featuredEmojiUpdateRequest = 0;
-		_session->data().stickers().setLastFeaturedEmojiUpdate(crl::now());
-		LOG(("App Fail: Failed to get featured emoji!"));
-	}).send();
-}
-
 void ApiWrap::requestSavedGifs(TimeId now) {
 	if (!_session->data().stickers().savedGifsUpdateNeeded(now)
 		|| _savedGifsUpdateRequest) {
@@ -3161,43 +3124,6 @@ void ApiWrap::requestSavedGifs(TimeId now) {
 
 		LOG(("App Fail: Failed to get saved gifs!"));
 	}).send();
-}
-
-void ApiWrap::readFeaturedSetDelayed(uint64 setId) {
-	if (!_featuredSetsRead.contains(setId)) {
-		_featuredSetsRead.insert(setId);
-		_featuredSetsReadTimer.callOnce(kReadFeaturedSetsTimeout);
-	}
-}
-
-void ApiWrap::readFeaturedSets() {
-	const auto &sets = _session->data().stickers().sets();
-	auto count = _session->data().stickers().featuredSetsUnreadCount();
-	QVector<MTPlong> wrappedIds;
-	wrappedIds.reserve(_featuredSetsRead.size());
-	for (const auto setId : _featuredSetsRead) {
-		const auto it = sets.find(setId);
-		if (it != sets.cend()) {
-			it->second->flags &= ~Data::StickersSetFlag::Unread;
-			wrappedIds.append(MTP_long(setId));
-			if (count) {
-				--count;
-			}
-		}
-	}
-	_featuredSetsRead.clear();
-
-	if (!wrappedIds.empty()) {
-		auto requestData = MTPmessages_ReadFeaturedStickers(
-			MTP_vector<MTPlong>(wrappedIds));
-		request(std::move(requestData)).done([=] {
-			local().writeFeaturedStickers();
-			_session->data().stickers().notifyUpdated(
-				Data::StickersType::Stickers);
-		}).send();
-
-		_session->data().stickers().setFeaturedSetsUnreadCount(count);
-	}
 }
 
 void ApiWrap::resolveJumpToDate(

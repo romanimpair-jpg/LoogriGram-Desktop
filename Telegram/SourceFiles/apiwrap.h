@@ -324,8 +324,6 @@ public:
 		bool onlyForwardable,
 		Fn<void(Api::GlobalMediaResult)> done);
 
-	void readFeaturedSetDelayed(uint64 setId);
-
 	rpl::producer<SendAction> sendActions() const {
 		return _sendActions.events();
 	}
@@ -530,10 +528,7 @@ private:
 		std::optional<TimeId> now,
 		bool attached);
 	void requestFavedStickers(std::optional<TimeId> now);
-	void requestFeaturedStickers(TimeId now);
-	void requestFeaturedEmoji(TimeId now);
 	void requestSavedGifs(TimeId now);
-	void readFeaturedSets();
 
 	void resolveJumpToHistoryDate(
 		not_null<PeerData*> peer,
@@ -686,12 +681,7 @@ private:
 	mtpRequestId _recentStickersUpdateRequest = 0;
 	mtpRequestId _recentAttachedStickersUpdateRequest = 0;
 	mtpRequestId _favedStickersUpdateRequest = 0;
-	mtpRequestId _featuredStickersUpdateRequest = 0;
-	mtpRequestId _featuredEmojiUpdateRequest = 0;
 	mtpRequestId _savedGifsUpdateRequest = 0;
-
-	base::Timer _featuredSetsReadTimer;
-	base::flat_set<uint64> _featuredSetsRead;
 
 	base::flat_map<QString, StickersByEmoji> _stickersByEmoji;
 

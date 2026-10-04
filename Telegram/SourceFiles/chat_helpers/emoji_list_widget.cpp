@@ -3255,10 +3255,9 @@ void EmojiListWidget::refreshCustom() {
 		const auto canRemove = megagroup
 			? (_megagroupSet->canEditEmoji() || installed)
 			: !!(it->second->flags & Data::StickersSetFlag::Installed);
-		const auto sortAsInstalled = canRemove
-			&& (!(it->second->flags & Data::StickersSetFlag::Featured)
-				|| !_localSetsManager->isInstalledLocally(lookupId));
-		if (!megagroup && sortAsInstalled != installed) {
+		// LoogriGram: a trending set added from here kept its place among
+		// the trending ones until the list was rebuilt; none is listed now.
+		if (!megagroup && canRemove != installed) {
 			return;
 		}
 		auto premium = false;
@@ -3326,9 +3325,6 @@ void EmojiListWidget::refreshCustom() {
 	refreshMegagroupStickers(push, GroupStickersPlace::Visible);
 	for (const auto setId : owner->stickers().emojiSetsOrder()) {
 		push(setId, true);
-	}
-	for (const auto setId : owner->stickers().featuredEmojiSetsOrder()) {
-		push(setId, false);
 	}
 	refreshMegagroupStickers(push, GroupStickersPlace::Hidden);
 

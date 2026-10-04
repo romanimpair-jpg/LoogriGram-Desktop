@@ -585,7 +585,6 @@ storiesEmojiPan: EmojiPan(defaultEmojiPan) {
 	headerFg: storiesComposeGrayText;
 	trendingHeaderFg: storiesComposeWhiteText;
 	trendingSubheaderFg: storiesComposeGrayText;
-	trendingUnreadFg: storiesComposeBlue;
 	overBg: storiesComposeBgOver;
 	pathBg: storiesComposeBgRipple;
 	pathFg: storiesComposeBgOver;

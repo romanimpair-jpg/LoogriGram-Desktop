@@ -2726,17 +2726,9 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 		session().api().updateStickers();
 	} break;
 
-	case mtpc_updateReadFeaturedStickers: {
-		// We read some of the featured stickers, perhaps not all of them.
-		// Here we don't know what featured sticker sets were read, so we
-		// request all of them once again.
-		session().data().stickers().setLastFeaturedUpdate(0);
-		session().api().updateStickers();
-	} break;
-
-	case mtpc_updateReadFeaturedEmojiStickers: {
-		// We don't track read status of them for now.
-	} break;
+	// LoogriGram: updateReadFeaturedStickers and its emoji twin marked the
+	// trending sets read; trending sets are not fetched, so both are left
+	// unhandled.
 
 	case mtpc_updateUserEmojiStatus: {
 		const auto &d = update.c_updateUserEmojiStatus();

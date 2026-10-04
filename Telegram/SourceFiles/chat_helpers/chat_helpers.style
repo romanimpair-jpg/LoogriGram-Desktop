@@ -117,7 +117,8 @@ EmojiPan {
 	headerFg: color;
 	trendingHeaderFg: color;
 	trendingSubheaderFg: color;
-	trendingUnreadFg: color;
+	// LoogriGram: trendingUnreadFg coloured the dot of a trending set not yet
+	// seen; trending sets are not fetched.
 	overBg: color;
 	pathBg: color;
 	pathFg: color;
@@ -425,17 +426,7 @@ stickersRowItem: PeerListItem(defaultPeerListItem) {
 
 stickerEmojiSkip: 5px;
 
-stickersFeaturedBadgeFont: font(12px bold);
-stickersFeaturedBadgeSize: 15px;
-stickersFeaturedBadgeTextTop: -1px;
-stickersFeaturedBadgePadding: 4px;
-stickersFeaturedBadgeSkip: 4px;
-stickersFeaturedBadgeTop: 9px;
-stickersFeaturedUnreadBg: msgFileInBg;
-stickersFeaturedUnreadSize: 5px;
 stickersFeaturedUnreadSkip: 5px;
-stickersFeaturedUnreadTop: 7px;
-
 stickersMaxHeight: 320px;
 stickersPadding: margins(19px, 13px, 19px, 13px);
 stickersSize: size(64px, 64px);
@@ -775,7 +766,6 @@ defaultEmojiPan: EmojiPan {
 	headerFg: emojiPanHeaderFg;
 	trendingHeaderFg: stickersTrendingHeaderFg;
 	trendingSubheaderFg: stickersTrendingSubheaderFg;
-	trendingUnreadFg: stickersFeaturedUnreadBg;
 	overBg: emojiPanHover;
 	pathBg: windowBgRipple;
 	pathFg: windowBgOver;

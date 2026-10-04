@@ -50,9 +50,10 @@ class Set;
 
 class StickersBox final : public Ui::BoxContent {
 public:
+	// LoogriGram: a Featured section was the Trending tab, with an unread
+	// counter; Telegram's trending sets are not fetched or offered.
 	enum class Section {
 		Installed,
-		Featured,
 		Archived,
 		Attached,
 		Masks,
@@ -140,7 +141,7 @@ private:
 	const Data::StickersSetsOrder &archivedSetsOrder() const;
 	Data::StickersSetsOrder &archivedSetsOrderRef() const;
 
-	std::array<Inner*, 5> widgets() const;
+	std::array<Inner*, 4> widgets() const;
 
 	const std::shared_ptr<ChatHelpers::Show> _show;
 	const not_null<Main::Session*> _session;
@@ -150,16 +151,12 @@ private:
 	QList<Section> _tabIndices;
 	bool _ignoreTabActivation = false;
 
-	class CounterWidget;
-	object_ptr<CounterWidget> _unreadBadge = { nullptr };
-
 	Section _section;
 	const bool _isMasks;
 	const bool _isEmoji;
 
 	Tab _installed;
 	Tab _masks;
-	Tab _featured;
 	Tab _archived;
 	Tab _attached;
 	Tab *_tab = nullptr;

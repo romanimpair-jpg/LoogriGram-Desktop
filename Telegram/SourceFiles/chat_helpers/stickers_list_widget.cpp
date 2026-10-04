@@ -77,7 +77,6 @@ namespace {
 constexpr auto kSearchRequestDelay = 400;
 constexpr auto kRecentDisplayLimit = 20;
 constexpr auto kPreloadOfficialPages = 4;
-constexpr auto kOfficialLoadLimit = 40;
 constexpr auto kMinRepaintDelay = crl::time(33);
 constexpr auto kMinAfterScrollDelay = crl::time(33);
 
@@ -273,7 +272,6 @@ StickersListWidget::StickersListWidget(
 	) | rpl::on_next([=] {
 		if (isVisible()) {
 			updateItems();
-			readVisibleFeatured(getVisibleTop(), getVisibleBottom());
 		}
 	}, lifetime());
 
@@ -339,15 +337,13 @@ object_ptr<TabbedSelector::InnerFooter> StickersListWidget::createFooter() {
 
 	_footer->openSettingsRequests(
 	) | rpl::on_next([=] {
-		const auto onlyFeatured = !_isMasks && _mySets.empty();
+		// LoogriGram: with no sets of our own this opened the Trending tab.
 		_show->showBox(Box<StickersBox>(
 			_show,
-			(onlyFeatured
-				? StickersBox::Section::Featured
-				: _isMasks
+			(_isMasks
 				? StickersBox::Section::Masks
 				: StickersBox::Section::Installed),
-			onlyFeatured ? false : _isMasks));
+			_isMasks));
 	}, _footer->lifetime());
 
 	return result;
@@ -363,121 +359,14 @@ void StickersListWidget::visibleTopBottomUpdated(
 		_repaintSetsIds.clear();
 		update();
 	}
-	if (_section == Section::Featured) {
-		checkVisibleFeatured(visibleTop, visibleBottom);
-	} else {
-		checkVisibleLottie();
-		if (_section == Section::Search) {
-			checkPaginateSearchStickers(visibleTop, visibleBottom);
-		}
+	checkVisibleLottie();
+	if (_section == Section::Search) {
+		checkPaginateSearchStickers(visibleTop, visibleBottom);
 	}
 	if (_footer) {
 		_footer->validateSelectedIcon(
 			currentSet(visibleTop),
 			ValidateIconAnimations::Full);
-	}
-}
-
-void StickersListWidget::checkVisibleFeatured(
-		int visibleTop,
-		int visibleBottom) {
-	readVisibleFeatured(visibleTop, visibleBottom);
-
-	const auto visibleHeight = visibleBottom - visibleTop;
-
-	if (visibleBottom > height() - visibleHeight * kPreloadOfficialPages) {
-		preloadMoreOfficial();
-	}
-
-	const auto rowHeight = featuredRowHeight();
-	const auto destroyAbove = floorclamp(
-		visibleTop - visibleHeight,
-		rowHeight,
-		0,
-		_officialSets.size());
-	const auto destroyBelow = ceilclamp(
-		visibleBottom + visibleHeight,
-		rowHeight,
-		0,
-		_officialSets.size());
-	for (auto i = 0; i != destroyAbove; ++i) {
-		clearHeavyIn(_officialSets[i]);
-	}
-	for (auto i = destroyBelow; i != _officialSets.size(); ++i) {
-		clearHeavyIn(_officialSets[i]);
-	}
-}
-
-void StickersListWidget::preloadMoreOfficial() {
-	if (_officialRequestId) {
-		return;
-	}
-	_officialRequestId = _api.request(MTPmessages_GetOldFeaturedStickers(
-		MTP_int(_officialOffset),
-		MTP_int(kOfficialLoadLimit),
-		MTP_long(0) // hash
-	)).done([=](const MTPmessages_FeaturedStickers &result) {
-		_officialRequestId = 0;
-		result.match([&](const MTPDmessages_featuredStickersNotModified &d) {
-			LOG(("Api Error: messages.featuredStickersNotModified."));
-		}, [&](const MTPDmessages_featuredStickers &data) {
-			const auto &list = data.vsets().v;
-			_officialOffset += list.size();
-			for (int i = 0, l = list.size(); i != l; ++i) {
-				const auto set = session().data().stickers().feedSet(
-					list[i]);
-				if (set->stickers.empty() && set->covers.empty()) {
-					continue;
-				}
-				const auto externalLayout = true;
-				appendSet(
-					_officialSets,
-					set->id,
-					externalLayout,
-					AppendSkip::Installed);
-			}
-		});
-		resizeToWidth(width());
-		repaintItems();
-	}).send();
-}
-
-void StickersListWidget::readVisibleFeatured(
-		int visibleTop,
-		int visibleBottom) {
-	const auto rowHeight = featuredRowHeight();
-	const auto rowFrom = floorclamp(
-		visibleTop,
-		rowHeight,
-		0,
-		_featuredSetsCount);
-	const auto rowTo = ceilclamp(
-		visibleBottom,
-		rowHeight,
-		0,
-		_featuredSetsCount);
-	for (auto i = rowFrom; i < rowTo; ++i) {
-		const auto &set = _officialSets[i];
-		if (!(set.flags & SetFlag::Unread)) {
-			continue;
-		}
-		if (i * rowHeight < visibleTop
-			|| (i + 1) * rowHeight > visibleBottom) {
-			continue;
-		}
-		int count = qMin(int(set.stickers.size()), _columnCount);
-		int loaded = 0;
-		for (int j = 0; j < count; ++j) {
-			if (!set.stickers[j].document->hasThumbnail()
-				|| !set.stickers[j].document->thumbnailLoading()
-				|| (set.stickers[j].documentMedia
-					&& set.stickers[j].documentMedia->loaded())) {
-				++loaded;
-			}
-		}
-		if (count > 0 && loaded == count) {
-			session().api().readFeaturedSetDelayed(set.id);
-		}
 	}
 }
 
@@ -785,9 +674,10 @@ void StickersListWidget::refreshSearchRows(
 		}
 	}
 	if (!cloudSets && _searchNextQuery.isEmpty()) {
+		// LoogriGram: with no sets of our own this showed trending ones.
 		showStickerSet(!_mySets.empty()
 			? _mySets[0].id
-			: Data::Stickers::FeaturedSetId);
+			: Data::Stickers::RecentSetId);
 		return;
 	}
 
@@ -1155,7 +1045,6 @@ void StickersListWidget::takeHeavyData(Sticker &to, Sticker &from) {
 
 auto StickersListWidget::shownSets() const -> const std::vector<Set> & {
 	switch (_section) {
-	case Section::Featured: return _officialSets;
 	case Section::Search: return _searchSets;
 	case Section::Stickers: return _mySets;
 	}
@@ -1164,7 +1053,6 @@ auto StickersListWidget::shownSets() const -> const std::vector<Set> & {
 
 auto StickersListWidget::shownSets() -> std::vector<Set> & {
 	switch (_section) {
-	case Section::Featured: return _officialSets;
 	case Section::Search: return _searchSets;
 	case Section::Stickers: return _mySets;
 	}
@@ -1602,10 +1490,6 @@ void StickersListWidget::paintStickers(Painter &p, QRect clip) {
 
 				widthForTitle -= add.width() - (st.width / 2);
 			}
-			if (set.flags & SetFlag::Unread) {
-				widthForTitle -= st::stickersFeaturedUnreadSize
-					+ st::stickersFeaturedUnreadSkip;
-			}
 
 			auto titleText = set.title;
 			auto titleWidth = st::stickersTrendingHeaderFont->width(
@@ -1624,26 +1508,6 @@ void StickersListWidget::paintStickers(Painter &p, QRect clip) {
 				width(),
 				titleText,
 				titleWidth);
-
-			if (set.flags & SetFlag::Unread) {
-				p.setPen(Qt::NoPen);
-				p.setBrush(st().trendingUnreadFg);
-
-				{
-					PainterHighQualityEnabler hq(p);
-					p.drawEllipse(
-						style::rtlrect(
-							st().headerLeft
-								- st().margin.left()
-								+ titleWidth
-								+ st::stickersFeaturedUnreadSkip,
-							info.top
-								+ st::stickersTrendingHeaderTop
-								+ st::stickersFeaturedUnreadTop,
-							st::stickersFeaturedUnreadSize,
-							st::stickersFeaturedUnreadSize, width()));
-				}
-			}
 
 			const auto statusText = (count > 0)
 				? tr::lng_stickers_count(tr::now, lt_count, count)
@@ -2952,7 +2816,6 @@ void StickersListWidget::refreshStickers() {
 		refreshEffects();
 	} else {
 		refreshMySets();
-		refreshFeaturedSets();
 		refreshSearchSets();
 	}
 	resizeToWidth(width());
@@ -2992,41 +2855,6 @@ void StickersListWidget::refreshMySets() {
 	refreshMegagroupStickers(GroupStickersPlace::Hidden);
 
 	takeHeavyData(_mySets, wasSets);
-}
-
-void StickersListWidget::refreshFeaturedSets() {
-	auto wasFeaturedSetsCount = base::take(_featuredSetsCount);
-	auto wereOfficial = base::take(_officialSets);
-	_officialSets.reserve(
-		session().data().stickers().featuredSetsOrder().size()
-		+ wereOfficial.size()
-		- wasFeaturedSetsCount);
-	for (const auto setId : session().data().stickers().featuredSetsOrder()) {
-		const auto externalLayout = true;
-		appendSet(
-			_officialSets,
-			setId,
-			externalLayout,
-			AppendSkip::Installed);
-	}
-	_featuredSetsCount = _officialSets.size();
-	if (wereOfficial.size() > wasFeaturedSetsCount) {
-		const auto &sets = session().data().stickers().sets();
-		const auto from = begin(wereOfficial) + wasFeaturedSetsCount;
-		const auto till = end(wereOfficial);
-		for (auto i = from; i != till; ++i) {
-			auto &set = *i;
-			auto it = sets.find(set.id);
-			if (it == sets.cend()
-				|| ((it->second->flags & SetFlag::Installed)
-					&& !(it->second->flags & SetFlag::Archived)
-					&& !_localSetsManager->isInstalledLocally(set.id))) {
-				continue;
-			}
-			set.flags = it->second->flags;
-			_officialSets.push_back(std::move(set));
-		}
-	}
 }
 
 void StickersListWidget::refreshSearchSets() {
@@ -3104,9 +2932,6 @@ void StickersListWidget::preloadImages() {
 }
 
 uint64 StickersListWidget::currentSet(int yOffset) const {
-	if (_section == Section::Featured) {
-		return Data::Stickers::FeaturedSetId;
-	}
 	const auto &sets = shownSets();
 	return sets.empty()
 		? Data::Stickers::RecentSetId
@@ -3284,8 +3109,7 @@ void StickersListWidget::refreshRecentStickers(bool performResize) {
 		_mySets.erase(recentIt);
 	}
 
-	if ((_section == Section::Stickers || _section == Section::Featured)
-			&& performResize) {
+	if (_section == Section::Stickers && performResize) {
 		resizeToWidth(width());
 		updateSelected();
 	}
@@ -3655,20 +3479,6 @@ void StickersListWidget::showStickerSet(uint64 setId) {
 			_search->cancel();
 		}
 		cancelSetsSearch();
-	}
-
-	if (setId == Data::Stickers::FeaturedSetId) {
-		if (_section != Section::Featured) {
-			setSection(Section::Featured);
-			refreshRecentStickers(true);
-			refreshSettingsVisibility();
-			refreshIcons(ValidateIconAnimations::Scroll);
-			repaintItems();
-		}
-
-		scrollTo(0);
-		_scrollUpdated.fire({});
-		return;
 	}
 
 	auto needRefresh = (_section != Section::Stickers);

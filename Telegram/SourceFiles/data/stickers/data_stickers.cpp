@@ -395,7 +395,7 @@ void Stickers::installLocally(uint64 setId) {
 
 	const auto set = it->second.get();
 	const auto flags = set->flags;
-	set->flags &= ~(SetFlag::Archived | SetFlag::Unread);
+	set->flags &= ~SetFlag::Archived;
 	set->flags |= SetFlag::Installed;
 	set->installDate = base::unixtime::now();
 	auto changedFlags = flags ^ set->flags;
@@ -427,13 +427,6 @@ void Stickers::installLocally(uint64 setId) {
 		}
 	}
 	session().local().writeInstalledStickers();
-	if (!isMasks && (changedFlags & SetFlag::Unread)) {
-		if (isEmoji) {
-			session().local().writeFeaturedCustomEmoji();
-		} else {
-			session().local().writeFeaturedStickers();
-		}
-	}
 	if (!isEmoji && (changedFlags & SetFlag::Archived)) {
 		auto &archivedOrder = isMasks
 			? archivedMaskSetsOrderRef()
@@ -702,7 +695,6 @@ void Stickers::somethingReceived(
 	for (auto it = sets.begin(); it != sets.end();) {
 		const auto set = it->second.get();
 		const auto installed = !!(set->flags & SetFlag::Installed);
-		const auto featured = !!(set->flags & SetFlag::Featured);
 		const auto special = !!(set->flags & SetFlag::Special);
 		const auto archived = !!(set->flags & SetFlag::Archived);
 		const auto emoji = !!(set->flags & SetFlag::Emoji);
@@ -717,7 +709,7 @@ void Stickers::somethingReceived(
 				}
 			}
 		}
-		if (installed || featured || special || archived || emoji || locked) {
+		if (installed || special || archived || emoji || locked) {
 			++it;
 		} else {
 			it = sets.erase(it);
@@ -918,164 +910,6 @@ void Stickers::specialSetReceived(
 		: StickersType::Stickers);
 }
 
-void Stickers::featuredSetsReceived(
-		const MTPmessages_FeaturedStickers &result) {
-	setLastFeaturedUpdate(crl::now());
-	result.match([](const MTPDmessages_featuredStickersNotModified &) {
-	}, [&](const MTPDmessages_featuredStickers &data) {
-		featuredReceived(data, StickersType::Stickers);
-	});
-}
-
-void Stickers::featuredEmojiSetsReceived(
-		const MTPmessages_FeaturedStickers &result) {
-	setLastFeaturedEmojiUpdate(crl::now());
-	result.match([](const MTPDmessages_featuredStickersNotModified &) {
-	}, [&](const MTPDmessages_featuredStickers &data) {
-		featuredReceived(data, StickersType::Emoji);
-	});
-}
-
-void Stickers::featuredReceived(
-		const MTPDmessages_featuredStickers &data,
-		StickersType type) {
-	const auto &list = data.vsets().v;
-	const auto &unread = data.vunread().v;
-	const auto hash = data.vhash().v;
-
-	auto &&unreadIds = ranges::views::all(
-		unread
-	) | ranges::views::transform(&MTPlong::v);
-	const auto unreadMap = base::flat_set<uint64>{
-		unreadIds.begin(),
-		unreadIds.end()
-	};
-
-	const auto isEmoji = (type == StickersType::Emoji);
-	auto &featuredOrder = isEmoji
-		? featuredEmojiSetsOrderRef()
-		: featuredSetsOrderRef();
-	featuredOrder.clear();
-
-	auto &sets = setsRef();
-	auto setsToRequest = base::flat_map<uint64, uint64>();
-	for (auto &[id, set] : sets) {
-		// Mark for removing.
-		if (set->type() == type) {
-			set->flags &= ~SetFlag::Featured;
-		}
-	}
-	for (const auto &entry : list) {
-		const auto data = entry.match([&](const auto &data) {
-			return data.vset().match([&](const MTPDstickerSet &data) {
-				return &data;
-			});
-		});
-		auto it = sets.find(data->vid().v);
-		const auto title = getSetTitle(*data);
-		const auto installDate = data->vinstalled_date().value_or_empty();
-		auto thumbnailType = StickerType::Webp;
-		const auto thumbnail = [&] {
-			if (const auto thumbs = data->vthumbs()) {
-				for (const auto &thumb : thumbs->v) {
-					const auto result = Images::FromPhotoSize(
-						&session(),
-						*data,
-						thumb);
-					if (result.location.valid()) {
-						thumbnailType = ThumbnailTypeFromPhotoSize(thumb);
-						return result;
-					}
-				}
-			}
-			return ImageWithLocation();
-		}();
-		const auto setId = data->vid().v;
-		const auto flags = SetFlag::Featured
-			| (unreadMap.contains(setId) ? SetFlag::Unread : SetFlag())
-			| ParseStickersSetFlags(*data);
-		if (it == sets.cend()) {
-			it = sets.emplace(data->vid().v, std::make_unique<StickersSet>(
-				&owner(),
-				setId,
-				data->vaccess_hash().v,
-				data->vhash().v,
-				title,
-				qs(data->vshort_name()),
-				data->vcount().v,
-				flags | SetFlag::NotLoaded,
-				installDate)).first;
-		} else {
-			const auto set = it->second.get();
-			set->accessHash = data->vaccess_hash().v;
-			set->title = title;
-			set->shortName = qs(data->vshort_name());
-			set->flags = flags
-				| (set->flags & (SetFlag::NotLoaded | SetFlag::Special));
-			set->installDate = installDate;
-			if (set->count != data->vcount().v || set->hash != data->vhash().v || set->emoji.empty()) {
-				set->count = data->vcount().v;
-				set->hash = data->vhash().v;
-				set->flags |= SetFlag::NotLoaded; // need to request this set
-			}
-		}
-		it->second->setThumbnail(thumbnail, thumbnailType);
-		it->second->thumbnailDocumentId = data->vthumb_document_id().value_or_empty();
-		featuredOrder.push_back(data->vid().v);
-		if (it->second->stickers.isEmpty()
-			|| (it->second->flags & SetFlag::NotLoaded)) {
-			setsToRequest.emplace(data->vid().v, data->vaccess_hash().v);
-		}
-	}
-
-	auto unreadCount = 0;
-	for (auto it = sets.begin(); it != sets.end();) {
-		const auto set = it->second.get();
-		const auto installed = (set->flags & SetFlag::Installed);
-		const auto featured = (set->flags & SetFlag::Featured);
-		const auto special = (set->flags & SetFlag::Special);
-		const auto archived = (set->flags & SetFlag::Archived);
-		const auto emoji = !!(set->flags & SetFlag::Emoji);
-		const auto locked = (set->locked > 0);
-		if (installed || featured || special || archived || emoji || locked) {
-			if (featured && (set->flags & SetFlag::Unread)) {
-				if (!(set->flags & SetFlag::Emoji)) {
-					++unreadCount;
-				}
-			}
-			++it;
-		} else {
-			it = sets.erase(it);
-		}
-	}
-	setFeaturedSetsUnreadCount(unreadCount);
-
-	const auto counted = isEmoji
-		? Api::CountFeaturedEmojiHash(&session())
-		: Api::CountFeaturedStickersHash(&session());
-	if (counted != hash) {
-		LOG(("API Error: "
-			"received featured stickers hash %1 while counted hash is %2"
-			).arg(hash
-			).arg(counted));
-	}
-
-	if (!setsToRequest.empty()) {
-		auto &api = session().api();
-		for (const auto &[setId, accessHash] : setsToRequest) {
-			api.scheduleStickerSetRequest(setId, accessHash);
-		}
-		api.requestStickerSets();
-	}
-	if (isEmoji) {
-		session().local().writeFeaturedCustomEmoji();
-	} else {
-		session().local().writeFeaturedStickers();
-	}
-
-	notifyUpdated(type);
-}
-
 void Stickers::gifsReceived(const QVector<MTPDocument> &items, uint64 hash) {
 	auto &saved = savedGifsRef();
 	saved.clear();
@@ -1262,7 +1096,6 @@ std::vector<not_null<DocumentData*>> Stickers::getListByEmoji(
 	};
 
 	addList(setsOrder(), SetFlag::Archived);
-	//addList(featuredSetsOrder(), SetFlag::Installed);
 
 	if (!setsToRequest.empty()) {
 		for (const auto &[setId, accessHash] : setsToRequest) {
@@ -1363,9 +1196,7 @@ not_null<StickersSet*> Stickers::feedSet(const MTPStickerSet &info) {
 		set->shortName = qs(data.vshort_name());
 		oldFlags = set->flags;
 		const auto clientFlags = set->flags
-			& (SetFlag::Featured
-				| SetFlag::Unread
-				| SetFlag::NotLoaded
+			& (SetFlag::NotLoaded
 				| SetFlag::Special
 				| SetFlag::Installed);
 		set->flags = flags | clientFlags;
@@ -1518,14 +1349,6 @@ void Stickers::feedSetStickers(
 			session().local().writeInstalledMasks();
 		} else {
 			session().local().writeInstalledStickers();
-		}
-	}
-	if (set->flags & SetFlag::Featured) {
-		if (isEmoji) {
-			session().local().writeFeaturedCustomEmoji();
-		} else if (isMasks) {
-		} else {
-			session().local().writeFeaturedStickers();
 		}
 	}
 	if (wasArchived != isArchived) {

@@ -164,8 +164,9 @@ private:
 	struct Sticker;
 	struct Set;
 
+	// LoogriGram: a Featured section listed Telegram's trending sets when
+	// we had none of our own; trending sets are not fetched or offered.
 	enum class Section {
-		Featured,
 		Stickers,
 		Search,
 	};
@@ -248,17 +249,10 @@ private:
 		int rowsBottom = 0;
 	};
 
-	struct FeaturedSet {
-		uint64 id = 0;
-		Data::StickersSetFlags flags;
-		std::vector<Sticker> stickers;
-	};
-
 	static std::vector<Sticker> PrepareStickers(
 		const QVector<DocumentData*> &pack);
 
 	void setupSearch();
-	void preloadMoreOfficial();
 	QSize boundingBoxSize() const;
 
 	template <typename Callback>
@@ -273,7 +267,6 @@ private:
 	[[nodiscard]] base::unique_qptr<Ui::PopupMenu> fillSetContextMenu(
 		const Set &set);
 	void refreshMySets();
-	void refreshFeaturedSets();
 	void refreshSearchSets();
 	void refreshSearchIndex();
 
@@ -303,8 +296,6 @@ private:
 	[[nodiscard]] std::vector<Set> &shownSets();
 	[[nodiscard]] const std::vector<Set> &shownSets() const;
 	[[nodiscard]] int featuredRowHeight() const;
-	void checkVisibleFeatured(int visibleTop, int visibleBottom);
-	void readVisibleFeatured(int visibleTop, int visibleBottom);
 
 	void paintStickers(Painter &p, QRect clip);
 	void paintMegagroupEmptySet(Painter &p, int y, bool buttonSelected);
@@ -445,10 +436,8 @@ private:
 	uint64 _megagroupSetIdRequested = 0;
 	std::vector<StickerCustomRecentDescriptor> _customRecentIds;
 	std::vector<Set> _mySets;
-	std::vector<Set> _officialSets;
 	std::vector<Set> _searchSets;
 	std::vector<Set> _searchShortcutSets;
-	int _featuredSetsCount = 0;
 	std::vector<bool> _custom;
 	std::vector<EmojiPtr> _cornerEmoji;
 	base::flat_set<not_null<DocumentData*>> _favedStickersMap;
@@ -457,9 +446,6 @@ private:
 	bool _showingSetById = false;
 	crl::time _lastScrolledAt = 0;
 	crl::time _lastFullUpdatedAt = 0;
-
-	mtpRequestId _officialRequestId = 0;
-	int _officialOffset = 0;
 
 	Section _section = Section::Stickers;
 	const bool _isMasks;

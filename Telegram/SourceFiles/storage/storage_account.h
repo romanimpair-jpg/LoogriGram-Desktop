@@ -120,13 +120,11 @@ public:
 	[[nodiscard]] Cache::Database::Settings cacheBigFileSettings() const;
 
 	void writeInstalledStickers();
-	void writeFeaturedStickers();
 	void writeRecentStickers();
 	void writeFavedStickers();
 	void writeArchivedStickers();
 	void writeArchivedMasks();
 	void readInstalledStickers();
-	void readFeaturedStickers();
 	void readRecentStickers();
 	void readFavedStickers();
 	void readArchivedStickers();
@@ -138,9 +136,7 @@ public:
 	void readInstalledMasks();
 	void readRecentMasks();
 	void writeInstalledCustomEmoji();
-	void writeFeaturedCustomEmoji();
 	void readInstalledCustomEmoji();
-	void readFeaturedCustomEmoji();
 
 	void writeRecentHashtagsAndBots();
 	void readRecentHashtagsAndBots();
@@ -330,7 +326,6 @@ private:
 	FileKey _locationsKey = 0;
 	FileKey _trustedPeersKey = 0;
 	FileKey _installedStickersKey = 0;
-	FileKey _featuredStickersKey = 0;
 	FileKey _recentStickersKey = 0;
 	FileKey _favedStickersKey = 0;
 	FileKey _archivedStickersKey = 0;
@@ -345,7 +340,6 @@ private:
 	FileKey _installedMasksKey = 0;
 	FileKey _recentMasksKey = 0;
 	FileKey _installedCustomEmojiKey = 0;
-	FileKey _featuredCustomEmojiKey = 0;
 	FileKey _archivedCustomEmojiKey = 0;
 	FileKey _searchSuggestionsKey = 0;
 	FileKey _roundPlaceholderKey = 0;

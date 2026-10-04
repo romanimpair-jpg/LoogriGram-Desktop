@@ -1070,9 +1070,7 @@ void StickerSetBox::Inner::applySet(const TLStickerSet &set) {
 			if (it != sets.cend()) {
 				const auto set = it->second.get();
 				const auto clientFlags = set->flags
-					& (SetFlag::Featured
-						| SetFlag::NotLoaded
-						| SetFlag::Unread
+					& (SetFlag::NotLoaded
 						| SetFlag::Special
 						| SetFlag::Installed);
 				_setFlags |= clientFlags;

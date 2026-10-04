@@ -53,8 +53,8 @@ enum class StickersSetFlag : ushort {
 	Masks = (1 << 2),
 	Official = (1 << 3),
 	NotLoaded = (1 << 4),
-	Featured = (1 << 5),
-	Unread = (1 << 6),
+	// LoogriGram: 1 << 5 was Featured and 1 << 6 Unread, both kept only for
+	// Telegram's trending sets, which are not fetched.
 	Special = (1 << 7),
 	Emoji = (1 << 9),
 	TextColor = (1 << 10),

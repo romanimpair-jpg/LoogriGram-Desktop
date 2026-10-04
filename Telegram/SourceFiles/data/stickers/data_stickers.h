@@ -53,7 +53,8 @@ public:
 	// For stickers panel, should not appear in Sets.
 	static constexpr auto RecentSetId = 0xFFFFFFFFFFFFFFFEULL;
 	static constexpr auto NoneSetId = 0xFFFFFFFFFFFFFFFDULL;
-	static constexpr auto FeaturedSetId = 0xFFFFFFFFFFFFFFFBULL;
+	// LoogriGram: 0xFFFFFFFFFFFFFFFBULL was FeaturedSetId, the panel's
+	// trending section.
 
 	// For cloud-stored recent stickers.
 	static constexpr auto CloudRecentSetId = 0xFFFFFFFFFFFFFFFCULL;
@@ -125,32 +126,11 @@ public:
 	void setLastFavedUpdate(crl::time update) {
 		_lastFavedUpdate = update;
 	}
-	[[nodiscard]] bool featuredUpdateNeeded(crl::time now) const {
-		return updateNeeded(_lastFeaturedUpdate, now);
-	}
-	void setLastFeaturedUpdate(crl::time update) {
-		_lastFeaturedUpdate = update;
-	}
-	[[nodiscard]] bool featuredEmojiUpdateNeeded(crl::time now) const {
-		return updateNeeded(_lastFeaturedEmojiUpdate, now);
-	}
-	void setLastFeaturedEmojiUpdate(crl::time update) {
-		_lastFeaturedEmojiUpdate = update;
-	}
 	[[nodiscard]] bool savedGifsUpdateNeeded(crl::time now) const {
 		return updateNeeded(_lastSavedGifsUpdate, now);
 	}
 	void setLastSavedGifsUpdate(crl::time update) {
 		_lastSavedGifsUpdate = update;
-	}
-	[[nodiscard]] int featuredSetsUnreadCount() const {
-		return _featuredSetsUnreadCount.current();
-	}
-	void setFeaturedSetsUnreadCount(int count) {
-		_featuredSetsUnreadCount = count;
-	}
-	[[nodiscard]] rpl::producer<int> featuredSetsUnreadCountValue() const {
-		return _featuredSetsUnreadCount.value();
 	}
 	[[nodiscard]] const StickersSets &sets() const {
 		return _sets;
@@ -176,18 +156,8 @@ public:
 	[[nodiscard]] StickersSetsOrder &emojiSetsOrderRef() {
 		return _emojiSetsOrder;
 	}
-	[[nodiscard]] const StickersSetsOrder &featuredSetsOrder() const {
-		return _featuredSetsOrder;
-	}
-	[[nodiscard]] StickersSetsOrder &featuredSetsOrderRef() {
-		return _featuredSetsOrder;
-	}
-	[[nodiscard]] const StickersSetsOrder &featuredEmojiSetsOrder() const {
-		return _featuredEmojiSetsOrder;
-	}
-	[[nodiscard]] StickersSetsOrder &featuredEmojiSetsOrderRef() {
-		return _featuredEmojiSetsOrder;
-	}
+	// LoogriGram: the trending (featured) sticker and emoji sets had orders
+	// here, with their unread count and update times. They are not fetched.
 	[[nodiscard]] const StickersSetsOrder &archivedSetsOrder() const {
 		return _archivedSetsOrder;
 	}
@@ -233,9 +203,6 @@ public:
 		uint64 hash,
 		const QVector<MTPStickerPack> &packs = QVector<MTPStickerPack>(),
 		const QVector<MTPint> &usageDates = QVector<MTPint>());
-	void featuredSetsReceived(const MTPmessages_FeaturedStickers &result);
-	void featuredEmojiSetsReceived(
-		const MTPmessages_FeaturedStickers &result);
 	void gifsReceived(const QVector<MTPDocument> &items, uint64 hash);
 
 	[[nodiscard]] std::vector<not_null<DocumentData*>> getListByEmoji(
@@ -292,9 +259,6 @@ private:
 		const QVector<MTPStickerSet> &list,
 		uint64 hash,
 		StickersType type);
-	void featuredReceived(
-		const MTPDmessages_featuredStickers &data,
-		StickersType type);
 
 	const not_null<Session*> _owner;
 	rpl::event_stream<StickersType> _updated;
@@ -306,19 +270,14 @@ private:
 	crl::time _lastUpdate = 0;
 	crl::time _lastRecentUpdate = 0;
 	crl::time _lastFavedUpdate = 0;
-	crl::time _lastFeaturedUpdate = 0;
 	crl::time _lastSavedGifsUpdate = 0;
 	crl::time _lastMasksUpdate = 0;
 	crl::time _lastEmojiUpdate = 0;
-	crl::time _lastFeaturedEmojiUpdate = 0;
 	crl::time _lastRecentAttachedUpdate = 0;
-	rpl::variable<int> _featuredSetsUnreadCount = 0;
 	StickersSets _sets;
 	StickersSetsOrder _setsOrder;
 	StickersSetsOrder _maskSetsOrder;
 	StickersSetsOrder _emojiSetsOrder;
-	StickersSetsOrder _featuredSetsOrder;
-	StickersSetsOrder _featuredEmojiSetsOrder;
 	StickersSetsOrder _archivedSetsOrder;
 	StickersSetsOrder _archivedMaskSetsOrder;
 	SavedGifs _savedGifs;

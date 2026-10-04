@@ -1219,18 +1219,8 @@ void RegisterSettingsHandlers(Router &router) {
 		}},
 	});
 
-	router.add(u"settings"_q, {
-		.path = u"appearance/stickers-and-emoji/trending"_q,
-		.action = CodeBlock{ [](const Context &ctx) {
-			if (!ctx.controller) {
-				return Result::NeedsAuth;
-			}
-			ctx.controller->show(Box<StickersBox>(
-				ctx.controller->uiShow(),
-				StickersBox::Section::Featured));
-			return Result::Handled;
-		}},
-	});
+	// LoogriGram: appearance/stickers-and-emoji/trending opened the
+	// Trending tab, which is gone with Telegram's trending sets.
 
 	router.add(u"settings"_q, {
 		.path = u"appearance/stickers-and-emoji/archived"_q,

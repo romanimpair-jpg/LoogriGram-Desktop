@@ -239,10 +239,6 @@ Session::Session(
 	}, [=] {
 		local().readInstalledCustomEmoji();
 	}, [=] {
-		local().readFeaturedStickers();
-	}, [=] {
-		local().readFeaturedCustomEmoji();
-	}, [=] {
 		local().readRecentStickers();
 		local().readRecentMasks();
 		local().readFavedStickers();

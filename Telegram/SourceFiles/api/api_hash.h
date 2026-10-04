@@ -27,10 +27,6 @@ namespace Api {
 	bool attached = false);
 [[nodiscard]] uint64 CountFavedStickersHash(
 	not_null<Main::Session*> session);
-[[nodiscard]] uint64 CountFeaturedStickersHash(
-	not_null<Main::Session*> session);
-[[nodiscard]] uint64 CountFeaturedEmojiHash(
-	not_null<Main::Session*> session);
 [[nodiscard]] uint64 CountSavedGifsHash(not_null<Main::Session*> session);
 
 [[nodiscard]] inline uint64 HashInit() {

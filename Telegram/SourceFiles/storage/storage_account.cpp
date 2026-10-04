@@ -223,7 +223,6 @@ base::flat_set<QString> Account::collectGoodNames() const {
 		_locationsKey,
 		_settingsKey,
 		_installedStickersKey,
-		_featuredStickersKey,
 		_recentStickersKey,
 		_favedStickersKey,
 		_archivedStickersKey,
@@ -238,7 +237,6 @@ base::flat_set<QString> Account::collectGoodNames() const {
 		_recentMasksKey,
 		_archivedMasksKey,
 		_installedCustomEmojiKey,
-		_featuredCustomEmojiKey,
 		_archivedCustomEmojiKey,
 		_searchSuggestionsKey,
 		_roundPlaceholderKey,
@@ -328,9 +326,9 @@ Account::ReadMapResult Account::readMapWith(
 	base::flat_map<PeerId, bool> botStoragesNotReadMap;
 	quint64 prefsKey = 0, locationsKey = 0, reportSpamStatusesKey = 0, trustedPeersKey = 0;
 	quint64 recentStickersKeyOld = 0;
-	quint64 installedStickersKey = 0, featuredStickersKey = 0, recentStickersKey = 0, favedStickersKey = 0, archivedStickersKey = 0;
+	quint64 installedStickersKey = 0, recentStickersKey = 0, favedStickersKey = 0, archivedStickersKey = 0;
 	quint64 installedMasksKey = 0, recentMasksKey = 0, archivedMasksKey = 0;
-	quint64 installedCustomEmojiKey = 0, featuredCustomEmojiKey = 0, archivedCustomEmojiKey = 0;
+	quint64 installedCustomEmojiKey = 0, archivedCustomEmojiKey = 0;
 	quint64 savedGifsKey = 0;
 	quint64 legacyBackgroundKeyDay = 0, legacyBackgroundKeyNight = 0;
 	quint64 userSettingsKey = 0, recentHashtagsAndBotsKey = 0, exportSettingsKey = 0;
@@ -416,7 +414,14 @@ Account::ReadMapResult Account::readMapWith(
 			map.stream >> installedStickersKey;
 		} break;
 		case lskStickersKeys: {
+			// LoogriGram: the second key named the file caching Telegram's
+			// trending sets. They are not fetched; an older build's file is
+			// deleted, and the slot is written as 0.
+			quint64 featuredStickersKey = 0;
 			map.stream >> installedStickersKey >> featuredStickersKey >> recentStickersKey >> archivedStickersKey;
+			if (featuredStickersKey) {
+				ClearKey(featuredStickersKey, _basePath);
+			}
 		} break;
 		case lskFavedStickers: {
 			map.stream >> favedStickersKey;
@@ -442,10 +447,15 @@ Account::ReadMapResult Account::readMapWith(
 				>> archivedMasksKey;
 		} break;
 		case lskCustomEmojiKeys: {
+			// LoogriGram: the trending emoji sets' file, as above.
+			quint64 featuredCustomEmojiKey = 0;
 			map.stream
 				>> installedCustomEmojiKey
 				>> featuredCustomEmojiKey
 				>> archivedCustomEmojiKey;
+			if (featuredCustomEmojiKey) {
+				ClearKey(featuredCustomEmojiKey, _basePath);
+			}
 		} break;
 		case lskSearchSuggestions: {
 			map.stream >> searchSuggestionsKey;
@@ -498,7 +508,6 @@ Account::ReadMapResult Account::readMapWith(
 	_trustedPeersKey = trustedPeersKey;
 	_recentStickersKeyOld = recentStickersKeyOld;
 	_installedStickersKey = installedStickersKey;
-	_featuredStickersKey = featuredStickersKey;
 	_recentStickersKey = recentStickersKey;
 	_favedStickersKey = favedStickersKey;
 	_archivedStickersKey = archivedStickersKey;
@@ -507,7 +516,6 @@ Account::ReadMapResult Account::readMapWith(
 	_recentMasksKey = recentMasksKey;
 	_archivedMasksKey = archivedMasksKey;
 	_installedCustomEmojiKey = installedCustomEmojiKey;
-	_featuredCustomEmojiKey = featuredCustomEmojiKey;
 	_archivedCustomEmojiKey = archivedCustomEmojiKey;
 	_legacyBackgroundKeyDay = legacyBackgroundKeyDay;
 	_legacyBackgroundKeyNight = legacyBackgroundKeyNight;
@@ -615,7 +623,7 @@ void Account::writeMap() {
 	if (_locationsKey) mapSize += sizeof(quint32) + sizeof(quint64);
 	if (_trustedPeersKey) mapSize += sizeof(quint32) + sizeof(quint64);
 	if (_recentStickersKeyOld) mapSize += sizeof(quint32) + sizeof(quint64);
-	if (_installedStickersKey || _featuredStickersKey || _recentStickersKey || _archivedStickersKey) {
+	if (_installedStickersKey || _recentStickersKey || _archivedStickersKey) {
 		mapSize += sizeof(quint32) + 4 * sizeof(quint64);
 	}
 	if (_favedStickersKey) mapSize += sizeof(quint32) + sizeof(quint64);
@@ -626,7 +634,7 @@ void Account::writeMap() {
 	if (_installedMasksKey || _recentMasksKey || _archivedMasksKey) {
 		mapSize += sizeof(quint32) + 3 * sizeof(quint64);
 	}
-	if (_installedCustomEmojiKey || _featuredCustomEmojiKey || _archivedCustomEmojiKey) {
+	if (_installedCustomEmojiKey || _archivedCustomEmojiKey) {
 		mapSize += sizeof(quint32) + 3 * sizeof(quint64);
 	}
 	if (_searchSuggestionsKey) mapSize += sizeof(quint32) + sizeof(quint64);
@@ -669,9 +677,9 @@ void Account::writeMap() {
 	if (_recentStickersKeyOld) {
 		mapData.stream << quint32(lskRecentStickersOld) << quint64(_recentStickersKeyOld);
 	}
-	if (_installedStickersKey || _featuredStickersKey || _recentStickersKey || _archivedStickersKey) {
+	if (_installedStickersKey || _recentStickersKey || _archivedStickersKey) {
 		mapData.stream << quint32(lskStickersKeys);
-		mapData.stream << quint64(_installedStickersKey) << quint64(_featuredStickersKey) << quint64(_recentStickersKey) << quint64(_archivedStickersKey);
+		mapData.stream << quint64(_installedStickersKey) << quint64(0) << quint64(_recentStickersKey) << quint64(_archivedStickersKey);
 	}
 	if (_favedStickersKey) {
 		mapData.stream << quint32(lskFavedStickers) << quint64(_favedStickersKey);
@@ -695,11 +703,11 @@ void Account::writeMap() {
 			<< quint64(_recentMasksKey)
 			<< quint64(_archivedMasksKey);
 	}
-	if (_installedCustomEmojiKey || _featuredCustomEmojiKey || _archivedCustomEmojiKey) {
+	if (_installedCustomEmojiKey || _archivedCustomEmojiKey) {
 		mapData.stream << quint32(lskCustomEmojiKeys);
 		mapData.stream
 			<< quint64(_installedCustomEmojiKey)
-			<< quint64(_featuredCustomEmojiKey)
+			<< quint64(0)
 			<< quint64(_archivedCustomEmojiKey);
 	}
 	if (_searchSuggestionsKey) {
@@ -748,7 +756,6 @@ void Account::reset() {
 	_prefsKey = _locationsKey = _trustedPeersKey = 0;
 	_recentStickersKeyOld = 0;
 	_installedStickersKey = 0;
-	_featuredStickersKey = 0;
 	_recentStickersKey = 0;
 	_favedStickersKey = 0;
 	_archivedStickersKey = 0;
@@ -757,7 +764,6 @@ void Account::reset() {
 	_recentMasksKey = 0;
 	_archivedMasksKey = 0;
 	_installedCustomEmojiKey = 0;
-	_featuredCustomEmojiKey = 0;
 	_archivedCustomEmojiKey = 0;
 	_legacyBackgroundKeyDay = _legacyBackgroundKeyNight = 0;
 	_settingsKey = _recentHashtagsAndBotsKey = _exportSettingsKey = 0;
@@ -2108,7 +2114,7 @@ void Account::readStickerSets(
 		auto settingSet = (it == sets.cend());
 		if (settingSet) {
 			// We will set this flags from order lists when reading those stickers.
-			setFlags &= ~(SetFlag::Installed | SetFlag::Featured);
+			setFlags &= ~SetFlag::Installed;
 			it = sets.emplace(setId, std::make_unique<Data::StickersSet>(
 				&_owner->session().data(),
 				setId,
@@ -2237,7 +2243,7 @@ void Account::readStickerSets(
 		}
 	}
 
-	// Read orders of installed and featured stickers.
+	// Read orders of installed stickers.
 	if (outOrder) {
 		auto outOrderCount = quint32();
 		stickers.stream >> outOrderCount;
@@ -2300,44 +2306,6 @@ void Account::writeInstalledStickers() {
 		}
 		return StickerSetCheckResult::Write;
 	}, _owner->session().data().stickers().setsOrder());
-}
-
-void Account::writeFeaturedStickers() {
-	using SetFlag = Data::StickersSetFlag;
-
-	writeStickerSets(_featuredStickersKey, [](const Data::StickersSet &set) {
-		if (set.id == Data::Stickers::CloudRecentSetId
-			|| set.id == Data::Stickers::FavedSetId
-			|| set.id == Data::Stickers::CloudRecentAttachedSetId) {
-			// separate files for them
-			return StickerSetCheckResult::Skip;
-		} else if ((set.flags & SetFlag::Special)
-			|| !(set.flags & SetFlag::Featured)
-			|| (set.type() != Data::StickersType::Stickers)) {
-			return StickerSetCheckResult::Skip;
-		} else if (set.flags & SetFlag::NotLoaded) { // waiting to receive
-			return StickerSetCheckResult::Abort;
-		} else if (set.stickers.isEmpty()) {
-			return StickerSetCheckResult::Skip;
-		}
-		return StickerSetCheckResult::Write;
-	}, _owner->session().data().stickers().featuredSetsOrder());
-}
-
-void Account::writeFeaturedCustomEmoji() {
-	using SetFlag = Data::StickersSetFlag;
-
-	writeStickerSets(_featuredCustomEmojiKey, [](const Data::StickersSet &set) {
-		if (!(set.flags & SetFlag::Featured)
-			|| (set.type() != Data::StickersType::Emoji)) {
-			return StickerSetCheckResult::Skip;
-		} else if (set.flags & SetFlag::NotLoaded) { // waiting to receive
-			return StickerSetCheckResult::Abort;
-		} else if (set.stickers.isEmpty()) {
-			return StickerSetCheckResult::Skip;
-		}
-		return StickerSetCheckResult::Write;
-	}, _owner->session().data().stickers().featuredEmojiSetsOrder());
 }
 
 void Account::writeRecentStickers() {
@@ -2559,36 +2527,6 @@ void Account::readInstalledStickers() {
 		_installedStickersKey,
 		&_owner->session().data().stickers().setsOrderRef(),
 		Data::StickersSetFlag::Installed);
-}
-
-void Account::readFeaturedStickers() {
-	DEBUG_LOG(("Init: Read featured sticker sets."));
-
-	readStickerSets(
-		_featuredStickersKey,
-		&_owner->session().data().stickers().featuredSetsOrderRef(),
-		Data::StickersSetFlag::Featured);
-
-	const auto &sets = _owner->session().data().stickers().sets();
-	const auto &order = _owner->session().data().stickers().featuredSetsOrder();
-	int unreadCount = 0;
-	for (const auto setId : order) {
-		auto it = sets.find(setId);
-		if (it != sets.cend()
-			&& (it->second->flags & Data::StickersSetFlag::Unread)) {
-			++unreadCount;
-		}
-	}
-	_owner->session().data().stickers().setFeaturedSetsUnreadCount(unreadCount);
-}
-
-void Account::readFeaturedCustomEmoji() {
-	DEBUG_LOG(("Init: Read featured emoji sets."));
-
-	readStickerSets(
-		_featuredCustomEmojiKey,
-		&_owner->session().data().stickers().featuredEmojiSetsOrderRef(),
-		Data::StickersSetFlag::Featured);
 }
 
 void Account::readRecentStickers() {

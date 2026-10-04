@@ -14,7 +14,7 @@ enum class UnreadBadgeSize {
 	MainMenu,
 	HistoryToDown,
 	StickersPanel,
-	StickersBox,
+	// LoogriGram: StickersBox was the Trending tab's unread counter.
 	TouchBar,
 	ReactionInDialogs,
 	PollInDialogs,
