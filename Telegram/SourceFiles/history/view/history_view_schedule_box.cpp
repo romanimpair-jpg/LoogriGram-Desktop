@@ -309,7 +309,6 @@ bool CanScheduleUntilOnline(not_null<PeerData*> peer) {
 void ScheduleBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session,
-		std::shared_ptr<ChatHelpers::Show> maybeShow,
 		const Api::SendOptions &initialOptions,
 		const SendMenu::Details &details,
 		Fn<void(Api::SendOptions)> done,
@@ -359,7 +358,6 @@ void ScheduleBox(
 		: Type::SilentOnly;
 	const auto childDetails = Details{
 		.type = childType,
-		.effectAllowed = details.effectAllowed,
 	};
 	const auto sendAction = crl::guard(box, [=](Action action, Details) {
 		Expects(action.type == ActionType::Send);
@@ -375,7 +373,6 @@ void ScheduleBox(
 	});
 	SetupMenuAndShortcuts(
 		descriptor.submit.data(),
-		maybeShow,
 		[=] { return childDetails; },
 		sendAction);
 

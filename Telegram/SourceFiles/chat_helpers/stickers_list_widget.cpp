@@ -213,10 +213,8 @@ StickersListWidget::StickersListWidget(
 , _overBg(st::roundRadiusLarge, st().overBg)
 , _api(&session().mtp())
 , _localSetsManager(std::make_unique<LocalStickersManager>(&session()))
-, _customRecentIds(std::move(descriptor.customRecentList))
 , _section(Section::Stickers)
 , _isMasks(_mode == Mode::Masks)
-, _isEffects(_mode == Mode::MessageEffects)
 , _excludeSetId(descriptor.excludeSetId)
 , _updateItemsTimer([=] { updateItems(); })
 , _updateSetsTimer([=] { updateSets(); })
@@ -253,7 +251,7 @@ StickersListWidget::StickersListWidget(
 		setAttribute(Qt::WA_OpaquePaintEvent);
 	}
 
-	if (!_isMasks && !_isEffects) {
+	if (!_isMasks) {
 		setupSearch();
 	}
 
@@ -283,14 +281,12 @@ StickersListWidget::StickersListWidget(
 		refreshStickers();
 	}, lifetime());
 
-	if (!_isEffects) {
-		session().data().stickers().recentUpdated(_isMasks
-			? Data::StickersType::Masks
-			: Data::StickersType::Stickers
-		) | rpl::on_next([=] {
-			refreshRecent();
-		}, lifetime());
-	}
+	session().data().stickers().recentUpdated(_isMasks
+		? Data::StickersType::Masks
+		: Data::StickersType::Stickers
+	) | rpl::on_next([=] {
+		refreshRecent();
+	}, lifetime());
 
 	positionValue(
 	) | rpl::skip(1) | rpl::map_to(
@@ -451,9 +447,7 @@ StickersListWidget::SectionInfo StickersListWidget::sectionInfoByOffset(
 }
 
 int StickersListWidget::countDesiredHeight(int newWidth) {
-	const auto minSize = _isEffects
-		? st::stickerEffectWidthMin
-		: st::stickerPanWidthMin;
+	const auto minSize = st::stickerPanWidthMin;
 	if (newWidth < 2 * minSize) {
 		return 0;
 	}
@@ -491,7 +485,7 @@ int StickersListWidget::countDesiredHeight(int newWidth) {
 }
 
 void StickersListWidget::sendSearchRequest() {
-	if (_searchNextQuery.isEmpty() || _isEffects) {
+	if (_searchNextQuery.isEmpty()) {
 		return;
 	}
 	_searchRequestTimer.cancel();
@@ -564,13 +558,8 @@ void StickersListWidget::searchForSets(
 		return;
 	}
 
-	_filterStickersCornerEmoji.clear();
-	if (_isEffects) {
-		filterEffectsByEmoji(std::move(emoji));
-	} else {
-		_filteredStickers = session().data().stickers().getListByEmoji(
-			std::move(emoji));
-	}
+	_filteredStickers = session().data().stickers().getListByEmoji(
+		std::move(emoji));
 	if (_searchQuery != cleaned) {
 		toggleSearchLoading(false);
 		if (const auto requestId = base::take(_searchSetsRequestId)) {
@@ -605,7 +594,6 @@ void StickersListWidget::cancelSetsSearch() {
 	_searchRequestTimer.cancel();
 	_searchQuery = _searchNextQuery = QString();
 	_filteredStickers.clear();
-	_filterStickersCornerEmoji.clear();
 	_searchSetsCache.clear();
 	_searchStickersCache.clear();
 	_searchStickersNextOffset.clear();
@@ -661,9 +649,7 @@ void StickersListWidget::refreshSearchRows(
 		&& (foundStickersIt != _searchStickersCache.end())
 		&& !foundStickersIt->second.empty();
 
-	if (!_isEffects) {
-		refreshSearchShortcuts(_searchNextQuery, cloudSets);
-	}
+	refreshSearchShortcuts(_searchNextQuery, cloudSets);
 	if (searchShortcutSelected()) {
 		fillSelectedSearchShortcut();
 	}
@@ -686,12 +672,7 @@ void StickersListWidget::refreshSearchRows(
 	_lastMousePosition = QCursor::pos();
 
 	resizeToWidth(width());
-	_recentShownCount = _filteredStickers.size();
 	updateSelected();
-}
-
-rpl::producer<int> StickersListWidget::recentShownCount() const {
-	return _recentShownCount.value();
 }
 
 void StickersListWidget::refreshSearchShortcuts(
@@ -967,7 +948,7 @@ void StickersListWidget::fillFilteredStickersRow() {
 		SearchEmojiSectionSetId(),
 		nullptr,
 		Data::StickersSetFlag::Special,
-		_isEffects ? tr::lng_effect_stickers_title(tr::now) : QString(),
+		QString(),
 		QString(), // shortName
 		_filteredStickers.size(),
 		false, // externalLayout
@@ -1138,7 +1119,6 @@ void StickersListWidget::searchStickersResultsDone(
 void StickersListWidget::loadMoreSearchStickers() {
 	if (_searchStickersRequestId
 		|| _searchQuery.isEmpty()
-		|| _isEffects
 		|| (_searchQuery != _searchNextQuery)) {
 		return;
 	}
@@ -2386,12 +2366,8 @@ base::unique_qptr<Ui::PopupMenu> StickersListWidget::fillContextMenu(
 	});
 	const auto icons = &st().icons;
 
-	// In case we're adding items after FillSendMenu we have
-	// to pass nullptr for showForEffect and attach selector later.
-	// Otherwise added items widths won't be respected in menu geometry.
 	SendMenu::FillSendMenu(
 		menu,
-		nullptr, // showForEffect
 		details,
 		SendMenu::DefaultCallback(_show, send),
 		icons);
@@ -2425,12 +2401,6 @@ base::unique_qptr<Ui::PopupMenu> StickersListWidget::fillContextMenu(
 				false);
 		}, &icons->menuRecentRemove);
 	}
-
-	SendMenu::AttachSendMenuEffect(
-		menu,
-		_show,
-		details,
-		SendMenu::DefaultCallback(_show, send));
 
 	return menu;
 }
@@ -2793,11 +2763,6 @@ void StickersListWidget::setSection(Section section) {
 	}
 	clearHeavyData();
 	_section = section;
-	_recentShownCount = (section == Section::Search)
-		? _filteredStickers.size()
-		: _mySets.empty()
-		? 0
-		: _mySets.front().stickers.size();
 }
 
 void StickersListWidget::clearHeavyData() {
@@ -2812,12 +2777,8 @@ void StickersListWidget::clearHeavyData() {
 void StickersListWidget::refreshStickers() {
 	clearSelection();
 
-	if (_isEffects) {
-		refreshEffects();
-	} else {
-		refreshMySets();
-		refreshSearchSets();
-	}
+	refreshMySets();
+	refreshSearchSets();
 	resizeToWidth(width());
 
 	if (_footer) {
@@ -2830,13 +2791,6 @@ void StickersListWidget::refreshStickers() {
 	repaintItems();
 
 	visibleTopBottomUpdated(getVisibleTop(), getVisibleBottom());
-}
-
-void StickersListWidget::refreshEffects() {
-	auto wasSets = base::take(_mySets);
-	_mySets.reserve(1);
-	refreshRecentStickers(false);
-	takeHeavyData(_mySets, wasSets);
 }
 
 void StickersListWidget::refreshMySets() {
@@ -2990,26 +2944,7 @@ void StickersListWidget::refreshRecent() {
 	}
 }
 
-auto StickersListWidget::collectCustomRecents() -> std::vector<Sticker> {
-	_custom.clear();
-	_cornerEmoji.clear();
-	auto result = std::vector<Sticker>();
-
-	result.reserve(_customRecentIds.size());
-	for (const auto &descriptor : _customRecentIds) {
-		if (const auto document = descriptor.document; document->sticker()) {
-			result.push_back(Sticker{ document });
-			_custom.push_back(false);
-			_cornerEmoji.push_back(Ui::Emoji::Find(descriptor.cornerEmoji));
-		}
-	}
-	return result;
-}
-
 auto StickersListWidget::collectRecentStickers() -> std::vector<Sticker> {
-	if (_isEffects) {
-		return collectCustomRecents();
-	}
 	_custom.clear();
 	auto result = std::vector<Sticker>();
 
@@ -3075,9 +3010,6 @@ void StickersListWidget::refreshRecentStickers(bool performResize) {
 	clearSelection();
 
 	auto recentPack = collectRecentStickers();
-	if (_section == Section::Stickers) {
-		_recentShownCount = recentPack.size();
-	}
 	const auto recentIt = ranges::find_if(_mySets, [](auto &set) {
 		return set.id == Data::Stickers::RecentSetId;
 	});
@@ -3088,9 +3020,7 @@ void StickersListWidget::refreshRecentStickers(bool performResize) {
 			Data::Stickers::RecentSetId,
 			nullptr,
 			(SetFlag::Official | SetFlag::Special),
-			(_isEffects
-				? tr::lng_effect_stickers_title(tr::now)
-				: tr::lng_recent_stickers(tr::now)),
+			tr::lng_recent_stickers(tr::now),
 			shortName,
 			recentPack.size(),
 			externalLayout,
@@ -3373,9 +3303,7 @@ void StickersListWidget::updateSelected() {
 }
 
 bool StickersListWidget::setHasTitle(const Set &set) const {
-	if (_isEffects) {
-		return true;
-	} else if (set.id == Data::Stickers::FavedSetId
+	if (set.id == Data::Stickers::FavedSetId
 		|| set.id == SearchEmojiSectionSetId()) {
 		return false;
 	} else if (set.id == Data::Stickers::RecentSetId) {
@@ -3654,31 +3582,10 @@ bool StickersListWidget::mySetsEmpty() const {
 	return _mySets.empty();
 }
 
-void StickersListWidget::filterEffectsByEmoji(
-		const std::vector<EmojiPtr> &emoji) {
-	_filteredStickers.clear();
-	_filterStickersCornerEmoji.clear();
-	if (_mySets.empty()
-		|| _mySets.front().id != Data::Stickers::RecentSetId
-		|| _mySets.front().stickers.empty()) {
-		return;
-	}
-	const auto &list = _mySets.front().stickers;
-	auto all = base::flat_set<EmojiPtr>();
-	for (const auto &one : emoji) {
-		all.emplace(one->original());
-	}
-	const auto count = int(list.size());
-	_filteredStickers.reserve(count);
-	_filterStickersCornerEmoji.reserve(count);
-	for (auto i = 0; i != count; ++i) {
-		Assert(i < _cornerEmoji.size());
-		if (all.contains(_cornerEmoji[i])) {
-			_filteredStickers.push_back(list[i].document);
-			_filterStickersCornerEmoji.push_back(_cornerEmoji[i]);
-		}
-	}
-}
+// LoogriGram: StickersListMode::MessageEffects listed the "sticker"
+// message effects under the effect picker's emoji, with their own recents
+// (collectCustomRecents) and search by corner emoji (filterEffectsByEmoji);
+// the picker is gone (2026-10-04).
 
 StickersListWidget::~StickersListWidget() = default;
 

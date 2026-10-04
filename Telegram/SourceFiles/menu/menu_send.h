@@ -61,22 +61,13 @@ struct Action {
 
 FillMenuResult FillSendMenu(
 	not_null<Ui::PopupMenu*> menu,
-	std::shared_ptr<ChatHelpers::Show> maybeShow,
 	Details details,
 	Fn<void(Action, Details)> action,
 	const style::ComposeIcons *iconsOverride = nullptr,
 	std::optional<QPoint> desiredPositionOverride = std::nullopt);
 
-FillMenuResult AttachSendMenuEffect(
-	not_null<Ui::PopupMenu*> menu,
-	std::shared_ptr<ChatHelpers::Show> show,
-	Details details,
-	Fn<void(Action, Details)> action,
-	std::optional<QPoint> desiredPositionOverride = std::nullopt);
-
 void SetupMenuAndShortcuts(
 	not_null<Ui::RpWidget*> button,
-	std::shared_ptr<ChatHelpers::Show> maybeShow,
 	Fn<Details()> details,
 	Fn<void(Action, Details)> action,
 	const style::PopupMenu *stOverride = nullptr,

@@ -45,7 +45,6 @@ struct ScheduleBoxStyleArgs {
 void ScheduleBox(
 	not_null<Ui::GenericBox*> box,
 	not_null<Main::Session*> session,
-	std::shared_ptr<ChatHelpers::Show> maybeShow,
 	const Api::SendOptions &initialOptions,
 	const SendMenu::Details &details,
 	Fn<void(Api::SendOptions)> done,
@@ -65,7 +64,6 @@ template <typename Guard, typename Submit>
 	return Box(
 		ScheduleBox,
 		session,
-		std::move(show),
 		initialOptions,
 		details,
 		crl::guard(std::forward<Guard>(guard), std::forward<Submit>(submit)),
@@ -85,7 +83,6 @@ template <typename Guard, typename Submit>
 	return Box(
 		ScheduleBox,
 		session,
-		nullptr,
 		initialOptions,
 		details,
 		crl::guard(std::forward<Guard>(guard), std::forward<Submit>(submit)),

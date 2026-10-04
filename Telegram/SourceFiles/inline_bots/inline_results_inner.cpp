@@ -360,9 +360,6 @@ void Inner::contextMenuEvent(QContextMenuEvent *e) {
 		? _sendMenuDetails()
 		: SendMenu::Details();
 
-	// inline results don't have effects
-	details.effectAllowed = false;
-
 	_menu = base::make_unique_q<Ui::PopupMenu>(
 		this,
 		st::popupMenuWithIcons);
@@ -373,12 +370,8 @@ void Inner::contextMenuEvent(QContextMenuEvent *e) {
 	});
 	const auto show = _controller->uiShow();
 
-	// In case we're adding items after FillSendMenu we have
-	// to pass nullptr for showForEffect and attach selector later.
-	// Otherwise added items widths won't be respected in menu geometry.
 	SendMenu::FillSendMenu(
 		_menu,
-		nullptr, // showForEffect
 		details,
 		SendMenu::DefaultCallback(show, send));
 
@@ -395,12 +388,6 @@ void Inner::contextMenuEvent(QContextMenuEvent *e) {
 			_controller->uiShow(),
 			previewDocument);
 	}
-
-	SendMenu::AttachSendMenuEffect(
-		_menu,
-		show,
-		details,
-		SendMenu::DefaultCallback(show, send));
 
 	if (!_menu->empty()) {
 		_menu->popup(QCursor::pos());

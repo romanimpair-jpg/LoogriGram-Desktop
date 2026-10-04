@@ -106,7 +106,6 @@ void MediaEditManager::showMenu(
 	const auto position = QCursor::pos();
 	SendMenu::FillSendMenu(
 		_menu.get(),
-		nullptr,
 		sendMenuDetails(hasCaptionText),
 		callback,
 		&st::defaultComposeIcons,

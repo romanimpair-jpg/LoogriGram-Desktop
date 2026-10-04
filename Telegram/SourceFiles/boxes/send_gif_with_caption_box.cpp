@@ -601,7 +601,6 @@ void CaptionBox(
 		[=] { send({}); });
 	SendMenu::SetupMenuAndShortcuts(
 		confirm,
-		controller->uiShow(),
 		sendMenuDetails,
 		SendMenu::DefaultCallback(controller->uiShow(), send));
 	box->setShowFinishedCallback([=] {

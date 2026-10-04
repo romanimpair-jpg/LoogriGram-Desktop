@@ -937,14 +937,6 @@ previewUserpic: UserpicButton(defaultUserpicButton) {
 	photoSize: 40px;
 }
 
-effectPreviewSend: FlatButton(previewMarkRead) {
-	bgColor: transparent;
-	overBgColor: transparent;
-}
-effectPreviewLoading: InfiniteRadialAnimation(defaultInfiniteRadialAnimation) {
-	thickness: 2px;
-}
-
 factcheckFooterSkip: 16px;
 factcheckFooterStyle: TextStyle(defaultTextStyle) {
 	font: font(11px);

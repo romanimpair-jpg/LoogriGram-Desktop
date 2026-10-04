@@ -46,7 +46,6 @@ struct Reaction {
 
 struct PossibleItemReactionsRef {
 	std::vector<not_null<const Reaction*>> recent;
-	std::vector<not_null<const Reaction*>> stickers;
 	bool customAllowed = false;
 };
 
@@ -55,7 +54,6 @@ struct PossibleItemReactions {
 	explicit PossibleItemReactions(const PossibleItemReactionsRef &other);
 
 	std::vector<Reaction> recent;
-	std::vector<Reaction> stickers;
 	bool customAllowed = false;
 };
 

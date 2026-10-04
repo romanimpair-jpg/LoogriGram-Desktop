@@ -3107,7 +3107,6 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 			Ui::PopupMenu::VerticalOrigin::Bottom);
 		SendMenu::FillSendMenu(
 			state->menu.get(),
-			show,
 			SendMenu::Details{ sendMenuType() },
 			SendMenu::DefaultCallback(show, crl::guard(parent, [=](
 					Api::SendOptions options) {

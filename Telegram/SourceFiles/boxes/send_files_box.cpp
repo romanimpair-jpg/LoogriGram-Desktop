@@ -910,7 +910,6 @@ void SendFilesBox::refreshButtons() {
 	if (_sendType == Api::SendType::Normal) {
 		SendMenu::SetupMenuAndShortcuts(
 			_send,
-			_show,
 			_sendMenuDetails,
 			_sendMenuCallback,
 			&_st.tabbed.menu,
@@ -1005,7 +1004,6 @@ void SendFilesBox::addMenuButton() {
 		const auto position = QCursor::pos();
 		const auto result = SendMenu::FillSendMenu(
 			_menu.get(),
-			_show,
 			_sendMenuDetails(),
 			_sendMenuCallback,
 			&_st.tabbed.icons,

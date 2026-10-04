@@ -2950,7 +2950,6 @@ SendMenu::Details ChatWidget::sendMenuDetails() const {
 			? _sublist->owningHistory()
 			: _history)->peer->id.value,
 		.bareTopicRootId = _topic ? _topic->rootId().bare : 0,
-		.effectAllowed = _peer->isUser(),
 	};
 }
 

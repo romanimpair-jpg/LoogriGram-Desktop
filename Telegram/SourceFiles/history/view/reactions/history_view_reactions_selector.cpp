@@ -218,9 +218,7 @@ Selector::Selector(
 	reactions,
 	(reactions.customAllowed
 		? ChatHelpers::EmojiListMode::FullReactions
-		: reactions.stickers.empty()
-		? ChatHelpers::EmojiListMode::RecentReactions
-		: ChatHelpers::EmojiListMode::MessageEffects),
+		: ChatHelpers::EmojiListMode::RecentReactions),
 	{},
 	std::move(about),
 	std::move(iconFactory),
@@ -359,17 +357,6 @@ int Selector::countWidth(int desiredWidth, int maxWidth) {
 	return std::max(2 * _skipx + _columns * _size, desiredWidth);
 }
 
-int Selector::effectPreviewHeight() const {
-	if (_listMode != ChatHelpers::EmojiListMode::MessageEffects) {
-		return 0;
-	}
-	const auto extend = Ui::BoxShadow::ExtendFor(st::previewMenu.shadow);
-	return extend.top()
-		+ HistoryView::Sticker::MessageEffectSize().height()
-		+ st::effectPreviewSend.height
-		+ extend.bottom();
-}
-
 QMargins Selector::marginsForShadow() const {
 	const auto line = st::lineWidth;
 	return useTransparency()
@@ -428,31 +415,8 @@ void Selector::setOpaqueHeightExpand(int expand, Fn<void(int)> apply) {
 	_opaqueApplyHeightExpand = std::move(apply);
 }
 
-int Selector::minimalHeight(int fullWidth) const {
-	auto inner = _recentRows * _size;
-	if (const auto stickers = int(_reactions.stickers.size())) {
-		// See StickersListWidget.
-		const auto listWidth = fullWidth
-			- marginsForShadow().left()
-			- marginsForShadow().right()
-			- _st.margin.left()
-			- _st.margin.right();
-		const auto availableWidth = listWidth
-			- (st::stickerPanPadding - _st.margin.left());
-		const auto min = st::stickerEffectWidthMin;
-		if (const auto columns = availableWidth / min) {
-			const auto rows = (stickers + columns - 1) / columns;
-			const auto singleWidth = availableWidth / columns;
-			const auto singleHeight = singleWidth;
-			const auto stickersHeight = rows * singleHeight;
-			inner += _st.header + stickersHeight;
-		}
-	}
-	if (_listMode == ChatHelpers::EmojiListMode::MessageEffects) {
-		inner += _st.searchMargin.top()
-			+ _st.search.height
-			+ _st.searchMargin.bottom();
-	}
+int Selector::minimalHeight() const {
+	const auto inner = _recentRows * _size;
 	return _skipy
 		+ std::min(inner, st::emojiPanMinHeight)
 		+ st::emojiPanRadius
@@ -1015,7 +979,7 @@ void Selector::expand() {
 	const auto margins = marginsForShadow();
 	const auto heightLimit = _reactions.customAllowed
 		? st::emojiPanMaxHeight
-		: minimalHeight(width());
+		: minimalHeight();
 	const auto opaqueAdded = _useTransparency ? 0 : _opaqueHeightExpand;
 	const auto willBeHeight = std::min(
 		parent.height() - y() + opaqueAdded,
@@ -1109,34 +1073,10 @@ void Selector::createList() {
 			.mediaPreviewMargins = marginsForShadow(),
 			.mediaPreviewPanelStyle = (_mediaPreviewParent == nullptr),
 		}));
-	if (!_reactions.stickers.empty()) {
-		auto descriptors = ranges::views::all(
-			_reactions.stickers
-		) | ranges::view::transform([](const Data::Reaction &reaction) {
-			return ChatHelpers::StickerCustomRecentDescriptor{
-				reaction.selectAnimation,
-				reaction.title
-			};
-		}) | ranges::to_vector;
-		_stickers = lists->add(
-			object_ptr<StickersListWidget>(
-				lists,
-				StickersListDescriptor{
-					.show = _show,
-					.mode = StickersListMode::MessageEffects,
-					.paused = _paused ? _paused : [] { return false; },
-					.customRecentList = std::move(descriptors),
-					.st = st,
-				}));
-	}
 
 	_list->escapes() | rpl::start_to_stream(_escapes, _list->lifetime());
 
-	rpl::merge(
-		_list->customChosen(),
-		(_stickers
-			? _stickers->chosen()
-			: rpl::never<ChatHelpers::FileChosen>())
+	_list->customChosen(
 	) | rpl::on_next([=](ChatHelpers::FileChosen data) {
 		_chosen.fire({
 			.id = _unifiedFactoryOwner->lookupReactionId(data.document->id),
@@ -1200,44 +1140,7 @@ void Selector::createList() {
 		0,
 		0,
 	}));
-	if (_stickers) {
-		_list->setMinimalHeight(geometry.width(), 0);
-		_stickers->setMinimalHeight(geometry.width(), 0);
-
-		_list->searchQueries(
-		) | rpl::on_next([=](std::vector<QString> &&query) {
-			_stickers->applySearchQuery(std::move(query));
-		}, _stickers->lifetime());
-
-		rpl::combine(
-			_list->heightValue(),
-			_stickers->heightValue()
-		) | rpl::on_next([=] {
-			InvokeQueued(lists, updateVisibleTopBottom);
-		}, _stickers->lifetime());
-
-		rpl::combine(
-			_list->recentShownCount(),
-			_stickers->recentShownCount()
-		) | rpl::on_next([=](int emoji, int stickers) {
-			_showEmptySearch = !emoji && !stickers;
-			_scroll->update();
-		}, _scroll->lifetime());
-
-		_scroll->paintRequest() | rpl::filter([=] {
-			return _showEmptySearch;
-		}) | rpl::on_next([=] {
-			auto p = QPainter(_scroll);
-			p.setPen(st::windowSubTextFg);
-			p.setFont(st::normalFont);
-			p.drawText(
-				_scroll->rect(),
-				tr::lng_effect_none(tr::now),
-				style::al_center);
-		}, _scroll->lifetime());
-	} else {
-		_list->setMinimalHeight(geometry.width(), _scroll->height());
-	}
+	_list->setMinimalHeight(geometry.width(), _scroll->height());
 
 	updateVisibleTopBottom();
 }
@@ -1261,9 +1164,9 @@ bool AdjustMenuGeometryForSelector(
 	menu->setForceWidth(width - added);
 	const auto height = menu->height();
 	const auto fullTop = margins.top() + categoriesAboutTop + extend.top();
-	const auto minimalHeight = std::max(
-		margins.top() + selector->minimalHeight(width) + margins.bottom(),
-		selector->effectPreviewHeight());
+	const auto minimalHeight = margins.top()
+		+ selector->minimalHeight()
+		+ margins.bottom();
 	const auto willBeHeightWithoutBottomPadding = fullTop
 		+ height
 		- Ui::BoxShadow::ExtendFor(menu->st().shadow).top();

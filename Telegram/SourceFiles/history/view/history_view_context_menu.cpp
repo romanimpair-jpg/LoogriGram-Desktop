@@ -780,7 +780,6 @@ bool AddRescheduleAction(
 					.type = sendMenuType,
 					.barePeerId = firstItem->history()->peer->id.value,
 					.bareTopicRootId = topic ? topic->rootId().bare : 0,
-					.effectAllowed = false,
 				},
 				callback,
 				{ .scheduleRepeatPeriod = repeatPeriod },

@@ -70,19 +70,12 @@ enum class StickersListMode {
 	Masks,
 	UserpicBuilder,
 	ChatIntro,
-	MessageEffects,
-};
-
-struct StickerCustomRecentDescriptor {
-	not_null<DocumentData*> document;
-	QString cornerEmoji;
 };
 
 struct StickersListDescriptor {
 	std::shared_ptr<Show> show;
 	StickersListMode mode = StickersListMode::Full;
 	Fn<bool()> paused;
-	std::vector<StickerCustomRecentDescriptor> customRecentList;
 	const style::EmojiPan *st = nullptr;
 	ComposeFeatures features;
 	uint64 excludeSetId = 0;
@@ -136,7 +129,6 @@ public:
 	bool mySetsEmpty() const;
 
 	void applySearchQuery(std::vector<QString> &&query);
-	[[nodiscard]] rpl::producer<int> recentShownCount() const;
 
 	~StickersListWidget();
 
@@ -273,9 +265,7 @@ private:
 	bool setHasTitle(const Set &set) const;
 	bool stickerHasDeleteButton(const Set &set, int index) const;
 	[[nodiscard]] std::vector<Sticker> collectRecentStickers();
-	[[nodiscard]] std::vector<Sticker> collectCustomRecents();
 	void refreshRecentStickers(bool resize = true);
-	void refreshEffects();
 	void refreshFavedStickers();
 	enum class GroupStickersPlace {
 		Visible,
@@ -350,7 +340,6 @@ private:
 
 	[[nodiscard]] const Data::StickersSetsOrder &defaultSetsOrder() const;
 	[[nodiscard]] Data::StickersSetsOrder &defaultSetsOrderRef();
-	void filterEffectsByEmoji(const std::vector<EmojiPtr> &emoji);
 
 	enum class AppendSkip {
 		None,
@@ -434,12 +423,10 @@ private:
 	std::unique_ptr<LocalStickersManager> _localSetsManager;
 	ChannelData *_megagroupSet = nullptr;
 	uint64 _megagroupSetIdRequested = 0;
-	std::vector<StickerCustomRecentDescriptor> _customRecentIds;
 	std::vector<Set> _mySets;
 	std::vector<Set> _searchSets;
 	std::vector<Set> _searchShortcutSets;
 	std::vector<bool> _custom;
-	std::vector<EmojiPtr> _cornerEmoji;
 	base::flat_set<not_null<DocumentData*>> _favedStickersMap;
 	std::weak_ptr<Lottie::FrameRenderer> _lottieRenderer;
 
@@ -449,7 +436,6 @@ private:
 
 	Section _section = Section::Stickers;
 	const bool _isMasks;
-	const bool _isEffects;
 	const uint64 _excludeSetId = 0;
 
 	base::Timer _updateItemsTimer;
@@ -487,8 +473,6 @@ private:
 	bool _previewShown = false;
 
 	std::vector<not_null<DocumentData*>> _filteredStickers;
-	std::vector<EmojiPtr> _filterStickersCornerEmoji;
-	rpl::variable<int> _recentShownCount;
 	std::map<QString, std::vector<uint64>> _searchSetsCache;
 	std::map<QString, std::vector<DocumentId>> _searchStickersCache;
 	std::map<QString, int> _searchStickersNextOffset;

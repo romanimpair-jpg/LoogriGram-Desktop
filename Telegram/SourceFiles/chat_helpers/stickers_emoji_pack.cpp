@@ -35,8 +35,12 @@ namespace Stickers {
 namespace {
 
 constexpr auto kRefreshTimeout = 7200 * crl::time(1000);
-constexpr auto kEmojiCachesCount = 4;
 constexpr auto kPremiumCachesCount = 8;
+
+// LoogriGram: EffectType told Premium sticker effects (1) from emoji
+// interactions (0) and message effects (2); only Premium sticker effects
+// are left (2026-10-04). The value stays part of their cache key.
+constexpr auto kPremiumEffectTag = uint8(1);
 
 [[nodiscard]] const Lottie::ColorReplacements *ColorReplacements(int index) {
 	Expects(index >= 1 && index <= 5);
@@ -155,12 +159,10 @@ auto EmojiPack::stickerForEmoji(const IsolatedEmoji &emoji) -> Sticker {
 std::unique_ptr<Lottie::SinglePlayer> EmojiPack::effectPlayer(
 		not_null<DocumentData*> document,
 		QByteArray data,
-		QString filepath,
-		EffectType type) {
+		QString filepath) {
 	// Shortened copy from stickers_lottie module.
 	const auto baseKey = document->bigFileBaseCacheKey();
-	const auto tag = uint8(type);
-	const auto keyShift = ((tag << 4) & 0xF0)
+	const auto keyShift = ((kPremiumEffectTag << 4) & 0xF0)
 		| (uint8(ChatHelpers::StickerLottieSize::EmojiInteraction) & 0x0F);
 	const auto key = Storage::Cache::Key{
 		baseKey.high,
@@ -179,22 +181,17 @@ std::unique_ptr<Lottie::SinglePlayer> EmojiPack::effectPlayer(
 				std::move(data));
 		});
 	};
-	const auto size = (type == EffectType::PremiumSticker)
-		? HistoryView::Sticker::PremiumEffectSize(document)
-		: HistoryView::Sticker::MessageEffectSize();
+	const auto size = HistoryView::Sticker::PremiumEffectSize(document);
 	const auto request = Lottie::FrameRequest{
 		size * style::DevicePixelRatio(),
 	};
-	auto &weakProvider = _sharedProviders[{ document, type }];
+	auto &weakProvider = _sharedProviders[document];
 	auto shared = [&] {
 		if (const auto result = weakProvider.lock()) {
 			return result;
 		}
-		const auto count = (type == EffectType::PremiumSticker)
-			? kPremiumCachesCount
-			: kEmojiCachesCount;
 		const auto result = Lottie::SinglePlayer::SharedProvider(
-			count,
+			kPremiumCachesCount,
 			get,
 			put,
 			Lottie::ReadContent(data, filepath),

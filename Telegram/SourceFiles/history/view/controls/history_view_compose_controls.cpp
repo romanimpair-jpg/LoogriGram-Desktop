@@ -3041,7 +3041,6 @@ void ComposeControls::setupSendMenu(
 	};
 	SendMenu::SetupMenuAndShortcuts(
 		button,
-		_show,
 		[=] { return sendButtonMenuDetails(); },
 		sendAction,
 		&_st.tabbed.menu,
@@ -3609,11 +3608,7 @@ SendMenu::Details ComposeControls::sendButtonMenuDetails() const {
 	} else if (type != Ui::SendButton::Type::Send) {
 		return SendMenu::Details();
 	}
-	auto result = sendMenuDetails();
-	if (!hasSendableContent() && !_previewShown) {
-		result.effectAllowed = false;
-	}
-	return result;
+	return sendMenuDetails();
 }
 
 void ComposeControls::updateSendButtonType() {

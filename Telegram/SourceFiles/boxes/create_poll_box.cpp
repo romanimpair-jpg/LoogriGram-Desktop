@@ -3281,7 +3281,6 @@ object_ptr<Ui::RpWidget> CreatePollBox::setupContent() {
 	};
 	SendMenu::SetupMenuAndShortcuts(
 		submit.data(),
-		_controller->uiShow(),
 		sendMenuDetails,
 		sendAction);
 	addButton(tr::lng_cancel(), [=] { closeBox(); });

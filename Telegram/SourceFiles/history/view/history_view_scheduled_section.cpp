@@ -969,12 +969,10 @@ SendMenu::Details ScheduledWidget::sendMenuDetails() const {
 		: HistoryView::CanScheduleUntilOnline(_history->peer)
 		? SendMenu::Type::ScheduledToUser
 		: SendMenu::Type::Scheduled;
-	const auto effectAllowed = _history->peer->isUser();
 	return {
 		.type = type,
 		.barePeerId = _history->peer->id.value,
 		.bareTopicRootId = _forumTopic ? _forumTopic->rootId().bare : 0,
-		.effectAllowed = effectAllowed,
 	};
 }
 

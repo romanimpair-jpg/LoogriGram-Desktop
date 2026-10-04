@@ -80,7 +80,6 @@ enum class EmojiListMode {
 	RecentReactions,
 	UserpicBuilder,
 	PeerTitle,
-	MessageEffects,
 	CustomOnly,
 };
 
@@ -154,9 +153,6 @@ public:
 
 	base::unique_qptr<Ui::PopupMenu> fillContextMenu(
 		const SendMenu::Details &details) override;
-
-	[[nodiscard]] rpl::producer<std::vector<QString>> searchQueries() const;
-	[[nodiscard]] rpl::producer<int> recentShownCount() const;
 
 protected:
 	void visibleTopBottomUpdated(
@@ -491,7 +487,6 @@ private:
 	std::vector<RecentOne> _recent;
 	base::flat_set<DocumentId> _recentCustomIds;
 	base::flat_set<uint64> _repaintsScheduled;
-	rpl::variable<int> _recentShownCount;
 	std::unique_ptr<Ui::Text::CustomEmojiPaintContext> _emojiPaintContext;
 	bool _recentPainted = false;
 	bool _grabbingChosen = false;
@@ -512,7 +507,6 @@ private:
 	bool _colorAllRippleForced = false;
 	rpl::lifetime _colorAllRippleForcedLifetime;
 
-	rpl::event_stream<std::vector<QString>> _searchQueries;
 	std::vector<QString> _nextSearchQuery;
 	std::vector<QString> _searchQuery;
 	QString _searchQueryText;

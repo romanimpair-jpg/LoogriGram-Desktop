@@ -431,7 +431,6 @@ void EditCaptionBox::prepare() {
 	};
 	SendMenu::SetupMenuAndShortcuts(
 		button,
-		nullptr,
 		details,
 		crl::guard(this, callback));
 

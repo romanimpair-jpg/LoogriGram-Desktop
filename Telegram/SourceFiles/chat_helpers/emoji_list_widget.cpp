@@ -598,7 +598,6 @@ void EmojiListWidget::setupSearch() {
 		InvokeQueued(this, [=] {
 			applyNextSearchQuery();
 		});
-		_searchQueries.fire_copy(_nextSearchQuery);
 	}, session, type);
 }
 
@@ -606,14 +605,6 @@ void EmojiListWidget::setSearchRightReserved(int value) {
 	if (_search) {
 		_search->setRightReserved(value);
 	}
-}
-
-rpl::producer<std::vector<QString>> EmojiListWidget::searchQueries() const {
-	return _searchQueries.events();
-}
-
-rpl::producer<int> EmojiListWidget::recentShownCount() const {
-	return _recentShownCount.value();
 }
 
 void EmojiListWidget::applyNextSearchQuery() {
@@ -650,9 +641,6 @@ void EmojiListWidget::applyNextSearchQuery() {
 			_searchShortcutsDragging = false;
 		}
 		resizeToWidth(width());
-		_recentShownCount = searching
-			? _searchResults.size()
-			: _recent.size();
 		update();
 		if (modeChanged) {
 			visibleTopBottomUpdated(getVisibleTop(), getVisibleBottom());
@@ -1095,7 +1083,6 @@ void EmojiListWidget::showSearchResults() {
 	}
 
 	resizeToWidth(width());
-	_recentShownCount = _searchResults.size();
 	update();
 	updateSelected();
 }
@@ -1609,8 +1596,7 @@ void EmojiListWidget::unloadCustomIn(const SectionInfo &info) {
 object_ptr<TabbedSelector::InnerFooter> EmojiListWidget::createFooter() {
 	Expects(_footer == nullptr);
 
-	if (_mode == EmojiListMode::RecentReactions
-		|| _mode == EmojiListMode::MessageEffects) {
+	if (_mode == EmojiListMode::RecentReactions) {
 		return { nullptr };
 	}
 
@@ -3214,7 +3200,7 @@ void EmojiListWidget::refreshRecent() {
 }
 
 void EmojiListWidget::refreshCustom() {
-	if (_mode == Mode::RecentReactions || _mode == Mode::MessageEffects) {
+	if (_mode == Mode::RecentReactions) {
 		return;
 	}
 	// Pin the section at the visible top across the rebuild.

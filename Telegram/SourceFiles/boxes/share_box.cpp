@@ -526,8 +526,7 @@ SendMenu::Details ShareBox::sendMenuDetails() const {
 		? SendMenu::Type::Reminder
 		: SendMenu::Type::Scheduled;
 
-	// We can't support effect here because we don't have ChatHelpers::Show.
-	return { .type = type, .effectAllowed = false };
+	return { .type = type };
 }
 
 void ShareBox::showMenu(not_null<Ui::RpWidget*> parent) {
@@ -586,7 +585,6 @@ void ShareBox::showMenu(not_null<Ui::RpWidget*> parent) {
 	_menu->setForcedVerticalOrigin(Ui::PopupMenu::VerticalOrigin::Bottom);
 	const auto result = FillSendMenu(
 		_menu.get(),
-		nullptr, // showForEffect.
 		sendMenuDetails(),
 		sendAction);
 	if (result == SendMenu::FillMenuResult::Prepared) {

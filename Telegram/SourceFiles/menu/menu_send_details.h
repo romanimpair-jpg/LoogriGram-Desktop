@@ -9,10 +9,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "ui/text/text_entity.h"
 
-namespace style {
-struct EmojiPan;
-} // namespace style
-
 namespace SendMenu {
 
 enum class Type : uchar {
@@ -55,8 +51,6 @@ struct Details {
 	CaptionState caption = CaptionState::None;
 	PhotoQualityState photoQuality = PhotoQualityState::None;
 	CoverState cover = CoverState::None;
-	const style::EmojiPan *effectsPan = nullptr;
-	bool effectAllowed = false;
 };
 
 } // namespace SendMenu

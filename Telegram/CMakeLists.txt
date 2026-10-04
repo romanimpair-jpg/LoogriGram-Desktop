@@ -954,8 +954,6 @@ PRIVATE
     history/view/history_view_element.h
     history/view/history_view_empty_list_bubble.cpp
     history/view/history_view_empty_list_bubble.h
-    history/view/history_view_fake_items.cpp
-    history/view/history_view_fake_items.h
     history/view/history_view_group_call_bar.cpp
     history/view/history_view_group_call_bar.h
     history/view/history_view_group_members_widget.cpp

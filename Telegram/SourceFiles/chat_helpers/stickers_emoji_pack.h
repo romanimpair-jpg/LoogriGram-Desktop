@@ -43,13 +43,6 @@ namespace Stickers {
 
 using IsolatedEmoji = Ui::Text::IsolatedEmoji;
 
-// LoogriGram: EmojiInteraction (0) is gone with emoji interactions; the
-// others keep their values, which are part of the effect cache keys.
-enum class EffectType : uint8 {
-	PremiumSticker = 1,
-	MessageEffect = 2,
-};
-
 class EmojiPack final {
 public:
 	using ViewElement = HistoryView::Element;
@@ -82,23 +75,10 @@ public:
 	[[nodiscard]] std::unique_ptr<Lottie::SinglePlayer> effectPlayer(
 		not_null<DocumentData*> document,
 		QByteArray data,
-		QString filepath,
-		EffectType type);
+		QString filepath);
 
 private:
 	class ImageLoader;
-
-	struct ProviderKey {
-		not_null<DocumentData*> document;
-		Stickers::EffectType type = {};
-
-		friend inline auto operator<=>(
-			const ProviderKey &,
-			const ProviderKey &) = default;
-		friend inline bool operator==(
-			const ProviderKey &,
-			const ProviderKey &) = default;
-	};
 
 	void refresh();
 	void refreshDelayed();
@@ -123,7 +103,7 @@ private:
 	base::flat_set<not_null<HistoryView::Element*>> _onlyCustomItems;
 
 	base::flat_map<
-		ProviderKey,
+		not_null<DocumentData*>,
 		std::weak_ptr<Lottie::FrameProvider>> _sharedProviders;
 
 	rpl::event_stream<> _refreshed;

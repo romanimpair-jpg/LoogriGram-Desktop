@@ -4563,7 +4563,6 @@ void HistoryWidget::setupSendMenu(
 	using namespace SendMenu;
 	SetupMenuAndShortcuts(
 		button,
-		controller()->uiShow(),
 		[=] { return sendButtonMenuDetails(); },
 		[=](Action value, Details details) {
 			if (value.type == ActionType::CaptionUp
@@ -4899,7 +4898,7 @@ void HistoryWidget::sendScheduled(Api::SendOptions initialOptions) {
 		HistoryView::PrepareScheduleBox(
 			_list,
 			controller()->uiShow(),
-			sendButtonDefaultDetails(),
+			sendMenuDetails(),
 			[=](Api::SendOptions options) { send(options); },
 			initialOptions));
 }
@@ -4914,11 +4913,9 @@ SendMenu::Details HistoryWidget::sendMenuDetails() const {
 		: HistoryView::CanScheduleUntilOnline(_peer)
 		? SendMenu::Type::ScheduledToUser
 		: SendMenu::Type::Scheduled;
-	const auto effectAllowed = _peer && _peer->isUser();
 	return {
 		.type = type,
 		.barePeerId = _peer ? _peer->id.value : 0,
-		.effectAllowed = effectAllowed,
 	};
 }
 
@@ -4956,16 +4953,11 @@ SendMenu::Details HistoryWidget::sendButtonMenuDetails() const {
 	} else if (type != Type::Send) {
 		return {};
 	}
-	return sendButtonDefaultDetails();
+	return sendMenuDetails();
 }
 
-SendMenu::Details HistoryWidget::sendButtonDefaultDetails() const {
-	auto result = sendMenuDetails();
-	if (!hasSendableContent() && !_previewDrawPreview) {
-		result.effectAllowed = false;
-	}
-	return result;
-}
+// LoogriGram: sendButtonDefaultDetails was sendMenuDetails() with the
+// effect picker turned off when there was nothing to send yet.
 
 void HistoryWidget::unblockUser() {
 	if (const auto user = _peer ? _peer->asUser() : nullptr) {

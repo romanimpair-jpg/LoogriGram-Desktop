@@ -24,7 +24,6 @@ namespace ChatHelpers {
 class Show;
 class TabbedPanel;
 class EmojiListWidget;
-class StickersListWidget;
 class StickersListFooter;
 enum class EmojiListMode;
 } // namespace ChatHelpers
@@ -103,12 +102,11 @@ public:
 	[[nodiscard]] bool useTransparency() const;
 
 	int countWidth(int desiredWidth, int maxWidth);
-	[[nodiscard]] int effectPreviewHeight() const;
 	[[nodiscard]] QMargins marginsForShadow() const;
 	[[nodiscard]] int extendTopForCategories() const;
 	[[nodiscard]] int extendTopForCategoriesAndAbout(int width) const;
 	[[nodiscard]] int opaqueExtendTopAbout(int width) const;
-	[[nodiscard]] int minimalHeight(int fullWidth) const;
+	[[nodiscard]] int minimalHeight() const;
 	[[nodiscard]] int countAppearedWidth(float64 progress) const;
 	void setSpecialExpandTopSkip(int skip);
 	void setBubbleUp(bool bubbleUp);
@@ -211,13 +209,11 @@ private:
 
 	Ui::ScrollArea *_scroll = nullptr;
 	ChatHelpers::EmojiListWidget *_list = nullptr;
-	ChatHelpers::StickersListWidget *_stickers = nullptr;
 	ChatHelpers::StickersListFooter *_footer = nullptr;
 	std::unique_ptr<UnifiedFactoryOwner> _unifiedFactoryOwner;
 	Ui::PlainShadow *_shadow = nullptr;
 	rpl::variable<int> _shadowTop = 0;
 	rpl::variable<int> _shadowSkip = 0;
-	bool _showEmptySearch = false;
 
 	QImage _paintBuffer;
 	Ui::Animations::Simple _expanding;

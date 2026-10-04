@@ -441,8 +441,7 @@ void MediaPreviewWidget::setupLottie() {
 		_effect = _document->session().emojiStickersPack().effectPlayer(
 			_document,
 			_documentMedia->videoThumbnailContent(),
-			QString(),
-			Stickers::EffectType::PremiumSticker);
+			QString());
 	} else {
 		const auto size = currentDimensions();
 		_lottie = std::make_unique<Lottie::SinglePlayer>(

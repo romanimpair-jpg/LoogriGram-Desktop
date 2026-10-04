@@ -1834,7 +1834,6 @@ void MusicAttachBox(
 			});
 			SendMenu::SetupMenuAndShortcuts(
 				send.data(),
-				show,
 				[=] {
 					return state->selection.empty()
 						? SendMenu::Details()
