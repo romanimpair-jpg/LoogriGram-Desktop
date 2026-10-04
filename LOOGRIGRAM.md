@@ -43,7 +43,9 @@ Upstream's ucrt64 switch was tried and reverted (`6b3c48e7d1`,
 `d4958b8bab`) - the rule is to stop following upstream until something
 breaks, and then to freeze, not to adopt. The dependencies are now frozen
 (`dd0ea5658d`, see Building, "Frozen dependencies"), and the build was
-re-run as 37158363951 - **not reported when this was written**. Every other
+re-run as 37158363951: it rebuilt every library, compiled and linked green,
+and then **failed to publish** (HTTP 403 creating the release's tag - CI
+lesson 11), so there is no `gdd0ea56` release. Every other
 dependency was frozen on 2026-10-04 (`eb81ed044d`). The reverse parity audit
 - Android's 337 commits against this tree - ran the same day and found four
 gaps, all mirrored here the same day: Telegram's help links, a verifier
@@ -502,6 +504,13 @@ A hosted image's build cannot be pinned, only its label; `validate` prints
 the one a run got. The same goes for the image's VS: the toolset is pinned
 to 14.44, the rest of the installation is the image's.
 
+Run 37158363951 (2026-10-04) rebuilt every library after the caches were
+evicted, and is the last good dependency build now: its python stage got
+meson 1.12.1, which is the pin since `73faf2f20d`. **Still floating** - the
+image's own tools, which the dependency stages use: CMake (4.4 then), Git
+(2.55) and Strawberry's tools (`ccache` was picked up from it). Pinning
+them is owed.
+
 ### The incremental build tree
 
 A full compile is ~2 hours for 2157 objects; with a warm tree cache a
@@ -597,6 +606,15 @@ Each of these burned at least one multi-hour build.
 10. **`ninja -k 0`** is set so one run reports every compile error rather than
     stopping at the first. The linker only runs once everything compiles, so
     expect link errors to surface one build later.
+11. **Tag the release at the start of the run.** 37158363951 built for four
+    hours and then `gh release create` got HTTP 403 "Resource not accessible
+    by integration" with a token that had `contents: write`: commits had been
+    pushed to `patches` meanwhile, so the built commit was no longer the
+    branch head (and it changed `win.yml`). Every release that published,
+    on either client, was tagged while its commit was the head. "Tag the
+    build." now creates `g<sha>` right after the configuration check and
+    "Publish release." uses `--verify-tag` (`6120b243e6`); the cache run's
+    `deps-trees` release is tagged at `dev`'s head.
 
 ### Debugging, and how not to waste builds
 
