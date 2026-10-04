@@ -14,7 +14,7 @@ One switch in the main menu, next to Night Mode.
 
 - No "typing…" or other activity indicators are sent. Speaking in a group call still shows.
 - You always appear offline.
-- It sets **Last Seen** to *Nobody* and turns on **hide read time** on the server, once when an account first logs in and again each time you switch ghost mode on. Turning ghost mode off doesn't change them back, and your exception lists are left as they are.
+- It sets **Last Seen** to *Nobody* and turns on **hide read time** on the server, once when an account first logs in and again each time you switch ghost mode on. People on your Last Seen "Always share with" list keep seeing it. Turning ghost mode off doesn't change either setting back.
 
 **Read receipts are still sent.** Telegram uses the same request both to tell the sender you've read a message and to sync your read position to your other devices, so blocking it made everything read on the desktop show up unread on the phone. Hiding the read *time* is the part that can be had without breaking sync.
 
