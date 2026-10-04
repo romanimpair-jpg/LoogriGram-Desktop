@@ -46,12 +46,12 @@ struct ActivateArgs {
 // unreachable: one asked premium() && !premium(), which is a
 // contradiction here, and the other asked premiumCanBuy() outright.
 // LowCreditsSubs at 5, a warning that the stars balance would not cover
-// the next channel subscription renewal, went with the balance. The
-// numbers are a sort order rather than an index, so the gaps are harmless and
-// the rest keep their relative places.
+// the next channel subscription renewal, went with the balance.
+// UserpicSetup at 1 and BirthdaySetup at 3, "Add your photo" and "Add your
+// birthday", went on 2026-10-04 with Android's. The numbers are a sort order
+// rather than an index, so the gaps are harmless and the rest keep their
+// relative places.
 enum class Priority : int {
-	UserpicSetup     = 1,
-	BirthdaySetup    = 3,
 	CustomPromo      = 7,
 	UnreviewedAuth   = 9,
 };
@@ -60,15 +60,14 @@ struct Spec {
 	Priority priority = Priority{};
 	Fn<bool(const Context&)> available;
 	Fn<void(ActivateArgs)> activate;
-	bool dayDependent = false;
+	// LoogriGram: dayDependent re-showed a suggestion when the date changed;
+	// only "Add your birthday" asked for it.
 };
 
 [[nodiscard]] std::vector<Spec> AllSpecs();
 
-[[nodiscard]] Spec MakeBirthdaySetupSpec();
 [[nodiscard]] Spec MakeCustomPromoSpec();
 [[nodiscard]] Spec MakeUnreviewedAuthSpec();
-[[nodiscard]] Spec MakeUserpicSetupSpec();
 
 } // namespace TopBarSuggestions
 } // namespace Dialogs

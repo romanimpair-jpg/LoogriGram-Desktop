@@ -763,10 +763,8 @@ PRIVATE
     dialogs/dialogs_top_bar_suggestion_test.cpp
     dialogs/suggestions/suggestion.cpp
     dialogs/suggestions/suggestion.h
-    dialogs/suggestions/suggestion_birthday_setup.cpp
     dialogs/suggestions/suggestion_custom_promo.cpp
     dialogs/suggestions/suggestion_unreviewed_auth.cpp
-    dialogs/suggestions/suggestion_userpic_setup.cpp
     dialogs/dialogs_widget.cpp
     dialogs/dialogs_widget.h
     editor/color_picker.cpp
