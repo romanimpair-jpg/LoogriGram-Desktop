@@ -1104,8 +1104,6 @@ PRIVATE
     info/profile/info_profile_actions.h
     info/profile/info_profile_badge.cpp
     info/profile/info_profile_badge.h
-    info/profile/info_profile_birthday_effect.cpp
-    info/profile/info_profile_birthday_effect.h
     info/profile/info_profile_cover.cpp
     info/profile/info_profile_cover.h
     info/profile/info_profile_inner_widget.cpp

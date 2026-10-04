@@ -64,7 +64,6 @@ public:
 		not_null<Ui::RpWidget*> parent);
 
 	void enableBackButton();
-	void showFinished();
 	void checkBeforeCloseByEscape(Fn<void()> close);
 	[[nodiscard]] bool searchAvailable() const;
 	void showSearch();
@@ -114,7 +113,6 @@ private:
 	rpl::variable<bool> _backToggles;
 	rpl::event_stream<> _backClicks;
 	rpl::event_stream<int> _onlineCount;
-	rpl::event_stream<> _showFinished;
 
 	std::shared_ptr<Data::PhotoMedia> _nonPersonalView;
 

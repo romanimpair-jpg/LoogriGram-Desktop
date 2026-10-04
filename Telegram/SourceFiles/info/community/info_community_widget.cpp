@@ -41,7 +41,6 @@ public:
 
 	[[nodiscard]] rpl::producer<> backRequest() const;
 	void enableBackButton();
-	void showFinished();
 
 	[[nodiscard]] bool hasFlexibleTopBar() const;
 	base::weak_qptr<Ui::RpWidget> createPinnedToTop(
@@ -55,7 +54,6 @@ private:
 
 	rpl::variable<bool> _backToggles;
 	rpl::event_stream<> _backClicks;
-	rpl::event_stream<> _showFinished;
 
 };
 
@@ -88,10 +86,6 @@ rpl::producer<> InnerWidget::backRequest() const {
 
 void InnerWidget::enableBackButton() {
 	_backToggles.force_assign(true);
-}
-
-void InnerWidget::showFinished() {
-	_showFinished.fire({});
 }
 
 bool InnerWidget::hasFlexibleTopBar() const {
@@ -136,7 +130,6 @@ base::weak_qptr<Ui::RpWidget> InnerWidget::createPinnedToTop(
 			.source = Profile::TopBar::Source::Community,
 			.peer = _peer,
 			.backToggles = _backToggles.value(),
-			.showFinished = _showFinished.events(),
 			.customStatus = chatsStatusValue(),
 		});
 	content->backRequest(
@@ -265,10 +258,6 @@ std::unique_ptr<Ui::RpWidget> Widget::setupAddChatButton() {
 
 void Widget::enableBackButton() {
 	_inner->enableBackButton();
-}
-
-void Widget::showFinished() {
-	_inner->showFinished();
 }
 
 rpl::producer<QString> Widget::title() {

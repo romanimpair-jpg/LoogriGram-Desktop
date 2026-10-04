@@ -295,9 +295,6 @@ infoLayerTopBarMenuPosition: point(48px, 37px);
 
 infoProfileTopBarHeightMax: 180px + infoLayerTopBarHeight;
 
-infoProfileBirthdayConfettiSize: 360px;
-infoProfileBirthdayDigitSize: 64px;
-
 infoProfileTopBarActionButtonBgOpacity: 0.16;
 infoProfileTopBarBackdropRippleOpacity: 0.125;
 infoProfileTopBarActionButtonSize: 52px;

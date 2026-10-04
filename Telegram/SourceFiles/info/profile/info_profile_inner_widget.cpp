@@ -541,10 +541,6 @@ void InnerWidget::enableBackButton() {
 	_backToggles.force_assign(true);
 }
 
-void InnerWidget::showFinished() {
-	_showFinished.fire({});
-}
-
 void InnerWidget::checkBeforeCloseByEscape(Fn<void()> close) {
 	if (const auto top = _topBar.get()) {
 		top->checkBeforeCloseByEscape(std::move(close));
@@ -578,7 +574,6 @@ base::weak_qptr<Ui::RpWidget> InnerWidget::createPinnedToTop(
 			.wrap = _controller->wrapValue(),
 			.peer = _sublist ? _sublist->sublistPeer().get() : nullptr,
 			.backToggles = _backToggles.value(),
-			.showFinished = _showFinished.events(),
 			.customStatus = (_savedMessages
 				? SavedChatsCountStatus(&_peer->session())
 				: rpl::producer<TextWithEntities>()),

@@ -91,7 +91,6 @@ public:
 
 	void setInnerFocus() override;
 	void enableBackButton() override;
-	void showFinished() override;
 	void checkBeforeCloseByEscape(Fn<void()> close) override;
 	bool searchAvailable() const override;
 	void showSearch() override;

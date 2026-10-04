@@ -48,7 +48,6 @@ public:
 		not_null<Memento*> memento);
 
 	void enableBackButton() override;
-	void showFinished() override;
 
 	rpl::producer<QString> title() override;
 

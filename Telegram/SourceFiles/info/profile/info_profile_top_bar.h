@@ -95,7 +95,6 @@ public:
 		Source source = Source::Profile;
 		PeerData *peer = nullptr;
 		rpl::producer<bool> backToggles;
-		rpl::producer<> showFinished;
 		rpl::producer<TextWithEntities> customStatus;
 	};
 
@@ -155,7 +154,6 @@ private:
 		not_null<Window::SessionController*> controller,
 		const Ui::Menu::MenuCallback &addAction);
 	void setupUserpicButton(not_null<Window::SessionController*> controller);
-	void setupBirthdayEffect();
 	void startUploadOverlay();
 	void setupActions(not_null<Window::SessionController*> controller);
 	void searchInCommunity(not_null<Window::SessionController*> controller);

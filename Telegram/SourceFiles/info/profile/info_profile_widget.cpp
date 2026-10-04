@@ -300,10 +300,6 @@ void Widget::enableBackButton() {
 	_inner->enableBackButton();
 }
 
-void Widget::showFinished() {
-	_inner->showFinished();
-}
-
 void Widget::checkBeforeCloseByEscape(Fn<void()> close) {
 	_inner->checkBeforeCloseByEscape([=] {
 		ContentWidget::checkBeforeCloseByEscape(close);

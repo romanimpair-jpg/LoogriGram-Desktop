@@ -46,7 +46,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "info/info_memento.h"
 #include "info/profile/info_profile_badge.h"
-#include "info/profile/info_profile_birthday_effect.h"
 #include "info/profile/info_profile_cover.h" // TopicIconView
 #include "info/profile/info_profile_status_label.h"
 #include "info/profile/info_profile_top_bar_action_button.h"
@@ -459,42 +458,13 @@ TopBar::TopBar(
 		updateCollectibleStatus();
 	}, lifetime());
 
-	std::move(
-		descriptor.showFinished
-	) | rpl::take(1) | rpl::on_next([=] {
-		setupBirthdayEffect();
-	}, lifetime());
+	// LoogriGram: on its owner's birthday, balloons were started over the
+	// userpic once the profile finished showing (setupBirthdayEffect). The
+	// user's decision, 2026-10-04: no big animations; the date still shows.
 
 	if (_forumButton) {
 		_forumButton->show();
 	}
-}
-
-void TopBar::setupBirthdayEffect() {
-	const auto user = _peer->asUser();
-	if (!user || !Data::IsBirthdayToday(user->birthday())) {
-		return;
-	} else if (_wrap.current() == Wrap::Side) {
-		return;
-	}
-	const auto container = static_cast<Ui::RpWidget*>(parentWidget());
-	if (!container) {
-		return;
-	}
-	StartProfileBirthdayEffect(
-		container,
-		user,
-		[weak = base::make_weak(this)] {
-			const auto strong = weak.get();
-			if (!strong) {
-				return QRect();
-			}
-			const auto geometry = strong->userpicGeometry();
-			return QRect(
-				strong->mapToParent(geometry.topLeft()),
-				geometry.size());
-		},
-		_gifPausedChecker);
 }
 
 void TopBar::adjustColors(const std::optional<QColor> &edgeColor) {
