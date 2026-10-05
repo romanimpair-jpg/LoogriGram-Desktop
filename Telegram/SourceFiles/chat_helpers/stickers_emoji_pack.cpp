@@ -24,8 +24,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "base/call_delayed.h"
 #include "chat_helpers/stickers_lottie.h"
-#include "history/view/media/history_view_sticker.h"
-#include "lottie/lottie_single_player.h"
 #include "apiwrap.h"
 #include "styles/style_chat.h"
 
@@ -35,12 +33,6 @@ namespace Stickers {
 namespace {
 
 constexpr auto kRefreshTimeout = 7200 * crl::time(1000);
-constexpr auto kPremiumCachesCount = 8;
-
-// LoogriGram: EffectType told Premium sticker effects (1) from emoji
-// interactions (0) and message effects (2); only Premium sticker effects
-// are left (2026-10-04). The value stays part of their cache key.
-constexpr auto kPremiumEffectTag = uint8(1);
 
 [[nodiscard]] const Lottie::ColorReplacements *ColorReplacements(int index) {
 	Expects(index >= 1 && index <= 5);
@@ -154,53 +146,6 @@ auto EmojiPack::stickerForEmoji(const IsolatedEmoji &emoji) -> Sticker {
 		return stickerForEmoji(*regular);
 	}
 	return {};
-}
-
-std::unique_ptr<Lottie::SinglePlayer> EmojiPack::effectPlayer(
-		not_null<DocumentData*> document,
-		QByteArray data,
-		QString filepath) {
-	// Shortened copy from stickers_lottie module.
-	const auto baseKey = document->bigFileBaseCacheKey();
-	const auto keyShift = ((kPremiumEffectTag << 4) & 0xF0)
-		| (uint8(ChatHelpers::StickerLottieSize::EmojiInteraction) & 0x0F);
-	const auto key = Storage::Cache::Key{
-		baseKey.high,
-		baseKey.low + keyShift
-	};
-	const auto get = [=](int i, FnMut<void(QByteArray &&cached)> handler) {
-		document->owner().cacheBigFile().get(
-			{ key.high, key.low + i },
-			std::move(handler));
-	};
-	const auto weak = base::make_weak(&document->session());
-	const auto put = [=](int i, QByteArray &&cached) {
-		crl::on_main(weak, [=, data = std::move(cached)]() mutable {
-			weak->data().cacheBigFile().put(
-				{ key.high, key.low + i },
-				std::move(data));
-		});
-	};
-	const auto size = HistoryView::Sticker::PremiumEffectSize(document);
-	const auto request = Lottie::FrameRequest{
-		size * style::DevicePixelRatio(),
-	};
-	auto &weakProvider = _sharedProviders[document];
-	auto shared = [&] {
-		if (const auto result = weakProvider.lock()) {
-			return result;
-		}
-		const auto result = Lottie::SinglePlayer::SharedProvider(
-			kPremiumCachesCount,
-			get,
-			put,
-			Lottie::ReadContent(data, filepath),
-			request,
-			Lottie::Quality::High);
-		weakProvider = result;
-		return result;
-	}();
-	return std::make_unique<Lottie::SinglePlayer>(std::move(shared), request);
 }
 
 void EmojiPack::refresh() {

@@ -43,7 +43,6 @@ namespace {
 
 constexpr auto kMaxSizeFixed = 512;
 constexpr auto kMaxEmojiSizeFixed = 256;
-constexpr auto kPremiumMultiplier = (1 + 0.245 * 2);
 
 base::options::option<int> OptionStickerSize({
 	.id = "sticker-size",
@@ -192,10 +191,6 @@ QSize Sticker::Size() {
 
 QSize Sticker::Size(not_null<DocumentData*> document) {
 	return DownscaledSize(document->dimensions, Size());
-}
-
-QSize Sticker::PremiumEffectSize(not_null<DocumentData*> document) {
-	return Size(document) * kPremiumMultiplier;
 }
 
 QSize Sticker::EmojiSize() {

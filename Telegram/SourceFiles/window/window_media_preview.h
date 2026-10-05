@@ -65,7 +65,6 @@ private:
 	void fillEmojiString();
 	void resetGifAndCache();
 	[[nodiscard]] QPoint innerPosition(QSize size) const;
-	[[nodiscard]] QPoint outerPosition(QSize size) const;
 	[[nodiscard]] QRect updateArea() const;
 
 	not_null<Window::SessionController*> _controller;
@@ -81,7 +80,6 @@ private:
 	bool _gifWithAlpha = false;
 	crl::time _gifLastPosition = 0;
 	std::unique_ptr<Lottie::SinglePlayer> _lottie;
-	std::unique_ptr<Lottie::SinglePlayer> _effect;
 
 	int _emojiSize;
 	std::vector<not_null<EmojiPtr>> _emojiList;

@@ -7,15 +7,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_media_preview.h"
 
-#include "chat_helpers/stickers_emoji_pack.h"
-#include "chat_helpers/stickers_lottie.h"
 #include "data/data_document_media.h"
 #include "data/data_document.h"
 #include "data/data_photo_media.h"
 #include "data/data_photo.h"
 #include "data/data_session.h"
 #include "data/stickers/data_stickers.h"
-#include "history/view/media/history_view_sticker.h"
 #include "lottie/lottie_single_player.h"
 #include "main/main_session.h"
 #include "ui/emoji_config.h"
@@ -31,9 +28,6 @@ namespace Window {
 namespace {
 
 constexpr auto kStickerPreviewEmojiLimit = 10;
-constexpr auto kPremiumShift = 21. / 240;
-constexpr auto kPremiumMultiplier = (1 + 0.245 * 2);
-constexpr auto kPremiumDownscale = 1.25;
 
 } // namespace
 
@@ -62,17 +56,11 @@ QRect MediaPreviewWidget::updateArea() const {
 	const auto position = QPoint(
 		(width() - size.width()) / 2,
 		(height() - size.height()) / 2 + _contentShiftY);
-	const auto premium = _document && _document->isPremiumSticker();
 	const auto adjusted = position
-		- (premium
-			? QPoint(
-				size.width() - (size.width() / 2),
-				size.height() / 2)
-			: QPoint())
 		+ (!_customPadding.isNull()
 			? QPoint(0, _customPadding.top())
 			: QPoint());
-	return QRect(adjusted, size * (premium ? 2 : 1));
+	return QRect(adjusted, size);
 }
 
 void MediaPreviewWidget::paintEvent(QPaintEvent *e) {
@@ -97,15 +85,7 @@ void MediaPreviewWidget::paintEvent(QPaintEvent *e) {
 				: QColor(0, 0, 0, 0)),
 		})
 		: Lottie::Animation::FrameInfo();
-	const auto effect = (_effect && _effect->ready())
-		? _effect->frameInfo({ dimensions * kPremiumMultiplier * factor })
-		: Lottie::Animation::FrameInfo();
 	const auto image = frame.image;
-	const auto effectImage = effect.image;
-	//const auto framesCount = !image.isNull() ? _lottie->framesCount() : 1;
-	//const auto effectsCount = !effectImage.isNull()
-	//	? _effect->framesCount()
-	//	: 1;
 	const auto pixmap = image.isNull() ? currentImage() : QPixmap();
 	const auto size = image.isNull() ? pixmap.size() : image.size();
 	const auto w = size.width() / factor;
@@ -142,11 +122,6 @@ void MediaPreviewWidget::paintEvent(QPaintEvent *e) {
 	} else {
 		p.drawImage(QRect(position, QSize(w, h)), image);
 	}
-	if (!effectImage.isNull()) {
-		p.drawImage(
-			QRect(outerPosition({ w, h }), effectImage.size() / factor),
-			effectImage);
-	}
 	if (!_emojiList.empty()) {
 		const auto emojiCount = _emojiList.size();
 		const auto emojiWidth = (emojiCount * _emojiSize)
@@ -163,13 +138,8 @@ void MediaPreviewWidget::paintEvent(QPaintEvent *e) {
 			emojiLeft += _emojiSize + st::stickerEmojiSkip;
 		}
 	}
-	if (!frame.image.isNull()/*
-		&& (!_effect || ((frame.index % effectsCount) <= effect.index))*/) {
+	if (!frame.image.isNull()) {
 		_lottie->markFrameShown();
-	}
-	if (!effect.image.isNull()/*
-		&& ((effect.index % framesCount) <= frame.index)*/) {
-		_effect->markFrameShown();
 	}
 }
 
@@ -178,24 +148,12 @@ void MediaPreviewWidget::resizeEvent(QResizeEvent *e) {
 }
 
 QPoint MediaPreviewWidget::innerPosition(QSize size) const {
-	if (!_document || !_document->isPremiumSticker()) {
-		return QPoint(
-			(width() - size.width()) / 2,
-			(height() - size.height()) / 2 + _contentShiftY);
-	}
-	const auto outer = size * kPremiumMultiplier;
-	const auto shift = size.width() * kPremiumShift;
-	return outerPosition(size)
-		+ QPoint(
-			outer.width() - size.width() - shift,
-			(outer.height() - size.height()) / 2);
-}
-
-QPoint MediaPreviewWidget::outerPosition(QSize size) const {
-	const auto outer = size * kPremiumMultiplier;
+	// LoogriGram: a Premium sticker was drawn smaller and to one side, with
+	// its effect playing around it (kPremiumMultiplier, outerPosition). The
+	// user's decision, 2026-10-05: not in the preview either.
 	return QPoint(
-		(width() - outer.width()) / 2,
-		(height() - outer.height()) / 2 + _contentShiftY);
+		(width() - size.width()) / 2,
+		(height() - size.height()) / 2 + _contentShiftY);
 }
 
 void MediaPreviewWidget::showPreview(
@@ -215,7 +173,10 @@ void MediaPreviewWidget::showPreview(
 	_document = document;
 	_documentMedia = _document->createMediaView();
 	_documentMedia->thumbnailWanted(_origin);
-	_documentMedia->videoThumbnailWanted(_origin);
+	if (!_document->isPremiumSticker()) {
+		// A Premium sticker's video thumbnail is its effect.
+		_documentMedia->videoThumbnailWanted(_origin);
+	}
 	_documentMedia->automaticLoad(_origin, nullptr);
 	fillEmojiString();
 	resetGifAndCache();
@@ -291,7 +252,6 @@ void MediaPreviewWidget::fillEmojiString() {
 
 void MediaPreviewWidget::resetGifAndCache() {
 	_lottie = nullptr;
-	_effect = nullptr;
 	_gif.reset();
 	_gifThumbnail.reset();
 	_gifLastPosition = 0;
@@ -379,9 +339,6 @@ QSize MediaPreviewWidget::currentDimensions() const {
 			: st::maxStickerSize;
 		if (_document->sticker()) {
 			box = QSize(max, max);
-			if (_document->isPremiumSticker()) {
-				result = (box /= kPremiumDownscale);
-			}
 		} else {
 			box = QSize(2 * max, 2 * max);
 		}
@@ -418,9 +375,6 @@ void MediaPreviewWidget::createLottieIfReady(
 		|| _lottie
 		|| !_documentMedia->loaded()) {
 		return;
-	} else if (document->isPremiumSticker()
-		&& _documentMedia->videoThumbnailContent().isEmpty()) {
-		return;
 	}
 	const_cast<MediaPreviewWidget*>(this)->setupLottie();
 }
@@ -429,41 +383,21 @@ void MediaPreviewWidget::setupLottie() {
 	Expects(_document != nullptr);
 
 	const auto factor = style::DevicePixelRatio();
-	if (_document->isPremiumSticker()) {
-		const auto size = HistoryView::Sticker::Size(_document);
-		_cachedSize = size;
-		_lottie = ChatHelpers::LottiePlayerFromDocument(
-			_documentMedia.get(),
-			nullptr,
-			ChatHelpers::StickerLottieSize::MessageHistory,
-			size * factor,
-			Lottie::Quality::High);
-		_effect = _document->session().emojiStickersPack().effectPlayer(
-			_document,
-			_documentMedia->videoThumbnailContent(),
-			QString());
-	} else {
-		const auto size = currentDimensions();
-		_lottie = std::make_unique<Lottie::SinglePlayer>(
-			Lottie::ReadContent(
-				_documentMedia->bytes(),
-				_document->filepath()),
-			Lottie::FrameRequest{ size * factor },
-			Lottie::Quality::High);
-	}
+	const auto size = currentDimensions();
+	_lottie = std::make_unique<Lottie::SinglePlayer>(
+		Lottie::ReadContent(
+			_documentMedia->bytes(),
+			_document->filepath()),
+		Lottie::FrameRequest{ size * factor },
+		Lottie::Quality::High);
 
-	const auto handler = [=](Lottie::Update update) {
+	_lottie->updates() | rpl::on_next([=](Lottie::Update update) {
 		v::match(update.data, [&](const Lottie::Information &) {
 			this->update();
 		}, [&](const Lottie::DisplayFrameRequest &) {
 			this->update(updateArea());
 		});
-	};
-
-	_lottie->updates() | rpl::on_next(handler, lifetime());
-	if (_effect) {
-		_effect->updates() | rpl::on_next(handler, lifetime());
-	}
+	}, lifetime());
 }
 
 QPixmap MediaPreviewWidget::currentImage() const {

@@ -89,8 +89,6 @@ public:
 
 	[[nodiscard]] static QSize Size();
 	[[nodiscard]] static QSize Size(not_null<DocumentData*> document);
-	[[nodiscard]] static QSize PremiumEffectSize(
-		not_null<DocumentData*> document);
 	[[nodiscard]] static QSize EmojiSize();
 	[[nodiscard]] static ClickHandlerPtr ShowSetHandler(
 		not_null<DocumentData*> document);
