@@ -14,7 +14,7 @@ file disagree, this file wins on anything fork-specific.
 ## Status (2026-09-20)
 
 **Finished and conserved.** Every planned removal is done, the tree builds
-green, and the installed app is `g7b24c5a` (run `35459450326`), in daily use.
+green, and the release then was `g7b24c5a` (run `35459450326`).
 Work has moved to Android; see `loogrigram-android/LOOGRIGRAM.md`.
 
 | | |
@@ -50,8 +50,11 @@ dependency was frozen on 2026-10-04 (`eb81ed044d`). The reverse parity audit
 - Android's 337 commits against this tree - ran the same day and found four
 gaps, all mirrored here the same day: Telegram's help links, a verifier
 bot's note, the updater's hourly re-check, and picking or finding a
-location (see "Removed" and "Our own updater"). **None of them has been
-compiled yet**: they ride the next full build.
+location (see "Removed" and "Our own updater"). Those four and the
+trending, setup-hint, branding and big-animation removals that followed
+shipped together as **`g172a044`** (full build 37320472258, green,
+2026-10-05), the first release since `g7b24c5a`. The app takes it through its
+own updater.
 
 ---
 
@@ -460,13 +463,6 @@ the updater row, `TranscribeTrialsOver`, `PaidMessagesLocked`), never as
 
 ## Open and known
 
-- **Not built since `dd0ea5658d`.** Every desktop commit after it - the
-  trending, setup-hint, branding and big-animation removals - has only been
-  checked by the tools, never compiled. The big-animation ones rewrote
-  signatures across many files (`FillSendMenu`, `SetupMenuAndShortcuts`,
-  `ScheduleBox`, `StickerPlayer::frame`, `PaintStickerThumbnailPath`,
-  `Sticker`'s constructor, `HistoryItem::markContentsRead`), so expect the
-  first build to need a round of fixes.
 - **Media takes a beat to start loading.** Opening a channel pauses before
   photos load, and a video pauses before it downloads; not felt in the
   official client. Measured with `-debug` (logs land in `app\DebugLogs\`):
