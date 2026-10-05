@@ -291,8 +291,10 @@ All deleted, not gated. Roughly in the order they were done.
   (`cbdf5aac89`); and `Ui::ReactionFlyAnimation` with
   `Ui::EmojiFlyAnimation` - the burst on inline reactions, the manager's
   overlay, the reactions settings box's fly, video-chat reaction messages and
-  the topic icon's fly (`6d1b3e4547`). The long-press sticker preview keeps
-  its Premium effect, as on Android. `effectIconGeometry` survives as
+  the topic icon's fly (`6d1b3e4547`). The long-press sticker preview kept
+  its Premium effect until the user's 2026-10-05 "remove" (`cb712935e5`, with
+  `EmojiPack::effectPlayer`, the last effect player; Android `c92ece7f`).
+  `effectIconGeometry` survives as
   `Element::bottomInfoAnchor`, which the scheduled section's processing-video
   tooltip points at.
 
