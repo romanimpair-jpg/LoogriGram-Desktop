@@ -588,12 +588,6 @@ PRIVATE
     ui/ui_pch.h
 )
 
-nice_target_sources(td_ui ${res_loc}
-PRIVATE
-    picker_html/picker.css
-    picker_html/picker.js
-)
-
 if (DESKTOP_APP_SPECIAL_TARGET)
     remove_target_sources(td_ui ${src_loc}
         ui/controls/window_outdated_bar_dummy.cpp

@@ -754,7 +754,7 @@ something still named a deleted file. Check all four:
 | Where | How it names the file |
 |---|---|
 | `Telegram/CMakeLists.txt` | path relative to `SourceFiles` |
-| `Telegram/cmake/*.cmake` | **a separate list** — `td_ui.cmake` holds the UI sources |
+| `Telegram/cmake/*.cmake` | **a separate list** — `td_ui.cmake` holds the UI sources, and **resources too**: a `nice_target_sources(... ${res_loc} ...)` block, relative to `Resources` |
 | `*.qrc` | path relative to the qrc |
 | `*.style` | **bare icon name**, no extension, and **no platform guard** |
 
@@ -763,7 +763,10 @@ macOS-only icon breaks the *Windows* build; the fix is to delete the style
 entry, not restore the asset. `generate_models.cmake` bakes every `*.obj`
 under `Resources/art` into `.binobj`, so a `.obj` with no apparent reader is
 a build input. `loogrigram-tools/check_lists.py` covers the first three and
-the icon names.
+the icon names, but not resource blocks: `680eee9198` deleted
+`picker_html/picker.{css,js}` and left them in `td_ui.cmake`, which killed
+build 37278372498 in configure. `check_deleted_refs.py <base>` searches the
+whole tree for anything deleted since `<base>`; run it before a build.
 
 ### Scripted edits are the biggest source of self-inflicted damage
 
@@ -813,6 +816,7 @@ the icon names.
 | Script | Does |
 |---|---|
 | `check_lists.py` | every source in CMake lists and `.qrc` files exists; every icon a `.style` names resolves. Two lib_base false positives (`base_windows_safe_library.*`) are known. |
+| `check_deleted_refs.py <base>` | every file deleted since `<base>` that anything still names: CMake source and resource lists, `.qrc`, `.style`, `#include`s |
 | `check_orphan_heads.py <base>` | declaration heads left glued to the next definition by a removal, against a base commit |
 | `check_styles.py` | what the style codegen would reject: undefined types, parents, fields and names |
 | `unused_styles.py <file.style>` | style entries nothing reaches. Verify with grep; `colorIndex*` are upstream's deliberate `[[maybe_unused]]` |
