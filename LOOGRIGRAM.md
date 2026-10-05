@@ -564,8 +564,9 @@ meson 1.12.1, which is the pin since `73faf2f20d`.
 
 - **The image's own tools** (`028979d4ce`, 2026-10-04, the user's "pin
   everything"): "Pinned tools." fetches CMake 4.4.3, Ninja 1.13.2,
-  Strawberry Perl 5.42.0.1 (`perl\`, and `c\bin\` for the `ccache` meson
-  wraps compilers in), MinGit 2.55.0.windows.5 and GitHub CLI 2.101.0 - the
+  Strawberry Perl 5.42.0.1 (`perl\`, and from `c\bin\` only the `ccache`
+  meson wraps compilers in, with its five DLLs - trap 12), MinGit
+  2.55.0.windows.5 and GitHub CLI 2.101.0 - the
   versions 37158363951 used - checks each against the SHA-256 GitHub records
   for the asset and puts it first on PATH; "Check the pinned tools." stops
   the run if any resolves elsewhere after vcvars. Python: CMake's FindPython
@@ -683,6 +684,17 @@ Each of these burned at least one multi-hour build.
     build." now creates `g<sha>` right after the configuration check and
     "Publish release." uses `--verify-tag` (`6120b243e6`); the cache run's
     `deps-trees` release is tagged at `dev`'s head.
+12. **A pinned tool's folder can shadow the compiler.** "Pinned tools."
+    first unpacked all of Strawberry's `c\bin\` for `ccache`, and GitHub
+    puts `GITHUB_PATH` entries in front of what vcvars sets, so its `gcc.exe`
+    (unpacked without `cc1`) stood before VS's `cl.exe`. CMake's compiler
+    search walks PATH a directory at a time and takes `cc`/`gcc` before
+    `cl` in each, so the app's configure picked that gcc and died
+    ("cannot execute 'cc1'", run 37242382697). Validate never configures the
+    app, so the validate run that approved the pins could not see it. Now
+    only `ccache.exe` and the five DLLs it loads come out of `c\bin\` -
+    the only `c\bin` tool 37158363951 used, from the image's Strawberry at
+    the end of PATH.
 
 ### Debugging, and how not to waste builds
 

@@ -216,10 +216,14 @@ jobs:
       # openal-soft stamp versions with it) and GitHub CLI 2.101.0. Each is
       # checked against the SHA-256 GitHub records for the release asset and
       # put in front of PATH; "Check the pinned tools." fails the run if any
-      # resolves elsewhere. Strawberry's zip is 300 MB, so only perl\ and
-      # c\bin\ are unpacked. Left to the image, by necessity: Windows itself,
-      # PowerShell, the Git Bash that "shell: bash" steps run in, and VS
-      # beyond its pinned 14.44 toolset and the SDK version.
+      # resolves elsewhere. Strawberry's zip is 300 MB, so only perl\ is
+      # unpacked, and from c\bin\ only ccache with the five DLLs it loads -
+      # the one c\bin tool the last good build used. All of c\bin once went
+      # in, and its gcc (without cc1) then stood in front of VS on PATH:
+      # CMake's compiler search takes the first gcc it meets, so the app's
+      # configure failed (run 37242382697). Left to the image, by necessity:
+      # Windows itself, PowerShell, the Git Bash that "shell: bash" steps run
+      # in, and VS beyond its pinned 14.44 toolset and the SDK version.
       - name: Pinned tools.
         shell: pwsh
         run: |
@@ -229,7 +233,10 @@ jobs:
           New-Item -ItemType Directory -Force $root | Out-Null
           $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
           $tools = @(
-            @{ name = 'strawberry'; only = @('perl/*', 'c/bin/*'); path = @('c\bin', 'perl\bin', 'perl\site\bin')
+            @{ name = 'strawberry'
+               only = @('perl/*', 'c/bin/ccache.exe', 'c/bin/libgcc_s_seh-1.dll', 'c/bin/libhiredis.dll',
+                        'c/bin/libstdc++-6.dll', 'c/bin/libwinpthread-1.dll', 'c/bin/libzstd.dll')
+               path = @('c\bin', 'perl\bin', 'perl\site\bin')
                url = 'https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54201_64bit/strawberry-perl-5.42.0.1-64bit-portable.zip'
                sha = 'a1cde185656cf307b51670eed69f648b9eff15b5c518cb136e027c628e650b71' },
             @{ name = 'git'; only = @(); path = @('cmd')
