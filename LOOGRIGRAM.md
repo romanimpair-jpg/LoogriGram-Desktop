@@ -274,7 +274,8 @@ All deleted, not gated. Roughly in the order they were done.
   (`DESKTOP_APP_DISABLE_CRASH_REPORTS=ON`; Windows still writes a local dump).
 - **macOS and Linux** (272 files), and upstream's other workflows.
 - **Every "big animated view"** (the user's decision, 2026-10-04, both
-  clients; Android `988742b1`, `1056c5c4`, `a36fbf36`, `4f7e40ea`). In order:
+  clients; Android `988742b1`, `1056c5c4`, `a36fbf36`, `4f7e40ea`, and
+  `de2eb9db` for this preview's counterpart). In order:
   the reaction preview beside the who-reacted menu and the custom-emoji
   click handler (`3042504db8`); birthday balloons on profiles and the
   `showFinished` plumbing only they read (`101b007820`); both
