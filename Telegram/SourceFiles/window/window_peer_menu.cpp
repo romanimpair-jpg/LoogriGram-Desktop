@@ -1782,6 +1782,14 @@ void Filler::fillHistoryActions() {
 	addToggleNoForwards();
 	addViewDiscussion();
 	addDirectMessages();
+	// LoogriGram: the chats list's "Add to folder" and "Archive" in the
+	// chat's own menu too, for a chat that is in the list. Android's chat
+	// menu has the same pair.
+	if (const auto history = _request.key.history()
+		; history && history->inChatList()) {
+		addToggleFolder();
+		addToggleArchive();
+	}
 	addExportChat();
 	addReport();
 	addClearHistory();
