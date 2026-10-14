@@ -56,6 +56,9 @@ shipped together as **`g172a044`** (full build 37320472258, green,
 2026-10-05), the first release since `g7b24c5a`. The app takes it through its
 own updater.
 
+**Not built yet:** Add to folder and Archive in a chat's own menu
+(`6c0b050615`, 2026-10-15; see "Added"), mirrored on Android.
+
 ---
 
 ## Settled rules — do not re-litigate
@@ -358,6 +361,22 @@ without trace.
 - Muted chats excluded from the unread badge (kept in folder counters);
   pinned-message notifications off. The other rows on that page are
   per-account or per-session server settings and cannot be defaulted here.
+
+### Added
+
+- **Add to folder and Archive in a chat's own menu** (`6c0b050615`,
+  2026-10-15, the user's request; Android `bd692a00`). `fillHistoryActions`
+  calls the context menu's `addToggleFolder` and `addToggleArchive`, after
+  Direct Messages and before Export, for a chat that is in the chats list.
+  An archived chat is: `inChatList()` asks about the main list of
+  whichever folder holds it. Their own checks decide the rest: the first
+  needs a folder to exist; the second is never offered for the proxy
+  channel, a community or a chat inside a collapsed one, nor for Saved
+  Messages or service notifications unless already archived. Only
+  the top bar's `showPeerMenu` builds the History section, with real
+  actions: `addToggleArchive` passes its action to `SetActionText`, which
+  takes `not_null`, so a counting callback that returns null - like
+  `hasTopicMenu`'s for Replies - must never be pointed at this section.
 
 ### Our own updater
 

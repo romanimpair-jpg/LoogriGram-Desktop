@@ -40,6 +40,10 @@ One switch in the main menu, next to Night Mode.
 - Muted chats don't count toward the unread badge (folder counters still include them).
 - Notifications for pinned messages are off.
 
+### Added
+
+- A chat's own menu (⋮ at its top right) can add the chat to a folder and archive or unarchive it, as right-clicking it in the chat list can. This works for private chats, groups and channels alike.
+
 ### Kept on purpose
 
 - Read receipts (see above).
