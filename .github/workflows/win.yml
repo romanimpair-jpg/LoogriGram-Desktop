@@ -836,6 +836,72 @@ jobs:
           %CACHE_ROOT%\ThirdParty\NuGet\nuget.exe sources Disable -Name "Microsoft Visual Studio Offline Packages"
           %CACHE_ROOT%\ThirdParty\NuGet\nuget.exe sources Add -Source https://api.nuget.org/v3/index.json & exit 0
 
+      # LoogriGram: run 38747334970 failed in the link - LNK1106 "invalid file
+      # or disk full: cannot seek" writing LoogriGram.exe after 59 minutes
+      # (7-19 is usual), its PDB stopped at 77 MB of the usual 2.4 GB six
+      # minutes before - and the log could not say why. This samples both
+      # disks, memory, link.exe and the two outputs every 20 seconds for the
+      # whole build; "Resources during the build." prints the samples with
+      # what Windows logged meanwhile, so a failing link shows what ran out.
+      - name: Watch resources during the build.
+        if: inputs.mode == 'build'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $release = Join-Path $env:TBUILD "$env:REPO_NAME\out\${{ inputs.config }}"
+          $log = Join-Path $env:RUNNER_TEMP 'resources.log'
+          $script = Join-Path $env:RUNNER_TEMP 'watch-resources.ps1'
+          (Get-Date).ToString('o') | Set-Content (Join-Path $env:RUNNER_TEMP 'build-start.txt')
+          @'
+          param([string]$Out, [string]$Release)
+          $exe = Join-Path $Release 'LoogriGram.exe'
+          $pdb = Join-Path $Release 'LoogriGram.pdb'
+          function SizeOf([string]$Path) {
+            if (Test-Path $Path) { '{0:N0}' -f (Get-Item $Path).Length } else { '-' }
+          }
+          while ($true) {
+            try {
+              $os = Get-CimInstance Win32_OperatingSystem
+              $pf = @(Get-CimInstance Win32_PageFileUsage)
+              $link = @(Get-Process link -ErrorAction SilentlyContinue)
+              $v = @(
+                (Get-Date),
+                ((Get-PSDrive C).Free / 1GB),
+                ((Get-PSDrive D).Free / 1GB),
+                ($os.FreePhysicalMemory / 1MB),
+                ($os.FreeVirtualMemory / 1MB),
+                ($pf | Measure-Object CurrentUsage -Sum).Sum,
+                ($pf | Measure-Object AllocatedBaseSize -Sum).Sum,
+                (($link | Measure-Object PrivateMemorySize64 -Sum).Sum / 1GB),
+                (SizeOf $exe),
+                (SizeOf $pdb)
+              )
+              '{0:HH:mm:ss} C:{1,6:N1}G D:{2,6:N1}G ram free{3,5:N1}G commit free{4,6:N1}G pagefile {5}/{6}M link.exe{7,5:N1}G exe {8} pdb {9}' -f $v | Add-Content -Path $Out
+            } catch {
+              '{0:HH:mm:ss} sample failed: {1}' -f (Get-Date), $_ | Add-Content -Path $Out
+            }
+            Start-Sleep -Seconds 20
+          }
+          '@ | Set-Content -Path $script
+          "== before the build =="
+          foreach ($name in 'LoogriGram.exe', 'LoogriGram.pdb') {
+            $p = Join-Path $release $name
+            if (Test-Path $p) {
+              Get-Item $p | Select-Object Name, Length, LastWriteTime, Attributes | Format-Table -AutoSize | Out-String
+            } else {
+              "${name}: not present"
+            }
+          }
+          Get-CimInstance Win32_ComputerSystem | Select-Object NumberOfLogicalProcessors, TotalPhysicalMemory | Format-List | Out-String
+          Get-CimInstance Win32_PageFileUsage | Select-Object Name, AllocatedBaseSize, CurrentUsage, PeakUsage | Format-List | Out-String
+          try {
+            Get-MpComputerStatus | Select-Object RealTimeProtectionEnabled, AMRunningMode | Format-List | Out-String
+          } catch {
+            "Defender status unavailable: $_"
+          }
+          Start-Process -FilePath pwsh -ArgumentList '-NoProfile', '-NonInteractive', '-File', $script, '-Out', $log, '-Release', $release -WindowStyle Hidden
+          "sampling every 20 s into $log"
+
       - name: Telegram Desktop build.
         id: telegram
         if: inputs.mode == 'build'
@@ -875,6 +941,41 @@ jobs:
           rem here costs about forty minutes, so collecting them matters.
           cmake --build ..\out --config ${{ inputs.config }} --parallel -- -k 0
 
+      # LoogriGram: the samples "Watch resources during the build." took, and
+      # every warning and error Windows logged while the build ran.
+      - name: Resources during the build.
+        if: always() && inputs.mode == 'build'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Get-CimInstance Win32_Process -Filter "Name = 'pwsh.exe'" |
+            Where-Object CommandLine -like '*watch-resources.ps1*' |
+            ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+          $log = Join-Path $env:RUNNER_TEMP 'resources.log'
+          "== samples =="
+          if (Test-Path $log) { Get-Content $log } else { "no samples: the watcher did not run" }
+          try {
+            $start = [datetime]::Parse((Get-Content (Join-Path $env:RUNNER_TEMP 'build-start.txt')))
+          } catch {
+            $start = (Get-Date).AddHours(-4)
+          }
+          foreach ($logName in 'System', 'Application') {
+            "== $logName log: warnings and errors since $start, newest first =="
+            try {
+              Get-WinEvent -FilterHashtable @{ LogName = $logName; Level = 1, 2, 3; StartTime = $start } -ErrorAction Stop |
+                Select-Object -First 80 |
+                ForEach-Object { '{0:HH:mm:ss} {1} {2}: {3}' -f $_.TimeCreated, $_.ProviderName, $_.Id, (($_.Message -split "`n")[0]) }
+            } catch {
+              "none ($($_.Exception.Message))"
+            }
+          }
+          $release = Join-Path $env:TBUILD "$env:REPO_NAME\out\${{ inputs.config }}"
+          "== outputs now =="
+          Get-ChildItem $release -Filter 'LoogriGram.*' -ErrorAction SilentlyContinue |
+            Select-Object Name, Length, LastWriteTime, Attributes | Format-Table -AutoSize | Out-String
+          "== disks now =="
+          Get-PSDrive C, D | Select-Object Name, @{ n = 'FreeGB'; e = { [math]::Round($_.Free / 1GB, 1) } }, @{ n = 'UsedGB'; e = { [math]::Round($_.Used / 1GB, 1) } } | Format-Table -AutoSize | Out-String
+
       # Only reached when the compile above succeeded, which is the whole
       # point: this records the commit every object in out/ was built from,
       # and the next run ages its sources against it.
@@ -897,8 +998,15 @@ jobs:
       # Archive size is still an upper bound on contribution - /OPT:REF drops
       # everything the link never references - so read it as a ranking. Only a
       # linker map is exact, and that needs a flag this build does not carry.
+      #
+      # LoogriGram: ninja deletes the response file after a successful link,
+      # so on a green build this has only ever printed "(response file not
+      # found)"; it reads one only after a failed link. Its sed was broken
+      # too ('s|\|/|' is unterminated), which failed this step in run
+      # 38747334970. Informational, so it may not fail a build.
       - name: Report size composition.
         if: always() && inputs.mode == 'build'
+        continue-on-error: true
         shell: bash
         run: |
           OUT="$TBUILD/$REPO_NAME/out"
@@ -918,7 +1026,7 @@ jobs:
           fi
           RSPDIR=$(dirname "$RSP")
           libs() {
-            tr ' ' '\n' < "$RSP" | tr -d '"' | sed 's|\|/|g' \
+            tr ' ' '\n' < "$RSP" | tr -d '"' | sed 's|\\|/|g' \
               | grep -iE '\.(lib|a)$' | sort -u \
               | while read -r f; do
                   case "$f" in
