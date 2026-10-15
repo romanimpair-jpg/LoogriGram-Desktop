@@ -56,8 +56,12 @@ shipped together as **`g172a044`** (full build 37320472258, green,
 2026-10-05), the first release since `g7b24c5a`. The app takes it through its
 own updater.
 
-**Not built yet:** Add to folder and Archive in a chat's own menu
-(`6c0b050615`, 2026-10-15; see "Added"), mirrored on Android.
+**`g1358711`** (full build 38633424639, green, 2026-10-14) shipped Add to
+folder and Archive in a chat's own menu (`6c0b050615`; see "Added"). It
+rebuilt every library, because the Actions caches had been evicted after
+nine idle days and the `deps-trees` fallback had never been made (see
+"Frozen dependencies"). **Not built yet:** the same pair for groups with
+topics (`26e03b740a`).
 
 ---
 
@@ -365,18 +369,24 @@ without trace.
 ### Added
 
 - **Add to folder and Archive in a chat's own menu** (`6c0b050615`,
-  2026-10-15, the user's request; Android `bd692a00`). `fillHistoryActions`
-  calls the context menu's `addToggleFolder` and `addToggleArchive`, after
-  Direct Messages and before Export, for a chat that is in the chats list.
-  An archived chat is: `inChatList()` asks about the main list of
-  whichever folder holds it. Their own checks decide the rest: the first
-  needs a folder to exist; the second is never offered for the proxy
-  channel, a community or a chat inside a collapsed one, nor for Saved
-  Messages or service notifications unless already archived. Only
-  the top bar's `showPeerMenu` builds the History section, with real
-  actions: `addToggleArchive` passes its action to `SetActionText`, which
-  takes `not_null`, so a counting callback that returns null - like
-  `hasTopicMenu`'s for Replies - must never be pointed at this section.
+  2026-10-15, the user's request; Android `bd692a00`), **and for groups
+  with topics** (`26e03b740a`; Android `c783e4b198`). `addFiling` adds the
+  context menu's `addToggleFolder` and `addToggleArchive` for a chat that
+  is in the chats list - an archived one is: `inChatList()` asks about the
+  main list of whichever folder holds it. Three menus call it: the chat's
+  (`fillHistoryActions`, before Export), a forum's topic list
+  (`fillChatsListActions`, after video chat) and a topic's
+  (`fillRepliesActions`). `filedHistory` names the chat they file: the
+  key's history, nothing for a comment thread, and for a topic its chat
+  only when that chat shows topics as tabs (`useSubsectionTabs`), since
+  that view is the chat's own; topic context menus, tab menus and topic
+  profiles still get neither. The items' own checks decide the rest: a
+  folder must exist; Archive is never offered for the proxy channel, a
+  community or a chat inside a collapsed one, nor for Saved Messages or
+  service notifications unless already archived. **`addToggleArchive`
+  must tolerate a null action:** `TopBarWidget`'s `hasTopicMenu` fills a
+  topic's menu once with a callback that returns none, and `SetActionText`
+  takes `not_null`.
 
 ### Our own updater
 
@@ -556,7 +566,13 @@ days. So, since `dd0ea5658d`:
 - **Built trees:** a `cache` run stores `ThirdParty` and `Libraries` as the
   `deps-trees` pre-release (split under 2 GB); any run whose cache matched
   nothing restores them from there. Run one `cache` after any build that
-  rebuilt dependencies. Both steps are `continue-on-error`.
+  rebuilt dependencies. Both steps are `continue-on-error`. **The first
+  `cache` run was 38743414888 (2026-10-15)**: until then `deps-trees` did
+  not exist, so `g1358711`'s build, after nine idle days, rebuilt every
+  library (~2h of a ~4h15m run). Now it holds Libraries (1.27 GB) and
+  ThirdParty (160 MB) from that build's caches. The restore step says
+  "No deps-trees release yet" in its log when it finds none - look there
+  if a build is rebuilding libraries.
 - Both pre-releases are `--latest=false`; the in-app updater reads
   `/releases/latest` and never sees them.
 
