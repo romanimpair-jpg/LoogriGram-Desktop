@@ -332,7 +332,9 @@ private:
 	void addVideoChat();
 	void addViewStatistics();
 	void addSetPersonalChannel();
+	void addFiling();
 
+	[[nodiscard]] History *filedHistory() const;
 	[[nodiscard]] bool skipCreateActions() const;
 	[[nodiscard]] SendMenu::Details createSendMenuDetails() const;
 
@@ -639,9 +641,9 @@ void Filler::addInfo() {
 
 void Filler::addToggleFolder() {
 	const auto controller = _controller;
-	const auto history = _request.key.history();
-	if (_topic
-		|| !history
+	// LoogriGram: filedHistory, so a topic shown as a tab files its chat.
+	const auto history = filedHistory();
+	if (!history
 		|| !history->owner().chatsFilters().has()
 		|| !history->inChatList()) {
 		return;
@@ -791,13 +793,14 @@ void Filler::addUngroup() {
 }
 
 void Filler::addToggleArchive() {
+	// LoogriGram: filedHistory, so a topic shown as a tab files its chat.
+	const auto history = filedHistory();
 	if (!_peer
-		|| _topic
+		|| !history
 		|| _request.section == Section::SubsectionTabsMenu) {
 		return;
 	}
 	const auto peer = _peer;
-	const auto history = _request.key.history();
 	if (!CanArchive(history, peer)) {
 		return;
 	}
@@ -817,11 +820,45 @@ void Filler::addToggleArchive() {
 		toggle,
 		isArchived() ? &st::menuIconUnarchive : &st::menuIconArchive);
 
+	// LoogriGram: a topic's menu is also filled once with a callback that
+	// returns no actions, to see whether it is empty (TopBarWidget's
+	// hasTopicMenu), and a topic shown as a tab now gets this item.
+	if (!archiveAction) {
+		return;
+	}
 	auto actionText = history->session().changes().historyUpdates(
 		history,
 		Data::HistoryUpdate::Flag::Folder
 	) | rpl::map(label);
 	SetActionText(archiveAction, std::move(actionText));
+}
+
+// LoogriGram: the chat that "Add to folder" and "Archive" file. A topic is
+// not filed, except one open in its chat's own tabs (a forum shown as tabs,
+// a bot's topics): that view is the chat's, so its menu files the chat, as
+// the topic list's menu does. A comment thread files nothing.
+History *Filler::filedHistory() const {
+	if (_topic) {
+		const auto inChat = (_request.section == Section::History)
+			|| (_request.section == Section::Replies);
+		return (inChat && _peer->useSubsectionTabs())
+			? _topic->owningHistory().get()
+			: nullptr;
+	} else if (_request.section == Section::Replies) {
+		return nullptr;
+	}
+	return _request.key.history();
+}
+
+// LoogriGram: the chats list's "Add to folder" and "Archive" in the menu of
+// a chat or of a forum's topic list, for a chat that is in the list (an
+// archived one is). Android's menus have the same pair.
+void Filler::addFiling() {
+	if (const auto history = filedHistory()
+		; history && history->inChatList()) {
+		addToggleFolder();
+		addToggleArchive();
+	}
 }
 
 void Filler::addClearHistory() {
@@ -1713,6 +1750,7 @@ void Filler::fillChatsListActions() {
 	addManageChat();
 	addNewMembers();
 	addVideoChat();
+	addFiling();
 	_addAction(PeerMenuCallback::Args{ .isSeparator = true });
 	addReport();
 	if (_peer->asChannel()->amIn()) {
@@ -1782,14 +1820,7 @@ void Filler::fillHistoryActions() {
 	addToggleNoForwards();
 	addViewDiscussion();
 	addDirectMessages();
-	// LoogriGram: the chats list's "Add to folder" and "Archive" in the
-	// chat's own menu too, for a chat that is in the list. Android's chat
-	// menu has the same pair.
-	if (const auto history = _request.key.history()
-		; history && history->inChatList()) {
-		addToggleFolder();
-		addToggleArchive();
-	}
+	addFiling();
 	addExportChat();
 	addReport();
 	addClearHistory();
@@ -1831,6 +1862,7 @@ void Filler::fillRepliesActions() {
 	}
 	addCreatePoll();
 	addToggleTopicClosed();
+	addFiling();
 	addDeleteTopic();
 }
 
