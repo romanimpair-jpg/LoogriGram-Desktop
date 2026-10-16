@@ -26,6 +26,16 @@ on:
         options:
           - Debug
           - Release
+      # LoogriGram: a rehearsal of a build long after the last one. GitHub
+      # evicts an Actions cache unused for seven days, so such a build gets
+      # its libraries only from the deps-trees release and compiles the app
+      # from scratch. This skips every Actions cache restore and save to do
+      # exactly that, and creates no tag or release.
+      cold:
+        description: 'Rehearse a build after the Actions caches expired: libraries from deps-trees, app from scratch, nothing saved or published.'
+        required: false
+        default: false
+        type: boolean
 
 # Starting a build supersedes any build already running on the same branch,
 # so a redundant one stops burning a runner the moment it stops being wanted.
@@ -293,7 +303,7 @@ jobs:
       # failed run leaves a tag without a release, which the updater never
       # sees (it reads releases), and re-running the commit reuses it.
       - name: Tag the build.
-        if: inputs.mode == 'build' && inputs.config == 'Release'
+        if: inputs.mode == 'build' && inputs.config == 'Release' && !inputs.cold
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -429,6 +439,7 @@ jobs:
       # not saved. Unchanged keys would have repeated that on every run.
       - name: ThirdParty cache.
         id: cache-third-party
+        if: ${{ !inputs.cold }}
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CACHE_ROOT }}\ThirdParty
@@ -437,6 +448,7 @@ jobs:
 
       - name: Libraries cache.
         id: cache-libs
+        if: ${{ !inputs.cold }}
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -455,6 +467,7 @@ jobs:
 
       - name: Qt cache.
         id: cache-qt
+        if: ${{ !inputs.cold }}
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -598,14 +611,14 @@ jobs:
         run: find $LibrariesPath '(' '(' ! '(' -name '*.lib' -o -name '*.a' -o -name '*.exe' -o -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.cmake' -o -name '*.pc' -o -path '*/include/*' -o -path '*/objects-*' -o -path '*/cache_keys/*' -o -path '*/patches/*' -o -path '*/nv-codec-headers/*' ')' -type f ')' -o -empty ')' -delete
 
       - name: Save ThirdParty cache.
-        if: steps.libraries.outcome == 'success' && steps.cache-third-party.outputs.cache-hit != 'true'
+        if: ${{ !inputs.cold && steps.libraries.outcome == 'success' && steps.cache-third-party.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CACHE_ROOT }}\ThirdParty
           key: ${{ steps.cache-third-party.outputs.cache-primary-key }}
 
       - name: Save libraries cache.
-        if: steps.libraries.outcome == 'success' && steps.cache-libs.outputs.cache-hit != 'true'
+        if: ${{ !inputs.cold && steps.libraries.outcome == 'success' && steps.cache-libs.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -617,7 +630,7 @@ jobs:
           key: ${{ steps.cache-libs.outputs.cache-primary-key }}
 
       - name: Save Qt cache.
-        if: steps.libraries.outcome == 'success' && steps.cache-qt.outputs.cache-hit != 'true'
+        if: ${{ !inputs.cold && steps.libraries.outcome == 'success' && steps.cache-qt.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -685,7 +698,7 @@ jobs:
       # against it so ninja rebuilds only what actually changed.
       - name: Build tree cache.
         id: cache-out
-        if: inputs.mode == 'build'
+        if: inputs.mode == 'build' && !inputs.cold
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CACHE_ROOT }}\${{ env.REPO_NAME }}\out
@@ -1087,7 +1100,7 @@ jobs:
       # upload itself took 8-18 minutes and once 56 (run 35451377993), all of
       # it holding back the log needed to fix the failure.
       - name: Save build tree cache.
-        if: ${{ !cancelled() && inputs.mode == 'build' && steps.telegram.outcome == 'success' && steps.cache-out.outputs.cache-hit != 'true' }}
+        if: ${{ !cancelled() && !inputs.cold && inputs.mode == 'build' && steps.telegram.outcome == 'success' && steps.cache-out.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CACHE_ROOT }}\${{ env.REPO_NAME }}\out
@@ -1151,7 +1164,7 @@ jobs:
       # and the retention-days above do not apply: releases do not expire, so
       # an old build stays installable.
       - name: Publish release.
-        if: inputs.mode == 'build' && inputs.config == 'Release'
+        if: inputs.mode == 'build' && inputs.config == 'Release' && !inputs.cold
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
