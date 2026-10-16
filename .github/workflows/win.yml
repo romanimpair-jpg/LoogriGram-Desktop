@@ -121,7 +121,12 @@ jobs:
       # LoogriGram: raised to 5 because the story removal deleted five keys
       # from lang.strings, which renumbers the generated key table (see
       # "Never add or remove keys in lang.strings" in LOOGRIGRAM.md).
-      OUT_CACHE_SALT: "5"
+      #
+      # LoogriGram: raised to 6 when the build tree moved from C: to D:
+      # ("Prepare directories."). CMake records the tree's real path in
+      # CMakeCache.txt (C:/Users/runneradmin/TBuild/tg/out) and refuses to
+      # configure a tree that has moved.
+      OUT_CACHE_SALT: "6"
 
     defaults:
       run:
@@ -171,8 +176,16 @@ jobs:
 
       - name: Prepare directories.
         run: |
-          mkdir %userprofile%\TBuild\Libraries
-          mklink /d %GITHUB_WORKSPACE%\TBuild %userprofile%\TBuild
+          rem LoogriGram: the tree lives on D:, not under %userprofile% on C:.
+          rem Run 38808636826 showed why. The link grew to 22.5 GB on a 16 GB
+          rem runner, Windows grew the page file on C: from 2.9 to 16 GB to
+          rem hold it, and with the 23 GB build tree and the libraries also on
+          rem C: the drive reached zero: the PDB could not be written (LNK1140;
+          rem LNK1106 in 38747334970) while D: sat at 219 GB free. Both aliases
+          rem below point here, so no path any step uses changes; D:\TBuild is
+          rem also shorter than the old real path, for the MAX_PATH note below.
+          mkdir D:\TBuild\Libraries
+          mklink /d %GITHUB_WORKSPACE%\TBuild D:\TBuild
 
           rem A second, deliberately short alias to the same directory.
           rem actions/checkout insists its path sits under GITHUB_WORKSPACE,
@@ -182,7 +195,7 @@ jobs:
           rem to 262 and MSVC fails C1083 with an empty filename, two over
           rem MAX_PATH. Nothing requires building through the checkout path,
           rem so C:\b is used for that instead and the total drops to ~217.
-          mklink /d C:\b %userprofile%\TBuild
+          mklink /d C:\b D:\TBuild
 
           rem Cache paths must stay inside the workspace: actions/cache keys
           rem its archives to workspace-relative paths, so pointing them at
