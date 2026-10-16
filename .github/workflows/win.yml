@@ -420,13 +420,20 @@ jobs:
       # compile error used to discard the whole dependency build. Saving
       # explicitly, right after Libraries succeeds, makes the expensive part
       # survive a failure in anything after it.
+      #
+      # LoogriGram: all three keys gained a version when the tree moved to D:
+      # (third-party v2, libs v3, Qt v2). prepare.py keys every stage on the
+      # real paths of Libraries and ThirdParty (LIBS_DIR, USED_PREFIX), so the
+      # caches made on C: read as CHANGED there and every library was rebuilt
+      # (run 38869428265, 2h05m) - and, the restore having been an exact hit,
+      # not saved. Unchanged keys would have repeated that on every run.
       - name: ThirdParty cache.
         id: cache-third-party
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CACHE_ROOT }}\ThirdParty
-          key: ${{ runner.OS }}-${{ runner.arch }}-third-party-${{ env.CACHE_KEY }}
-          restore-keys: ${{ runner.OS }}-${{ runner.arch }}-third-party-
+          key: ${{ runner.OS }}-${{ runner.arch }}-third-party-v2-${{ env.CACHE_KEY }}
+          restore-keys: ${{ runner.OS }}-${{ runner.arch }}-third-party-v2-
 
       - name: Libraries cache.
         id: cache-libs
@@ -443,8 +450,8 @@ jobs:
           # kimageformats is a Qt plugin and links against it. prepare.py skips
           # any library that already has a cache_keys entry, so a Qt 6-built
           # kimageformats would simply be kept and never rebuilt against Qt 5.
-          key: ${{ runner.OS }}-${{ matrix.arch }}-libs-${{ inputs.config }}-v2-${{ env.CACHE_KEY }}
-          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-libs-${{ inputs.config }}-v2-
+          key: ${{ runner.OS }}-${{ matrix.arch }}-libs-${{ inputs.config }}-v3-${{ env.CACHE_KEY }}
+          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-libs-${{ inputs.config }}-v3-
 
       - name: Qt cache.
         id: cache-qt
@@ -453,8 +460,8 @@ jobs:
           path: |
             ${{ env.LibrariesPath }}\[qQ]t[_-]*
             ${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
-          key: ${{ runner.OS }}-${{ matrix.arch }}-${{ matrix.qt || 'qt' }}-${{ inputs.config }}-v1-${{ env.CACHE_KEY }}
-          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-${{ matrix.qt || 'qt' }}-${{ inputs.config }}-v1-
+          key: ${{ runner.OS }}-${{ matrix.arch }}-${{ matrix.qt || 'qt' }}-${{ inputs.config }}-v2-${{ env.CACHE_KEY }}
+          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-${{ matrix.qt || 'qt' }}-${{ inputs.config }}-v2-
 
       - name: Reclaim disk space.
         if: inputs.mode != 'validate' && inputs.config == 'Release'
