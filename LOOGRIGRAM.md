@@ -60,8 +60,11 @@ own updater.
 folder and Archive in a chat's own menu (`6c0b050615`; see "Added"). It
 rebuilt every library, because the Actions caches had been evicted after
 nine idle days and the `deps-trees` fallback had never been made (see
-"Frozen dependencies"). **Not built yet:** the same pair for groups with
-topics (`26e03b740a`).
+"Frozen dependencies"). The same pair for groups with topics
+(`26e03b740a`) shipped as **`gf48e0c3`** (full build 38869428265, green,
+2026-10-16) after two builds failed in the link - not the code: see CI
+lesson 13, which also explains why the next build rebuilds every library
+once and must be followed by a `cache` run.
 
 ---
 
@@ -572,7 +575,10 @@ days. So, since `dd0ea5658d`:
   library (~2h of a ~4h15m run). Now it holds Libraries (1.27 GB) and
   ThirdParty (160 MB) from that build's caches. The restore step says
   "No deps-trees release yet" in its log when it finds none - look there
-  if a build is rebuilding libraries.
+  if a build is rebuilding libraries. **Stale since the tree moved to D:
+  (2026-10-16)**: those trees were built at the C: paths prepare.py keys
+  on, so it would rebuild them; refresh with a `cache` run after the next
+  build (CI lesson 13).
 - Both pre-releases are `--latest=false`; the in-app updater reads
   `/releases/latest` and never sees them.
 
@@ -729,6 +735,37 @@ Each of these burned at least one multi-hour build.
     only `ccache.exe` and the five DLLs it loads come out of `c\bin\` -
     the only `c\bin` tool 37158363951 used, from the image's Strawberry at
     the end of PATH.
+13. **The link needs ~22.5 GB of memory on a 16 GB runner, so the page file
+    decides it** (2026-10-15/16). Our own code carries embedded debug info
+    (`/Z7`, "Telegram/CMakeLists.txt", for crash symbols), 17 GB of objects
+    whose types `link.exe` merges into the 2.4 GB PDB. Measured by "Watch
+    resources during the build." (`d06984dda6`), from scratch and from the
+    cached tree alike: link.exe peaks at 22.5 GB and Windows grows the page
+    file to 16-18 GB. **Which drive holds the page file is the runner's
+    choice, not ours**: C:\pagefile.sys in 38808636826, D:\pagefile.sys in
+    38869428265. With the tree also on C:, a C: page file ran the drive to
+    zero and the PDB could not be written: LNK1140, or LNK1106 with exit
+    code 1140 (38747334970, 38808636826), after a 59-64 minute link. It was
+    never the cache - the restored libraries and tree were byte-identical
+    to green builds'. The tree now lives on `D:\TBuild` (`f48e0c3ee7`;
+    both aliases point there), leaving C: ~40 GB for a page file there.
+    Two consequences: CMake records the tree's real path, so the out/
+    salt went to 6; and **prepare.py keys every stage on the real paths of
+    Libraries and ThirdParty**, so the move made every cached library
+    "CHANGED" - 38869428265 rebuilt them all (2h05m) and, its restores
+    being exact hits, saved none. The three library cache keys were
+    versioned up for that (third-party v2, libs v3, Qt v2): the next build
+    rebuilds and saves them once, and its app compile is full because the
+    rebuilt headers are newer than every object. **After that build, run
+    one `cache`**: `deps-trees` still holds the C: trees, which prepare.py
+    would also rebuild.
+14. **Read the linker's whole output, and its exit code.** CMake's
+    `vs_link_exe` prints the linker's output only when the link fails, so a
+    green log never shows it - not even "Creating library", which every
+    link of this exe prints - and the 2,386 LNK4099 lines a failed link
+    shows are not new: the libraries' PDBs are deleted by upstream's "Free
+    up some disk space." in every build. "failed (exit code 1140)" is the
+    fatal error's number (LNK1140) even when LNK1106 is the line printed.
 
 ### Debugging, and how not to waste builds
 
