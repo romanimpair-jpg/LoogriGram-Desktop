@@ -3,9 +3,13 @@ name: Windows.
 # LoogriGram: upstream builds on every push and pull_request. A full Windows
 # build here costs hours of CI, so builds are manual-only and staged:
 #   validate - config and secrets only, a few minutes
-#   cache    - also build and cache dependencies, and freeze them as the
-#              deps-trees release (see "Freeze dependency trees.")
+#   cache    - also build the libraries and save them to the build store
 #   build    - full build, produces the artifact
+#
+# The build store (.github/scripts/build_store.py) is this workflow's only
+# cache: one pre-release of this repository, tag build-store, holding the
+# built libraries, the app's build tree and the pinned tools. Every build
+# restores from it and saves back what it rebuilt; nothing in it expires.
 on:
   workflow_dispatch:
     inputs:
@@ -26,13 +30,11 @@ on:
         options:
           - Debug
           - Release
-      # LoogriGram: a rehearsal of a build long after the last one. GitHub
-      # evicts an Actions cache unused for seven days, so such a build gets
-      # its libraries only from the deps-trees release and compiles the app
-      # from scratch. This skips every Actions cache restore and save to do
-      # exactly that, and creates no tag or release.
-      cold:
-        description: 'Rehearse a build after the Actions caches expired: libraries from deps-trees, app from scratch, nothing saved or published.'
+      # LoogriGram: a rehearsal. Restores from the build store and builds as
+      # usual, then reports what it would have saved instead of saving it,
+      # and creates no tag or release.
+      dry_run:
+        description: 'Build from the build store as usual, but save nothing to it and publish nothing.'
         required: false
         default: false
         type: boolean
@@ -44,9 +46,8 @@ on:
 # would let a three minute validate run cancel a twenty five minute build,
 # which is the opposite of useful.
 #
-# Safe against the caches: the tree cache is saved under `if: always()`, and a
-# cancelled job still runs those, so a superseded build leaves its objects
-# behind for the next one to reuse rather than throwing the work away.
+# Safe against the build store: a superseded build saves nothing to it, so
+# the store keeps what the last complete run left.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.mode }}
   cancel-in-progress: true
@@ -62,19 +63,16 @@ jobs:
     # for g7b24c5a). A hosted image's build cannot be pinned.
     runs-on: windows-2025-vs2026
 
-    # actions: write is only for pruning old build tree caches; without it the
-    # prune step cannot delete and the pool fills until the dependency caches
-    # get evicted. contents: write is for publishing the release the in-app
-    # updater reads; artifacts cannot serve it, since downloading one needs an
-    # authenticated token even on a public repository, while release assets are
-    # anonymously downloadable.
+    # contents: write is for publishing the release the in-app updater reads -
+    # artifacts cannot serve it, since downloading one needs an authenticated
+    # token even on a public repository, while release assets are anonymously
+    # downloadable - and for the build store, which is a release too.
     permissions:
       contents: write
-      actions: write
 
-    # Below GitHub's hard 6h cap so a cancelled job still runs its cache-save
-    # step. prepare.py skips libraries that already have a cache_keys entry,
-    # so an interrupted dependency build resumes on the next run.
+    # Below GitHub's hard 6h cap. The libraries are saved to the build store
+    # as soon as they are built, so a run that times out in the app's compile
+    # still leaves them for the next one.
     timeout-minutes: 340
 
     strategy:
@@ -99,7 +97,8 @@ jobs:
     env:
       UPLOAD_ARTIFACT: "true"
       ONLY_CACHE: "false"
-      PREPARE_PATH: "Telegram/build/prepare/prepare.py"
+      # LoogriGram: where the build store lives (see the top of this file).
+      BUILD_STORE: gh:${{ github.repository }}:build-store
       # Bump this whenever keys are added to or removed from lang.strings.
       #
       # LoogriGram: a submodule pointer no longer needs one. "Age sources
@@ -136,6 +135,9 @@ jobs:
       # ("Prepare directories."). CMake records the tree's real path in
       # CMakeCache.txt (C:/Users/runneradmin/TBuild/tg/out) and refuses to
       # configure a tree that has moved.
+      #
+      # LoogriGram: now the build store's rule for the build tree - a tree
+      # saved under another salt is never restored.
       OUT_CACHE_SALT: "6"
 
     defaults:
@@ -207,12 +209,12 @@ jobs:
           rem so C:\b is used for that instead and the total drops to ~217.
           mklink /d C:\b D:\TBuild
 
-          rem Cache paths must stay inside the workspace: actions/cache keys
-          rem its archives to workspace-relative paths, so pointing them at
-          rem C:\b silently misses and rebuilds every library from scratch.
-          rem Only the build itself uses the short alias - MAX_PATH bites the
-          rem object output paths under the build directory, not the library
-          rem inputs, which are short and merely passed as arguments.
+          rem CACHE_ROOT is the workspace form of the same directory, which
+          rem the Actions caches needed (they keyed archives to workspace-
+          rem relative paths). The build store works under TBUILD; the NuGet
+          rem steps still reach ThirdParty through CACHE_ROOT. MAX_PATH bites
+          rem the object output paths under the build directory, not the
+          rem library inputs, which are short and merely passed as arguments.
           echo CHECKOUT_ROOT=%GITHUB_WORKSPACE%\TBuild>>%GITHUB_ENV%
           echo CACHE_ROOT=%GITHUB_WORKSPACE%\TBuild>>%GITHUB_ENV%
           echo TBUILD=C:\b>>%GITHUB_ENV%
@@ -247,6 +249,14 @@ jobs:
       # configure failed (run 37242382697). Left to the image, by necessity:
       # Windows itself, PowerShell, the Git Bash that "shell: bash" steps run
       # in, and VS beyond its pinned 14.44 toolset and the SDK version.
+      #
+      # LoogriGram: zstd 1.5.7 too, which the build store packs with. GitHub
+      # records no checksum for that 2025 asset, so its pin is the SHA-256 of
+      # the file as downloaded on 2026-10-17. Each tool comes from the build
+      # store's mirror when it is there (tool-<file>), checked against the
+      # same SHA-256, and from upstream otherwise; "Mirror pinned tools."
+      # then adds what came from upstream, so a release that disappears
+      # upstream cannot break a build.
       - name: Pinned tools.
         shell: pwsh
         run: |
@@ -254,6 +264,9 @@ jobs:
           $ProgressPreference = 'SilentlyContinue'
           $root = Join-Path $env:RUNNER_TEMP 'pinned'
           New-Item -ItemType Directory -Force $root | Out-Null
+          $mirror = Join-Path $env:RUNNER_TEMP 'mirror'
+          New-Item -ItemType Directory -Force $mirror | Out-Null
+          $store = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/build-store"
           $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
           $tools = @(
             @{ name = 'strawberry'
@@ -273,14 +286,27 @@ jobs:
                sha = '07fc8261b42b20e71d1720b39068c2e14ffcee6396b76fb7a795fb460b78dc65' },
             @{ name = 'cmake'; only = @(); path = @('cmake-4.4.3-windows-x86_64\bin')
                url = 'https://github.com/Kitware/CMake/releases/download/v4.4.3/cmake-4.4.3-windows-x86_64.zip'
-               sha = '4d52ebab7193a698651639ed80d8d04fd903358843572cf44c7fd234cb7c26ab' }
+               sha = '4d52ebab7193a698651639ed80d8d04fd903358843572cf44c7fd234cb7c26ab' },
+            @{ name = 'zstd'; only = @(); path = @('zstd-v1.5.7-win64')
+               url = 'https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-v1.5.7-win64.zip'
+               sha = 'acb4e8111511749dc7a3ebedca9b04190e37a17afeb73f55d4425dbf0b90fad9' }
           )
-          # Entries added later land earlier in PATH, so cmake ends up first.
+          # Entries added later land earlier in PATH, so zstd ends up first.
           foreach ($t in $tools) {
+            $file = $t.url.Split('/')[-1]
             $zip = Join-Path $root "$($t.name).zip"
-            Invoke-WebRequest -Uri $t.url -OutFile $zip
-            $got = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
-            if ($got -ne $t.sha) { throw "$($t.name): SHA-256 $got, expected $($t.sha)" }
+            $from = 'the build store'
+            try {
+              Invoke-WebRequest -Uri "$store/tool-$file" -OutFile $zip
+              $got = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
+              if ($got -ne $t.sha) { throw "mirrored copy has SHA-256 $got" }
+            } catch {
+              $from = 'upstream'
+              Invoke-WebRequest -Uri $t.url -OutFile $zip
+              $got = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
+              if ($got -ne $t.sha) { throw "$($t.name): SHA-256 $got, expected $($t.sha)" }
+              Copy-Item $zip (Join-Path $mirror "tool-$file")
+            }
             $dir = Join-Path $root $t.name
             New-Item -ItemType Directory -Force $dir | Out-Null
             & $tar -xf $zip -C $dir @($t.only)
@@ -289,7 +315,7 @@ jobs:
             foreach ($sub in $t.path) {
               (Resolve-Path (Join-Path $dir $sub)).Path | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
             }
-            Write-Output "$($t.name): $($t.url.Split('/')[-1]) ok"
+            Write-Output "$($t.name): $file from $from"
           }
 
       # LoogriGram: the release's tag is made here, at the start, not by
@@ -303,7 +329,7 @@ jobs:
       # failed run leaves a tag without a release, which the updater never
       # sees (it reads releases), and re-running the commit reuses it.
       - name: Tag the build.
-        if: inputs.mode == 'build' && inputs.config == 'Release' && !inputs.cold
+        if: inputs.mode == 'build' && inputs.config == 'Release' && !inputs.dry_run
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -368,11 +394,7 @@ jobs:
           # kimageformats. Neither is used here: for a Release build CMake
           # emits no debug-info arguments at all, which is self-consistent.
           # The strip existed to keep library PDBs off the disk, and libraries
-          # now come from the cache instead of being rebuilt.
-
-          echo "$(sha256sum $TBUILD/$REPO_NAME/$PREPARE_PATH | awk '{ print $1 }')" >> CACHE_KEY.txt
-          echo "$SDK" >> CACHE_KEY.txt
-          echo "CACHE_KEY=$(sha256sum CACHE_KEY.txt | awk '{ print $1 }')" >> $GITHUB_ENV
+          # now come from the build store instead of being rebuilt.
 
           echo "Configurate git for cherry-picks."
           git config --global user.email "you@example.com"
@@ -392,14 +414,43 @@ jobs:
           Remove-Item $exe -Force -ErrorAction SilentlyContinue
           if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { exit $p.ExitCode }
 
+      # LoogriGram: the compiler and the SDK are the image's, pinned only by
+      # version - MSVC 14.44 and the SDK docs/building-win.md names - and an
+      # image without one used to fail at the next step. Now the build warns
+      # and goes on with the image's own: the build store then reports the
+      # difference from what built the stored libraries, and the MSVC linker
+      # takes objects from older 14.x toolsets than its own.
+      - name: Choose the compiler and SDK.
+        shell: pwsh
+        run: |
+          $toolset = '${{ case(matrix.arch == 'arm64', '', '14.44') }}'
+          $sdk = $env:SDK
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $vs = & $vswhere -latest -products * -property installationPath
+          $have = @(Get-ChildItem (Join-Path $vs 'VC\Tools\MSVC') -Directory -ErrorAction SilentlyContinue | ForEach-Object Name)
+          Write-Output "MSVC toolsets here: $($have -join ', ')"
+          if ($toolset -and -not ($have | Where-Object { $_ -like "$toolset.*" })) {
+            Write-Output "::warning title=Compiler::MSVC $toolset is not on this runner; building with the image's default ($($have | Select-Object -Last 1))"
+            $toolset = ''
+          }
+          $sdks = @(Get-ChildItem (Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\Include') -Directory -ErrorAction SilentlyContinue | ForEach-Object Name)
+          Write-Output "Windows SDKs here: $($sdks -join ', ')"
+          if ($sdk -and $sdks -notcontains $sdk) {
+            Write-Output "::warning title=Windows SDK::Windows SDK $sdk is not on this runner; building with the image's default"
+            $sdk = ''
+          }
+          Write-Output "using MSVC '$toolset', SDK '$sdk' (empty: the image's default)"
+          "MSVC_TOOLSET=$toolset" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          "MSVC_SDK=$sdk" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
       # LoogriGram: master was a branch, so any push there changed our build.
       # This is the commit every build so far has run (2026-04-01).
       - uses: Eden-CI/msvc-dev-cmd@1bd71f95d6f3d1b2b3395b335cc63bcdc90cf223
         name: Native Tools Command Prompt.
         with:
           arch: ${{ matrix.arch }}
-          sdk: ${{ env.SDK }}
-          toolset: ${{ case(matrix.arch == 'arm64', '', '14.44') }}
+          sdk: ${{ env.MSVC_SDK }}
+          toolset: ${{ env.MSVC_TOOLSET }}
 
       # LoogriGram: after vcvars, which rewrites PATH: every pinned tool must
       # still resolve to its pinned copy, or the run stops here.
@@ -408,7 +459,7 @@ jobs:
         run: |
           $root = Join-Path $env:RUNNER_TEMP 'pinned'
           $failed = $false
-          foreach ($exe in 'cmake', 'ninja', 'perl', 'ccache', 'git', 'gh') {
+          foreach ($exe in 'cmake', 'ninja', 'perl', 'ccache', 'git', 'gh', 'zstd') {
             $c = Get-Command $exe -ErrorAction SilentlyContinue | Select-Object -First 1
             $src = if ($c) { $c.Source } else { '<not found>' }
             Write-Output "$exe -> $src"
@@ -422,59 +473,77 @@ jobs:
           perl -e 'print "perl $^V\n"'
           git --version
           gh --version | Select-Object -First 1
+          zstd -V
           python -V
           if ($failed) { exit 1 }
 
-      # Restore and save are split deliberately. actions/cache only writes its
-      # cache in a post step, which is skipped when any step fails - so a
-      # compile error used to discard the whole dependency build. Saving
-      # explicitly, right after Libraries succeeds, makes the expensive part
-      # survive a failure in anything after it.
+      # LoogriGram: what "Pinned tools." fetched from upstream goes into the
+      # build store's mirror, so the next run takes it from there.
+      - name: Mirror pinned tools.
+        if: ${{ !inputs.dry_run }}
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$(cygpath -u "$RUNNER_TEMP")/mirror"
+          files=(tool-*)
+          if [ ! -e "${files[0]}" ]; then
+            echo "every pinned tool came from the build store"
+            exit 0
+          fi
+          python "$TBUILD/$REPO_NAME/.github/scripts/build_store.py" \
+            --store "$BUILD_STORE" put "${files[@]}"
+
+      # LoogriGram: in validate mode, a round trip through the build store
+      # with a few hundred kilobytes in several parts - save, restore,
+      # compare, drop - so a store that cannot work on this runner is found
+      # in minutes, not after a two-hour library build.
+      - name: Try the build store.
+        if: inputs.mode == 'validate' && !inputs.dry_run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          try="$(cygpath -u "$RUNNER_TEMP")/store-try"
+          mkdir -p "$try/a/selftest/sub" "$try/b"
+          date -u > "$try/a/selftest/sub/stamp.txt"
+          head -c 300000 /dev/urandom > "$try/a/selftest/noise.bin"
+          store() {
+            python "$TBUILD/$REPO_NAME/.github/scripts/build_store.py" \
+              --store "$BUILD_STORE" --state "$(cygpath -w "$try/state.json")" "$@"
+          }
+          store --root "$(cygpath -w "$try/a")" --part-size 100000 save selftest
+          store --root "$(cygpath -w "$try/b")" restore selftest
+          diff -r "$try/a/selftest" "$try/b/selftest"
+          store drop selftest
+          echo "the build store works on this runner"
+
+      # LoogriGram: the build store (see the top of this file) replaces the
+      # Actions caches, which GitHub evicts after seven days unused - after a
+      # quiet fortnight every library was rebuilt from whatever the internet
+      # served that day, which is how MSYS2 dropping a package once broke the
+      # build. This restores the newest ThirdParty and libraries the store
+      # holds; prepare.py then rebuilds only the stages whose keys changed,
+      # and "Save libraries to the build store." puts those back. Each
+      # difference between the machine that built them and this one is
+      # reported as a warning or a notice, and the build goes on.
       #
-      # LoogriGram: all three keys gained a version when the tree moved to D:
-      # (third-party v2, libs v3, Qt v2). prepare.py keys every stage on the
-      # real paths of Libraries and ThirdParty (LIBS_DIR, USED_PREFIX), so the
-      # caches made on C: read as CHANGED there and every library was rebuilt
-      # (run 38869428265, 2h05m) - and, the restore having been an exact hit,
-      # not saved. Unchanged keys would have repeated that on every run.
-      - name: ThirdParty cache.
-        id: cache-third-party
-        if: ${{ !inputs.cold }}
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ env.CACHE_ROOT }}\ThirdParty
-          key: ${{ runner.OS }}-${{ runner.arch }}-third-party-v2-${{ env.CACHE_KEY }}
-          restore-keys: ${{ runner.OS }}-${{ runner.arch }}-third-party-v2-
-
-      - name: Libraries cache.
-        id: cache-libs
-        if: ${{ !inputs.cold }}
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ${{ env.LibrariesPath }}\*
-            !${{ env.LibrariesPath }}\cache_keys
-            !${{ env.LibrariesPath }}\[qQ]t[_-]*
-            ${{ env.LibrariesPath }}\cache_keys\*
-            !${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
-          # LoogriGram: v2 for the Qt 6 -> Qt 5 switch. This cache excludes the
-          # Qt directories themselves, but not everything in it is Qt-free -
-          # kimageformats is a Qt plugin and links against it. prepare.py skips
-          # any library that already has a cache_keys entry, so a Qt 6-built
-          # kimageformats would simply be kept and never rebuilt against Qt 5.
-          key: ${{ runner.OS }}-${{ matrix.arch }}-libs-${{ inputs.config }}-v3-${{ env.CACHE_KEY }}
-          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-libs-${{ inputs.config }}-v3-
-
-      - name: Qt cache.
-        id: cache-qt
-        if: ${{ !inputs.cold }}
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ${{ env.LibrariesPath }}\[qQ]t[_-]*
-            ${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
-          key: ${{ runner.OS }}-${{ matrix.arch }}-${{ matrix.qt || 'qt' }}-${{ inputs.config }}-v2-${{ env.CACHE_KEY }}
-          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-${{ matrix.qt || 'qt' }}-${{ inputs.config }}-v2-
+      # The store keeps paths relative to the build root, TBUILD. Moving that
+      # root rebuilds every library: prepare.py keys every stage on its real
+      # path (run 38869428265, after the move to D:).
+      - name: Restore libraries from the build store.
+        if: inputs.mode != 'validate'
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python "$TBUILD/$REPO_NAME/.github/scripts/build_store.py" \
+            --store "$BUILD_STORE" --root "$TBUILD" \
+            --state "$RUNNER_TEMP/build-store.json" \
+            restore thirdparty libraries-${{ inputs.config }} qt-${{ inputs.config }}
 
       - name: Reclaim disk space.
         if: inputs.mode != 'validate' && inputs.config == 'Release'
@@ -514,43 +583,6 @@ jobs:
           }
           $after = (Get-PSDrive C).Free / 1GB
           Write-Output ("Free after: {0:N1} GB  (reclaimed {1:N1} GB)" -f $after, ($after - $before))
-
-      # LoogriGram: dependencies are frozen at the versions the last good build
-      # used, and change only on purpose. A cache is not a freeze: GitHub
-      # evicts one unused for seven days, and after an idle fortnight
-      # (2026-09-20 to 10-03) every dependency had to be rebuilt from whatever
-      # the internet served that day - which is how MSYS2 dropping a package
-      # broke the build. So a "cache" run also stores the built trees as
-      # release assets (deps-trees, a pre-release the updater never sees),
-      # and when a tree's cache matched nothing at all, it comes back from
-      # there. prepare.py still rebuilds any stage whose definition changed.
-      - name: Restore frozen dependency trees.
-        if: inputs.mode != 'validate' && (steps.cache-third-party.outputs.cache-matched-key == '' || (steps.cache-libs.outputs.cache-matched-key == '' && steps.cache-qt.outputs.cache-matched-key == ''))
-        continue-on-error: true
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          THIRD_PARTY_MISSED: ${{ steps.cache-third-party.outputs.cache-matched-key == '' }}
-          LIBRARIES_MISSED: ${{ steps.cache-libs.outputs.cache-matched-key == '' && steps.cache-qt.outputs.cache-matched-key == '' }}
-        run: |
-          set -eo pipefail
-          if ! gh release view deps-trees --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "No deps-trees release yet; dependencies build from scratch."
-            exit 0
-          fi
-          gh release download deps-trees --repo "$GITHUB_REPOSITORY" --pattern MANIFEST.txt --dir "$RUNNER_TEMP" && cat "$RUNNER_TEMP/MANIFEST.txt"
-          ROOT="$(cygpath -u "$CACHE_ROOT")"
-          restore() {
-            local name="$1"
-            local dir="$RUNNER_TEMP/frozen-$name"
-            mkdir -p "$dir"
-            gh release download deps-trees --repo "$GITHUB_REPOSITORY" --pattern "$name.tar.gz.part-*" --dir "$dir"
-            cat "$dir"/$name.tar.gz.part-* | tar -xzf - -C "$ROOT"
-            rm -rf "$dir"
-            echo "Restored $name from deps-trees."
-          }
-          if [ "$THIRD_PARTY_MISSED" = "true" ]; then restore ThirdParty; fi
-          if [ "$LIBRARIES_MISSED" = "true" ]; then restore Libraries; fi
 
       - name: Libraries.
         id: libraries
@@ -610,69 +642,23 @@ jobs:
         shell: bash
         run: find $LibrariesPath '(' '(' ! '(' -name '*.lib' -o -name '*.a' -o -name '*.exe' -o -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.cmake' -o -name '*.pc' -o -path '*/include/*' -o -path '*/objects-*' -o -path '*/cache_keys/*' -o -path '*/patches/*' -o -path '*/nv-codec-headers/*' ')' -type f ')' -o -empty ')' -delete
 
-      - name: Save ThirdParty cache.
-        if: ${{ !inputs.cold && steps.libraries.outcome == 'success' && steps.cache-third-party.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ env.CACHE_ROOT }}\ThirdParty
-          key: ${{ steps.cache-third-party.outputs.cache-primary-key }}
-
-      - name: Save libraries cache.
-        if: ${{ !inputs.cold && steps.libraries.outcome == 'success' && steps.cache-libs.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ${{ env.LibrariesPath }}\*
-            !${{ env.LibrariesPath }}\cache_keys
-            !${{ env.LibrariesPath }}\[qQ]t[_-]*
-            ${{ env.LibrariesPath }}\cache_keys\*
-            !${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
-          key: ${{ steps.cache-libs.outputs.cache-primary-key }}
-
-      - name: Save Qt cache.
-        if: ${{ !inputs.cold && steps.libraries.outcome == 'success' && steps.cache-qt.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ${{ env.LibrariesPath }}\[qQ]t[_-]*
-            ${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
-          key: ${{ steps.cache-qt.outputs.cache-primary-key }}
-
-      # LoogriGram: only in "cache" mode, which has time to spare - a build that
-      # rebuilt every dependency is already close to the job's limit. Run one
-      # "cache" after any build that rebuilt dependencies. The trees are split
-      # under GitHub's 2 GB asset limit; the old parts are deleted before the
-      # new ones go up, so a restore never mixes two sets. pipefail makes a
-      # failed tar abort the upload instead of publishing a partial archive.
-      - name: Freeze dependency trees.
-        if: inputs.mode == 'cache' && steps.libraries.outcome == 'success'
+      # LoogriGram: back into the build store, each of the three only if its
+      # files changed - a run that rebuilt nothing uploads nothing. Saved
+      # before the app is built, so a failed or timed-out compile still
+      # leaves the libraries for the next run. A dry run says what it would
+      # upload.
+      - name: Save libraries to the build store.
+        if: inputs.mode != 'validate' && steps.libraries.outcome == 'success'
         continue-on-error: true
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -eo pipefail
-          ROOT="$(cygpath -u "$CACHE_ROOT")"
-          OUT="$RUNNER_TEMP/freeze"
-          mkdir -p "$OUT"
-          tar -czf - -C "$ROOT" ThirdParty | split -b 1900m -d -a 2 - "$OUT/ThirdParty.tar.gz.part-"
-          tar -czf - -C "$ROOT" Libraries | split -b 1900m -d -a 2 - "$OUT/Libraries.tar.gz.part-"
-          printf 'cache key %s\ncommit %s\nrun %s\ndate %s\n' "$CACHE_KEY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%F)" > "$OUT/MANIFEST.txt"
-          ls -la "$OUT"
-          # Tagged at the default branch's head, not at this commit: creating
-          # a tag at a commit that is no longer a branch head - patches moves
-          # on during a two-hour run - was refused for the app release (see
-          # "Tag the build."). MANIFEST.txt names the commit these came from.
-          if ! gh release view deps-trees --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create deps-trees --repo "$GITHUB_REPOSITORY" \
-              --prerelease --latest=false --title "Frozen dependency trees" \
-              --notes "Built ThirdParty and Libraries trees for the desktop build - not an app release. Restored by win.yml when the Actions caches have been evicted. MANIFEST.txt names the run that made them."
-          fi
-          for asset in $(gh release view deps-trees --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'); do
-            gh release delete-asset deps-trees "$asset" --repo "$GITHUB_REPOSITORY" --yes
-          done
-          gh release upload deps-trees "$OUT"/* --repo "$GITHUB_REPOSITORY"
-          rm -rf "$OUT"
+          python "$TBUILD/$REPO_NAME/.github/scripts/build_store.py" \
+            --store "$BUILD_STORE" --root "$TBUILD" \
+            --state "$RUNNER_TEMP/build-store.json" \
+            ${{ inputs.dry_run && '--dry-run' || '' }} \
+            save thirdparty libraries-${{ inputs.config }} qt-${{ inputs.config }}
 
       - name: Check dav1d is present.
         if: inputs.mode == 'build'
@@ -692,18 +678,24 @@ jobs:
             exit 1
           fi
 
-      # One entry per commit, restored by prefix so a run picks up the newest
-      # available tree. Path is the workspace form, not the C:\b alias, for the
-      # same reason as the other caches. The step below then ages the sources
-      # against it so ninja rebuilds only what actually changed.
-      - name: Build tree cache.
-        id: cache-out
-        if: inputs.mode == 'build' && !inputs.cold
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ env.CACHE_ROOT }}\${{ env.REPO_NAME }}\out
-          key: ${{ runner.OS }}-${{ matrix.arch }}-out-${{ inputs.config }}-v${{ env.OUT_CACHE_SALT }}-${{ env.CACHE_KEY }}-${{ github.sha }}
-          restore-keys: ${{ runner.OS }}-${{ matrix.arch }}-out-${{ inputs.config }}-v${{ env.OUT_CACHE_SALT }}-${{ env.CACHE_KEY }}-
+      # LoogriGram: the newest build tree the build store holds, so ninja
+      # rebuilds only what changed since it (see the next step). Never one
+      # saved under another OUT_CACHE_SALT, nor one built against newer
+      # libraries than this run restored: their files would be dated older
+      # than its objects, and ninja would keep objects compiled against
+      # something else.
+      - name: Restore the build tree from the build store.
+        if: inputs.mode == 'build'
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python "$TBUILD/$REPO_NAME/.github/scripts/build_store.py" \
+            --store "$BUILD_STORE" --root "$TBUILD" \
+            --state "$RUNNER_TEMP/build-store.json" \
+            --salt "$OUT_CACHE_SALT" \
+            restore out-${{ inputs.config }}
 
       - name: Age sources against the cached build tree.
         if: inputs.mode == 'build'
@@ -1077,9 +1069,8 @@ jobs:
           libs | awk '{ t += $1 } END { printf "%9.1f MB across %d archives\n", t/1048576, NR }'
 
       # The PDB is gigabytes and regenerated by every link, so it must not ride
-      # along into the build tree cache below, which shares a 10GB pool with
-      # the dependency caches. Moved out first; uploaded privately further
-      # down, next to the executable it matches.
+      # along into the build tree the build store keeps. Moved out first;
+      # uploaded privately further down, next to the executable it matches.
       - name: Move symbols out of the build tree.
         if: always() && inputs.mode == 'build'
         shell: bash
@@ -1092,38 +1083,6 @@ jobs:
           else
             echo "no PDB (the link did not run)"
           fi
-
-      # Only a successful build's tree is saved. Saving after a failure was
-      # meant to let the next run reuse what the failed one compiled, but our
-      # fix commits touch widely included headers, so the next run rebuilt
-      # most of it anyway: 59-74 minutes, no faster than from scratch. The
-      # upload itself took 8-18 minutes and once 56 (run 35451377993), all of
-      # it holding back the log needed to fix the failure.
-      - name: Save build tree cache.
-        if: ${{ !cancelled() && !inputs.cold && inputs.mode == 'build' && steps.telegram.outcome == 'success' && steps.cache-out.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ env.CACHE_ROOT }}\${{ env.REPO_NAME }}\out
-          key: ${{ steps.cache-out.outputs.cache-primary-key }}
-
-      # The build tree is gigabytes against a 10GB pool shared with the
-      # dependency caches. Left unpruned it would evict them, which is exactly
-      # how sccache cost us a two hour rebuild.
-      - name: Prune old build tree caches.
-        if: always() && inputs.mode == 'build'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          prefix="${{ runner.OS }}-${{ matrix.arch }}-out-${{ inputs.config }}-"
-          gh cache list --repo "$GITHUB_REPOSITORY" --key "$prefix" \
-            --limit 100 --json id,key,createdAt \
-            --jq 'sort_by(.createdAt) | reverse | .[2:] | .[].id' 2>/dev/null \
-            | while read -r id; do
-                [ -n "$id" ] && gh cache delete "$id" --repo "$GITHUB_REPOSITORY" || true
-              done
-          echo "remaining build tree caches:"
-          gh cache list --repo "$GITHUB_REPOSITORY" --key "$prefix" --limit 10 || true
 
       - name: Move artifact.
         if: inputs.mode == 'build'
@@ -1164,7 +1123,7 @@ jobs:
       # and the retention-days above do not apply: releases do not expire, so
       # an old build stays installable.
       - name: Publish release.
-        if: inputs.mode == 'build' && inputs.config == 'Release' && !inputs.cold
+        if: inputs.mode == 'build' && inputs.config == 'Release' && !inputs.dry_run
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -1188,3 +1147,24 @@ jobs:
             --title "$BUILD_TAG" \
             --notes "Built from $GITHUB_SHA on $(date -u +%Y-%m-%d)."
           echo "published $BUILD_TAG"
+
+      # LoogriGram: the build tree back into the build store - last, so a
+      # few gigabytes of upload never hold up the release above. Only after
+      # a successful compile, whose objects agree with the commit "Record the
+      # build tree's commit." wrote down; it notes which libraries it was
+      # built against. The executable and its PDB are out of it by now, and
+      # the next link writes both afresh.
+      - name: Save the build tree to the build store.
+        if: ${{ !cancelled() && inputs.mode == 'build' && steps.telegram.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python "$TBUILD/$REPO_NAME/.github/scripts/build_store.py" \
+            --store "$BUILD_STORE" --root "$TBUILD" \
+            --state "$RUNNER_TEMP/build-store.json" \
+            --salt "$OUT_CACHE_SALT" \
+            --built-against thirdparty,libraries-${{ inputs.config }},qt-${{ inputs.config }} \
+            --always ${{ inputs.dry_run && '--dry-run' || '' }} \
+            save out-${{ inputs.config }}
