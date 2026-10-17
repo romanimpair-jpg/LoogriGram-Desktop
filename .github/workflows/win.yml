@@ -511,7 +511,8 @@ jobs:
           set -e
           try="$(cygpath -u "$RUNNER_TEMP")/store-try"
           mkdir -p "$try/a/selftest/sub" "$try/b-real"
-          cmd //c mklink /d "$(cygpath -w "$try/b")" "$(cygpath -w "$try/b-real")"
+          # MSYS_NO_PATHCONV: Git Bash would pass mklink's /d on as D:/.
+          MSYS_NO_PATHCONV=1 cmd /c mklink /d "$(cygpath -w "$try/b")" "$(cygpath -w "$try/b-real")"
           date -u > "$try/a/selftest/sub/stamp.txt"
           head -c 300000 /dev/urandom > "$try/a/selftest/noise.bin"
           store() {
