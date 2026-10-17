@@ -533,16 +533,20 @@ jobs:
       # The store keeps paths relative to the build root, TBUILD. Moving that
       # root rebuilds every library: prepare.py keys every stage on its real
       # path (run 38869428265, after the move to D:).
+      #
+      # The store steps run in pwsh, not bash: Git Bash puts its own git and
+      # perl first on PATH, and the machine each entry records should name
+      # the pinned ones the build uses ("Check the pinned tools.").
       - name: Restore libraries from the build store.
         if: inputs.mode != 'validate'
         continue-on-error: true
-        shell: bash
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python "$TBUILD/$REPO_NAME/.github/scripts/build_store.py" \
-            --store "$BUILD_STORE" --root "$TBUILD" \
-            --state "$RUNNER_TEMP/build-store.json" \
+          python "$env:TBUILD\$env:REPO_NAME\.github\scripts\build_store.py" `
+            --store $env:BUILD_STORE --root $env:TBUILD `
+            --state "$env:RUNNER_TEMP\build-store.json" `
             restore thirdparty libraries-${{ inputs.config }} qt-${{ inputs.config }}
 
       - name: Reclaim disk space.
@@ -650,15 +654,14 @@ jobs:
       - name: Save libraries to the build store.
         if: inputs.mode != 'validate' && steps.libraries.outcome == 'success'
         continue-on-error: true
-        shell: bash
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python "$TBUILD/$REPO_NAME/.github/scripts/build_store.py" \
-            --store "$BUILD_STORE" --root "$TBUILD" \
-            --state "$RUNNER_TEMP/build-store.json" \
-            ${{ inputs.dry_run && '--dry-run' || '' }} \
-            save thirdparty libraries-${{ inputs.config }} qt-${{ inputs.config }}
+          python "$env:TBUILD\$env:REPO_NAME\.github\scripts\build_store.py" `
+            --store $env:BUILD_STORE --root $env:TBUILD `
+            --state "$env:RUNNER_TEMP\build-store.json" `
+            ${{ inputs.dry_run && '--dry-run' || '' }} save thirdparty libraries-${{ inputs.config }} qt-${{ inputs.config }}
 
       - name: Check dav1d is present.
         if: inputs.mode == 'build'
@@ -687,14 +690,14 @@ jobs:
       - name: Restore the build tree from the build store.
         if: inputs.mode == 'build'
         continue-on-error: true
-        shell: bash
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python "$TBUILD/$REPO_NAME/.github/scripts/build_store.py" \
-            --store "$BUILD_STORE" --root "$TBUILD" \
-            --state "$RUNNER_TEMP/build-store.json" \
-            --salt "$OUT_CACHE_SALT" \
+          python "$env:TBUILD\$env:REPO_NAME\.github\scripts\build_store.py" `
+            --store $env:BUILD_STORE --root $env:TBUILD `
+            --state "$env:RUNNER_TEMP\build-store.json" `
+            --salt $env:OUT_CACHE_SALT `
             restore out-${{ inputs.config }}
 
       - name: Age sources against the cached build tree.
@@ -1157,14 +1160,13 @@ jobs:
       - name: Save the build tree to the build store.
         if: ${{ !cancelled() && inputs.mode == 'build' && steps.telegram.outcome == 'success' }}
         continue-on-error: true
-        shell: bash
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python "$TBUILD/$REPO_NAME/.github/scripts/build_store.py" \
-            --store "$BUILD_STORE" --root "$TBUILD" \
-            --state "$RUNNER_TEMP/build-store.json" \
-            --salt "$OUT_CACHE_SALT" \
-            --built-against thirdparty,libraries-${{ inputs.config }},qt-${{ inputs.config }} \
-            --always ${{ inputs.dry_run && '--dry-run' || '' }} \
-            save out-${{ inputs.config }}
+          python "$env:TBUILD\$env:REPO_NAME\.github\scripts\build_store.py" `
+            --store $env:BUILD_STORE --root $env:TBUILD `
+            --state "$env:RUNNER_TEMP\build-store.json" `
+            --salt $env:OUT_CACHE_SALT `
+            --built-against "thirdparty,libraries-${{ inputs.config }},qt-${{ inputs.config }}" `
+            --always ${{ inputs.dry_run && '--dry-run' || '' }} save out-${{ inputs.config }}
