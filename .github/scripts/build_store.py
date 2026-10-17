@@ -501,10 +501,14 @@ def unusable(name, version, args, state):
 
 
 def restore_one(store, manifest, name, args, state, scratch, zstd):
+    """True unless a version failed to restore for want of something that
+    should have worked - a download, a checksum, the unpacking. Being absent
+    from the store, or refused by a rule, is not a failure."""
     versions = manifest['entries'].get(name, {}).get('versions', [])
     if not versions:
         log('%s: not in the store' % name)
-        return
+        return True
+    failed = False
     for version in versions:
         why = unusable(name, version, args, state)
         if why:
@@ -531,6 +535,7 @@ def restore_one(store, manifest, name, args, state, scratch, zstd):
                      '%s %s could not be restored: %s'
                      % (name, version['id'], error))
             remove_paths(args.root, version.get('paths', []))
+            failed = True
             continue
         finally:
             shutil.rmtree(directory, ignore_errors=True)
@@ -540,8 +545,9 @@ def restore_one(store, manifest, name, args, state, scratch, zstd):
                 name, version['id'], human(version.get('size', 0)),
                 version.get('files', 0), (version.get('commit') or '?')[:10],
                 fetched - started, time.time() - fetched))
-        return
+        return not failed
     log('%s: no usable version in the store' % name)
+    return not failed
 
 
 def drop_versions(store, versions, names):
@@ -652,9 +658,15 @@ def cmd_restore(args, store, scratch):
     state = read_state(args.state)
     manifest = load_manifest(store, scratch)
     os.makedirs(args.root, exist_ok=True)
+    clean = True
     for name in args.entries:
-        restore_one(store, manifest, name, args, state, scratch, zstd)
+        clean = restore_one(store, manifest, name, args, state, scratch,
+                            zstd) and clean
         write_state(args.state, state)
+    if not clean:
+        # The step fails, visibly, but the workflow lets the build go on and
+        # rebuild what could not be restored.
+        sys.exit(1)
 
 
 def cmd_save(args, store, scratch):
@@ -737,7 +749,11 @@ def main():
     sub.add_parser('status')
     sub.add_parser('put').add_argument('files', nargs='+')
     args = parser.parse_args()
-    args.root = os.path.abspath(args.root)
+    # The real path, not a link to it: bsdtar refuses to extract through a
+    # symlink ("Cannot extract through symlink \\?\C:\b"), and the build
+    # reaches its root through one - every restore of the first rehearsal,
+    # run 39048108184, failed that way.
+    args.root = os.path.realpath(os.path.abspath(args.root))
     store = open_store(args.store)
     base = args.scratch or os.environ.get('RUNNER_TEMP') or tempfile.gettempdir()
     os.makedirs(base, exist_ok=True)
