@@ -576,7 +576,8 @@ days. So, since `dd0ea5658d`:
   `prepare.py`; pacman verifies each package's signature). No `-Syu`.
 - **Built trees:** in the build store, which never expires (see "The build
   store"). `deps-trees`, the copy a manual `cache` run refreshed
-  (2026-10-15), is superseded.
+  (2026-10-15), was deleted on 2026-10-18: nothing read it, and its trees
+  were built for the old C: location, so prepare.py would have rebuilt them.
 - The store and `deps-msys2-20260908` are pre-releases with
   `--latest=false`; the in-app updater reads `/releases/latest` and never
   sees them.
