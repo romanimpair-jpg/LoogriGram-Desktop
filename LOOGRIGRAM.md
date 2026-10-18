@@ -63,8 +63,16 @@ nine idle days and the `deps-trees` fallback had never been made (see
 "Frozen dependencies"). The same pair for groups with topics
 (`26e03b740a`) shipped as **`gf48e0c3`** (full build 38869428265, green,
 2026-10-16) after two builds failed in the link - not the code: see CI
-lesson 13, which also explains why the next build rebuilds every library
-once and must be followed by a `cache` run.
+lesson 13.
+
+**The build store** (2026-10-17/18, the user's call that builds must not
+depend on GitHub's cache expiry): every cache the build uses is now ours -
+see "The build store" below. Build #1 filled it and published **`g945a98d`**
+(full build 39026350165; CI changes only, the app is `gf48e0c3`'s). The
+dry-run rehearsal 39079215620 restored everything and built in 23 minutes:
+31 of 32 library stages skipped, one object recompiled. The next real
+build uploads `libraries-Release` once more, its fingerprint predating the
+symlink rule (`cf655c900c`); after that only what changes uploads.
 
 ---
 
@@ -566,21 +574,12 @@ days. So, since `dd0ea5658d`:
   read from its log) - 6 core, then 73 - from the pre-release
   `deps-msys2-20260908` (one tar, checked against a fixed SHA-256 in
   `prepare.py`; pacman verifies each package's signature). No `-Syu`.
-- **Built trees:** a `cache` run stores `ThirdParty` and `Libraries` as the
-  `deps-trees` pre-release (split under 2 GB); any run whose cache matched
-  nothing restores them from there. Run one `cache` after any build that
-  rebuilt dependencies. Both steps are `continue-on-error`. **The first
-  `cache` run was 38743414888 (2026-10-15)**: until then `deps-trees` did
-  not exist, so `g1358711`'s build, after nine idle days, rebuilt every
-  library (~2h of a ~4h15m run). Now it holds Libraries (1.27 GB) and
-  ThirdParty (160 MB) from that build's caches. The restore step says
-  "No deps-trees release yet" in its log when it finds none - look there
-  if a build is rebuilding libraries. **Stale since the tree moved to D:
-  (2026-10-16)**: those trees were built at the C: paths prepare.py keys
-  on, so it would rebuild them; refresh with a `cache` run after the next
-  build (CI lesson 13).
-- Both pre-releases are `--latest=false`; the in-app updater reads
-  `/releases/latest` and never sees them.
+- **Built trees:** in the build store, which never expires (see "The build
+  store"). `deps-trees`, the copy a manual `cache` run refreshed
+  (2026-10-15), is superseded.
+- The store and `deps-msys2-20260908` are pre-releases with
+  `--latest=false`; the in-app updater reads `/releases/latest` and never
+  sees them.
 
 - **Everything else** (`eb81ed044d`, 2026-10-04), read from the logs of
   34206584631 and of `g7b24c5a` (run 35459450326): `runs-on:
@@ -615,10 +614,82 @@ meson 1.12.1, which is the pin since `73faf2f20d`.
   and "Only the pinned Pythons." deletes every other version from the tool
   cache. "NuGet sources." runs the frozen `nuget.exe`, just before the app
   build. Validate run 37197839493 confirmed all of it; the steps cost ~30s.
+  zstd 1.5.7 joined them for the build store (2026-10-17; GitHub records no
+  checksum for that asset, so its pin is the SHA-256 of the file as
+  downloaded). Each tool now comes from the store's mirror first, checked
+  against the same SHA-256, and from upstream only when missing there.
 
 Left to the image because they cannot be pinned: Windows, PowerShell, the
 Git Bash that `shell: bash` steps run in, and Visual Studio beyond its
 pinned 14.44 toolset and the SDK version.
+
+### The build store
+
+The workflow's only cache (2026-10-17, `945a98d8cc`), because GitHub evicts
+an Actions cache unused for seven days and that twice cost a full library
+rebuild; the user's rule is that builds must not depend on that.
+`.github/scripts/build_store.py` keeps entries as the assets of one
+pre-release, `build-store`: per version, a zstd tar split under the 2 GiB
+asset limit, and in `manifest.json` each part's size and SHA-256, the commit
+and run, a fingerprint of the files and the machine. Two versions of each
+entry are kept; a restore falls back to the older when the newer fails its
+checksums.
+
+| Entry | Holds | Saved |
+|---|---|---|
+| `thirdparty` | `ThirdParty/` | after the clean-up, if changed |
+| `libraries-Release` | `Libraries/win64` without Qt | after the clean-up, if changed |
+| `qt-Release` | the Qt directories and their keys | after the clean-up, if changed |
+| `out-Release` | `tg/out` | after every successful build, last |
+| `tool-*` | the pinned tools' zips, as they are | when one came from upstream |
+
+- **It behaves as the Actions caches did**: restore the newest, let
+  prepare.py rebuild the stages whose keys changed, save back what changed.
+  A dependency bump rebuilds what depends on it and uploads that entry;
+  nothing else uploads.
+- **"Changed" is a fingerprint**: path, size and whole-second mtime of each
+  file; prepare.py's key files by content (gas-preprocessor is rebuilt to
+  the same key on every run, its only file deleted by the clean-up);
+  symlinks by target (tar cannot give a symlink back its mtime on Windows,
+  and libjxl's checkout holds 13).
+- **The build tree** is restored only under the same `OUT_CACHE_SALT`, and
+  only if it was built against library versions no newer than the run
+  restored - it records them (`built_against`); restored library files
+  older than its objects would make ninja keep objects compiled against
+  something else. It no longer depends on `prepare.py`'s hash: ninja
+  recompiles what includes a rebuilt library, whose files are newer.
+- **Machine state** per version: image, MSVC and SDK, cmake, ninja, perl,
+  python, git, gh, tar, zstd. A restore reports compiler, SDK and build-tool
+  differences as warnings, the rest as notices, and goes on - the user's
+  rule: a failed build then says where to look, a good one needs nothing.
+  "Choose the compiler and SDK." likewise warns and takes the image's own
+  when MSVC 14.44 or the pinned SDK is missing.
+- **Moving the build root rebuilds every library**: prepare.py keys every
+  stage on its real path (the move to D:, 2026-10-16).
+- `dry_run` builds from the store, says what it would save, and saves and
+  publishes nothing. Validate mode makes a small round trip through the
+  store - through a symlinked root, with a symlink, and unchanged after
+  restoring.
+- Measured: build #1 (39026350165, empty store) saved the libraries in ~2
+  minutes (3.6 GB to 550 MB, Qt 2.0 GB to 382 MB, ThirdParty 440 to
+  141 MB) and the 22.6 GB tree as 2.2 GB in under 3; rehearsal 39079215620
+  restored all four in ~3 minutes, skipped 31 of 32 stages, compiled one
+  object and finished in 23 minutes.
+
+What it ran into:
+
+- **bsdtar refuses to extract through a symlink**, and `C:\b` is one
+  ("Cannot extract through symlink \\?\C:\b"). The script works on the
+  root's real path. The first rehearsal (39048108184) restored nothing and
+  rebuilt everything - green, since the fallback worked - so a restore
+  error now fails its step (which is continue-on-error).
+- **A native program's `tar` is System32's bsdtar**: CreateProcess searches
+  System32 before PATH. Packing and unpacking both use it.
+- **Git Bash puts its own git and perl first on PATH**, so the steps that
+  record the machine run in pwsh (build #1's entries recorded perl 5.42.3
+  and git 2.56, Git Bash's, not the pinned 5.42.0 and 2.55).
+- **Git Bash rewrites an argument like `/d` to `D:/`** before a native
+  command sees it: `MSYS_NO_PATHCONV=1 cmd /c mklink /d ...`.
 
 ### The incremental build tree
 
@@ -638,13 +709,11 @@ as that path in the diff, so it needs no salt bump.
 failure, so the next run could reuse its objects, didn't pay: fix commits
 touch widely included headers, so the next run took 59-74 minutes anyway,
 while the 8-18 minute upload (once 56) held back the log needed to fix the
-failure. Old trees are pruned to the newest two: ~1.5GB each against a 10GB
-pool shared with the dependency caches, and an unbounded cache evicts those,
-which already cost one two-hour rebuild.
+failure. The build store keeps the newest two trees.
 
-The cache key includes `prepare.py`, the SDK version and **`OUT_CACHE_SALT`**;
-raising the salt throws every tree away. Raise it when a change can't be
-seen by the diff — adding or removing `lang.strings` keys is the known case.
+**`OUT_CACHE_SALT`** decides which stored trees may be used; raising it
+throws every tree away. Raise it when a change can't be seen by the diff —
+adding or removing `lang.strings` keys is the known case.
 
 #### Two bugs from one cause: source that never reached the binary
 
@@ -686,17 +755,20 @@ DirectX compiler`). All three earlier sessions theorised instead.
 
 Each of these burned at least one multi-hour build.
 
-1. **GitHub caches are branch-scoped.** A run restores caches from its own
-   branch or the default branch (`dev`) only. The dependency caches live on
-   `patches`, so a side branch pays the full ~2h library build.
+1. **GitHub caches are branch-scoped** - a run restored caches only from its
+   own branch or `dev`, so a side branch paid the full ~2h library build.
+   The build store is not: every branch restores the same entries, and a
+   side branch's normal build saves into them too, so build one with
+   `dry_run`.
 2. **`cd` does not switch drives in cmd.** `TBUILD` is `C:\b` while steps start
    on the `D:` workspace, so `configure.bat` is silently not found. Use `cd /d`.
 3. **MAX_PATH.** The deepest object paths plus the workspace prefix came to 262,
    surfacing as `C1083` with an *empty* filename. Fixed by building through the
    short `C:\b` alias. Shortening the repo directory alone achieves nothing:
    CMake swaps in a longer out-of-tree form depending on prefix length.
-4. **`actions/cache` paths must stay inside the workspace**, or the cache misses
-   silently. Only the build uses the alias.
+4. **`actions/cache` paths had to stay inside the workspace**, or the cache
+   missed silently, which is why `CACHE_ROOT` exists. The build store works
+   under the real path of `TBUILD` instead.
 5. **Debug info is all-or-nothing.** Strip `/Zi` *and* pass an empty
    `CMAKE_MSVC_DEBUG_INFORMATION_FORMAT`, or it fails `C1083` or `LNK1201`.
    The two targets holding our own code set it back per target, which is what
@@ -706,9 +778,10 @@ Each of these burned at least one multi-hour build.
    explicitly and checked to exist before compiling.
 7. **sccache does not work here**: CMake ignores the compiler launcher for
    MSVC. Removed.
-8. **Save caches explicitly, not in post steps.** `actions/cache`'s post step is
-   skipped when any step fails, which once discarded 80 minutes of dependency
-   work.
+8. **Save explicitly, not in post steps.** `actions/cache`'s post step was
+   skipped when any step failed, which once discarded 80 minutes of
+   dependency work; the build store's saves are ordinary steps, the
+   libraries' right after they are built.
 9. **`skip-release` hides two problems**: breakpad's `dump_syms` needs ATL
    headers the CI toolset lacks (deleted from `prepare.py`), and it doubles
    dependency disk use (hence the reclaim step).
@@ -722,8 +795,8 @@ Each of these burned at least one multi-hour build.
     branch head (and it changed `win.yml`). Every release that published,
     on either client, was tagged while its commit was the head. "Tag the
     build." now creates `g<sha>` right after the configuration check and
-    "Publish release." uses `--verify-tag` (`6120b243e6`); the cache run's
-    `deps-trees` release is tagged at `dev`'s head.
+    "Publish release." uses `--verify-tag` (`6120b243e6`); the build store's
+    release is tagged at `dev`'s head.
 12. **A pinned tool's folder can shadow the compiler.** "Pinned tools."
     first unpacked all of Strawberry's `c\bin\` for `ccache`, and GitHub
     puts `GITHUB_PATH` entries in front of what vcvars sets, so its `gcc.exe`
@@ -753,12 +826,8 @@ Each of these burned at least one multi-hour build.
     salt went to 6; and **prepare.py keys every stage on the real paths of
     Libraries and ThirdParty**, so the move made every cached library
     "CHANGED" - 38869428265 rebuilt them all (2h05m) and, its restores
-    being exact hits, saved none. The three library cache keys were
-    versioned up for that (third-party v2, libs v3, Qt v2): the next build
-    rebuilds and saves them once, and its app compile is full because the
-    rebuilt headers are newer than every object. **After that build, run
-    one `cache`**: `deps-trees` still holds the C: trees, which prepare.py
-    would also rebuild.
+    being exact hits, saved none. The build store, which replaced the
+    Actions caches the next day, holds them for D: since build #1.
 14. **Read the linker's whole output, and its exit code.** CMake's
     `vs_link_exe` prints the linker's output only when the link fails, so a
     green log never shows it - not even "Creating library", which every
