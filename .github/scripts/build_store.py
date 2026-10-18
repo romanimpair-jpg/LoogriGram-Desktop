@@ -39,6 +39,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -254,7 +255,11 @@ def walk_files(root, rel):
         return
     for dirpath, dirnames, filenames in os.walk(full):
         dirnames.sort()
-        for name in sorted(filenames):
+        # A link to a directory is listed with the directories and never
+        # walked into; it is an entry of its own, like a file.
+        names = sorted(filenames + [d for d in dirnames
+                                    if os.path.islink(os.path.join(dirpath, d))])
+        for name in names:
             path = os.path.join(dirpath, name)
             yield path, posix(rel, os.path.relpath(path, full))
 
@@ -264,13 +269,18 @@ def fingerprint(root, paths):
     exactly, since tar keeps mtimes to the second. A prepare.py key file is
     read by content instead: a stage rebuilt to the same key rewrites its
     key file with nothing new in it (gas-preprocessor, whose only file the
-    clean-up step deletes, is rebuilt that way on every run)."""
+    clean-up step deletes, is rebuilt that way on every run). A symlink is
+    read by its target: tar cannot give a symlink back its mtime on
+    Windows, and libjxl's checkout holds thirteen, which made a restored
+    libraries tree read as changed (second rehearsal, run 39079215620)."""
     digest = hashlib.sha256()
     files = total = 0
     for rel in paths:
         for path, relpath in walk_files(root, rel):
             st = os.lstat(path)
-            if '/cache_keys/' in '/' + relpath:
+            if stat.S_ISLNK(st.st_mode):
+                tag = 'link:' + os.readlink(path).replace('\\', '/')
+            elif '/cache_keys/' in '/' + relpath:
                 with open(path, 'rb') as f:
                     tag = hashlib.sha256(f.read()).hexdigest()
             else:

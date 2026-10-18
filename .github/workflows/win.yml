@@ -515,6 +515,10 @@ jobs:
           MSYS_NO_PATHCONV=1 cmd /c mklink /d "$(cygpath -w "$try/b")" "$(cygpath -w "$try/b-real")"
           date -u > "$try/a/selftest/sub/stamp.txt"
           head -c 300000 /dev/urandom > "$try/a/selftest/noise.bin"
+          # A symlink too: libjxl's checkout holds thirteen, and tar cannot
+          # give one back its mtime, which once made every build re-upload
+          # the libraries (second rehearsal, run 39079215620).
+          MSYS_NO_PATHCONV=1 cmd /c mklink "$(cygpath -w "$try/a/selftest/sub/link.txt")" stamp.txt
           store() {
             python "$TBUILD/$REPO_NAME/.github/scripts/build_store.py" \
               --store "$BUILD_STORE" --state "$(cygpath -w "$try/state.json")" "$@"
@@ -522,8 +526,12 @@ jobs:
           store --root "$(cygpath -w "$try/a")" --part-size 100000 save selftest
           store --root "$(cygpath -w "$try/b")" restore selftest
           diff -r "$try/a/selftest" "$try/b-real/selftest"
+          # A restored tree must read as unchanged, or every build uploads
+          # its libraries again.
+          store --root "$(cygpath -w "$try/b")" save selftest | tee "$try/again.txt"
+          grep -q "unchanged since" "$try/again.txt"
           store drop selftest
-          echo "the build store works on this runner, through a symlinked root"
+          echo "the build store works on this runner: symlinked root, symlinks, unchanged after a round trip"
 
       # LoogriGram: the build store (see the top of this file) replaces the
       # Actions caches, which GitHub evicts after seven days unused - after a
