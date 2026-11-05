@@ -4398,9 +4398,6 @@ auto HtmlWriter::Wrap::pushMessage(
 					break;
 				}
 			}
-			if (reaction.type == Reaction::Type::Paid) {
-				reactionClass += " paid";
-			}
 
 			block.append(pushTag("span", {
 				{ "class", reactionClass },
@@ -4417,9 +4414,6 @@ auto HtmlWriter::Wrap::pushMessage(
 						reaction.documentId,
 						"\U0001F44B",
 						_base));
-					break;
-				case Reaction::Type::Paid:
-					block.append(SerializeString("\u2B50"));
 					break;
 			}
 			block.append(popTag());

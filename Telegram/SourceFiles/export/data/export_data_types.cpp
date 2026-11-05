@@ -348,7 +348,6 @@ Utf8String Reaction::TypeToString(const Reaction &reaction) {
 		case Reaction::Type::Empty: return "empty";
 		case Reaction::Type::Emoji: return "emoji";
 		case Reaction::Type::CustomEmoji: return "custom_emoji";
-		case Reaction::Type::Paid: return "paid";
 	}
 	Unexpected("Type in Reaction::Type.");
 }
@@ -1232,7 +1231,8 @@ Reaction ParseReaction(const MTPReaction& reaction) {
 		result.type = Reaction::Type::CustomEmoji;
 		result.documentId = NumberToString(data.vdocument_id().v);
 	}, [&](const MTPDreactionPaid &data) {
-		result.type = Reaction::Type::Paid;
+		// LoogriGram: money, left out of the export as it is hidden in the app.
+		result.type = Reaction::Type::Empty;
 	}, [&](const MTPDreactionEmpty &data) {
 		result.type = Reaction::Type::Empty;
 	});
@@ -1244,6 +1244,10 @@ std::vector<Reaction> ParseReactions(const MTPMessageReactions &data) {
 	auto reactionsOrder = std::vector<Utf8String>();
 	for (const auto &single : data.data().vresults().v) {
 		auto reaction = ParseReaction(single.data().vreaction());
+		// LoogriGram: an empty reaction here is a paid one, see ParseReaction.
+		if (reaction.type == Reaction::Type::Empty) {
+			continue;
+		}
 		reaction.count = single.data().vcount().v;
 		const auto id = Reaction::Id(reaction);
 		auto const &[_, inserted] = reactionsMap.try_emplace(
@@ -1257,6 +1261,10 @@ std::vector<Reaction> ParseReactions(const MTPMessageReactions &data) {
 		if (const auto list = data.data().vrecent_reactions()) {
 			for (const auto &single : list->v) {
 				auto reaction = ParseReaction(single.data().vreaction());
+				// LoogriGram: as above.
+				if (reaction.type == Reaction::Type::Empty) {
+					continue;
+				}
 				const auto id = Reaction::Id(reaction);
 				auto const &[it, inserted] = reactionsMap.try_emplace(
 					id,

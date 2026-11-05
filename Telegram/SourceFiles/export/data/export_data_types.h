@@ -1065,7 +1065,6 @@ struct Reaction {
 		Empty,
 		Emoji,
 		CustomEmoji,
-		Paid,
 	};
 
 	[[nodiscard]] static Utf8String TypeToString(const Reaction &);
