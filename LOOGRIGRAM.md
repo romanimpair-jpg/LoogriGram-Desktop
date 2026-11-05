@@ -223,8 +223,9 @@ All deleted, not gated. Roughly in the order they were done.
   painter can have its own slot.**
 - **Money, in both directions.** Stars, TON, gifts (sending, receiving,
   collections, resale, auctions), giveaways, paid media, paid posts, paid
-  reactions (`Data::Parse` drops `paid_reactions_available`; display drops any
-  paid reaction a message arrives with), paid messages (the price setting,
+  reactions (`Data::Parse` drops `paid_reactions_available`;
+  `MessageReactions::change` keeps no entry for one a message arrives with, and
+  the export leaves it out), paid messages (the price setting,
   and see "Paid messages" below), invoices and payments, suggested posts with
   a price, affiliate programs, channel earnings and ad revenue, `Ui::StarsRating`.
 - **Boosting**, both sides: applying a boost (it spends a Premium slot), the
@@ -945,6 +946,13 @@ whole tree for anything deleted since `<base>`; run it before a build.
 - **Look for anything plugged with a forced failure that a caller still waits
   on.** That lens found `SponsoredMessages::request` dropping its callback,
   before ads were deleted outright.
+- **"Every caller ignores this" is a claim to check, caller by caller.**
+  Deleting `ReactionId::Paid` (`c25158eefc`) read an arriving paid reaction as
+  an empty id on the strength of such a comment, and deleted the display filter
+  that hid it, since that looked for the deleted id. `MessageReactions::change`
+  ignored nothing: for seven weeks a post with stars showed a blank pill with a
+  count, which crashed on `Expects(!id.empty())` when clicked. When a removal
+  takes a filter with it, ask what the filter was keeping out.
 
 ---
 
