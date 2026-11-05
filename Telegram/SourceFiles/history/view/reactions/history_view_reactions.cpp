@@ -57,7 +57,6 @@ struct InlineList::Button {
 	int textWidth = 0;
 	int count = 0;
 	bool chosen = false;
-	bool paid = false;
 };
 
 struct InlineList::RippleEffect : Ui::RippleAnimation {
@@ -613,7 +612,8 @@ InlineListData InlineListDataFromMessage(not_null<Element*> view) {
 	const auto item = view->data();
 	auto result = InlineListData();
 	// LoogriGram: paid reactions used to be merged in here from local state
-	// and then filtered back out. Neither happens now - they are deleted.
+	// and then filtered back out. Neither happens now - the item never holds
+	// one, MessageReactions::change drops them on arrival.
 	result.reactions = item->reactions();
 	if (const auto user = item->history()->peer->asUser()) {
 		// Always show userpics, we have all information.

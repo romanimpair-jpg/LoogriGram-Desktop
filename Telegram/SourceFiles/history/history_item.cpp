@@ -4809,7 +4809,6 @@ bool HistoryItem::changeReactions(const MTPMessageReactions *reactions) {
 	const auto min = data.is_min();
 	const auto &list = data.vresults().v;
 	const auto &recent = data.vrecent_reactions().value_or_empty();
-	const auto &top = data.vtop_reactors().value_or_empty();
 	if (min && hasUnreadReaction()) {
 		// We can't update reactions from min if we have unread.
 		if (_reactions->checkIfChanged(list, recent, min)) {
@@ -4817,7 +4816,13 @@ bool HistoryItem::changeReactions(const MTPMessageReactions *reactions) {
 		}
 		return false;
 	}
-	return _reactions->change(list, recent, top, min);
+	const auto changed = _reactions->change(list, recent, min);
+	// LoogriGram: nothing is kept for a paid reaction, so a message that has
+	// only those has no reactions, same as an empty list from the server.
+	if (_reactions->empty()) {
+		_reactions = nullptr;
+	}
+	return changed;
 }
 
 void HistoryItem::applyTTL(const MTPDmessage &data) {

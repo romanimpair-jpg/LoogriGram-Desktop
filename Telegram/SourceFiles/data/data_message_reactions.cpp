@@ -1160,6 +1160,10 @@ bool MessageReactions::checkIfChanged(
 	for (const auto &count : list) {
 		const auto changed = count.match([&](const MTPDreactionCount &data) {
 			const auto id = ReactionFromMTP(data.vreaction());
+			// LoogriGram: a paid reaction, which change() keeps no entry for.
+			if (id.empty()) {
+				return false;
+			}
 			const auto nowCount = data.vcount().v;
 			const auto i = ranges::find(_list, id, &MessageReaction::id);
 			const auto wasCount = (i != end(_list)) ? i->count : 0;
@@ -1210,7 +1214,6 @@ bool MessageReactions::checkIfChanged(
 bool MessageReactions::change(
 		const QVector<MTPReactionCount> &list,
 		const QVector<MTPMessagePeerReaction> &recent,
-		const QVector<MTPMessageReactor> &top,
 		bool min) {
 	auto &owner = _item->history()->owner();
 	if (owner.reactions().sending(_item)) {
@@ -1223,6 +1226,12 @@ bool MessageReactions::change(
 	for (const auto &count : list) {
 		count.match([&](const MTPDreactionCount &data) {
 			const auto id = ReactionFromMTP(data.vreaction());
+			// LoogriGram: a paid reaction gets no entry, so nothing can draw
+			// it, count it or try to toggle it. Its recent peers below go too,
+			// having no entry to belong to.
+			if (id.empty()) {
+				return;
+			}
 			const auto &chosen = data.vchosen_order();
 			if (!min && chosen) {
 				order[id] = chosen->v;

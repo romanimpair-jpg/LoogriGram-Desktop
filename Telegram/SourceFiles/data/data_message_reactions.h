@@ -257,7 +257,6 @@ public:
 	bool change(
 		const QVector<MTPReactionCount> &list,
 		const QVector<MTPMessagePeerReaction> &recent,
-		const QVector<MTPMessageReactor> &top,
 		bool min);
 	[[nodiscard]] bool checkIfChanged(
 		const QVector<MTPReactionCount> &list,

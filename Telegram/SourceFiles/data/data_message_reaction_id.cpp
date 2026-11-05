@@ -48,7 +48,9 @@ ReactionId ReactionFromMTP(const MTPReaction &reaction) {
 		return ReactionId{ DocumentId(data.vdocument_id().v) };
 	}, [](const MTPDreactionPaid &) {
 		// LoogriGram: paid reactions are deleted; one that arrives is read
-		// as an empty reaction, which every caller already ignores.
+		// as an empty reaction. Nothing ignores that by itself: an empty id
+		// in MessageReactions is a blank pill that dies in add() when clicked,
+		// so MessageReactions::change keeps no entry for one.
 		return ReactionId{ QString() };
 	});
 }

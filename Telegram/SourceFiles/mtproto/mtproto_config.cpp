@@ -271,8 +271,9 @@ void Config::apply(const MTPDconfig &data) {
 			_fields.reactionDefaultEmoji = qs(data.vemoticon());
 		}, [&](const MTPDreactionCustomEmoji &data) {
 			_fields.reactionDefaultCustom = data.vdocument_id().v;
-		}, [&](const MTPDreactionPaid &data) {
-			_fields.reactionDefaultEmoji = QString(QChar('*'));
+		}, [&](const MTPDreactionPaid &) {
+			// LoogriGram: '*' tagged the paid reaction id, which is deleted.
+			// A paid default keeps the fallback, as an empty one does.
 		});
 	}
 	_fields.autologinToken = qs(data.vautologin_token().value_or_empty());
