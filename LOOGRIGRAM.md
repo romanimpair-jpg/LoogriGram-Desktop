@@ -74,6 +74,11 @@ dry-run rehearsal 39079215620 restored everything and built in 23 minutes:
 build uploads `libraries-Release` once more, its fingerprint predating the
 symlink rule (`cf655c900c`); after that only what changes uploads.
 
+**`g6758e08`** (full build 41992967191, green, 2026-11-05) shipped the
+paid-reaction handling (`3669f1693f`, `4b9d78c77a`) and is the Latest
+release. Not in it yet: the sticker hold preview (`d03468a7ca`; see
+"Added").
+
 ---
 
 ## Settled rules — do not re-litigate
@@ -399,6 +404,23 @@ without trace.
   must tolerate a null action:** `TopBarWidget`'s `hasTopicMenu` fills a
   topic's menu once with a callback that returns none, and `SetActionText`
   takes `not_null`.
+- **Holding a sticker in a chat shows it enlarged** (`d03468a7ca`,
+  2026-11-10, the user's request; Android `2a2765c1`). Upstream has it on
+  neither client; the user took it for something the big-animation
+  removal had taken. Holding the left button on a sticker opens the
+  sticker panel's `MediaPreviewWidget` until release; clicking still
+  opens the pack and right-clicking the message menu. `PressedSticker`
+  (`history_view_cursor_state`) decides that a press is on a sticker: one
+  drawn without a bubble, the point inside it, not blurred as sensitive,
+  and the pressed link the sticker's own (none for one without a pack)
+  rather than the corner reaction or reply button's. `HistoryInner` and
+  `ListWidget` (topics, replies, the other sections) arm a
+  `startDragTime()` timer, as `StickersListWidget` does, and cancel it on
+  release, a cancelled mouse action, or moving far enough to drag or
+  select. When the preview shows they cancel the press itself
+  (unpressed, its empty text selection cleared), so the release, which
+  `MainWindow`'s event filter turns into hiding the preview, opens,
+  drags and selects nothing.
 
 ### Our own updater
 

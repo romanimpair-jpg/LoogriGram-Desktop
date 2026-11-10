@@ -43,6 +43,7 @@ One switch in the main menu, next to Night Mode.
 ### Added
 
 - A chat's own menu (⋮ at its top right) can add the chat to a folder and archive or unarchive it, as right-clicking it in the chat list can. This works for private chats, groups and channels alike, and in a group with topics the menu of its topic list (or of a topic, when the group shows topics as tabs) files the whole group.
+- Holding the mouse button on a sticker in a chat shows it enlarged, as holding one in the sticker panel does, until you let go. Clicking it still opens its pack, and right-clicking still opens the message menu.
 
 ### Kept on purpose
 
