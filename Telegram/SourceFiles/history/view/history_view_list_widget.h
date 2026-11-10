@@ -702,6 +702,7 @@ private:
 	void mouseActionCancel();
 	std::unique_ptr<QMimeData> prepareDrag();
 	void performDrag();
+	void showStickerPreview();
 	style::cursor computeMouseCursor() const;
 	int itemTop(not_null<const Element*> view) const;
 	void repaintItem(FullMsgId itemId);
@@ -1030,6 +1031,11 @@ private:
 	crl::time _trippleClickStartTime = 0;
 
 	ElementHighlighter _highlighter;
+
+	// LoogriGram: holding the left button on a sticker shows it enlarged.
+	base::Timer _stickerPreviewTimer;
+	DocumentData *_stickerPreviewDocument = nullptr;
+	FullMsgId _stickerPreviewItemId;
 
 	mutable bool _lastInSelectionMode = false;
 	mutable Ui::Animations::Simple _inSelectionModeAnimation;

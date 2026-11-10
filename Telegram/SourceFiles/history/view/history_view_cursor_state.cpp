@@ -7,10 +7,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_cursor_state.h"
 
+#include "data/data_document.h"
 #include "data/data_session.h"
 #include "history/history.h"
 #include "history/history_item.h"
 #include "history/view/history_view_element.h"
+#include "history/view/media/history_view_media.h"
+#include "ui/click_handler.h"
 
 namespace HistoryView {
 
@@ -111,6 +114,25 @@ not_null<HistoryItem*> LookupItemByPoint(
 		}
 	}
 	return view->data();
+}
+
+DocumentData *PressedSticker(
+		not_null<const Element*> view,
+		QPoint itemPoint) {
+	const auto media = view->hasBubble() ? nullptr : view->media();
+	const auto document = media ? media->getDocument() : nullptr;
+	if (!document
+		|| !document->sticker()
+		|| view->data()->isMediaSensitive()
+		|| view->pointState(itemPoint) != PointState::Inside) {
+		return nullptr;
+	}
+	// The press is on the sticker itself if it took the link drawn there:
+	// the sticker's own (none for one without a pack), not a button's.
+	return (ClickHandler::getPressed()
+		== view->textState(itemPoint, StateRequest()).link)
+		? document
+		: nullptr;
 }
 
 } // namespace HistoryView

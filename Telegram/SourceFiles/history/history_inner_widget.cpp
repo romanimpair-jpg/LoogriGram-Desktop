@@ -341,6 +341,7 @@ HistoryInner::HistoryInner(
 , _replyButtonManager(
 	std::make_unique<HistoryView::ReplyButton::Manager>(
 		[=](QRect updated) { update(updated); }))
+, _stickerPreviewTimer([=] { showStickerPreview(); })
 , _touchSelectTimer([=] { onTouchSelect(); })
 , _touchScrollTimer([=] { onTouchScrollTimer(); })
 , _middleClickAutoscroll(
@@ -2008,6 +2009,37 @@ void HistoryInner::mousePressEvent(QMouseEvent *e) {
 	}
 	_mouseActive = true;
 	mouseActionStart(e->globalPos(), e->button());
+
+	// LoogriGram: holding the left button on a sticker shows it enlarged, as
+	// holding one in the sticker panel does; releasing first, or moving far
+	// enough to drag or select, cancels it. Upstream has no such preview in
+	// the chat: the user's request, 2026-11-10, both clients. ListWidget
+	// does the same for topics, replies and the other sections.
+	const auto view = Element::Moused();
+	_stickerPreviewDocument = (e->button() == Qt::LeftButton && view)
+		? HistoryView::PressedSticker(view, mapPointToItem(e->pos(), view))
+		: nullptr;
+	if (_stickerPreviewDocument) {
+		_stickerPreviewItemId = view->data()->fullId();
+		_stickerPreviewTimer.callOnce(QApplication::startDragTime());
+	}
+}
+
+void HistoryInner::showStickerPreview() {
+	const auto document = base::take(_stickerPreviewDocument);
+	if (!document
+		|| !_controller->widget()->showMediaPreview(
+			Data::FileOriginMessage(_stickerPreviewItemId),
+			document)) {
+		return;
+	}
+	// Releasing the button now only hides the preview: the press neither
+	// opens the pack nor drags or selects anything.
+	ClickHandler::unpressed();
+	if (_mouseAction == MouseAction::Selecting) {
+		clearTextSelection();
+	}
+	mouseActionCancel();
 }
 
 void HistoryInner::mouseActionStart(const QPoint &screenPos, Qt::MouseButton button) {
@@ -2103,6 +2135,7 @@ void HistoryInner::mouseActionStart(const QPoint &screenPos, Qt::MouseButton but
 }
 
 void HistoryInner::mouseActionCancel() {
+	_stickerPreviewTimer.cancel(); // LoogriGram: the sticker hold preview.
 	_mouseActionItem = nullptr;
 	_dragStateItem = nullptr;
 	_mouseAction = MouseAction::None;
@@ -2314,6 +2347,7 @@ void HistoryInner::viewRemoved(not_null<const Element*> view) {
 void HistoryInner::mouseActionFinish(
 		const QPoint &screenPos,
 		Qt::MouseButton button) {
+	_stickerPreviewTimer.cancel(); // LoogriGram: the sticker hold preview.
 	mouseActionUpdate(screenPos);
 
 	const auto toggleByHandler = [&](const ClickHandlerPtr &handler) {
@@ -5111,6 +5145,8 @@ void HistoryInner::mouseActionUpdate() {
 		lnkhost = _replyButtonManager.get();
 	} else if (item) {
 		if (item != _mouseActionItem || (m - _dragStartPosition).manhattanLength() >= QApplication::startDragDistance()) {
+			// LoogriGram: moving off a held sticker cancels its preview.
+			_stickerPreviewTimer.cancel();
 			if (_mouseAction == MouseAction::PrepareDrag) {
 				_mouseAction = MouseAction::Dragging;
 				InvokeQueued(this, [=] { performDrag(); });

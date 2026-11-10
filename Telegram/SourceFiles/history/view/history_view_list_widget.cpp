@@ -523,6 +523,7 @@ ListWidget::ListWidget(
 	&_session->data(),
 	[=](const HistoryItem *item) { return viewForItem(item); },
 	[=](const Element *view) { repaintItem(view); })
+, _stickerPreviewTimer([=] { showStickerPreview(); })
 , _touchSelectTimer([=] { onTouchSelect(); })
 , _touchScrollTimer([=] { onTouchScrollTimer(); })
 , _middleClickAutoscroll(
@@ -3988,6 +3989,36 @@ void ListWidget::mousePressEvent(QMouseEvent *e) {
 	}
 	_mouseActive = true;
 	mouseActionStart(e->globalPos(), e->button());
+
+	// LoogriGram: holding the left button on a sticker shows it enlarged, as
+	// HistoryInner does in the chat itself.
+	const auto view = _overElement;
+	_stickerPreviewDocument = (e->button() == Qt::LeftButton && view)
+		? PressedSticker(view, _overState.point)
+		: nullptr;
+	if (_stickerPreviewDocument) {
+		_stickerPreviewItemId = view->data()->fullId();
+		_stickerPreviewTimer.callOnce(QApplication::startDragTime());
+	}
+}
+
+void ListWidget::showStickerPreview() {
+	const auto document = base::take(_stickerPreviewDocument);
+	const auto window = controllerOrNull();
+	if (!document
+		|| !window
+		|| !window->widget()->showMediaPreview(
+			Data::FileOriginMessage(_stickerPreviewItemId),
+			document)) {
+		return;
+	}
+	// Releasing the button now only hides the preview: the press neither
+	// opens the pack nor drags or selects anything.
+	ClickHandler::unpressed();
+	if (_mouseAction == MouseAction::Selecting) {
+		clearTextSelection();
+	}
+	mouseActionCancel();
 }
 
 void ListWidget::onTouchScrollTimer() {
@@ -4614,6 +4645,7 @@ void ListWidget::mouseActionUpdate(const QPoint &globalPosition) {
 }
 
 void ListWidget::mouseActionCancel() {
+	_stickerPreviewTimer.cancel(); // LoogriGram: the sticker hold preview.
 	_pressState = MouseState();
 	_pressItemExact = nullptr;
 	_mouseAction = MouseAction::None;
@@ -4626,6 +4658,7 @@ void ListWidget::mouseActionCancel() {
 void ListWidget::mouseActionFinish(
 		const QPoint &globalPosition,
 		Qt::MouseButton button) {
+	_stickerPreviewTimer.cancel(); // LoogriGram: the sticker hold preview.
 	mouseActionUpdate(globalPosition);
 
 	auto pressState = base::take(_pressState);
@@ -4842,6 +4875,8 @@ void ListWidget::mouseActionUpdate() {
 		};
 		if (_overState.itemId != _pressState.itemId
 			|| cursorDeltaLength() >= dragStartLength()) {
+			// LoogriGram: moving off a held sticker cancels its preview.
+			_stickerPreviewTimer.cancel();
 			if (_mouseAction == MouseAction::PrepareDrag) {
 				_mouseAction = MouseAction::Dragging;
 				InvokeQueued(this, [this] { performDrag(); });

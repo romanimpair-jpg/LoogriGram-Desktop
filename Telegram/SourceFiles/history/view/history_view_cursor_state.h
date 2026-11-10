@@ -10,6 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_message_selection.h"
 
 class HistoryItem;
+class DocumentData;
 
 namespace HistoryView {
 
@@ -89,6 +90,15 @@ enum class InfoDisplayType : char {
 
 [[nodiscard]] not_null<HistoryItem*> LookupItemByPoint(
 	not_null<Element*> view,
+	QPoint itemPoint);
+
+// LoogriGram: the sticker that a press just made at this point of the view
+// lands on, which holding the left button there shows enlarged. nullptr
+// beside the sticker, on a button drawn over it (the corner reaction or
+// reply one), or on a sticker still blurred as sensitive. Android's
+// counterpart is ChatMessageCell.isTouchOnSticker.
+[[nodiscard]] DocumentData *PressedSticker(
+	not_null<const Element*> view,
 	QPoint itemPoint);
 
 } // namespace HistoryView

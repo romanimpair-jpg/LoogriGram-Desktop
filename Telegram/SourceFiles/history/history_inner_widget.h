@@ -402,6 +402,7 @@ private:
 	void mouseActionCancel();
 	std::unique_ptr<QMimeData> prepareDrag();
 	void performDrag();
+	void showStickerPreview();
 
 	void paintEmpty(
 		Painter &p,
@@ -638,6 +639,11 @@ private:
 
 	QPoint _trippleClickPoint;
 	base::Timer _trippleClickTimer;
+
+	// LoogriGram: holding the left button on a sticker shows it enlarged.
+	base::Timer _stickerPreviewTimer;
+	DocumentData *_stickerPreviewDocument = nullptr;
+	FullMsgId _stickerPreviewItemId;
 
 	Element *_dragSelFrom = nullptr;
 	Element *_dragSelTo = nullptr;
