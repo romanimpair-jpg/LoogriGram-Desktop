@@ -76,8 +76,9 @@ symlink rule (`cf655c900c`); after that only what changes uploads.
 
 **`g6758e08`** (full build 41992967191, green, 2026-11-05) shipped the
 paid-reaction handling (`3669f1693f`, `4b9d78c77a`) and is the Latest
-release. Not in it yet: the sticker hold preview (`d03468a7ca`; see
-"Added").
+release. Not in it yet: the sticker hold preview (`d03468a7ca`) and the
+pinned messages pill (`356cced1ab`, 2026-11-11, never compiled - desktop
+has no compile-only mode); see "Added".
 
 ---
 
@@ -421,6 +422,37 @@ without trace.
   (unpressed, its empty text selection cleared), so the release, which
   `MainWindow`'s event filter turns into hiding the preview, opens,
   drags and selects nothing.
+- **Pinned messages: a pill in place of the pinned bar** (`356cced1ab`,
+  2026-11-11, the user's design; Android `ad9a129c`). The bar across
+  the top - text, "Pinned message #2", list or close button, a bot's or
+  call's button - is gone. `HistoryView::PinnedPill`
+  (`history_view_pinned_bar.*`) floats on the scroll area at the top
+  right, level with the floating date (`msgServiceMargin.top()`) at the
+  corner buttons' right margin, drawn as a service bubble: the pin a
+  pinned message wears (`history_pin`) and the count
+  (`SharedMediaCountValue`, migrated chat included). It shows only with
+  a count above zero, which arrives a beat after the pill. A click goes
+  where the bar's did (`_pinnedTracker->currentMessageId()`, then
+  `_pinnedClickedId`/`_minPinnedId` step it down and wrap); the bar had
+  fetched the message to show its text, so the pill fetches it on the
+  click when it is not loaded. Right click: "Hide pinned messages"
+  (`Window::HidePinnedMessages`, the confirmed half of `HidePinnedBar`,
+  at once and for anyone - `checkPinnedBarState` no longer skips the
+  hidden id for those who can pin, which included both sides of every
+  private chat) and "All pinned messages" (`PinnedMemento`). The pinned
+  page's own "Don't show" button still confirms. `HistoryWidget` hosts
+  it for chats, `TopControls` for topics and sublists; upstream's rule
+  that a topic hid its bar while its pinned first message was in view
+  went (Android's version of it too). `Filler::addPinnedMessages` puts
+  "Pinned messages" in a chat's and a topic's ⋮ menu while
+  `ResolveTopPinnedId` finds anything, so the page stays reachable after
+  hiding. Removed with the bar: the right-click step forward,
+  `PinnedBarContent`, `PinnedBarItemWithCustomButton`,
+  `CreatePinnedBarCustomButton`, `HistoryInner::setShownPinned` (it
+  only fed the bar's text to the translator), `PinnedTracker`'s
+  `shownMessageId`/`reset`/`nextPinnedId`, `Ui::PinnedBar`'s right
+  button, right clicks and context menu (a comment thread's root header
+  is all that uses that bar now), and the list icon and its styles.
 
 ### Our own updater
 
@@ -519,8 +551,10 @@ own.
 ### Our strings
 
 Our strings live in `core/loogrigram_lang.cpp` as accessors (`GhostMode()`,
-the updater row, `TranscribeTrialsOver`, `PaidMessagesLocked`), never as
-`lang.strings` keys — see "Never add or remove keys in `lang.strings`".
+the updater row, `TranscribeTrialsOver`, `PaidMessagesLocked`, the pinned
+messages pill's three), never as `lang.strings` keys — see "Never add or
+remove keys in `lang.strings`". Keys a removal leaves unused stay put
+(`lng_pinned_previous` did), so no salt is raised for them.
 
 ---
 
