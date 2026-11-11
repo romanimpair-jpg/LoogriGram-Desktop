@@ -75,10 +75,12 @@ build uploads `libraries-Release` once more, its fingerprint predating the
 symlink rule (`cf655c900c`); after that only what changes uploads.
 
 **`g6758e08`** (full build 41992967191, green, 2026-11-05) shipped the
-paid-reaction handling (`3669f1693f`, `4b9d78c77a`), and **`g9698c59`**
+paid-reaction handling (`3669f1693f`, `4b9d78c77a`), **`g9698c59`**
 (full build 42844926244, green, 2026-11-10) the sticker hold preview
-(`d03468a7ca`); that one is the Latest release. Not in it yet: the
-pinned messages pill (`356cced1ab`, 2026-11-11); see "Added".
+(`d03468a7ca`), and **`gd3222a6`** (full build 42995557132, green,
+2026-11-11) the pinned messages pill (`356cced1ab`, `d3222a60d4`; see
+"Added"); that one is the Latest release. Not in it yet: the AI summaries'
+removal (`7a7e00adcb`; see "Removed").
 
 ---
 
@@ -201,6 +203,22 @@ All deleted, not gated. Roughly in the order they were done.
   helpers (`ui/controls/compose_text_helpers.cpp`), `ComposeTooltipManager`
   (`history_view_compose_tooltip.cpp`, used by the send-as-file tooltip) and
   the button style now called `historyComposeInnerButton`.
+- **AI summaries of long messages** (`7a7e00adcb`, 2026-11-11, the user's
+  request on Android - "the compact text button"; Android `62daba16`): the
+  round button beside a long message (stars, two arrows) that swapped its
+  text for a summary under a "Summary" header. Gone from
+  `Api::Transcribes` (`SummaryEntry`, `toggleSummary`, `summarize`,
+  `checkSummaryToTranslate`), `HistoryItem` (`summaryEntry`,
+  `canBeSummarized`, `MessageFlag::HasSummaryEntry`/`CanBeSummarized`),
+  `Element` (`SummaryShown`), `Message` (the button, the `SummaryHeader`
+  component, `history_view_summary_header.*`), `TranscribeButton`'s
+  summarize mode and `TranslateTracker`. The fast share button is laid out
+  as it was before the summarize button squeezed in beside it. The
+  server's `summary_from_language` is still parsed and ignored. Not the
+  same thing, and kept: `Iv::FlattenRichPageSummary` (a rich article's
+  one-line text), the translate box's article summary row, storage's
+  `TaggedSummary`, the iCal `SUMMARY:` line, `MarkdownDetails`'
+  `<summary>` styles and the admin log's group summaries.
 - **Large emoji**, with `EmojiImageLoader::prepare` and
   `Ui::Emoji::SourceImages`. `st::largeEmojiSize`/`Outline` survive:
   `data_custom_emoji.cpp` sizes `SizeTag::Isolated` from them.
