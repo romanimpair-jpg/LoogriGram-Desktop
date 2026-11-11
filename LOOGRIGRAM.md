@@ -75,10 +75,10 @@ build uploads `libraries-Release` once more, its fingerprint predating the
 symlink rule (`cf655c900c`); after that only what changes uploads.
 
 **`g6758e08`** (full build 41992967191, green, 2026-11-05) shipped the
-paid-reaction handling (`3669f1693f`, `4b9d78c77a`) and is the Latest
-release. Not in it yet: the sticker hold preview (`d03468a7ca`) and the
-pinned messages pill (`356cced1ab`, 2026-11-11, never compiled - desktop
-has no compile-only mode); see "Added".
+paid-reaction handling (`3669f1693f`, `4b9d78c77a`), and **`g9698c59`**
+(full build 42844926244, green, 2026-11-10) the sticker hold preview
+(`d03468a7ca`); that one is the Latest release. Not in it yet: the
+pinned messages pill (`356cced1ab`, 2026-11-11); see "Added".
 
 ---
 
