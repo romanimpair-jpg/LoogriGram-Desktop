@@ -2020,21 +2020,6 @@ void Element::validateText() {
 	// Media::itemForText may initialize data within the object.
 	_textItem = _media ? _media->itemForText() : item.get();
 
-	const auto &summary = item->summaryEntry();
-	const auto summaryShownWas = (_flags & Flag::SummaryShown) != 0;
-	const auto summaryShownNow = !summary.result.empty() && summary.shown;
-	const auto summaryShownChanged = (summaryShownWas != summaryShownNow);
-	if (summaryShownNow) {
-		_flags |= Flag::SummaryShown;
-		if (summaryShownChanged) {
-			setTextWithLinks(summary.result);
-		}
-		clearRichPage();
-		return;
-	} else {
-		_flags &= ~Flag::SummaryShown;
-	}
-
 	if (!_textItem) {
 		if (!_text.isEmpty()) {
 			setTextWithLinks({});
@@ -2044,7 +2029,7 @@ void Element::validateText() {
 	}
 	const auto &text = _textItem->_text;
 	auto richPage = std::shared_ptr<const Iv::RichPage>();
-	if (!summaryShownChanged && _text.isEmpty() == text.empty()) {
+	if (_text.isEmpty() == text.empty()) {
 	} else if (_flags & Flag::ServiceMessage) {
 		const auto contextDependentText = contextDependentServiceText();
 		const auto &markedText = contextDependentText.text.empty()
@@ -2812,7 +2797,6 @@ void Element::itemTextUpdated() {
 		rich->registeredFormattedDateUpdate = 0;
 		rich->article.refreshFormattedDates(base::unixtime::now());
 	}
-	_flags &= ~Flag::SummaryShown;
 	clearSpecialOnlyEmoji();
 	_text = Ui::Text::String(st::msgMinWidth);
 	invalidateTextSizeCache();

@@ -160,8 +160,6 @@ bool TranslateTracker::add(
 void TranslateTracker::switchTranslation(
 		not_null<HistoryItem*> item,
 		LanguageId id) {
-	_history->session().api().transcribes().checkSummaryToTranslate(
-		item->fullId());
 	if (item->translationShowRequiresRequest(id)) {
 		_itemsToRequest.emplace(item->fullId(), ItemToRequest{
 			.length = int(item->originalText().text.size()),

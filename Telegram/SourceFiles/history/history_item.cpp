@@ -1934,18 +1934,6 @@ TextWithEntities HistoryItem::factcheckText() const {
 	return {};
 }
 
-const Api::SummaryEntry &HistoryItem::summaryEntry() const {
-	if (!(_flags & MessageFlag::HasSummaryEntry)) {
-		static const auto empty = Api::SummaryEntry();
-		return empty;
-	}
-	return history()->session().api().transcribes().summary(this);
-}
-
-void HistoryItem::setHasSummaryEntry() {
-	_flags |= MessageFlag::HasSummaryEntry;
-}
-
 PeerData *HistoryItem::specialNotificationPeer() const {
 	return (mentionsMe() && !_history->peer->isUser())
 		? from().get()

@@ -28,7 +28,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_group_call_bar.h" // UserpicInRow.
 #include "history/view/history_view_reply.h"
 #include "history/view/history_view_transcribe_button.h"
-#include "history/view/history_view_summary_header.h"
 #include "history/view/history_view_view_button.h" // ViewButton.
 #include "history/history.h"
 #include "iv/markdown/iv_markdown_article_text.h"
@@ -816,9 +815,6 @@ bool Message::prepareRichPageTextRect(QRect &trect) const {
 		if (const auto reply = Get<Reply>()) {
 			trect.setTop(trect.top() + reply->height());
 		}
-		if (const auto summaryHeader = Get<SummaryHeader>()) {
-			trect.setTop(trect.top() + summaryHeader->height());
-		}
 	}
 	if (entry) {
 		trect.setHeight(trect.height() - entry->height());
@@ -1149,18 +1145,11 @@ QSize Message::performCountOptimalSize() {
 	const auto item = data();
 
 	const auto replyData = item->Get<HistoryMessageReply>();
-	const auto &summary = item->summaryEntry();
-	const auto showSummaryReply = !summary.result.empty() && summary.shown;
 
 	if (replyData && !_hideReply) {
 		AddComponents(Reply::Bit());
 	} else {
 		RemoveComponents(Reply::Bit());
-	}
-	if (showSummaryReply) {
-		AddComponents(SummaryHeader::Bit());
-	} else {
-		RemoveComponents(SummaryHeader::Bit());
 	}
 
 	if (item->history()->peer->isMonoforum()) {
@@ -1202,12 +1191,6 @@ QSize Message::performCountOptimalSize() {
 		return embedReactionsInBubble() ? 0 : 1;
 	};
 	const auto oldKey = reactionsKey();
-	if (_summarize) {
-		const auto &summary = item->summaryEntry();
-		if (_summarize->loading() != summary.loading) {
-			_summarize->setLoading(summary.loading);
-		}
-	}
 	validateText();
 	validateInlineKeyboard(markup);
 	updateViewButtonExistence();
@@ -1252,12 +1235,6 @@ QSize Message::performCountOptimalSize() {
 	const auto reply = Get<Reply>();
 	if (reply) {
 		reply->update(this, replyData);
-	}
-	const auto summaryHeader = Get<SummaryHeader>();
-	if (summaryHeader) {
-		if (showSummaryReply) {
-			summaryHeader->update(this);
-		}
 	}
 
 	if (bubble) {
@@ -1406,13 +1383,6 @@ QSize Message::performCountOptimalSize() {
 					+ st::msgPadding.right();
 				accumulate_max(maxWidth, replyw);
 				accumulate_max(nonTextMax, replyw);
-			}
-			if (summaryHeader) {
-				const auto summaryHeaderWidth = st::msgPadding.left()
-					+ summaryHeader->maxWidth()
-					+ st::msgPadding.right();
-				accumulate_max(maxWidth, summaryHeaderWidth);
-				accumulate_max(nonTextMax, summaryHeaderWidth);
 			}
 			if (check) {
 				accumulate_max(maxWidth, check->maxWidth());
@@ -1835,7 +1805,6 @@ void Message::draw(Painter &p, const PaintContext &context) const {
 			paintForwardedInfo(p, trect, context);
 			paintViaBotIdInfo(p, trect, context);
 			paintReplyInfo(p, trect, context);
-			paintSummaryHeaderInfo(p, trect, context);
 		}
 		if (entry) {
 			trect.setHeight(trect.height() - entry->height());
@@ -1962,49 +1931,30 @@ void Message::draw(Painter &p, const PaintContext &context) const {
 				p.setOpacity(o);
 			}
 		}
-		ensureSummarizeButton();
-		if (const auto size = rightActionSize(); size || _summarize) {
-			const auto rightActionWidth = size
-				? size->width()
-				: _summarize->size().width();
-			const auto fastShareSkip = size
-				? std::clamp(
-					(g.height() - size->height()) / 2,
-					0,
-					st::historyFastShareBottom)
-				: st::historyFastShareBottom;
+		if (const auto size = rightActionSize()) {
+			const auto fastShareSkip = std::clamp(
+				(g.height() - size->height()) / 2,
+				0,
+				st::historyFastShareBottom);
 			const auto fastShareLeft = hasRightLayout()
-				? (g.left()
-					- (_summarize ? 0 : rightActionWidth)
-					- st::historyFastShareLeft)
+				? (g.left() - size->width() - st::historyFastShareLeft)
 				: (g.left() + g.width() + st::historyFastShareLeft);
 			const auto fastShareTop = g.top()
 				+ g.height()
 				- fastShareSkip
-				- (size ? size->height() : 0);
-			if (size) {
-				const auto o = p.opacity();
-				if (selectionModeResult.progress > 0) {
-					p.setOpacity(1. - selectionModeResult.progress);
-				}
-				drawRightAction(
-					p,
-					context,
-					fastShareLeft,
-					fastShareTop,
-					width());
-				if (selectionModeResult.progress > 0) {
-					p.setOpacity(o);
-				}
+				- size->height();
+			const auto o = p.opacity();
+			if (selectionModeResult.progress > 0) {
+				p.setOpacity(1. - selectionModeResult.progress);
 			}
-			if (_summarize) {
-				paintSummarize(
-					p,
-					fastShareLeft,
-					fastShareTop,
-					!context.outbg,
-					context,
-					g);
+			drawRightAction(
+				p,
+				context,
+				fastShareLeft,
+				fastShareTop,
+				width());
+			if (selectionModeResult.progress > 0) {
+				p.setOpacity(o);
 			}
 		}
 
@@ -2724,23 +2674,6 @@ void Message::paintReplyInfo(
 	}
 }
 
-void Message::paintSummaryHeaderInfo(
-		Painter &p,
-		QRect &trect,
-		const PaintContext &context) const {
-	if (const auto summaryHeader = Get<SummaryHeader>()) {
-		summaryHeader->paint(
-			p,
-			this,
-			context,
-			trect.x(),
-			trect.y(),
-			trect.width(),
-			true);
-		trect.setY(trect.y() + summaryHeader->height());
-	}
-}
-
 void Message::paintViaBotIdInfo(
 		Painter &p,
 		QRect &trect,
@@ -3137,15 +3070,6 @@ void Message::clickHandlerPressedChanged(
 	} else if (const auto reply = Get<Reply>()
 		; reply && (handler == reply->link())) {
 		toggleReplyRipple(pressed);
-	} else if (const auto summaryHeader = Get<SummaryHeader>()
-		; summaryHeader && (handler == summaryHeader->link())) {
-		toggleSummaryHeaderRipple(pressed);
-	} else if (_summarize && (handler == _summarize->link())) {
-		if (pressed) {
-			_summarize->addRipple([=] { repaint(); });
-		} else {
-			_summarize->stopRipple();
-		}
 	} else if (const auto badge = Get<RightBadge>()
 		; badge && badge->tagLink && handler == badge->tagLink) {
 		toggleBadgeRipple(pressed);
@@ -3316,26 +3240,6 @@ void Message::toggleReplyRipple(bool pressed) {
 		reply->addRipple();
 	} else {
 		reply->stopLastRipple();
-	}
-}
-
-void Message::toggleSummaryHeaderRipple(bool pressed) {
-	const auto summaryHeader = Get<SummaryHeader>();
-	if (!summaryHeader) {
-		return;
-	}
-
-	if (pressed) {
-		if (!unwrapped()) {
-			const auto size = QSize(
-				countGeometry().width() - rect::m::sum::h(st::msgPadding),
-				summaryHeader->height()
-					- rect::m::sum::v(summaryHeader->margins()));
-			summaryHeader->createRippleAnimation(this, size);
-		}
-		summaryHeader->addRipple();
-	} else {
-		summaryHeader->stopLastRipple();
 	}
 }
 
@@ -3576,9 +3480,6 @@ bool Message::hasHeavyPart() const {
 void Message::unloadHeavyPart() {
 	Element::unloadHeavyPart();
 	_comments = nullptr;
-	if (const auto summaryHeader = Get<SummaryHeader>()) {
-		summaryHeader->unloadHeavyPart();
-	}
 }
 
 bool Message::hasFromPhoto() const {
@@ -3782,9 +3683,6 @@ TextState Message::textState(
 			if (getStateReplyInfo(point, trect, &result)) {
 				return result;
 			}
-			if (getStateSummaryHeaderInfo(point, trect, &result)) {
-				return result;
-			}
 		}
 		if (entry) {
 			auto entryHeight = entry->height();
@@ -3895,9 +3793,6 @@ TextState Message::textState(
 				result.link = rightActionLink(point
 					- QPoint(fastShareLeft, fastShareTop));
 			}
-		}
-		if (_summarize && _summarize->contains(point)) {
-			result.link = _summarize->link();
 		}
 	} else if (media && media->isDisplayed()) {
 		result = media->textState(point - g.topLeft(), request);
@@ -4254,32 +4149,6 @@ bool Message::getStateReplyInfo(
 	return false;
 }
 
-bool Message::getStateSummaryHeaderInfo(
-		QPoint point,
-		QRect &trect,
-		not_null<TextState*> outResult) const {
-	if (const auto summaryHeader = Get<SummaryHeader>()) {
-		const auto margins = summaryHeader->margins();
-		const auto height = summaryHeader->height();
-		if (point.y() >= trect.top() && point.y() < trect.top() + height) {
-			const auto g = QRect(
-				trect.x(),
-				trect.y() + margins.top(),
-				trect.width(),
-				height - margins.top() - margins.bottom());
-			if (g.contains(point)) {
-				if (const auto link = summaryHeader->link()) {
-					outResult->link = summaryHeader->link();
-					summaryHeader->saveRipplePoint(point - g.topLeft());
-				}
-			}
-			return true;
-		}
-		trect.setTop(trect.top() + height);
-	}
-	return false;
-}
-
 bool Message::getStateViaBotIdInfo(
 		QPoint point,
 		QRect &trect,
@@ -4541,9 +4410,6 @@ void Message::updatePressed(QPoint point) {
 			}
 			if (const auto reply = Get<Reply>()) {
 				trect.setTop(trect.top() + reply->height());
-			}
-			if (const auto summaryHeader = Get<SummaryHeader>()) {
-				trect.setTop(trect.top() + summaryHeader->height());
 			}
 			if (item->Has<HistoryMessageVia>()) {
 				if (!displayFromName() && !displayForwardedFrom()) {
@@ -6385,11 +6251,6 @@ int Message::resizeContentGetHeight(int newWidth) {
 				- st::msgPadding.left()
 				- st::msgPadding.right());
 		}
-		if (const auto summaryHeader = Get<SummaryHeader>()) {
-			newHeight += summaryHeader->resizeToWidth(contentWidth
-				- st::msgPadding.left()
-				- st::msgPadding.right());
-		}
 		if (needInfoDisplay()) {
 			newHeight += (bottomInfoHeight - st::msgDateFont->height);
 		}
@@ -6807,44 +6668,6 @@ const HistoryMessageEdited *Message::displayedEditBadge() const {
 		}
 	}
 	return data()->Get<HistoryMessageEdited>();
-}
-
-void Message::ensureSummarizeButton() const {
-	if (data()->canBeSummarized()
-		/*&& item->originalText().text.size() >= kSummarizeThreshold*/) {
-		if (!_summarize) {
-			_summarize
-				= std::make_unique<TranscribeButton>(data(), false, true);
-		}
-	} else {
-		_summarize = nullptr;
-	}
-}
-
-void Message::paintSummarize(
-		Painter &p,
-		int x,
-		int y,
-		bool right,
-		const PaintContext &context,
-		QRect g) const {
-	if (!_summarize) {
-		return;
-	}
-	const auto s = _summarize->size();
-	const auto bottomY = y - s.height() - st::msgDateImgDelta;
-	if (bottomY < g.top()) {
-		return;
-	}
-	const auto topY = g.top();
-	const auto buttonY = std::min(
-		std::max(topY, context.area.y() + st::msgDateImgDelta),
-		bottomY);
-	_summarize->paint(
-		p,
-		x - (right ? 0 : s.width()),
-		buttonY,
-		context);
 }
 
 } // namespace HistoryView

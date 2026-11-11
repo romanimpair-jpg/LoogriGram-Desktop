@@ -30,8 +30,6 @@ namespace {
 
 constexpr auto kInNonChosenOpacity = 0.12;
 constexpr auto kOutNonChosenOpacity = 0.18;
-constexpr auto kArrowPivotNear = 0.349;
-constexpr auto kArrowPivotFar = 1. - kArrowPivotNear;
 
 void ClipPainterForLock(QPainter &p, bool roundview, const QRect &r) {
 	const auto &pos = roundview
@@ -52,12 +50,10 @@ void ClipPainterForLock(QPainter &p, bool roundview, const QRect &r) {
 
 TranscribeButton::TranscribeButton(
 	not_null<HistoryItem*> item,
-	bool roundview,
-	bool summarize)
+	bool roundview)
 : _item(item)
 , _roundview(roundview)
-, _summarize(summarize)
-, _size(!roundview && !_summarize
+, _size(!roundview
 	? st::historyTranscribeSize
 	: QSize(st::historyFastShareSize, st::historyFastShareSize)) {
 }
@@ -105,7 +101,7 @@ void TranscribeButton::paint(
 	auto hq = PainterHighQualityEnabler(p);
 	const auto opened = _openedAnimation.value(_opened ? 1. : 0.);
 	const auto stm = context.messageStyle();
-	if (_roundview || _summarize) {
+	if (_roundview) {
 		_lastPaintedPoint = { x, y };
 		const auto r = QRect(QPoint(x, y), size());
 
@@ -132,96 +128,7 @@ void TranscribeButton::paint(
 		p.setBrush(context.st->msgServiceBg());
 
 		p.drawEllipse(r);
-		if (_summarize) {
-			if (hasLock()) {
-				context.st->historyFastTranscribeLock().paint(
-					p,
-					r.topLeft() + st::historyFastSummaryLockPos,
-					r.width());
-			}
-			if (!staticLoading) [[likely]] {
-				const auto shown = _item->history()
-					->session().api().transcribes().summary(_item).shown;
-				if (_summaryShown != shown) {
-					_summaryShown = shown;
-					const auto session = &_item->history()->session();
-					_openedAnimation.start(
-						[=, itemId = _item->fullId()] {
-							if (const auto i = session->data().message(
-									itemId)) {
-								session->data().requestItemRepaint(i);
-							}
-						},
-						shown ? 0. : 1.,
-						shown ? 1. : 0.,
-						st::fadeWrapDuration);
-				}
-				const auto t
-					= _openedAnimation.value(_summaryShown ? 1. : 0.);
-
-				const auto fg = context.st->msgServiceFg()->c;
-				st::historySummaryStars.paintInCenter(p, r, fg);
-
-				const auto &arrow = st::historySummaryArrows;
-				const auto sz = r.width();
-				const auto cx = r.x() + sz / 2.;
-				const auto cy = r.y() + sz / 2.;
-
-				// First arrow.
-				{
-					p.save();
-					if (t < 0.5) {
-						const auto s = std::abs(t - 0.5) + 0.5;
-						p.translate(cx, cy);
-						p.scale(s, s);
-						p.translate(-cx, -cy);
-					}
-					if (t > 0.5) {
-						const auto s = std::abs(t - 0.5) + 0.5;
-						const auto px = r.x() + sz * kArrowPivotNear;
-						const auto py = r.y() + sz * kArrowPivotFar;
-						p.translate(px, py);
-						p.scale(-s, -s);
-						p.translate(-px, -py);
-						p.translate(
-							-sz * (1. - s) * 0.4,
-							sz * (1. - s) * 0.4);
-					}
-					arrow.paintInCenter(p, QRectF(r), fg);
-					p.restore();
-				}
-
-				// Second arrow (rotated 180 degrees).
-				{
-					p.save();
-					if (t < 0.5) {
-						const auto s = std::abs(t - 0.5) + 0.5;
-						p.translate(cx, cy);
-						p.scale(s, s);
-						p.translate(-cx, -cy);
-					}
-					if (t > 0.5) {
-						const auto s = std::abs(t - 0.5) + 0.5;
-						const auto px = r.x() + sz * kArrowPivotFar;
-						const auto py = r.y() + sz * kArrowPivotNear;
-						p.translate(px, py);
-						p.scale(-s, -s);
-						p.translate(-px, -py);
-					}
-					p.translate(cx, cy);
-					p.rotate(180.);
-					p.translate(-cx, -cy);
-					if (t > 0.5) {
-						const auto s = std::abs(t - 0.5) + 0.5;
-						p.translate(
-							-sz * (1. - s) * 0.4,
-							sz * (1. - s) * 0.4);
-					}
-					arrow.paintInCenter(p, QRectF(r), fg);
-					p.restore();
-				}
-			}
-		} else if (!_loading && hasLock()) {
+		if (!_loading && hasLock()) {
 			ClipPainterForLock(p, true, r);
 			context.st->historyFastTranscribeIcon().paintInCenter(p, r);
 			p.setClipping(false);
@@ -330,9 +237,6 @@ void TranscribeButton::paint(
 bool TranscribeButton::hasLock() const {
 	const auto session = &_item->history()->session();
 	const auto transcribes = &session->api().transcribes();
-	if (_summarize) {
-		return transcribes->summary(_item).premiumRequired;
-	}
 	if (transcribes->freeFor(_item) || transcribes->trialsCount()) {
 		return false;
 	}
@@ -367,17 +271,15 @@ ClickHandlerPtr TranscribeButton::link() {
 	}
 	const auto session = &_item->history()->session();
 	const auto id = _item->fullId();
-	const auto summarize = _summarize;
 	_link = std::make_shared<LambdaClickHandler>([=](ClickContext context) {
 		const auto item = session->data().message(id);
 		if (!item) {
 			return;
 		}
 		const auto my = context.other.value<ClickHandlerContext>();
-		// LoogriGram: the padlock stays - out of free trials, or asking for
-		// a summary, the transcription genuinely cannot be had - but it no
-		// longer opens the pitch for voice-to-text or for summaries, so a
-		// locked button simply does nothing.
+		// LoogriGram: the padlock stays - out of free trials, the
+		// transcription genuinely cannot be had - but it no longer opens the
+		// pitch for voice-to-text, so a locked button simply does nothing.
 		if (!hasLock()) {
 			const auto max = session->api().transcribes().trialsMaxLengthMs();
 			const auto doc = _item->media()
@@ -392,11 +294,7 @@ ClickHandlerPtr TranscribeButton::link() {
 					}
 				}
 			}
-			if (summarize) {
-				session->api().transcribes().toggleSummary(item);
-			} else {
-				session->api().transcribes().toggle(item);
-			}
+			session->api().transcribes().toggle(item);
 		}
 	});
 	return _link;
@@ -404,12 +302,7 @@ ClickHandlerPtr TranscribeButton::link() {
 
 bool TranscribeButton::contains(const QPoint &p) {
 	_lastStatePoint = p - _lastPaintedPoint;
-	if (_summarize) {
-		_summarizeHovered = QRect(_lastPaintedPoint, size()).contains(p);
-		return _summarizeHovered;
-	} else {
-		return QRect(_lastPaintedPoint, size()).contains(p);
-	}
+	return QRect(_lastPaintedPoint, size()).contains(p);
 }
 
 void TranscribeButton::addRipple(Fn<void()> callback) {

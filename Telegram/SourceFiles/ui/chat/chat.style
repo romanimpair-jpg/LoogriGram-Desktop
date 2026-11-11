@@ -484,7 +484,6 @@ historyFastShareLeft: 13px;
 historyFastShareBottom: 5px;
 historyFastCloseSize: 30px;
 historyFastTranscribeLockPos: point(18px, 13px);
-historyFastSummaryLockPos: point(13px, 13px);
 historyFastTranscribeLockOverlayPos: point(21px, 13px);
 historyFastTranscribeLockOverlaySize: size(6px, 10px);
 
@@ -1132,10 +1131,6 @@ stakeBox: Box(defaultBox) {
 	}
 	shadowIgnoreTopSkip: true;
 }
-historySummaryHeaderIconSize: 30px;
-historySummaryHeaderIconSizeInner: 5px;
 
 toastCheckIcon: icon {{ "toast/check-36x36", toastFg }};
 
-historySummaryStars: icon {{ "chat/summary_stars-24x24", msgServiceFg }};
-historySummaryArrows: icon {{ "chat/summary_arrows-24x24", msgServiceFg }};

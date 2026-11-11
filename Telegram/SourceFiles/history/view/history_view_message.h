@@ -353,7 +353,6 @@ private:
 	void toggleBadgeRipple(bool pressed);
 
 	void toggleReplyRipple(bool pressed);
-	void toggleSummaryHeaderRipple(bool pressed);
 
 	void paintCommentsButton(
 		Painter &p,
@@ -376,10 +375,6 @@ private:
 		QRect &trect,
 		const PaintContext &context) const;
 	void paintReplyInfo(
-		Painter &p,
-		QRect &trect,
-		const PaintContext &context) const;
-	void paintSummaryHeaderInfo(
 		Painter &p,
 		QRect &trect,
 		const PaintContext &context) const;
@@ -417,10 +412,6 @@ private:
 		not_null<TextState*> outResult,
 		StateRequest request) const;
 	bool getStateReplyInfo(
-		QPoint point,
-		QRect &trect,
-		not_null<TextState*> outResult) const;
-	bool getStateSummaryHeaderInfo(
 		QPoint point,
 		QRect &trect,
 		not_null<TextState*> outResult) const;
@@ -470,15 +461,6 @@ private:
 	[[nodiscard]] int richPageDemandedTextWidth() const;
 	[[nodiscard]] int bubbleTextualWidth() const;
 
-	void ensureSummarizeButton() const;
-	void paintSummarize(
-		Painter &p,
-		int x,
-		int y,
-		bool right,
-		const PaintContext &context,
-		QRect g) const;
-
 	void updateViewButtonExistence();
 	[[nodiscard]] int viewButtonHeight() const;
 	[[nodiscard]] bool prepareRichPageTextRect(QRect &trect) const;
@@ -522,7 +504,6 @@ private:
 	mutable std::unique_ptr<LinkRipple> _linkRipple;
 	mutable QPoint _linkRippleLastPoint;
 	mutable std::unique_ptr<CommentsButton> _comments;
-	mutable std::unique_ptr<TranscribeButton> _summarize;
 
 	mutable Ui::Text::String _fromName;
 	mutable std::unique_ptr<Ui::RoundCheckbox> _selectionRoundCheckbox;

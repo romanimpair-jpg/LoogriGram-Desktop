@@ -116,37 +116,11 @@ void Transcribes::toggle(not_null<HistoryItem*> item) {
 	}
 }
 
-void Transcribes::toggleSummary(not_null<HistoryItem*> item) {
-	const auto id = item->fullId();
-	auto i = _summaries.find(id);
-	if (i == _summaries.end()) {
-		summarize(item);
-	} else if (!i->second.loading) {
-		auto &entry = i->second;
-		if (entry.result.empty()) {
-			summarize(item);
-		} else {
-			entry.shown = entry.premiumRequired ? false : !entry.shown;
-			_session->data().requestItemResize(item);
-			if (entry.shown) {
-				_session->data().requestItemShowHighlight(item);
-			}
-		}
-	}
-}
-
 const Transcribes::Entry &Transcribes::entry(
 		not_null<HistoryItem*> item) const {
 	static auto empty = Entry();
 	const auto i = _map.find(item->fullId());
 	return (i != _map.end()) ? i->second : empty;
-}
-
-const SummaryEntry &Transcribes::summary(
-		not_null<const HistoryItem*> item) const {
-	static const auto empty = SummaryEntry();
-	const auto i = _summaries.find(item->fullId());
-	return (i != _summaries.end()) ? i->second : empty;
 }
 
 void Transcribes::apply(const MTPDupdateTranscribedAudio &update) {
@@ -234,76 +208,6 @@ void Transcribes::load(not_null<HistoryItem*> item) {
 	entry.shown = true;
 	entry.failed = false;
 	entry.pending = false;
-}
-
-void Transcribes::summarize(not_null<HistoryItem*> item) {
-	if (!item->isHistoryEntry() || item->isLocal()) {
-		return;
-	}
-
-	const auto id = item->fullId();
-	const auto translatedTo = item->history()->translatedTo();
-	const auto langCode = translatedTo
-		? translatedTo.twoLetterCode()
-		: QString();
-	const auto requestId = _api.request(MTPmessages_SummarizeText(
-		langCode.isEmpty()
-			? MTP_flags(0)
-			: MTP_flags(MTPmessages_summarizeText::Flag::f_to_lang),
-		item->history()->peer->input(),
-		MTP_int(item->id),
-		langCode.isEmpty() ? MTPstring() : MTP_string(langCode),
-		MTPstring() // tone
-	)).done([=](const MTPTextWithEntities &result) {
-		const auto &data = result.data();
-		auto &entry = _summaries[id];
-		entry.requestId = 0;
-		entry.loading = false;
-		entry.premiumRequired = false;
-		entry.languageId = translatedTo;
-		entry.result = TextWithEntities(
-			qs(data.vtext()),
-			Api::EntitiesFromMTP(_session, data.ventities().v));
-		if (const auto item = _session->data().message(id)) {
-			_session->data().requestItemTextRefresh(item);
-			_session->data().requestItemShowHighlight(item);
-		}
-	}).fail([=](const MTP::Error &error) {
-		auto &entry = _summaries[id];
-		if (error.type() == u"SUMMARY_FLOOD_PREMIUM"_q) {
-			entry.premiumRequired = true;
-		}
-		entry.requestId = 0;
-		entry.shown = false;
-		entry.loading = false;
-		if (const auto item = _session->data().message(id)) {
-			_session->data().requestItemTextRefresh(item);
-		}
-	}).send();
-
-	auto &entry = _summaries.emplace(id).first->second;
-	entry.requestId = requestId;
-	entry.shown = true;
-	entry.loading = true;
-
-	item->setHasSummaryEntry();
-	_session->data().requestItemResize(item);
-}
-
-void Transcribes::checkSummaryToTranslate(FullMsgId id) {
-	const auto i = _summaries.find(id);
-	if (i == _summaries.end() || i->second.result.empty()) {
-		return;
-	}
-	const auto item = _session->data().message(id);
-	if (!item) {
-		return;
-	}
-	const auto translatedTo = item->history()->translatedTo();
-	if (i->second.languageId != translatedTo) {
-		i->second.result = tr::lng_contacts_loading(tr::now, tr::italic);
-		summarize(item);
-	}
 }
 
 } // namespace Api

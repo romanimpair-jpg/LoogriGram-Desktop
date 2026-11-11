@@ -23,8 +23,7 @@ class TranscribeButton final {
 public:
 	explicit TranscribeButton(
 		not_null<HistoryItem*> item,
-		bool roundview,
-		bool summarize = false);
+		bool roundview);
 	~TranscribeButton();
 
 	[[nodiscard]] QSize size() const;
@@ -44,7 +43,6 @@ private:
 
 	const not_null<HistoryItem*> _item;
 	const bool _roundview = false;
-	const bool _summarize = false;
 	const QSize _size;
 
 	ClickHandlerPtr _link;
@@ -54,10 +52,8 @@ private:
 	QString _text;
 	QPoint _lastPaintedPoint;
 	QPoint _lastStatePoint;
-	bool _summarizeHovered = false;
 	bool _loading = false;
 	bool _opened = false;
-	bool _summaryShown = false;
 
 };
 

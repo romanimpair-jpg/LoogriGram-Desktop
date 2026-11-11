@@ -542,9 +542,6 @@ MessageFlags FlagsFromMTP(
 		| ((flags & MTP::f_video_processing_pending)
 			? Flag::EstimatedDate
 			: Flag())
-		| ((flags & MTP::f_summary_from_language)
-			? Flag::CanBeSummarized
-			: Flag())
 		| ((flags & MTP::f_guestchat_via_from)
 			? Flag::GuestChatViaFrom
 			: Flag());
