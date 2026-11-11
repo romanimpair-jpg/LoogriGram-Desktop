@@ -61,29 +61,8 @@ PinnedTracker::PinnedTracker(not_null<Data::Thread*> thread)
 
 PinnedTracker::~PinnedTracker() = default;
 
-rpl::producer<PinnedId> PinnedTracker::shownMessageId() const {
-	return _current.value();
-}
-
-void PinnedTracker::reset() {
-	_current.reset(currentMessageId());
-}
-
 PinnedId PinnedTracker::currentMessageId() const {
 	return _current.current();
-}
-
-FullMsgId PinnedTracker::nextPinnedId(UniversalMsgId messageId) const {
-	const auto proj1 = [](FullMsgId id) {
-		return peerIsChannel(id.peer) ? id.msg : (id.msg - ServerMaxMsgId);
-	};
-	const auto proj2 = [](FullMsgId id) {
-		return id.msg;
-	};
-	const auto i = _migratedPeer
-		? ranges::upper_bound(_slice.ids, messageId, ranges::less(), proj1)
-		: ranges::upper_bound(_slice.ids, messageId, ranges::less(), proj2);
-	return (i != end(_slice.ids)) ? *i : FullMsgId();
 }
 
 void PinnedTracker::refreshViewer() {

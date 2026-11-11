@@ -70,7 +70,6 @@ class SendButton;
 class SilentToggle;
 class FlatButton;
 class RoundButton;
-class PinnedBar;
 class GroupCallBar;
 class RequestsBar;
 struct PreparedList;
@@ -103,6 +102,7 @@ class TopBarWidget;
 class ContactStatus;
 class Element;
 class PinnedTracker;
+class PinnedPill;
 class TranslateBar;
 class ComposeSearch;
 class SubsectionTabs;
@@ -573,8 +573,6 @@ private:
 	void setupTranslateBar();
 	void setupPinnedTracker();
 	void checkPinnedBarState();
-	void clearHidingPinnedBar();
-	void refreshPinnedBarButton(bool many, HistoryItem *item);
 	void checkLastPinnedClickedIdReset(
 		int wasScrollTop,
 		int nowScrollTop);
@@ -743,12 +741,9 @@ private:
 	int _translateBarHeight = 0;
 
 	std::unique_ptr<HistoryView::PinnedTracker> _pinnedTracker;
-	std::unique_ptr<Ui::PinnedBar> _pinnedBar;
-	std::unique_ptr<Ui::PinnedBar> _hidingPinnedBar;
-	int _pinnedBarHeight = 0;
+	base::unique_qptr<HistoryView::PinnedPill> _pinnedPill;
 	FullMsgId _pinnedClickedId;
 	std::optional<FullMsgId> _minPinnedId;
-	bool _pinnedBarHasCustomButton = false;
 
 	std::unique_ptr<Ui::GroupCallBar> _groupCallBar;
 	int _groupCallBarHeight = 0;

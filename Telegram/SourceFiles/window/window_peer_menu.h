@@ -235,6 +235,13 @@ void HidePinnedBar(
 	MsgId topicRootId,
 	PeerId monoforumPeerId,
 	Fn<void()> onHidden);
+// LoogriGram: HidePinnedBar without its confirmation, for the pinned
+// messages pill's menu. Hidden until a newer message is pinned; false if
+// the top pinned message is not known yet (a full peer request is sent).
+bool HidePinnedMessages(
+	not_null<PeerData*> peer,
+	MsgId topicRootId,
+	PeerId monoforumPeerId);
 void UnpinAllMessages(
 	not_null<Window::SessionNavigation*> navigation,
 	not_null<Data::Thread*> thread);

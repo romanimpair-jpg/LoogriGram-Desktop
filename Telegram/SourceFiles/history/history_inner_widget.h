@@ -162,7 +162,6 @@ public:
 	void checkActivation();
 	void recountHistoryGeometry(bool initial = false);
 	void updateSize();
-	void setShownPinned(HistoryItem *item);
 
 	void repaintItem(const HistoryItem *item);
 	void repaintItem(const Element *view);
@@ -618,7 +617,6 @@ private:
 	std::unique_ptr<HistoryView::Reactions::Manager> _reactionsManager;
 	rpl::variable<HistoryItem*> _reactionsItem;
 	std::unique_ptr<HistoryView::ReplyButton::Manager> _replyButtonManager;
-	HistoryItem *_pinnedItem = nullptr;
 
 	MouseAction _mouseAction = MouseAction::None;
 	TextSelectType _mouseSelectType = TextSelectType::Letters;

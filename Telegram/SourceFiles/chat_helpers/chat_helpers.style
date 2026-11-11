@@ -1073,10 +1073,6 @@ historyReplyCancel: IconButton {
 	rippleAreaSize: 40px;
 	ripple: defaultRippleAnimationBgOver;
 }
-historyPinnedShowAll: IconButton(historyReplyCancel) {
-	icon: icon {{ "pinned_show_all", historyReplyCancelFg }};
-	iconOver: icon {{ "pinned_show_all", historyReplyCancelFgOver }};
-}
 sendFilesReplyIconPosition: point(11px, 7px);
 sendFilesReplyCancelSize: 24px;
 sendFilesReplyCancel: IconButton(editMediaButton) {
@@ -1090,18 +1086,13 @@ sendFilesReplyCancel: IconButton(editMediaButton) {
 
 	rippleAreaSize: sendFilesReplyCancelSize;
 }
-historyPinnedBotButton: RoundButton(defaultActiveButton) {
-	width: -34px;
-	height: 30px;
-	textTop: 6px;
-	padding: margins(2px, 10px, 10px, 9px);
-}
-historyPinnedBotLabel: FlatLabel(defaultFlatLabel) {
-	style: semiboldTextStyle;
-	align: align(center);
-	maxHeight: 30px;
-}
-historyPinnedBotButtonMaxWidth: 120px;
+// LoogriGram: the pinned messages pill over the messages, in place of
+// upstream's pinned bar. Its height and font are the floating date's
+// (msgServicePadding's top and bottom, msgServiceFont); the pin is the one
+// a pinned message wears beside its time, recoloured to msgServiceFg.
+historyPinnedPillIcon: icon {{ "history_pin", msgServiceFg }};
+historyPinnedPillPadding: margins(6px, 3px, 10px, 4px);
+historyPinnedPillSkip: 2px;
 
 historyToDownPosition: point(12px, 10px);
 historyToDownAbove: icon {{ "history_down_arrow", historyToDownFg }};

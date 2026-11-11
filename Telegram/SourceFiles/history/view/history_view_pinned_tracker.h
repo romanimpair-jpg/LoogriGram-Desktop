@@ -25,11 +25,11 @@ public:
 	explicit PinnedTracker(not_null<Data::Thread*> thread);
 	~PinnedTracker();
 
-	[[nodiscard]] rpl::producer<PinnedId> shownMessageId() const;
+	// LoogriGram: the pinned bar subscribed to the shown message, reset that
+	// subscription when hidden, and stepped forward on a right click. The
+	// pill that replaced it only asks where a click should go.
 	[[nodiscard]] PinnedId currentMessageId() const;
-	[[nodiscard]] FullMsgId nextPinnedId(UniversalMsgId messageId) const;
 	void trackAround(UniversalMsgId messageId);
-	void reset();
 
 	[[nodiscard]] rpl::lifetime &lifetime() {
 		return _lifetime;

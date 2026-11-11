@@ -13,13 +13,14 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace Ui {
 
 struct MessageBarContent;
-template <typename Widget>
-class FadeWrapScaled;
 class MessageBar;
 class IconButton;
 class PlainShadow;
 class RpWidget;
 
+// LoogriGram: only a comment thread's root message uses this bar now; the
+// pinned messages pill took the pinned bar's place. The right button, the
+// right click and the context menu went with the pinned bar.
 class PinnedBar final {
 public:
 	PinnedBar(
@@ -37,22 +38,18 @@ public:
 	void setShadowGeometryPostprocess(Fn<QRect(QRect)> postprocess);
 
 	void setContent(rpl::producer<Ui::MessageBarContent> content);
-	void setRightButton(object_ptr<Ui::RpWidget> button);
 
 	void move(int x, int y);
 	void resizeToWidth(int width);
 	[[nodiscard]] int height() const;
 	[[nodiscard]] rpl::producer<int> heightValue() const;
 	[[nodiscard]] rpl::producer<> barClicks() const;
-	[[nodiscard]] rpl::producer<> barRightClicks() const;
-	[[nodiscard]] rpl::producer<> contextMenuRequested() const;
 
 	[[nodiscard]] rpl::lifetime &lifetime() {
 		return _wrap.lifetime();
 	}
 
 private:
-	using RightButton = object_ptr<Ui::FadeWrapScaled<Ui::RpWidget>>;
 	void createControls();
 	void updateShadowGeometry(QRect wrapGeometry);
 	void updateControlsGeometry(QRect wrapGeometry);
@@ -60,16 +57,9 @@ private:
 	Ui::SlideWrap<> _wrap;
 	std::unique_ptr<Ui::MessageBar> _bar;
 
-	struct {
-		RightButton button = { nullptr };
-		rpl::lifetime previousButtonLifetime;
-	} _right;
-
 	std::unique_ptr<Ui::PlainShadow> _shadow;
 	Fn<bool()> _customEmojiPaused;
 	rpl::event_stream<> _barClicks;
-	rpl::event_stream<> _barRightClicks;
-	rpl::event_stream<> _contextMenuRequested;
 	Fn<QRect(QRect)> _shadowGeometryPostprocess;
 	bool _shouldBeShown = false;
 	bool _forceHidden = false;

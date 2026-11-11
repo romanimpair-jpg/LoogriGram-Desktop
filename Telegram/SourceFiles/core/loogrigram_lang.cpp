@@ -42,6 +42,9 @@ constexpr auto kPaidMessagesLocked = Entry{
 constexpr auto kSuggestPostAnytime = Entry{
 	.en = "Publish at any time. Click to choose one.",
 };
+constexpr auto kHidePinnedMessages = Entry{ .en = "Hide pinned messages" };
+constexpr auto kAllPinnedMessages = Entry{ .en = "All pinned messages" };
+constexpr auto kPinnedMessages = Entry{ .en = "Pinned messages" };
 
 [[nodiscard]] QString Pick(const Entry &entry, const QString &languageId) {
 	// Nothing is translated yet, so the id is unused. When a locale is added,
@@ -122,6 +125,18 @@ TextWithEntities PaidMessagesLocked(TextWithEntities user) {
 
 QString SuggestPostAnytime() {
 	return Pick(kSuggestPostAnytime, ::Lang::GetInstance().id());
+}
+
+QString HidePinnedMessages() {
+	return Pick(kHidePinnedMessages, ::Lang::GetInstance().id());
+}
+
+QString AllPinnedMessages() {
+	return Pick(kAllPinnedMessages, ::Lang::GetInstance().id());
+}
+
+QString PinnedMessages() {
+	return Pick(kPinnedMessages, ::Lang::GetInstance().id());
 }
 
 bool KeepCompiledString(const QByteArray &key) {

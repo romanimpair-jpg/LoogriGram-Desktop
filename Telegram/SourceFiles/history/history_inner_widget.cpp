@@ -1352,9 +1352,6 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 	auto readContents = base::flat_set<not_null<HistoryItem*>>();
 	const auto markingAsViewed = _widget->markingContentsRead();
 	const auto guard = gsl::finally([&] {
-		if (_pinnedItem) {
-			_translateTracker->add(_pinnedItem);
-		}
 		_translateTracker->finishBunch();
 		if (readTill && _widget->markingMessagesRead()) {
 			session().data().histories().readInboxTill(readTill);
@@ -2278,9 +2275,6 @@ void HistoryInner::performDrag() {
 }
 
 void HistoryInner::itemRemoved(not_null<const HistoryItem*> item) {
-	if (_pinnedItem == item) {
-		_pinnedItem = nullptr;
-	}
 	if (_history != item->history() && _migrated != item->history()) {
 		return;
 	}
@@ -4511,10 +4505,6 @@ void HistoryInner::updateSize() {
 	if (_thanosController) {
 		_thanosController->pinScroll();
 	}
-}
-
-void HistoryInner::setShownPinned(HistoryItem *item) {
-	_pinnedItem = item;
 }
 
 void HistoryInner::enterEventHook(QEnterEvent *e) {

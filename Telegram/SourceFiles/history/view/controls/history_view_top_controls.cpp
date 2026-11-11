@@ -43,7 +43,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/wrap/slide_wrap.h"
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/elastic_scroll.h"
-#include "ui/widgets/popup_menu.h"
 #include "window/window_peer_menu.h"
 #include "window/window_session_controller.h"
 
@@ -91,7 +90,6 @@ TopControls::TopControls(
 , _keyboardReservedHeight(std::move(descriptor.keyboardReservedHeight))
 , _showAtStart(std::move(descriptor.showAtStart))
 , _showAtPosition(std::move(descriptor.showAtPosition))
-, _preparePinnedClickContext(std::move(descriptor.preparePinnedClickContext))
 , _wrap(std::make_unique<Ui::RpWidget>(_parent))
 , _topBars(std::make_unique<Ui::RpWidget>(_wrap.get())) {
 	_topBars->show();
@@ -175,11 +173,8 @@ void TopControls::finishAnimating() {
 	if (_translateBar) {
 		_translateBar->finishAnimating();
 	}
-	if (_pinnedBar) {
-		_pinnedBar->finishAnimating();
-	}
-	if (_hidingPinnedBar) {
-		_hidingPinnedBar->finishAnimating();
+	if (_pinnedPill) {
+		_pinnedPill->finishAnimating();
 	}
 	if (!_animatingMode) {
 		return;
@@ -334,9 +329,6 @@ void TopControls::checkLastPinnedClickedIdReset(
 void TopControls::addTranslatedItems(not_null<TranslateTracker*> tracker) {
 	if (_shownRepliesRootItem) {
 		tracker->add(_shownRepliesRootItem);
-	}
-	if (_shownPinnedBarItem) {
-		tracker->add(_shownPinnedBarItem);
 	}
 }
 
@@ -565,7 +557,7 @@ void TopControls::setupPinnedTracker() {
 	Expects(thread != nullptr);
 
 	_pinnedTracker = std::make_unique<PinnedTracker>(thread);
-	_pinnedBar = nullptr;
+	setupPinnedPill();
 	const auto fullHistory = !_repliesRootId && !_topic && !_sublist;
 	if (fullHistory) {
 		checkPinnedBarState();
@@ -607,6 +599,97 @@ void TopControls::setupPinnedTracker() {
 	}, _pinnedLifetime);
 }
 
+// LoogriGram: the pinned messages pill, in place of upstream's pinned bar
+// across the top. See HistoryView::PinnedPill and HistoryWidget's own.
+void TopControls::setupPinnedPill() {
+	const auto fullHistory = !_repliesRootId && !_topic && !_sublist;
+	const auto migrated = migratedPeer();
+	const auto topicRootId = fullHistory ? MsgId(0) : _repliesRootId;
+	const auto monoforumPeerId = fullHistory ? PeerId(0) : _monoforumPeerId;
+	const auto showAll = [=] {
+		const auto id = _pinnedTracker
+			? _pinnedTracker->currentMessageId().message
+			: FullMsgId();
+		if (fullHistory) {
+			_controller->showSection(std::make_shared<PinnedMemento>(
+				_history,
+				((!id || !migrated || peerIsChannel(id.peer))
+					? id.msg
+					: (id.msg - ServerMaxMsgId))));
+		} else if (const auto thread = activeThread()) {
+			_controller->showSection(
+				std::make_shared<PinnedMemento>(thread, id.msg));
+		}
+	};
+	_pinnedPill = base::make_unique_q<PinnedPill>(
+		_scroll.get(),
+		_controller->chatStyle(),
+		[=](QEvent *e) { return _scroll->viewportEvent(e); },
+		[=] { hidePinnedMessage(); },
+		showAll);
+
+	auto pinnedCount = Info::Profile::SharedMediaCountValue(
+		_history->peer,
+		topicRootId,
+		monoforumPeerId,
+		migrated,
+		Storage::SharedMediaType::Pinned
+	) | rpl::distinct_until_changed(
+	) | rpl::map([=](int count) {
+		if (_pinnedClickedId) {
+			_pinnedClickedId = FullMsgId();
+			_minPinnedId = std::nullopt;
+			updatePinnedViewer();
+		}
+		return count;
+	});
+	rpl::combine(
+		std::move(pinnedCount),
+		_pinnedPillAllowed.value(),
+		_repliesRootVisible.value()
+	) | rpl::on_next([=](int count, bool allowed, bool rootVisible) {
+		_pinnedPill->setCount(count);
+
+		// As upstream's bar, not shown in a topic while its first message,
+		// pinned, is in view - unless something else is pinned too.
+		_pinnedPill->toggle(
+			allowed && (fullHistory || rootVisible || count > 1),
+			anim::type::normal);
+	}, _pinnedPill->lifetime());
+
+	const auto jump = [=](FullMsgId id) {
+		const auto item = _history->owner().message(id);
+		if (!item) {
+			return;
+		}
+		if (_showAtPosition) {
+			_showAtPosition(item->position());
+		}
+		if (const auto group = _history->owner().groups().find(item)) {
+			_pinnedClickedId = group->items.front()->fullId();
+		} else {
+			_pinnedClickedId = id;
+		}
+		_minPinnedId = std::nullopt;
+		updatePinnedViewer();
+	};
+	_pinnedPill->setClickedCallback([=] {
+		const auto id = _pinnedTracker->currentMessageId().message;
+		if (!id) {
+			return;
+		} else if (_history->owner().message(id)) {
+			jump(id);
+			return;
+		}
+		// The bar loaded the message to show its text, so a click on it
+		// always found the message. The pill shows none, so it loads here.
+		_history->session().api().requestMessageData(
+			_history->owner().peer(id.peer),
+			id.msg,
+			crl::guard(_pinnedPill.get(), [=] { jump(id); }));
+	});
+}
+
 void TopControls::checkPinnedBarState() {
 	Expects(_pinnedTracker != nullptr);
 
@@ -614,9 +697,11 @@ void TopControls::checkPinnedBarState() {
 	const auto migrated = migratedPeer();
 	const auto topicRootId = fullHistory ? MsgId(0) : _repliesRootId;
 	const auto monoforumPeerId = fullHistory ? PeerId(0) : _monoforumPeerId;
-	const auto hiddenId = _history->peer->canPinMessages()
-		? MsgId(0)
-		: _history->peer->session().settings().hiddenPinnedMessageId(
+
+	// LoogriGram: anyone may hide the pill, as in HistoryWidget. Upstream
+	// honoured hiding only for those who cannot pin.
+	const auto hiddenId = _history->peer->session().settings(
+		).hiddenPinnedMessageId(
 			_history->peer->id,
 			topicRootId,
 			monoforumPeerId);
@@ -630,290 +715,30 @@ void TopControls::checkPinnedBarState() {
 		: (migrated && !peerIsChannel(currentPinnedId.peer))
 		? (currentPinnedId.msg - ServerMaxMsgId)
 		: currentPinnedId.msg;
-	if (universalPinnedId == hiddenId) {
-		if (_pinnedBar) {
-			_pinnedBar->setContent(rpl::single(Ui::MessageBarContent()));
-			_pinnedTracker->reset();
-			_shownPinnedBarItem = nullptr;
-			_hidingPinnedBar = std::move(_pinnedBar);
-			updateLayout();
-			updateZOrder();
-			const auto raw = _hidingPinnedBar.get();
-			base::call_delayed(st::defaultMessageBar.duration, _wrap.get(), [=] {
-				if (_hidingPinnedBar.get() == raw) {
-					clearHidingPinnedBar();
-				}
-			});
-		}
-		return;
-	}
-	if (_pinnedBar || !universalPinnedId) {
-		return;
-	}
-
-	clearHidingPinnedBar();
-	_pinnedBar = std::make_unique<Ui::PinnedBar>(_topBars.get(), [=] {
-		return _controller->isGifPausedAtLeastFor(
-			Window::GifPauseReason::Any);
-	}, _controller->gifPauseLevelChanged());
-	auto pinnedRefreshed = Info::Profile::SharedMediaCountValue(
-		_history->peer,
-		topicRootId,
-		monoforumPeerId,
-		migrated,
-		Storage::SharedMediaType::Pinned
-	) | rpl::distinct_until_changed(
-	) | rpl::map([=](int count) {
-		if (_pinnedClickedId) {
-			_pinnedClickedId = FullMsgId();
-			_minPinnedId = std::nullopt;
-			updatePinnedViewer();
-		}
-		return (count > 1);
-	}) | rpl::distinct_until_changed();
-	auto customButtonItem = PinnedBarItemWithCustomButton(
-		&_history->session(),
-		_pinnedTracker->shownMessageId());
-	rpl::combine(
-		rpl::duplicate(pinnedRefreshed),
-		rpl::duplicate(customButtonItem)
-	) | rpl::on_next([=](bool many, HistoryItem *item) {
-		refreshPinnedBarButton(many, item);
-	}, _pinnedBar->lifetime());
-
-	_pinnedBar->setContent(rpl::combine(
-		PinnedBarContent(
-			&_history->session(),
-			_pinnedTracker->shownMessageId(),
-			[bar = _pinnedBar.get()] { bar->customEmojiRepaint(); }),
-		std::move(pinnedRefreshed),
-		std::move(customButtonItem),
-		_repliesRootVisible.value()
-	) | rpl::map([=](Ui::MessageBarContent &&content, auto, auto, bool show) {
-		const auto shown = !content.title.isEmpty() && !content.text.empty();
-		const auto id = shown
-			? _pinnedTracker->currentMessageId().message
-			: FullMsgId();
-		crl::on_main(_wrap.get(), [=] {
-			_shownPinnedBarItem = id
-				? _history->owner().message(id)
-				: nullptr;
-		});
-		return (fullHistory || show || content.count > 1)
-			? std::move(content)
-			: Ui::MessageBarContent();
-	}));
-
-	_controller->adaptive().oneColumnValue(
-	) | rpl::on_next([=, raw = _pinnedBar.get()](bool one) {
-		raw->setShadowGeometryPostprocess([=](QRect geometry) {
-			if (!one) {
-				geometry.setLeft(geometry.left() + st::lineWidth);
-			}
-			return geometry;
-		});
-	}, _pinnedBar->lifetime());
-
-	_pinnedBar->barClicks(
-	) | rpl::on_next([=] {
-		const auto id = _pinnedTracker->currentMessageId();
-		if (const auto item = _history->session().data().message(id.message)) {
-			if (_showAtPosition) {
-				_showAtPosition(item->position());
-			}
-			if (const auto group = _history->session().data().groups().find(item)) {
-				_pinnedClickedId = group->items.front()->fullId();
-			} else {
-				_pinnedClickedId = id.message;
-			}
-			_minPinnedId = std::nullopt;
-			updatePinnedViewer();
-		}
-	}, _pinnedBar->lifetime());
-
-	_pinnedBar->barRightClicks(
-	) | rpl::on_next([=] {
-		if (_pinnedBarHasCustomButton) {
-			return;
-		}
-		const auto reference = _pinnedClickedId
-			? _pinnedClickedId
-			: _pinnedTracker->currentMessageId().message;
-		if (!reference) {
-			return;
-		}
-		const auto migrated = migratedPeer();
-		const auto universal = [&](FullMsgId id) {
-			return (!id || !migrated || peerIsChannel(id.peer))
-				? id.msg
-				: (id.msg - ServerMaxMsgId);
-		};
-		const auto referenceId = universal(reference);
-		const auto top = Data::ResolveTopPinnedId(
-			_history->peer,
-			topicRootId,
-			monoforumPeerId,
-			migrated);
-		const auto targetId = (top && referenceId >= universal(top))
-			? Data::ResolveMinPinnedId(
-				_history->peer,
-				topicRootId,
-				monoforumPeerId,
-				migrated)
-			: _pinnedTracker->nextPinnedId(referenceId);
-		if (!targetId) {
-			return;
-		}
-		const auto jump = crl::guard(_wrap.get(), [=] {
-			const auto item = _history->owner().message(targetId);
-			if (!item) {
-				return;
-			}
-			if (_showAtPosition) {
-				_showAtPosition(item->position());
-			}
-			_pinnedClickedId = FullMsgId();
-			_minPinnedId = std::nullopt;
-			updatePinnedViewer();
-		});
-		if (_history->owner().message(targetId)) {
-			jump();
-		} else {
-			_history->session().api().requestMessageData(
-				_history->owner().peer(targetId.peer),
-				targetId.msg,
-				jump);
-		}
-	}, _pinnedBar->lifetime());
-
-	_pinnedBarHeight = 0;
-	_pinnedBar->heightValue(
-	) | rpl::on_next([=](int height) {
-		if (height == _pinnedBarHeight) {
-			return;
-		}
-		const auto was = this->height();
-		_pinnedBarHeight = height;
-		updateLayout();
-		applyHeightChangeWithTopMoved(was, this->height());
-	}, _pinnedBar->lifetime());
-
-	updateLayout();
-	updateZOrder();
+	_pinnedPillAllowed = universalPinnedId
+		&& (universalPinnedId != hiddenId);
 }
 
-void TopControls::clearHidingPinnedBar() {
-	if (!_hidingPinnedBar) {
-		return;
-	}
-	const auto was = height();
-	_pinnedBarHeight = 0;
-	_hidingPinnedBar = nullptr;
-	updateLayout();
-	applyHeightChangeWithTopMoved(was, height());
-}
-
-void TopControls::refreshPinnedBarButton(bool many, HistoryItem *item) {
-	if (!_pinnedBar) {
-		return;
-	}
-	const auto openSection = [=] {
-		const auto id = _pinnedTracker
-			? _pinnedTracker->currentMessageId()
-			: PinnedId();
-		if (!id.message) {
-			return;
-		}
-		if (!_repliesRootId && !_topic && !_sublist) {
-			const auto normalizedMsgId = (migratedPeer()
-					&& !peerIsChannel(id.message.peer))
-				? (id.message.msg - ServerMaxMsgId)
-				: id.message.msg;
-			_controller->showSection(
-				std::make_shared<PinnedMemento>(_history, normalizedMsgId));
-			return;
-		}
-		if (const auto thread = activeThread()) {
-			_controller->showSection(
-				std::make_shared<PinnedMemento>(thread, id.message.msg));
-		}
-	};
-	const auto context = [=](FullMsgId itemId) {
-		return _preparePinnedClickContext
-			? _preparePinnedClickContext(itemId)
-			: ClickHandlerContext();
-	};
-	auto customButton = CreatePinnedBarCustomButton(_wrap.get(), item, context);
-	if (customButton) {
-		_pinnedBarHasCustomButton = true;
-		struct State {
-			base::unique_qptr<Ui::PopupMenu> menu;
-		};
-		const auto buttonRaw = customButton.data();
-		const auto state = buttonRaw->lifetime().make_state<State>();
-		_pinnedBar->contextMenuRequested(
-		) | rpl::on_next([=] {
-			state->menu = base::make_unique_q<Ui::PopupMenu>(buttonRaw);
-			state->menu->addAction(
-				tr::lng_settings_events_pinned(tr::now),
-				openSection);
-			state->menu->popup(QCursor::pos());
-		}, buttonRaw->lifetime());
-		_pinnedBar->setRightButton(std::move(customButton));
-		return;
-	}
-	_pinnedBarHasCustomButton = false;
-	const auto close = !many;
-	auto button = object_ptr<Ui::IconButton>(
-		_wrap.get(),
-		close ? st::historyReplyCancel : st::historyPinnedShowAll);
-	button->setAccessibleName(close
-		? tr::lng_pinned_unpin(tr::now)
-		: tr::lng_settings_events_pinned(tr::now));
-	button->clicks(
-	) | rpl::on_next([=] {
-		if (close) {
-			hidePinnedMessage();
-		} else {
-			openSection();
-		}
-	}, button->lifetime());
-	_pinnedBar->setRightButton(std::move(button));
-}
-
+// LoogriGram: the pill's menu hides it at once, for anyone, until a newer
+// message is pinned; as HistoryWidget::hidePinnedMessage.
 void TopControls::hidePinnedMessage() {
-	Expects(_pinnedBar != nullptr);
-
-	const auto id = _pinnedTracker->currentMessageId();
-	if (!id.message) {
-		return;
-	}
-	if (_history->peer->canPinMessages()) {
-		Window::ToggleMessagePinned(_controller, id.message, false);
-	} else {
-		const auto fullHistory = !_repliesRootId && !_topic && !_sublist;
-		Window::HidePinnedBar(
-			_controller,
+	const auto fullHistory = !_repliesRootId && !_topic && !_sublist;
+	if (Window::HidePinnedMessages(
 			_history->peer,
 			fullHistory ? MsgId(0) : _repliesRootId,
-			fullHistory ? PeerId(0) : _monoforumPeerId,
-			crl::guard(_wrap.get(), [=] {
-				if (_pinnedTracker) {
-					checkPinnedBarState();
-				}
-			}));
+			fullHistory ? PeerId(0) : _monoforumPeerId)
+		&& _pinnedTracker) {
+		checkPinnedBarState();
 	}
 }
 
 void TopControls::resetPinnedState() {
 	_pinnedLifetime.destroy();
 	_pinnedTracker = nullptr;
-	_pinnedBar = nullptr;
-	_hidingPinnedBar = nullptr;
-	_pinnedBarHeight = 0;
+	_pinnedPill = nullptr;
+	_pinnedPillAllowed = false;
 	_pinnedClickedId = FullMsgId();
 	_minPinnedId = std::nullopt;
-	_shownPinnedBarItem = nullptr;
 }
 
 void TopControls::rebuildModeSensitiveBars() {
@@ -963,9 +788,6 @@ void TopControls::rebuildModeSensitiveBars() {
 
 void TopControls::updateLayout() {
 	auto top = 0;
-	const auto pinnedBar = _pinnedBar
-		? _pinnedBar.get()
-		: _hidingPinnedBar.get();
 	_topBars->move(0, 0);
 	if (_repliesRootView) {
 		_repliesRootView->move(0, top);
@@ -981,11 +803,6 @@ void TopControls::updateLayout() {
 		_requestsBar->move(0, top);
 		_requestsBar->resizeToWidth(_width);
 		top += _requestsBarHeight;
-	}
-	if (pinnedBar) {
-		pinnedBar->move(0, top);
-		pinnedBar->resizeToWidth(_width);
-		top += _pinnedBarHeight;
 	}
 	if (_topicReopenBar) {
 		_topicReopenBar->bar().move(0, top);
@@ -1006,9 +823,6 @@ void TopControls::updateLayout() {
 }
 
 void TopControls::updateZOrder() {
-	const auto pinnedBar = _pinnedBar
-		? _pinnedBar.get()
-		: _hidingPinnedBar.get();
 	_topBars->raise();
 	if (_contactStatus) {
 		_contactStatus->bar().raise();
@@ -1018,9 +832,6 @@ void TopControls::updateZOrder() {
 	}
 	if (_topicReopenBar) {
 		_topicReopenBar->bar().raise();
-	}
-	if (pinnedBar) {
-		pinnedBar->raise();
 	}
 	if (_requestsBar) {
 		_requestsBar->raise();

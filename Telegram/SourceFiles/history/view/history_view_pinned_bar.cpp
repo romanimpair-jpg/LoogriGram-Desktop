@@ -7,29 +7,36 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_pinned_bar.h"
 
-#include "api/api_bot.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "data/data_session.h"
 #include "data/data_changes.h"
 #include "data/data_poll.h"
-#include "data/data_web_page.h"
 #include "history/view/history_view_pinned_tracker.h"
 #include "history/view/history_view_reply.h"
+#include "history/view/history_view_service_message.h"
 #include "history/history_item.h"
 #include "history/history_item_components.h"
 #include "history/history.h"
-#include "core/click_handler_types.h"
+#include "core/loogrigram_lang.h"
 #include "core/ui_integration.h"
+#include "base/event_filter.h"
 #include "base/weak_ptr.h"
 #include "apiwrap.h"
+#include "ui/chat/chat_style.h"
 #include "ui/dynamic_image.h"
 #include "ui/effects/spoiler_mess.h"
+#include "ui/painter.h"
 #include "ui/power_saving.h"
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/labels.h"
-#include "ui/basic_click_handlers.h"
+#include "ui/widgets/popup_menu.h"
+#include "styles/style_chat.h"
 #include "styles/style_chat_helpers.h"
+#include "styles/style_menu_icons.h"
+#include "styles/style_widgets.h"
+
+#include <QtGui/QtEvents>
 
 namespace HistoryView {
 namespace {
@@ -192,63 +199,6 @@ QImage PreviewImage::image(int size) {
 	}));
 }
 
-auto WithPinnedTitle(not_null<Main::Session*> session, PinnedId id) {
-	return [=](Ui::MessageBarContent &&content) {
-		const auto item = session->data().message(id.message);
-		if (!item) {
-			return std::move(content);
-		}
-		content.title = (id.index + 1 >= id.count)
-			? tr::lng_pinned_message(tr::now)
-			: (id.count == 2)
-			? tr::lng_pinned_previous(tr::now)
-			: (tr::lng_pinned_message(tr::now)
-				+ " #"
-				+ QString::number(id.index + 1));
-		content.count = std::max(id.count, 1);
-		content.index = std::clamp(id.index, 0, content.count - 1);
-		return std::move(content);
-	};
-}
-
-[[nodiscard]] object_ptr<Ui::RoundButton> MakePinnedBarCustomButton(
-		not_null<QWidget*> parent,
-		const QString &buttonText,
-		Fn<void()> clickCallback) {
-	const auto &stButton = st::historyPinnedBotButton;
-	const auto &stLabel = st::historyPinnedBotLabel;
-
-	auto button = object_ptr<Ui::RoundButton>(
-		parent,
-		rpl::never<QString>(), // Text is handled by the inner label.
-		stButton);
-
-	const auto label = Ui::CreateChild<Ui::FlatLabel>(
-		button.data(),
-		buttonText,
-		stLabel);
-
-	if (label->width() > st::historyPinnedBotButtonMaxWidth) {
-		label->resizeToWidth(st::historyPinnedBotButtonMaxWidth);
-	}
-	button->setFullWidth(label->width()
-		+ stButton.padding.left()
-		+ stButton.padding.right()
-		+ stButton.height); // stButton.height is likely for icon spacing.
-
-	label->moveToLeft(
-		stButton.padding.left() + stButton.height / 2,
-		(button->height() - label->height()) / 2);
-
-	label->setTextColorOverride(stButton.textFg->c); // Use button's text color for label.
-	label->setAttribute(Qt::WA_TransparentForMouseEvents);
-
-	button->setFullRadius(true);
-	button->setClickedCallback(std::move(clickCallback));
-
-	return button;
-}
-
 } // namespace
 
 rpl::producer<Ui::MessageBarContent> MessageBarContentByItemId(
@@ -258,152 +208,157 @@ rpl::producer<Ui::MessageBarContent> MessageBarContentByItemId(
 	return ContentByItemId(session, id, std::move(repaint));
 }
 
-rpl::producer<Ui::MessageBarContent> PinnedBarContent(
-		not_null<Main::Session*> session,
-		rpl::producer<PinnedId> id,
-		Fn<void()> repaint) {
-	return std::move(
-		id
-	) | rpl::distinct_until_changed(
-	) | rpl::map([=](PinnedId id) {
-		return ContentByItemId(
-			session,
-			id.message,
-			repaint
-		) | rpl::map(WithPinnedTitle(session, id));
-	}) | rpl::flatten_latest();
-}
-
-rpl::producer<HistoryItem*> PinnedBarItemWithCustomButton(
-		not_null<Main::Session*> session,
-		rpl::producer<PinnedId> id) {
-	return rpl::make_producer<HistoryItem*>([=,
-			id = std::move(id)](auto consumer) {
-		auto lifetime = rpl::lifetime();
-		consumer.put_next(nullptr);
-
-		struct State {
-			bool hasCustomButton = false;
-			HistoryItem *pushed = nullptr;
-			base::has_weak_ptr guard;
-			rpl::lifetime lifetime;
-			FullMsgId resolvedId;
-		};
-		const auto state = lifetime.make_state<State>();
-
-		const auto pushUnique = [=](not_null<HistoryItem*> item) {
-			const auto replyMarkup = item->inlineReplyMarkup();
-			const auto media = item->media();
-			const auto page = media ? media->webpage() : nullptr;
-			const auto possiblyHasCustomButton = replyMarkup
-				|| (page
-					&& (page->type == WebPageType::VoiceChat
-						|| page->type == WebPageType::Livestream
-						|| page->type == WebPageType::ConferenceCall));
-			if (!state->hasCustomButton && !possiblyHasCustomButton) {
-				return;
-			}
-			state->hasCustomButton = possiblyHasCustomButton;
-			state->pushed = item;
-			consumer.put_next(item.get());
-		};
-
-		rpl::duplicate(
-			id
-		) | rpl::filter([=](PinnedId current) {
-			return current.message && (current.message != state->resolvedId);
-		}) | rpl::on_next([=](PinnedId current) {
-			const auto fullId = current.message;
-			state->lifetime.destroy();
-			state->resolvedId = fullId;
-			invalidate_weak_ptrs(&state->guard);
-			const auto had = (base::take(state->pushed) != nullptr);
-
-			const auto messageFlag = [=](not_null<HistoryItem*> item) {
-				using Update = Data::MessageUpdate;
-				session->changes().messageUpdates(
-					item,
-					(Update::Flag::ReplyMarkup
-						| Update::Flag::Edited
-						| Update::Flag::Destroyed)
-				) | rpl::on_next([=](const Update &update) {
-					if (update.flags & Update::Flag::Destroyed) {
-						state->lifetime.destroy();
-						invalidate_weak_ptrs(&state->guard);
-						state->hasCustomButton = false;
-						state->pushed = nullptr;
-						consumer.put_next(nullptr);
-					} else {
-						pushUnique(update.item);
-					}
-				}, state->lifetime);
-				pushUnique(item);
-			};
-			if (const auto item = session->data().message(fullId)) {
-				messageFlag(item);
-			} else {
-				const auto resolved = crl::guard(&state->guard, [=] {
-					if (const auto item = session->data().message(fullId)) {
-						messageFlag(item);
-					}
-				});
-				session->api().requestMessageData(
-					session->data().peer(fullId.peer),
-					fullId.msg,
-					resolved);
-			}
-			if (had && !state->pushed) {
-				// We dropped the subscription that watched the pushed item
-				// for Destroyed and nothing above replaced it, so the
-				// consumer must not be left holding that pointer with nobody
-				// to clear it. Resolving first means an already loaded item
-				// pushes straight over it, and the bar rebuilds its right
-				// button once instead of crossfading a default one in and
-				// back out on every switch.
-				state->hasCustomButton = false;
-				consumer.put_next(nullptr);
-			}
-		}, lifetime);
-		return lifetime;
-	});
-}
-
-[[nodiscard]] object_ptr<Ui::RoundButton> CreatePinnedBarCustomButton(
-		not_null<QWidget*> parent,
-		HistoryItem *item,
-		Fn<ClickHandlerContext(FullMsgId)> context) {
-	if (!item) {
-		return nullptr;
-	} else if (const auto replyMarkup = item->inlineReplyMarkup()) {
-		const auto &rows = replyMarkup->data.rows;
-		if ((rows.size() == 1) && (rows.front().size() == 1)) {
-			const auto text = rows.front().front().text;
-			if (!text.isEmpty()) {
-				const auto contextId = item->fullId();
-				const auto callback = [=] {
-					Api::ActivateBotCommand(context(contextId), 0, 0);
-				};
-				return MakePinnedBarCustomButton(parent, text, callback);
-			}
+PinnedPill::PinnedPill(
+	not_null<QWidget*> parent,
+	not_null<const Ui::ChatStyle*> st,
+	Fn<bool(QEvent*)> scrollViewportEvent,
+	Fn<void()> hide,
+	Fn<void()> showAll)
+: AbstractButton(parent)
+, _st(st)
+, _scrollViewportEvent(std::move(scrollViewportEvent))
+, _hide(std::move(hide))
+, _showAll(std::move(showAll)) {
+	setAccessibleName(LoogriGram::Lang::PinnedMessages());
+	base::install_event_filter(this, parent, [=](not_null<QEvent*> e) {
+		if (e->type() == QEvent::Resize) {
+			updatePosition();
 		}
-	} else if (const auto media = item->media()) {
-		if (const auto page = media->webpage()) {
-			if (page->type == WebPageType::VoiceChat
-				|| page->type == WebPageType::Livestream
-				|| page->type == WebPageType::ConferenceCall) {
-				const auto url = page->url;
-				const auto contextId = item->fullId();
-				const auto callback = [=] {
-					UrlClickHandler::Open(
-						url,
-						QVariant::fromValue(context(contextId)));
-				};
-				const auto text = tr::lng_group_call_join(tr::now);
-				return MakePinnedBarCustomButton(parent, text, callback);
-			}
+		return base::EventFilterResult::Continue;
+	});
+	_st->paletteChanged(
+	) | rpl::on_next([=] {
+		update();
+	}, lifetime());
+	QWidget::hide();
+	updatePosition();
+}
+
+PinnedPill::~PinnedPill() = default;
+
+void PinnedPill::setCount(int count) {
+	const auto text = QString::number(count);
+	if (_text != text) {
+		_text = text;
+		_textWidth = st::msgServiceFont->width(_text);
+		setAccessibleDescription(_text);
+		accessibilityDescriptionChanged();
+		updatePosition();
+		update();
+	}
+	if (_count != count) {
+		_count = count;
+		refreshShown(anim::type::normal);
+	}
+}
+
+void PinnedPill::toggle(bool shown, anim::type animated) {
+	_wanted = shown;
+	refreshShown(animated);
+}
+
+// The count starts at zero until the pinned list is counted, and a pill
+// reading 0 would be a lie either way, so it waits for one.
+void PinnedPill::refreshShown(anim::type animated) {
+	const auto shown = _wanted && (_count > 0);
+	if (_shown != shown) {
+		_shown = shown;
+		setAttribute(Qt::WA_TransparentForMouseEvents, !shown);
+		if (animated == anim::type::normal) {
+			show();
+			raise();
+			_shownAnimation.start(
+				[=] { animationCallback(); },
+				shown ? 0. : 1.,
+				shown ? 1. : 0.,
+				st::historyToDownDuration);
+			return;
 		}
 	}
-	return nullptr;
+	if (animated == anim::type::instant) {
+		finishAnimating();
+	}
+}
+
+void PinnedPill::finishAnimating() {
+	_shownAnimation.stop();
+	animationCallback();
+}
+
+void PinnedPill::animationCallback() {
+	const auto hidden = !_shown && !_shownAnimation.animating();
+	if (hidden != isHidden()) {
+		setVisible(!hidden);
+		if (!hidden) {
+			raise();
+		}
+	}
+	update();
+}
+
+void PinnedPill::updatePosition() {
+	const auto &padding = st::historyPinnedPillPadding;
+	const auto &icon = st::historyPinnedPillIcon;
+	resize(
+		(padding.left()
+			+ icon.width()
+			+ st::historyPinnedPillSkip
+			+ _textWidth
+			+ padding.right()),
+		padding.top() + st::msgServiceFont->height + padding.bottom());
+
+	// Level with the floating date, at the corner buttons' distance from
+	// the right edge.
+	moveToRight(
+		st::historyToDownPosition.x(),
+		st::msgServiceMargin.top(),
+		parentWidget()->width());
+}
+
+void PinnedPill::paintEvent(QPaintEvent *e) {
+	const auto opacity = _shownAnimation.value(_shown ? 1. : 0.);
+	if (opacity <= 0.) {
+		return;
+	}
+	auto p = Painter(this);
+	p.setOpacity(opacity);
+	ServiceMessagePainter::PaintBubble(p, _st, rect());
+
+	const auto &padding = st::historyPinnedPillPadding;
+	const auto &icon = st::historyPinnedPillIcon;
+	const auto &fg = _st->msgServiceFg();
+	icon.paint(
+		p,
+		QPoint(padding.left(), (height() - icon.height()) / 2),
+		width(),
+		fg->c);
+	p.setPen(fg);
+	p.setFont(st::msgServiceFont);
+	p.drawText(
+		padding.left() + icon.width() + st::historyPinnedPillSkip,
+		padding.top() + st::msgServiceFont->ascent,
+		_text);
+}
+
+void PinnedPill::wheelEvent(QWheelEvent *e) {
+	if (_scrollViewportEvent) {
+		_scrollViewportEvent(e);
+	}
+}
+
+void PinnedPill::contextMenuEvent(QContextMenuEvent *e) {
+	_menu = base::make_unique_q<Ui::PopupMenu>(
+		this,
+		st::popupMenuWithIcons);
+	_menu->addAction(
+		LoogriGram::Lang::HidePinnedMessages(),
+		_hide,
+		&st::menuIconCancel);
+	_menu->addAction(
+		LoogriGram::Lang::AllPinnedMessages(),
+		_showAll,
+		&st::menuIconPin);
+	_menu->popup(e->globalPos());
 }
 
 } // namespace HistoryView

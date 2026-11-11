@@ -8,20 +8,22 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "base/object_ptr.h"
+#include "base/unique_qptr.h"
+#include "ui/abstract_button.h"
 #include "ui/chat/message_bar.h"
+#include "ui/effects/animations.h"
 
 #include <tuple>
-
-struct ClickHandlerContext;
 
 namespace Main {
 class Session;
 } // namespace Main
 
 namespace Ui {
+class ChatStyle;
 class IconButton;
 class PlainShadow;
-class RoundButton;
+class PopupMenu;
 struct MessageBarContent;
 } // namespace Ui
 
@@ -50,18 +52,51 @@ struct PinnedId {
 		return !(*this == other);
 	}
 };
-[[nodiscard]] rpl::producer<Ui::MessageBarContent> PinnedBarContent(
-	not_null<Main::Session*> session,
-	rpl::producer<PinnedId> id,
-	Fn<void()> repaint);
+// LoogriGram: upstream's pinned bar - the pinned message's text across the
+// top of the chat, with a list or close button - is gone. In its place this
+// pill floats at the top right of the message list, level with the floating
+// date and drawn like it: a pin and how many messages are pinned. A click
+// jumps to the next pinned message up, as a click on the bar did; the
+// right-click menu hides the pill until a newer message is pinned, or opens
+// the pinned messages page. Android has the same pill.
+class PinnedPill final : public Ui::AbstractButton {
+public:
+	// The parent is the scroll area: the pill stays put over the scrolling
+	// list, and hands it the wheel, as the corner buttons do.
+	PinnedPill(
+		not_null<QWidget*> parent,
+		not_null<const Ui::ChatStyle*> st,
+		Fn<bool(QEvent*)> scrollViewportEvent,
+		Fn<void()> hide,
+		Fn<void()> showAll);
+	~PinnedPill();
 
-[[nodiscard]] rpl::producer<HistoryItem*> PinnedBarItemWithCustomButton(
-	not_null<Main::Session*> session,
-	rpl::producer<PinnedId> id);
+	void setCount(int count);
+	void toggle(bool shown, anim::type animated);
+	void finishAnimating();
 
-[[nodiscard]] object_ptr<Ui::RoundButton> CreatePinnedBarCustomButton(
-	not_null<QWidget*> parent,
-	HistoryItem *item,
-	Fn<ClickHandlerContext(FullMsgId)> context);
+protected:
+	void paintEvent(QPaintEvent *e) override;
+	void wheelEvent(QWheelEvent *e) override;
+	void contextMenuEvent(QContextMenuEvent *e) override;
+
+private:
+	void refreshShown(anim::type animated);
+	void updatePosition();
+	void animationCallback();
+
+	const not_null<const Ui::ChatStyle*> _st;
+	const Fn<bool(QEvent*)> _scrollViewportEvent;
+	const Fn<void()> _hide;
+	const Fn<void()> _showAll;
+	base::unique_qptr<Ui::PopupMenu> _menu;
+	Ui::Animations::Simple _shownAnimation;
+	QString _text;
+	int _textWidth = 0;
+	int _count = 0;
+	bool _wanted = false;
+	bool _shown = false;
+
+};
 
 } // namespace HistoryView

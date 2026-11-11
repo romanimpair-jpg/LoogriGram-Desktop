@@ -9,7 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "base/basic_types.h"
 #include "base/required.h"
-#include "core/click_handler_types.h"
+#include "base/unique_qptr.h"
 #include "data/data_messages.h"
 #include "ui/rp_widget.h"
 
@@ -42,6 +42,7 @@ namespace HistoryView {
 
 class ContactStatus;
 class ListWidget;
+class PinnedPill;
 class PinnedTracker;
 class TopicReopenBar;
 class TranslateTracker;
@@ -62,7 +63,6 @@ struct TopControlsDescriptor {
 	Fn<void(int)> relayoutWithScrollTopDelta;
 	Fn<void()> showAtStart;
 	Fn<void(Data::MessagePosition)> showAtPosition;
-	Fn<ClickHandlerContext(FullMsgId)> preparePinnedClickContext;
 };
 
 class TopControls final {
@@ -102,10 +102,9 @@ private:
 	void setupRequestsBar();
 	void setupPeerBars();
 	void setupPinnedTracker();
+	void setupPinnedPill();
 	void rebuildModeSensitiveBars();
 	void checkPinnedBarState();
-	void clearHidingPinnedBar();
-	void refreshPinnedBarButton(bool many, HistoryItem *item);
 	void hidePinnedMessage();
 	void resetPinnedState();
 	void updateLayout();
@@ -129,7 +128,6 @@ private:
 	Fn<void(int)> _relayoutWithScrollTopDelta;
 	Fn<void()> _showAtStart;
 	Fn<void(Data::MessagePosition)> _showAtPosition;
-	Fn<ClickHandlerContext(FullMsgId)> _preparePinnedClickContext;
 
 	const std::unique_ptr<Ui::RpWidget> _wrap;
 	const std::unique_ptr<Ui::RpWidget> _topBars;
@@ -137,8 +135,8 @@ private:
 	std::unique_ptr<Ui::RequestsBar> _requestsBar;
 	std::unique_ptr<TranslateBar> _translateBar;
 	std::unique_ptr<PinnedTracker> _pinnedTracker;
-	std::unique_ptr<Ui::PinnedBar> _pinnedBar;
-	std::unique_ptr<Ui::PinnedBar> _hidingPinnedBar;
+	base::unique_qptr<PinnedPill> _pinnedPill;
+	rpl::variable<bool> _pinnedPillAllowed = false;
 	std::unique_ptr<Ui::PinnedBar> _repliesRootView;
 	std::unique_ptr<TopicReopenBar> _topicReopenBar;
 	std::unique_ptr<ContactStatus> _contactStatus;
@@ -148,15 +146,12 @@ private:
 	int _groupCallBarHeight = 0;
 	int _requestsBarHeight = 0;
 	int _translateBarHeight = 0;
-	int _pinnedBarHeight = 0;
 	int _repliesRootViewHeight = 0;
 	int _topicReopenBarHeight = 0;
 	int _contactStatusHeight = 0;
 	HistoryItem *_shownRepliesRootItem = nullptr;
-	HistoryItem *_shownPinnedBarItem = nullptr;
 	FullMsgId _pinnedClickedId;
 	std::optional<FullMsgId> _minPinnedId;
-	bool _pinnedBarHasCustomButton = false;
 	rpl::lifetime _pinnedLifetime;
 	bool _repliesRootViewInited = false;
 	bool _repliesRootViewInitScheduled = false;

@@ -56,6 +56,13 @@ namespace LoogriGram::Lang {
 // text there asks for a price; a post suggested from here has none.
 [[nodiscard]] QString SuggestPostAnytime();
 
+// The pinned messages pill's right-click menu, and the chat menu's way to the
+// pinned messages page, which stays there after the pill is hidden. Android
+// carries the same three strings.
+[[nodiscard]] QString HidePinnedMessages();
+[[nodiscard]] QString AllPinnedMessages();
+[[nodiscard]] QString PinnedMessages();
+
 // Keys whose compiled text must survive the cloud language pack.
 //
 // Editing lang.strings changes only the compiled default. On startup the

@@ -560,9 +560,6 @@ ChatWidget::ChatWidget(
 			.showAtPosition = [=](Data::MessagePosition position) {
 				showAtPosition(position);
 			},
-			.preparePinnedClickContext = [=](FullMsgId itemId) {
-				return _inner->prepareClickHandlerContext(itemId);
-			},
 		});
 	_scroll->move(0, _topBar->height());
 	_scroll->show();

@@ -78,6 +78,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_components.h"
 #include "history/view/controls/history_view_forward_panel.h"
 #include "history/view/history_view_context_menu.h"
+#include "history/view/history_view_pinned_section.h"
 #include "history/view/history_view_schedule_box.h"
 #include "window/window_separate_id.h"
 #include "window/window_session_controller.h"
@@ -111,6 +112,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_peer_values.h"
 #include "dialogs/dialogs_key.h"
 #include "core/application.h"
+#include "core/loogrigram_lang.h"
 #include "core/ui_integration.h"
 #include "export/export_manager.h"
 #include "boxes/peers/edit_participants_box.h"
@@ -333,6 +335,7 @@ private:
 	void addViewStatistics();
 	void addSetPersonalChannel();
 	void addFiling();
+	void addPinnedMessages();
 
 	[[nodiscard]] History *filedHistory() const;
 	[[nodiscard]] bool skipCreateActions() const;
@@ -859,6 +862,36 @@ void Filler::addFiling() {
 		addToggleFolder();
 		addToggleArchive();
 	}
+}
+
+// LoogriGram: the pinned messages page, from the menu of the chat or topic.
+// The pill over the messages opens it too, but the pill can be hidden until
+// a newer message is pinned; this item stays while anything is pinned. A
+// comment thread pins nothing of its own, so its menu has none.
+void Filler::addPinnedMessages() {
+	if (!_thread || (!_topic && _request.section == Section::Replies)) {
+		return;
+	}
+	const auto topicRootId = _thread->topicRootId();
+	const auto monoforumPeerId = _thread->monoforumPeerId();
+	const auto migrated = (topicRootId || monoforumPeerId)
+		? nullptr
+		: _peer->migrateFrom();
+	if (!Data::ResolveTopPinnedId(
+			_peer,
+			topicRootId,
+			monoforumPeerId,
+			migrated)) {
+		return;
+	}
+	const auto controller = _controller;
+	const auto weak = base::make_weak(_thread);
+	_addAction(LoogriGram::Lang::PinnedMessages(), [=] {
+		if (const auto thread = weak.get()) {
+			controller->showSection(
+				std::make_shared<HistoryView::PinnedMemento>(thread));
+		}
+	}, &st::menuIconPin);
 }
 
 void Filler::addClearHistory() {
@@ -1813,6 +1846,7 @@ void Filler::fillHistoryActions() {
 	addCreateTopic();
 	addInfo();
 	addViewAsTopics();
+	addPinnedMessages();
 	addManageChat();
 	addSupportInfo();
 	addCreatePoll();
@@ -1860,6 +1894,7 @@ void Filler::fillRepliesActions() {
 		addInfo();
 		addManageTopic();
 	}
+	addPinnedMessages();
 	addCreatePoll();
 	addToggleTopicClosed();
 	addFiling();
@@ -3587,32 +3622,9 @@ void HidePinnedBar(
 		Fn<void()> onHidden) {
 	const auto callback = crl::guard(navigation, [=](Fn<void()> &&close) {
 		close();
-		auto &session = peer->session();
-		const auto migrated = (topicRootId || monoforumPeerId)
-			? nullptr
-			: peer->migrateFrom();
-		const auto top = Data::ResolveTopPinnedId(
-			peer,
-			topicRootId,
-			monoforumPeerId,
-			migrated);
-		const auto universal = !top
-			? MsgId(0)
-			: (migrated && !peerIsChannel(top.peer))
-			? (top.msg - ServerMaxMsgId)
-			: top.msg;
-		if (universal) {
-			session.settings().setHiddenPinnedMessageId(
-				peer->id,
-				topicRootId,
-				monoforumPeerId,
-				universal);
-			session.saveSettingsDelayed();
-			if (onHidden) {
-				onHidden();
-			}
-		} else {
-			session.api().requestFullPeer(peer);
+		if (HidePinnedMessages(peer, topicRootId, monoforumPeerId)
+			&& onHidden) {
+			onHidden();
 		}
 	});
 	navigation->parentController()->show(
@@ -3622,6 +3634,39 @@ void HidePinnedBar(
 			.confirmText = tr::lng_pinned_hide_all_hide(),
 		}),
 		Ui::LayerOption::CloseOther);
+}
+
+// LoogriGram: what HidePinnedBar did once confirmed, on its own, so the
+// pinned messages pill can hide at once - the pill's menu is the asking.
+bool HidePinnedMessages(
+		not_null<PeerData*> peer,
+		MsgId topicRootId,
+		PeerId monoforumPeerId) {
+	auto &session = peer->session();
+	const auto migrated = (topicRootId || monoforumPeerId)
+		? nullptr
+		: peer->migrateFrom();
+	const auto top = Data::ResolveTopPinnedId(
+		peer,
+		topicRootId,
+		monoforumPeerId,
+		migrated);
+	const auto universal = !top
+		? MsgId(0)
+		: (migrated && !peerIsChannel(top.peer))
+		? (top.msg - ServerMaxMsgId)
+		: top.msg;
+	if (!universal) {
+		session.api().requestFullPeer(peer);
+		return false;
+	}
+	session.settings().setHiddenPinnedMessageId(
+		peer->id,
+		topicRootId,
+		monoforumPeerId,
+		universal);
+	session.saveSettingsDelayed();
+	return true;
 }
 
 void UnpinAllMessages(

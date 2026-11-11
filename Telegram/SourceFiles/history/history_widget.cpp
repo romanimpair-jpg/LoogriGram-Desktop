@@ -157,7 +157,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "base/qthelp_regex.h"
 #include "ui/boxes/report_box_graphics.h"
-#include "ui/chat/pinned_bar.h"
 #include "ui/chat/group_call_bar.h"
 #include "ui/chat/requests_bar.h"
 #include "ui/chat/chat_theme.h"
@@ -1805,9 +1804,6 @@ void HistoryWidget::orderWidgets() {
 	if (_translateBar) {
 		_translateBar->raise();
 	}
-	if (_pinnedBar) {
-		_pinnedBar->raise();
-	}
 	if (_requestsBar) {
 		_requestsBar->raise();
 	}
@@ -2621,7 +2617,7 @@ void HistoryWidget::showHistory(
 		_history->showAtMsgId = _showAtMsgId;
 
 		destroyUnreadBarOnClose();
-		_pinnedBar = nullptr;
+		_pinnedPill = nullptr;
 		_translateBar = nullptr;
 		_pinnedTracker = nullptr;
 		_groupCallBar = nullptr;
@@ -5052,8 +5048,8 @@ void HistoryWidget::showAnimated(
 	show();
 	_topBar->finishAnimating();
 	_cornerButtons.finishAnimations();
-	if (_pinnedBar) {
-		_pinnedBar->finishAnimating();
+	if (_pinnedPill) {
+		_pinnedPill->finishAnimating();
 	}
 	if (_translateBar) {
 		_translateBar->finishAnimating();
@@ -5099,8 +5095,8 @@ void HistoryWidget::showFast() {
 
 void HistoryWidget::showFinished() {
 	_cornerButtons.finishAnimations();
-	if (_pinnedBar) {
-		_pinnedBar->finishAnimating();
+	if (_pinnedPill) {
+		_pinnedPill->finishAnimating();
 	}
 	if (_translateBar) {
 		_translateBar->finishAnimating();
@@ -5131,8 +5127,8 @@ void HistoryWidget::doneShow() {
 	_preserveScrollTop = true;
 	preloadHistoryIfNeeded();
 	updatePinnedViewer();
-	if (_pinnedBar) {
-		_pinnedBar->finishAnimating();
+	if (_pinnedPill) {
+		_pinnedPill->finishAnimating();
 	}
 	if (_translateBar) {
 		_translateBar->finishAnimating();
@@ -6810,14 +6806,8 @@ void HistoryWidget::updateControlsGeometry() {
 		_requestsBar->move(0, requestsTop);
 		_requestsBar->resizeToWidth(innerWidth);
 	}
-	const auto pinnedBarTop = requestsTop
+	const auto translateTop = requestsTop
 		+ (_requestsBar ? _requestsBar->height() : 0);
-	if (_pinnedBar) {
-		_pinnedBar->move(0, pinnedBarTop);
-		_pinnedBar->resizeToWidth(innerWidth);
-	}
-	const auto translateTop = pinnedBarTop
-		+ (_pinnedBar ? _pinnedBar->height() : 0);
 	if (_translateBar) {
 		_translateBar->move(0, translateTop);
 		_translateBar->resizeToWidth(innerWidth);
@@ -7089,9 +7079,6 @@ void HistoryWidget::updateHistoryGeometry(
 		- (_subsectionTabs ? _subsectionTabs->bottomSkip() : 0);
 	if (_translateBar) {
 		newScrollHeight -= _translateBar->height();
-	}
-	if (_pinnedBar) {
-		newScrollHeight -= _pinnedBar->height();
 	}
 	if (_groupCallBar) {
 		newScrollHeight -= _groupCallBar->height();
@@ -7544,7 +7531,6 @@ int HistoryWidget::computeMaxFieldHeight() const {
 	const auto available = height()
 		- _topBar->height()
 		- (_contactStatus ? _contactStatus->bar().height() : 0)
-		- (_pinnedBar ? _pinnedBar->height() : 0)
 		- (_groupCallBar ? _groupCallBar->height() : 0)
 		- (_requestsBar ? _requestsBar->height() : 0)
 		- ((_editMsgId
@@ -8070,17 +8056,92 @@ void HistoryWidget::setupPinnedTracker() {
 	Expects(_history != nullptr);
 
 	_pinnedTracker = std::make_unique<HistoryView::PinnedTracker>(_history);
-	_pinnedBar = nullptr;
+
+	// LoogriGram: the pinned messages pill, in place of upstream's pinned
+	// bar across the top of the chat. See HistoryView::PinnedPill.
+	const auto showAll = [=] {
+		const auto id = _pinnedTracker
+			? _pinnedTracker->currentMessageId().message
+			: FullMsgId();
+		controller()->showSection(
+			std::make_shared<HistoryView::PinnedMemento>(
+				_history,
+				((!id || !_migrated || peerIsChannel(id.peer))
+					? id.msg
+					: (id.msg - ServerMaxMsgId))));
+	};
+	_pinnedPill = base::make_unique_q<HistoryView::PinnedPill>(
+		_scroll.data(),
+		controller()->chatStyle(),
+		[=](QEvent *e) { return _scroll->viewportEvent(e); },
+		[=] { hidePinnedMessage(); },
+		showAll);
+
+	Info::Profile::SharedMediaCountValue(
+		_peer,
+		MsgId(0), // topicRootId
+		PeerId(0), // monoforumPeerId
+		_migrated ? _migrated->peer.get() : nullptr,
+		Storage::SharedMediaType::Pinned
+	) | rpl::distinct_until_changed(
+	) | rpl::on_next([=](int count) {
+		if (_pinnedClickedId) {
+			_pinnedClickedId = FullMsgId();
+			_minPinnedId = std::nullopt;
+			updatePinnedViewer();
+		}
+		_pinnedPill->setCount(count);
+	}, _pinnedPill->lifetime());
+
+	const auto jump = [=](FullMsgId id) {
+		const auto item = session().data().message(id);
+		if (!item
+			|| ((item->history() != _history)
+				&& (item->history() != _migrated))) {
+			return;
+		}
+		controller()->showPeerHistory(
+			item->history()->peer,
+			Window::SectionShow::Way::Forward,
+			item->id);
+		if (const auto group = session().data().groups().find(item)) {
+			// Hack for the case when a non-first item of an album
+			// is pinned and we still want the 'show last after first'.
+			_pinnedClickedId = group->items.front()->fullId();
+		} else {
+			_pinnedClickedId = id;
+		}
+		_minPinnedId = std::nullopt;
+		updatePinnedViewer();
+	};
+	_pinnedPill->setClickedCallback([=] {
+		const auto id = _pinnedTracker->currentMessageId().message;
+		if (!id) {
+			return;
+		} else if (session().data().message(id)) {
+			jump(id);
+			return;
+		}
+		// The bar loaded the message to show its text, so a click on it
+		// always found the message. The pill shows none, so it loads here.
+		session().api().requestMessageData(
+			session().data().peer(id.peer),
+			id.msg,
+			crl::guard(_pinnedPill.get(), [=] { jump(id); }));
+	});
+
 	checkPinnedBarState();
 }
 
 void HistoryWidget::checkPinnedBarState() {
 	Expects(_pinnedTracker != nullptr);
-	Expects(_list != nullptr);
+	Expects(_pinnedPill != nullptr);
 
-	const auto hiddenId = _peer->canPinMessages()
-		? MsgId(0)
-		: session().settings().hiddenPinnedMessageId(_peer->id);
+	// LoogriGram: anyone may hide the pill - admins too, and both sides of
+	// a private chat, where either can pin. Upstream honoured hiding only for
+	// those who cannot pin, and offered the rest unpinning instead.
+	const auto hiddenId = session().settings().hiddenPinnedMessageId(
+		_peer->id);
 	const auto currentPinnedId = Data::ResolveTopPinnedId(
 		_peer,
 		MsgId(0), // topicRootId
@@ -8091,176 +8152,9 @@ void HistoryWidget::checkPinnedBarState() {
 		: (_migrated && !peerIsChannel(currentPinnedId.peer))
 		? (currentPinnedId.msg - ServerMaxMsgId)
 		: currentPinnedId.msg;
-	if (universalPinnedId == hiddenId) {
-		if (_pinnedBar) {
-			_pinnedBar->setContent(rpl::single(Ui::MessageBarContent()));
-			_pinnedTracker->reset();
-			_list->setShownPinned(nullptr);
-			_hidingPinnedBar = base::take(_pinnedBar);
-			const auto raw = _hidingPinnedBar.get();
-			base::call_delayed(st::defaultMessageBar.duration, this, [=] {
-				if (_hidingPinnedBar.get() == raw) {
-					clearHidingPinnedBar();
-				}
-			});
-		}
-		return;
-	}
-	if (_pinnedBar || !universalPinnedId) {
-		return;
-	}
-
-	clearHidingPinnedBar();
-	_pinnedBar = std::make_unique<Ui::PinnedBar>(_topBars.get(), [=] {
-		return controller()->isGifPausedAtLeastFor(
-			Window::GifPauseReason::Any);
-	}, controller()->gifPauseLevelChanged());
-	auto pinnedRefreshed = Info::Profile::SharedMediaCountValue(
-		_peer,
-		MsgId(0), // topicRootId
-		PeerId(0), // monoforumPeerId
-		nullptr,
-		Storage::SharedMediaType::Pinned
-	) | rpl::distinct_until_changed(
-	) | rpl::map([=](int count) {
-		if (_pinnedClickedId) {
-			_pinnedClickedId = FullMsgId();
-			_minPinnedId = std::nullopt;
-			updatePinnedViewer();
-		}
-		return (count > 1);
-	}) | rpl::distinct_until_changed();
-	auto customButtonItem = HistoryView::PinnedBarItemWithCustomButton(
-		&session(),
-		_pinnedTracker->shownMessageId());
-	rpl::combine(
-		rpl::duplicate(pinnedRefreshed),
-		rpl::duplicate(customButtonItem)
-	) | rpl::on_next([=](bool many, HistoryItem *item) {
-		refreshPinnedBarButton(many, item);
-	}, _pinnedBar->lifetime());
-
-	_pinnedBar->setContent(rpl::combine(
-		HistoryView::PinnedBarContent(
-			&session(),
-			_pinnedTracker->shownMessageId(),
-			[bar = _pinnedBar.get()] { bar->customEmojiRepaint(); }),
-		std::move(pinnedRefreshed),
-		std::move(customButtonItem)
-	) | rpl::map([=](Ui::MessageBarContent &&content, bool, HistoryItem*) {
-		const auto id = (!content.title.isEmpty() || !content.text.empty())
-			? _pinnedTracker->currentMessageId().message
-			: FullMsgId();
-		if (const auto list = _list.data()) {
-			// Sometimes we get here with non-empty content and id of
-			// message that is being deleted right now. We get here in
-			// the moment when _itemRemoved was already fired (so in
-			// the _list the _pinnedItem is already cleared) and the
-			// MessageUpdate::Flag::Destroyed being fired right now,
-			// so the message is still in Data::Session. So we need to
-			// call data().message() async, otherwise we get a nearly-
-			// destroyed message from it and save the pointer in _list.
-			crl::on_main(list, [=] {
-				list->setShownPinned(session().data().message(id));
-			});
-		}
-		return std::move(content);
-	}));
-
-	controller()->adaptive().oneColumnValue(
-	) | rpl::on_next([=, raw = _pinnedBar.get()](bool one) {
-		raw->setShadowGeometryPostprocess([=](QRect geometry) {
-			if (!one) {
-				geometry.setLeft(geometry.left() + st::lineWidth);
-			}
-			return geometry;
-		});
-	}, _pinnedBar->lifetime());
-
-	_pinnedBar->barClicks(
-	) | rpl::on_next([=] {
-		const auto id = _pinnedTracker->currentMessageId();
-		if (const auto item = session().data().message(id.message)) {
-			controller()->showPeerHistory(
-				item->history()->peer,
-				Window::SectionShow::Way::Forward,
-				item->id);
-			if (const auto group = session().data().groups().find(item)) {
-				// Hack for the case when a non-first item of an album
-				// is pinned and we still want the 'show last after first'.
-				_pinnedClickedId = group->items.front()->fullId();
-			} else {
-				_pinnedClickedId = id.message;
-			}
-			_minPinnedId = std::nullopt;
-			updatePinnedViewer();
-		}
-	}, _pinnedBar->lifetime());
-
-	_pinnedBar->barRightClicks(
-	) | rpl::on_next([=] {
-		if (_pinnedBarHasCustomButton) {
-			return;
-		}
-		const auto reference = _pinnedClickedId
-			? _pinnedClickedId
-			: _pinnedTracker->currentMessageId().message;
-		if (!reference) {
-			return;
-		}
-		const auto universal = [&](FullMsgId id) {
-			return (!id || !_migrated || peerIsChannel(id.peer))
-				? id.msg
-				: (id.msg - ServerMaxMsgId);
-		};
-		const auto migrated = _migrated ? _migrated->peer.get() : nullptr;
-		const auto referenceId = universal(reference);
-		const auto top = Data::ResolveTopPinnedId(
-			_peer,
-			MsgId(0), // topicRootId
-			PeerId(0), // monoforumPeerId
-			migrated);
-		const auto targetId = (top && referenceId >= universal(top))
-			? Data::ResolveMinPinnedId(
-				_peer,
-				MsgId(0), // topicRootId
-				PeerId(0), // monoforumPeerId
-				migrated)
-			: _pinnedTracker->nextPinnedId(referenceId);
-		if (!targetId) {
-			return;
-		}
-		controller()->showPeerHistory(
-			session().data().peer(targetId.peer),
-			Window::SectionShow::Way::Forward,
-			targetId.msg);
-		_pinnedClickedId = FullMsgId();
-		_minPinnedId = std::nullopt;
-		updatePinnedViewer();
-	}, _pinnedBar->lifetime());
-
-	_pinnedBarHeight = 0;
-	_pinnedBar->heightValue(
-	) | rpl::on_next([=](int height) {
-		_topDelta = _preserveScrollTop ? 0 : (height - _pinnedBarHeight);
-		_pinnedBarHeight = height;
-		updateHistoryGeometry();
-		updateControlsGeometry();
-		_topDelta = 0;
-	}, _pinnedBar->lifetime());
-
-	orderWidgets();
-}
-
-void HistoryWidget::clearHidingPinnedBar() {
-	if (!_hidingPinnedBar) {
-		return;
-	}
-	if (const auto delta = -_pinnedBarHeight) {
-		_pinnedBarHeight = 0;
-		setGeometryWithTopMoved(geometry(), delta);
-	}
-	_hidingPinnedBar = nullptr;
+	_pinnedPill->toggle(
+		universalPinnedId && (universalPinnedId != hiddenId),
+		anim::type::normal);
 }
 
 void HistoryWidget::checkMessagesTTL() {
@@ -8302,69 +8196,6 @@ void HistoryWidget::setChooseReportMessagesDetails(
 				.reportInput = reportInput,
 				.callback = std::move(callback) });
 	}
-}
-
-void HistoryWidget::refreshPinnedBarButton(bool many, HistoryItem *item) {
-	if (!_pinnedBar) {
-		return; // It can be in process of hiding.
-	}
-	const auto openSection = [=] {
-		const auto id = _pinnedTracker
-			? _pinnedTracker->currentMessageId()
-			: HistoryView::PinnedId();
-		if (!id.message) {
-			return;
-		}
-		controller()->showSection(
-			std::make_shared<HistoryView::PinnedMemento>(
-				_history,
-				((!_migrated || peerIsChannel(id.message.peer))
-					? id.message.msg
-					: (id.message.msg - ServerMaxMsgId))));
-	};
-	const auto context = [copy = _list](FullMsgId itemId) {
-		if (const auto raw = copy.data()) {
-			return raw->prepareClickHandlerContext(itemId);
-		}
-		return ClickHandlerContext();
-	};
-	auto customButton = CreatePinnedBarCustomButton(this, item, context);
-	if (customButton) {
-		_pinnedBarHasCustomButton = true;
-		struct State {
-			base::unique_qptr<Ui::PopupMenu> menu;
-		};
-		const auto buttonRaw = customButton.data();
-		const auto state = buttonRaw->lifetime().make_state<State>();
-		_pinnedBar->contextMenuRequested(
-		) | rpl::on_next([=] {
-			state->menu = base::make_unique_q<Ui::PopupMenu>(buttonRaw);
-			state->menu->addAction(
-				tr::lng_settings_events_pinned(tr::now),
-				openSection);
-			state->menu->popup(QCursor::pos());
-		}, buttonRaw->lifetime());
-		_pinnedBar->setRightButton(std::move(customButton));
-		return;
-	}
-	_pinnedBarHasCustomButton = false;
-
-	const auto close = !many;
-	auto button = object_ptr<Ui::IconButton>(
-		this,
-		close ? st::historyReplyCancel : st::historyPinnedShowAll);
-	button->setAccessibleName(close
-		? tr::lng_pinned_unpin(tr::now)
-		: tr::lng_settings_events_pinned(tr::now));
-	button->clicks(
-	) | rpl::on_next([=] {
-		if (close) {
-			hidePinnedMessage();
-		} else {
-			openSection();
-		}
-	}, button->lifetime());
-	_pinnedBar->setRightButton(std::move(button));
 }
 
 void HistoryWidget::setupGroupCallBar() {
@@ -8919,27 +8750,13 @@ void HistoryWidget::fillSenderUserpicMenu(
 		Ui::Menu::CreateAddActionCallback(menu));
 }
 
+// LoogriGram: the pill's menu hides it at once, for anyone, until a newer
+// message is pinned. Upstream's close button unpinned for those who can pin
+// and asked the others to confirm.
 void HistoryWidget::hidePinnedMessage() {
-	Expects(_pinnedBar != nullptr);
-
-	const auto id = _pinnedTracker->currentMessageId();
-	if (!id.message) {
-		return;
-	}
-	if (_peer->canPinMessages()) {
-		Window::ToggleMessagePinned(controller(), id.message, false);
-	} else {
-		const auto callback = [=] {
-			if (_pinnedTracker) {
-				checkPinnedBarState();
-			}
-		};
-		Window::HidePinnedBar(
-			controller(),
-			_peer,
-			MsgId(0), // topicRootId
-			PeerId(0), // monoforumPeerId
-			crl::guard(this, callback));
+	if (Window::HidePinnedMessages(_peer, MsgId(0), PeerId(0))
+		&& _pinnedTracker) {
+		checkPinnedBarState();
 	}
 }
 
