@@ -643,18 +643,15 @@ void TopControls::setupPinnedPill() {
 		}
 		return count;
 	});
+	// Upstream's bar also stood aside in a topic while its first message,
+	// pinned, was in view (and Android's whenever it was); the pill is too
+	// small to be in the way, and stays on both clients.
 	rpl::combine(
 		std::move(pinnedCount),
-		_pinnedPillAllowed.value(),
-		_repliesRootVisible.value()
-	) | rpl::on_next([=](int count, bool allowed, bool rootVisible) {
+		_pinnedPillAllowed.value()
+	) | rpl::on_next([=](int count, bool allowed) {
 		_pinnedPill->setCount(count);
-
-		// As upstream's bar, not shown in a topic while its first message,
-		// pinned, is in view - unless something else is pinned too.
-		_pinnedPill->toggle(
-			allowed && (fullHistory || rootVisible || count > 1),
-			anim::type::normal);
+		_pinnedPill->toggle(allowed, anim::type::normal);
 	}, _pinnedPill->lifetime());
 
 	const auto jump = [=](FullMsgId id) {
