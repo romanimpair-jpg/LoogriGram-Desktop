@@ -79,11 +79,11 @@ paid-reaction handling (`3669f1693f`, `4b9d78c77a`), **`g9698c59`**
 (full build 42844926244, green, 2026-11-10) the sticker hold preview
 (`d03468a7ca`), **`gd3222a6`** (full build 42995557132, green,
 2026-11-11) the pinned messages pill (`356cced1ab`, `d3222a60d4`; see
-"Added"), and **`gb87ee1f`** (full build 43043669755, green, 2026-11-11)
-the AI summaries' removal (`7a7e00adcb`; see "Removed"); that one is the
-Latest release. Not in it yet: the join requests' badge and notification
-(`698099a4e9`, 2026-11-16; see "Added"), never built - a full build is
-the only compiler here.
+"Added"), **`gb87ee1f`** (full build 43043669755, green, 2026-11-11)
+the AI summaries' removal (`7a7e00adcb`; see "Removed"), and
+**`g5cabec5`** (full build 43763147483, green, 2026-11-16) the join
+requests' badge and notification (`698099a4e9`; see "Added"); that one
+is the Latest release.
 
 ---
 
@@ -504,7 +504,9 @@ without trace.
   loads (`ApiWrap::dialogsLoadFinish`; `Api::Updates` is built before
   `Data::Session`, so it cannot subscribe itself), each chat at most
   every ten minutes; a refresh never notifies, and a chat we can no
-  longer approve in loses its count.
+  longer approve in loses its count. **Presumed working, not tested**
+  (2026-11-16): no join request has come in since it shipped, on either
+  client; fix it if one shows a problem.
 
 ### Our own updater
 
