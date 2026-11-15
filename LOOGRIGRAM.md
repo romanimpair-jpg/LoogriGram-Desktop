@@ -77,10 +77,13 @@ symlink rule (`cf655c900c`); after that only what changes uploads.
 **`g6758e08`** (full build 41992967191, green, 2026-11-05) shipped the
 paid-reaction handling (`3669f1693f`, `4b9d78c77a`), **`g9698c59`**
 (full build 42844926244, green, 2026-11-10) the sticker hold preview
-(`d03468a7ca`), and **`gd3222a6`** (full build 42995557132, green,
+(`d03468a7ca`), **`gd3222a6`** (full build 42995557132, green,
 2026-11-11) the pinned messages pill (`356cced1ab`, `d3222a60d4`; see
-"Added"); that one is the Latest release. Not in it yet: the AI summaries'
-removal (`7a7e00adcb`; see "Removed").
+"Added"), and **`gb87ee1f`** (full build 43043669755, green, 2026-11-11)
+the AI summaries' removal (`7a7e00adcb`; see "Removed"); that one is the
+Latest release. Not in it yet: the join requests' badge and notification
+(`698099a4e9`, 2026-11-16; see "Added"), never built - a full build is
+the only compiler here.
 
 ---
 
@@ -471,6 +474,37 @@ without trace.
   `shownMessageId`/`reset`/`nextPinnedId`, `Ui::PinnedBar`'s right
   button, right clicks and context menu (a comment thread's root header
   is all that uses that bar now), and the list icon and its styles.
+- **Join requests: a badge and a notification** (`698099a4e9`,
+  2026-11-16, the user's request for both clients; Android `4de9981e`,
+  `0ae4e573`, `6a5b4ae1`). Upstream already kept the waiting count on
+  any loaded chat (`setPendingRequestsCount`), but only the chat's own
+  requests bar showed it. `BadgesState` gains `requests`/`requestsMuted`:
+  `History::chatListBadgesState` adds them to upstream's state, renamed
+  `chatListUnreadBadgesState`, for a group or channel (not a community)
+  whose count is above zero, muted with the chat or in a folder.
+  `PaintBadges` draws `dialogsUnreadRequests` after the poll badge, at
+  its size: `dialogs_chatlist_requests.svg`, a person and a plus (the
+  path Android draws), in `historyPeer2NameFg` green. A `PendingRequests`
+  peer update refreshes the row (`InnerWidget`'s name/photo
+  subscription). The live `updatePendingJoinRequests` notifies when the
+  count rises: `System::showJoinRequests` flashes, plays the default
+  sound and shows the toast, the requests bar's strings
+  (`lng_group_requests_pending_user` for one with a known name,
+  `lng_group_requests_pending` otherwise), nothing while the chat is open
+  in an active window, and a muted chat too. A join request has no item,
+  so `Manager` gained `doShowJoinRequests`: `NativeManager` builds the
+  toast with no item id (no reply or mark-as-read, a click opens the
+  chat at its unread), and the default popups queue a line of text
+  (`QueuedNotification`/`Notification` `text`) shown in place of a
+  message's. `Api::Updates::refreshPendingJoinRequests` re-reads the
+  count with `messages.getChatInviteImporters` (requested, newest three,
+  as full info gives) for every chat we can approve requests in
+  (`canHaveInviteLink`, member, not a community or channel DMs), one
+  request at a time, after each `getDifference` and once the chats list
+  loads (`ApiWrap::dialogsLoadFinish`; `Api::Updates` is built before
+  `Data::Session`, so it cannot subscribe itself), each chat at most
+  every ten minutes; a refresh never notifies, and a chat we can no
+  longer approve in loses its count.
 
 ### Our own updater
 
