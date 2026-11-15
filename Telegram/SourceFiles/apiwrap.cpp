@@ -979,6 +979,9 @@ void ApiWrap::dialogsLoadFinish(Data::Folder *folder) {
 	const auto notify = [&] {
 		Core::App().postponeCall(crl::guard(_session, [=] {
 			_session->data().chatsListDone(folder);
+			// LoogriGram: the chats we admin are known now, which the first
+			// catch-up can run ahead of.
+			_session->updates().refreshPendingJoinRequests();
 		}));
 	};
 	const auto state = dialogsLoadState(folder);

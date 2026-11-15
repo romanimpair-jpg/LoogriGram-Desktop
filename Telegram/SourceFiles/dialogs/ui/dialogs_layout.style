@@ -101,6 +101,28 @@ dialogsUnreadPollBadgeMuted: ThreeStateIcon {
 	over: icon{{ "dialogs/dialogs_chatlist_poll-13x13", dialogsUnreadFgOver }};
 	active: icon{{ "dialogs/dialogs_chatlist_poll-13x13", dialogsUnreadFgActive }};
 }
+// LoogriGram: the join requests badge (PaintBadges), drawn like the poll one
+// in green, as Android's is.
+dialogsUnreadRequests: ThreeStateIcon {
+	icon: icon{{ "dialogs/dialogs_chatlist_requests-18x18", historyPeer2NameFg }};
+	over: icon{{ "dialogs/dialogs_chatlist_requests-18x18", historyPeer2NameFg }};
+	active: icon{{ "dialogs/dialogs_chatlist_requests-18x18", dialogsNameFgActive }};
+}
+dialogsUnreadRequestsMuted: ThreeStateIcon {
+	icon: icon{{ "dialogs/dialogs_chatlist_requests-18x18", dialogsUnreadBgMuted }};
+	over: icon{{ "dialogs/dialogs_chatlist_requests-18x18", dialogsUnreadBgMutedOver }};
+	active: icon{{ "dialogs/dialogs_chatlist_requests-18x18", dialogsUnreadBgMutedActive }};
+}
+dialogsUnreadRequestsBadge: ThreeStateIcon {
+	icon: icon{{ "dialogs/dialogs_chatlist_requests-13x13", dialogsUnreadFg }};
+	over: icon{{ "dialogs/dialogs_chatlist_requests-13x13", dialogsUnreadFgOver }};
+	active: icon{{ "dialogs/dialogs_chatlist_requests-13x13", dialogsUnreadFgActive }};
+}
+dialogsUnreadRequestsBadgeMuted: ThreeStateIcon {
+	icon: icon{{ "dialogs/dialogs_chatlist_requests-13x13", dialogsUnreadFg }};
+	over: icon{{ "dialogs/dialogs_chatlist_requests-13x13", dialogsUnreadFgOver }};
+	active: icon{{ "dialogs/dialogs_chatlist_requests-13x13", dialogsUnreadFgActive }};
+}
 dialogsMuteIcon: ThreeStateIcon {
 	icon: icon{{ "dialogs/dialogs_mute", dialogsUnreadBgMuted }};
 	over: icon{{ "dialogs/dialogs_mute", dialogsUnreadBgMutedOver }};

@@ -1042,6 +1042,63 @@ void System::updateAll() {
 	}
 }
 
+// LoogriGram: a join request has no message to hang a notification on, so
+// this does for it what showNext does for one: the flash, the default sound,
+// and the toast, which says what the chat's requests bar says. Nothing
+// while the chat is open in an active window, where that bar is on screen.
+// A muted chat is told too: a request needs an admin either way.
+void System::showJoinRequests(
+		not_null<History*> history,
+		int count,
+		const QString &requester) {
+	Expects(_manager != nullptr);
+
+	if (Core::Quitting()) {
+		return;
+	}
+	for (const auto &window : history->session().windows()) {
+		if (window->activeChatCurrent().history() == history
+			&& window->widget()->isActive()) {
+			return;
+		}
+	}
+	const auto &settings = Core::App().settings();
+	const auto peer = history->peer;
+	if (settings.flashBounceNotify()) {
+		if (const auto window = Core::App().windowFor(peer)) {
+			if (const auto controller = window->sessionController()) {
+				_manager->maybeFlashBounce(crl::guard(controller, [=] {
+					if (const auto handle = window->widget()->windowHandle()) {
+						handle->alert(kSystemAlertDuration);
+					}
+				}));
+			}
+		}
+	}
+	if (settings.soundNotify()) {
+		const auto owner = &history->owner();
+		const auto volume = owner->session().settings().ringtoneVolume(
+			Data::DefaultNotifyType(peer));
+		_manager->maybePlaySound(crl::guard(&owner->session(), [=] {
+			const auto track = lookupSound(owner, 0);
+			track->playOnce(volume ? volume * 0.01 : 0);
+			Media::Player::mixer()->suppressAll(track->getLengthMs());
+			Media::Player::mixer()->scheduleFaderCallback();
+		}));
+	}
+	if (!settings.desktopNotify() || _manager->skipToast()) {
+		return;
+	}
+	_manager->showJoinRequests(
+		history,
+		((count == 1 && !requester.isEmpty())
+			? tr::lng_group_requests_pending_user(
+				tr::now,
+				lt_user,
+				requester)
+			: tr::lng_group_requests_pending(tr::now, lt_count, count)));
+}
+
 rpl::producer<ChangeType> System::settingsChanged() const {
 	return _settingsChanged.events();
 }
@@ -1648,6 +1705,29 @@ void NativeManager::doShowNotification(NotificationFields &&fields) {
 		.sound = sound,
 		.options = options,
 		.actions = std::move(actions),
+	}, userpicView);
+}
+
+// LoogriGram: see System::showJoinRequests. With no message, the options
+// hide the reply and mark-as-read actions, and a click opens the chat.
+void NativeManager::doShowJoinRequests(
+		not_null<History*> history,
+		const QString &text) {
+	const auto options = getNotificationOptions(
+		nullptr,
+		Data::ItemNotificationType::Message);
+	const auto peer = history->peer;
+	const auto title = options.hideNameAndPhoto
+		? AppName.utf16()
+		: peer->name();
+	auto userpicView = peer->createUserpicView();
+	doShowNativeNotification({
+		.peer = peer,
+		.title = addTargetAccountName(title, &peer->session()),
+		.message = (options.hideNameAndPhoto
+			? tr::lng_notification_preview(tr::now)
+			: text),
+		.options = options,
 	}, userpicView);
 }
 

@@ -2665,6 +2665,25 @@ Dialogs::UnreadState History::chatListUnreadState() const {
 }
 
 Dialogs::BadgesState History::chatListBadgesState() const {
+	auto result = chatListUnreadBadgesState();
+
+	// LoogriGram: join requests waiting in a chat we admin; only admins who
+	// can approve them are told the count (Api::Updates keeps it current).
+	const auto chat = peer->asChat();
+	const auto channel = peer->asChannel();
+	const auto requests = chat
+		? chat->pendingRequestsCount()
+		: (channel && !channel->isCommunity())
+		? channel->pendingRequestsCount()
+		: 0;
+	if (requests > 0) {
+		result.requests = true;
+		result.requestsMuted = muted() || folder();
+	}
+	return result;
+}
+
+Dialogs::BadgesState History::chatListUnreadBadgesState() const {
 	const auto channel = peer->asChannel();
 	if (channel && channel->isCommunity()) {
 		if (const auto info = channel->communityInfo()) {

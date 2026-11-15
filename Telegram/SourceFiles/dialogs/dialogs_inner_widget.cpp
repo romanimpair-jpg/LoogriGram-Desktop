@@ -471,6 +471,7 @@ InnerWidget::InnerWidget(
 		}
 	}, lifetime());
 
+	// LoogriGram: PendingRequests too, for the join requests badge.
 	using UpdateFlag = Data::PeerUpdate::Flag;
 	session().changes().peerUpdates(
 		UpdateFlag::Name
@@ -478,12 +479,14 @@ InnerWidget::InnerWidget(
 		| UpdateFlag::IsContact
 		| UpdateFlag::FullInfo
 		| UpdateFlag::EmojiStatus
+		| UpdateFlag::PendingRequests
 	) | rpl::on_next([=](const Data::PeerUpdate &update) {
 		if (update.flags
 			& (UpdateFlag::Name
 				| UpdateFlag::Photo
 				| UpdateFlag::FullInfo
-				| UpdateFlag::EmojiStatus)) {
+				| UpdateFlag::EmojiStatus
+				| UpdateFlag::PendingRequests)) {
 			if (update.flags & UpdateFlag::Photo) {
 				invalidateLoadedUserpics();
 			}

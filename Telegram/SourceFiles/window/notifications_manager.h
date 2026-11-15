@@ -118,6 +118,13 @@ public:
 	void clearAllFast();
 	void updateAll();
 
+	// LoogriGram: someone asked to join a chat we admin (Api::Updates).
+	// The requester's name, when known, is used for a single request.
+	void showJoinRequests(
+		not_null<History*> history,
+		int count,
+		const QString &requester);
+
 	[[nodiscard]] rpl::producer<ChangeType> settingsChanged() const;
 	void notifySettingsChanged(ChangeType type);
 
@@ -280,6 +287,10 @@ public:
 	void showNotification(NotificationFields fields) {
 		doShowNotification(std::move(fields));
 	}
+	// LoogriGram: see System::showJoinRequests.
+	void showJoinRequests(not_null<History*> history, const QString &text) {
+		doShowJoinRequests(history, text);
+	}
 	void updateAll() {
 		doUpdateAll();
 	}
@@ -361,6 +372,10 @@ protected:
 
 	virtual void doUpdateAll() = 0;
 	virtual void doShowNotification(NotificationFields &&fields) = 0;
+	// LoogriGram: see showJoinRequests.
+	virtual void doShowJoinRequests(
+		not_null<History*> history,
+		const QString &text) = 0;
 	virtual void doClearAll() = 0;
 	virtual void doClearAllFast() = 0;
 	virtual void doClearFromItem(not_null<HistoryItem*> item) = 0;
@@ -427,6 +442,9 @@ protected:
 		doClearAllFast();
 	}
 	void doShowNotification(NotificationFields &&fields) override;
+	void doShowJoinRequests(
+		not_null<History*> history,
+		const QString &text) override;
 
 	bool forceHideDetails() const override;
 

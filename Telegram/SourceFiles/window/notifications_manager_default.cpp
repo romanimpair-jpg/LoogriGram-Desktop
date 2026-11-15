@@ -99,6 +99,15 @@ Manager::QueuedNotification::QueuedNotification(NotificationFields &&fields)
 	&& fields.item->isFromScheduled()) {
 }
 
+// LoogriGram: a join request's (doShowJoinRequests), with no message.
+Manager::QueuedNotification::QueuedNotification(
+	not_null<History*> history,
+	const QString &text)
+: history(history)
+, peer(history->peer)
+, text(text) {
+}
+
 QPixmap Manager::hiddenUserpicPlaceholder() const {
 	if (_hiddenUserpicPlaceholder.isNull()) {
 		const auto ratio = style::DevicePixelRatio();
@@ -243,6 +252,7 @@ void Manager::showNextFromQueue() {
 			queued.reaction,
 			queued.forwardedCount,
 			queued.fromScheduled,
+			queued.text,
 			startPosition,
 			startShift,
 			shiftDirection));
@@ -356,6 +366,14 @@ void Manager::removeWidget(internal::Widget *remove) {
 
 void Manager::doShowNotification(NotificationFields &&fields) {
 	_queuedNotifications.emplace_back(std::move(fields));
+	showNextFromQueue();
+}
+
+// LoogriGram: see System::showJoinRequests.
+void Manager::doShowJoinRequests(
+		not_null<History*> history,
+		const QString &text) {
+	_queuedNotifications.emplace_back(history, text);
 	showNextFromQueue();
 }
 
@@ -644,6 +662,7 @@ Notification::Notification(
 	const Data::ReactionId &reaction,
 	int forwardedCount,
 	bool fromScheduled,
+	const QString &text,
 	QPoint startPosition,
 	int shift,
 	Direction shiftDirection)
@@ -661,6 +680,7 @@ Notification::Notification(
 , _item(item)
 , _forwardedCount(forwardedCount)
 , _fromScheduled(fromScheduled)
+, _text(text)
 , _close(this, st::notifyClose)
 , _reply(this, tr::lng_notification_reply(), st::defaultBoxButton) {
 	_reply->setTextTransform(Ui::RoundButtonTextTransform::ToUpper);
@@ -866,7 +886,8 @@ void Notification::paintText(Painter &p) {
 }
 
 void Notification::updateNotifyDisplay() {
-	if (!_history || (!_item && _forwardedCount < 2)) {
+	// LoogriGram: a join request's notification has _text and no message.
+	if (!_history || (!_item && _forwardedCount < 2 && _text.isEmpty())) {
 		return;
 	}
 
@@ -933,7 +954,8 @@ void Notification::updateNotifyDisplay() {
 		}
 
 		const auto composeText = !options.hideMessageText
-			|| (!_reaction.empty() && !options.hideNameAndPhoto);
+			|| (!_reaction.empty() && !options.hideNameAndPhoto)
+			|| (!_text.isEmpty() && !options.hideNameAndPhoto);
 		if (composeText) {
 			auto old = base::take(_textCache);
 			_textCache = Ui::Text::String(itemWidth);
@@ -950,6 +972,8 @@ void Notification::updateNotifyDisplay() {
 					_item,
 					_reaction,
 					options.hideMessageText))
+				: !_text.isEmpty()
+				? TextWithEntities{ _text }
 				: _item
 				? _item->toPreview({
 					.hideSender = reminder,

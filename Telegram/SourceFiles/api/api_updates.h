@@ -70,6 +70,10 @@ public:
 		return _handlingChannelDifference;
 	}
 
+	// LoogriGram: re-reads the join requests waiting in chats we admin,
+	// each chat at most every ten minutes; see the definition.
+	void refreshPendingJoinRequests();
+
 private:
 	enum class ChannelDifferenceRequest {
 		Unknown,
@@ -153,6 +157,7 @@ private:
 		not_null<PeerData*> peer,
 		PeerId participantPeerId,
 		PeerData *participantPeerLoaded);
+	void readNextPendingJoinRequests();
 
 	const not_null<Main::Session*> _session;
 
@@ -195,6 +200,11 @@ private:
 	base::flat_map<
 		not_null<PeerData*>,
 		base::flat_map<PeerId, crl::time>> _pendingSpeakingCallParticipants;
+
+	// LoogriGram: see refreshPendingJoinRequests.
+	base::flat_map<not_null<PeerData*>, crl::time> _pendingJoinRequestsRead;
+	std::vector<not_null<PeerData*>> _pendingJoinRequestsQueue;
+	mtpRequestId _pendingJoinRequestsRequestId = 0;
 
 	mtpRequestId _onlineRequest = 0;
 	base::Timer _idleFinishTimer;

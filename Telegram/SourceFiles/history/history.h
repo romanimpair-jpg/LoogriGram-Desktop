@@ -641,6 +641,9 @@ private:
 	void insertMessageToBlocks(not_null<HistoryItem*> item);
 	void checkNewPeerMessages();
 
+	// LoogriGram: upstream's chatListBadgesState, which ours extends with the
+	// join requests badge.
+	[[nodiscard]] Dialogs::BadgesState chatListUnreadBadgesState() const;
 	[[nodiscard]] Dialogs::BadgesState computeBadgesState() const;
 	[[nodiscard]] Dialogs::BadgesState adjustBadgesStateByFolder(
 		Dialogs::BadgesState state) const;

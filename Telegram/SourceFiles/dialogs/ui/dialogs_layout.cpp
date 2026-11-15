@@ -225,9 +225,13 @@ int PaintBadges(
 		st.active = context.active;
 		st.selected = context.selected;
 		st.muted = badgesState.unreadMuted;
+		// LoogriGram: join requests count among the other badges.
 		const auto counter = FormatUnreadCounter(
 			badgesState.unreadCounter,
-			badgesState.mention || badgesState.reaction || badgesState.poll,
+			(badgesState.mention
+				|| badgesState.reaction
+				|| badgesState.poll
+				|| badgesState.requests),
 			narrow);
 		const auto badge = PaintUnreadBadge(p, counter, right, top, st);
 		right -= badge.width() + st.padding;
@@ -279,6 +283,20 @@ int PaintBadges(
 					? st::dialogsUnreadPollMuted
 					: st::dialogsUnreadPoll),
 			badgesState.pollMuted,
+			UnreadBadgeSize::PollInDialogs);
+		++painted;
+	}
+	// LoogriGram: join requests waiting in a chat we admin, the same size.
+	if ((!narrow || (painted < 2)) && badgesState.requests) {
+		paintIconBadge(
+			narrow
+				? (badgesState.requestsMuted
+					? st::dialogsUnreadRequestsBadgeMuted
+					: st::dialogsUnreadRequestsBadge)
+				: (badgesState.requestsMuted
+					? st::dialogsUnreadRequestsMuted
+					: st::dialogsUnreadRequests),
+			badgesState.requestsMuted,
 			UnreadBadgeSize::PollInDialogs);
 		++painted;
 	}

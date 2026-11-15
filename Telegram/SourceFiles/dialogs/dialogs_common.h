@@ -118,6 +118,10 @@ struct BadgesState {
 	bool reactionMuted : 1 = false;
 	bool poll : 1 = false;
 	bool pollMuted : 1 = false;
+	// LoogriGram: join requests waiting in a chat we admin
+	// (History::chatListBadgesState).
+	bool requests : 1 = false;
+	bool requestsMuted : 1 = false;
 
 	friend inline constexpr auto operator<=>(
 		BadgesState,
@@ -127,7 +131,7 @@ struct BadgesState {
 		BadgesState) = default;
 
 	[[nodiscard]] bool empty() const {
-		return !unread && !mention && !reaction && !poll;
+		return !unread && !mention && !reaction && !poll && !requests;
 	}
 };
 

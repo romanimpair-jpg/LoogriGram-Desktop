@@ -67,6 +67,9 @@ private:
 
 	void doUpdateAll() override;
 	void doShowNotification(NotificationFields &&fields) override;
+	void doShowJoinRequests(
+		not_null<History*> history,
+		const QString &text) override;
 	void doClearAll() override;
 	void doClearAllFast() override;
 	void doClearFromTopic(not_null<Data::ForumTopic*> topic) override;
@@ -109,6 +112,8 @@ private:
 
 	struct QueuedNotification {
 		QueuedNotification(NotificationFields &&fields);
+		// LoogriGram: a join request's, with no message (see text).
+		QueuedNotification(not_null<History*> history, const QString &text);
 
 		not_null<History*> history;
 		MsgId topicRootId = 0;
@@ -119,6 +124,7 @@ private:
 		HistoryItem *item = nullptr;
 		int forwardedCount = 0;
 		bool fromScheduled = false;
+		QString text;
 	};
 	std::deque<QueuedNotification> _queuedNotifications;
 
@@ -212,6 +218,7 @@ public:
 		const Data::ReactionId &reaction,
 		int forwardedCount,
 		bool fromScheduled,
+		const QString &text,
 		QPoint startPosition,
 		int shift,
 		Direction shiftDirection);
@@ -299,6 +306,9 @@ private:
 	HistoryItem *_item = nullptr;
 	int _forwardedCount = 0;
 	bool _fromScheduled = false;
+	// LoogriGram: a join request's line (System::showJoinRequests), shown
+	// in place of a message's text; empty for any other notification.
+	QString _text;
 	object_ptr<Ui::IconButton> _close;
 	object_ptr<Ui::RoundButton> _reply;
 	object_ptr<Background> _background = { nullptr };

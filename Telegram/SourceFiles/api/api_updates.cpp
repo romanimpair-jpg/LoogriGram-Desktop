@@ -63,6 +63,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "window/window_session_controller.h"
 #include "window/window_controller.h"
+#include "window/notifications_manager.h"
 #include "ui/boxes/confirm_box.h"
 #include "apiwrap.h"
 #include "ui/text/format_values.h" // Ui::FormatPhone
@@ -80,6 +81,11 @@ constexpr auto kNoUpdatesTimeout = 60 * 1000;
 
 // If nothing is received in 1 min when was a sleepmode we ping.
 constexpr auto kNoUpdatesAfterSleepTimeout = 60 * crl::time(1000);
+
+// LoogriGram: see Updates::refreshPendingJoinRequests. Three requesters is
+// what a chat's full info carries for its requests bar.
+constexpr auto kPendingJoinRequestsRefresh = 10 * 60 * crl::time(1000);
+constexpr auto kPendingJoinRequestsRecent = 3;
 
 enum class DataIsLoadedResult {
 	NotLoaded = 0,
@@ -217,6 +223,28 @@ bool HasForceLogoutNotification(const MTPUpdates &updates) {
 		return checkUpdate(updates.c_updateShort().vupdate());
 	}
 	return false;
+}
+
+// LoogriGram: a chat's waiting join requests, which only its admins who can
+// approve them are told.
+[[nodiscard]] int PendingJoinRequests(not_null<PeerData*> peer) {
+	if (const auto chat = peer->asChat()) {
+		return chat->pendingRequestsCount();
+	} else if (const auto channel = peer->asChannel()) {
+		return channel->pendingRequestsCount();
+	}
+	return 0;
+}
+
+void SetPendingJoinRequests(
+		not_null<PeerData*> peer,
+		int count,
+		std::vector<UserId> recentRequesters) {
+	if (const auto chat = peer->asChat()) {
+		chat->setPendingRequestsCount(count, std::move(recentRequesters));
+	} else if (const auto channel = peer->asChannel()) {
+		channel->setPendingRequestsCount(count, std::move(recentRequesters));
+	}
 }
 
 } // namespace
@@ -514,6 +542,13 @@ void Updates::differenceDone(const MTPupdates_Difference &result) {
 		LOG(("API Error: updates.differenceTooLong is not supported by Telegram Desktop!"));
 	} break;
 	};
+
+	// LoogriGram: caught up, so re-read the join requests waiting in chats
+	// we admin (each chat at most every ten minutes).
+	if (result.type() == mtpc_updates_differenceEmpty
+		|| result.type() == mtpc_updates_difference) {
+		refreshPendingJoinRequests();
+	}
 }
 
 bool Updates::whenGetDiffChanged(
@@ -1168,6 +1203,83 @@ void Updates::handleSpeakingInCall(
 			}
 		}
 	}
+}
+
+// LoogriGram: join requests waiting in each chat we can approve them in,
+// for the chat list's badge (History::chatListBadgesState). The live
+// updatePendingJoinRequests keeps the count and notifies; this re-reads such
+// chats once the chats list loads (ApiWrap::dialogsLoadFinish) and after
+// each catch-up, each chat at most every ten minutes, in case an update was
+// missed while disconnected. A refresh never notifies: only an update is
+// news. A chat we can no longer approve requests in loses its count.
+void Updates::refreshPendingJoinRequests() {
+	const auto now = crl::now();
+	const auto check = [&](not_null<PeerData*> peer) {
+		const auto chat = peer->asChat();
+		const auto channel = peer->asChannel();
+		const auto approver = chat
+			? (chat->amIn() && chat->canHaveInviteLink())
+			: (channel
+				&& channel->amIn()
+				&& channel->canHaveInviteLink()
+				&& !channel->isCommunity()
+				&& !channel->isMonoforum());
+		if (!approver) {
+			if (PendingJoinRequests(peer) > 0) {
+				SetPendingJoinRequests(peer, 0, {});
+			}
+			return;
+		}
+		const auto i = _pendingJoinRequestsRead.find(peer);
+		if (i != end(_pendingJoinRequestsRead)
+			&& now - i->second < kPendingJoinRequestsRefresh) {
+			return;
+		}
+		_pendingJoinRequestsRead[peer] = now;
+		_pendingJoinRequestsQueue.push_back(peer);
+	};
+	_session->data().enumerateGroups(check);
+	_session->data().enumerateBroadcasts([&](not_null<ChannelData*> channel) {
+		check(channel);
+	});
+	if (!_pendingJoinRequestsRequestId) {
+		readNextPendingJoinRequests();
+	}
+}
+
+void Updates::readNextPendingJoinRequests() {
+	if (_pendingJoinRequestsQueue.empty()) {
+		return;
+	}
+	const auto peer = _pendingJoinRequestsQueue.front();
+	_pendingJoinRequestsQueue.erase(begin(_pendingJoinRequestsQueue));
+	using Flag = MTPmessages_GetChatInviteImporters::Flag;
+	_pendingJoinRequestsRequestId = api().request(
+		MTPmessages_GetChatInviteImporters(
+			MTP_flags(Flag::f_requested),
+			peer->input(),
+			MTPstring(), // link
+			MTPstring(), // q
+			MTP_int(0), // offset_date
+			MTP_inputUserEmpty(), // offset_user
+			MTP_int(kPendingJoinRequestsRecent))
+	).done([=](const MTPmessages_ChatInviteImporters &result) {
+		_pendingJoinRequestsRequestId = 0;
+		result.match([&](const MTPDmessages_chatInviteImporters &data) {
+			_session->data().processUsers(data.vusers());
+			auto recent = std::vector<UserId>();
+			for (const auto &importer : data.vimporters().v) {
+				importer.match([&](const MTPDchatInviteImporter &fields) {
+					recent.push_back(UserId(fields.vuser_id()));
+				});
+			}
+			SetPendingJoinRequests(peer, data.vcount().v, std::move(recent));
+		});
+		readNextPendingJoinRequests();
+	}).fail([=] {
+		_pendingJoinRequestsRequestId = 0;
+		readNextPendingJoinRequests();
+	}).send();
 }
 
 void Updates::applyUpdatesNoPtsCheck(const MTPUpdates &updates) {
@@ -2221,10 +2333,24 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 		if (const auto peer = session().data().peerLoaded(peerFromMTP(d.vpeer()))) {
 			const auto count = d.vrequests_pending().v;
 			const auto &requesters = d.vrecent_requesters().v;
+			// LoogriGram: a rising count is a new request, which the admin
+			// is told about; the chat list shows the count as a badge.
+			const auto was = PendingJoinRequests(peer);
 			if (const auto chat = peer->asChat()) {
 				chat->setPendingRequestsCount(count, requesters);
 			} else if (const auto channel = peer->asChannel()) {
 				channel->setPendingRequestsCount(count, requesters);
+			}
+			const auto community = peer->isChannel()
+				&& peer->asChannel()->isCommunity();
+			if (count > was && !community) {
+				const auto requester = requesters.isEmpty()
+					? nullptr
+					: session().data().userLoaded(UserId(requesters.front()));
+				Core::App().notifications().showJoinRequests(
+					session().data().history(peer),
+					count,
+					requester ? requester->name() : QString());
 			}
 		}
 	} break;

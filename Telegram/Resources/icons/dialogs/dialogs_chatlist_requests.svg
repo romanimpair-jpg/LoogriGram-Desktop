@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- LoogriGram: the chat list's join requests badge, a person and a plus in
+     the style of dialogs_chatlist_poll. Android draws the same path
+     (filled_chatlist_requests.xml). -->
+<svg width="72px" height="72px" viewBox="0 0 72 72" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Filled / filled_chatlist_requests</title>
+    <g id="Filled-/-filled_chatlist_requests" stroke="none" fill="none" fill-rule="nonzero">
+        <path d="M28,14 C34.075,14 39,18.925 39,25 C39,31.075 34.075,36 28,36 C21.925,36 17,31.075 17,25 C17,18.925 21.925,14 28,14 Z M28,40 C39.6,40 48,46.5 48,54.5 L48,56 C48,58.209 46.209,60 44,60 L12,60 C9.791,60 8,58.209 8,56 L8,54.5 C8,46.5 16.4,40 28,40 Z M51.25,20.25 C51.25,18.179 52.929,16.5 55,16.5 C57.071,16.5 58.75,18.179 58.75,20.25 L58.75,23.25 L61.75,23.25 C63.821,23.25 65.5,24.929 65.5,27 C65.5,29.071 63.821,30.75 61.75,30.75 L58.75,30.75 L58.75,33.75 C58.75,35.821 57.071,37.5 55,37.5 C52.929,37.5 51.25,35.821 51.25,33.75 L51.25,30.75 L48.25,30.75 C46.179,30.75 44.5,29.071 44.5,27 C44.5,24.929 46.179,23.25 48.25,23.25 L51.25,23.25 Z" id="Shape" fill="#FFFFFF"></path>
+    </g>
+</svg>
